@@ -6,3 +6,14 @@ TO-DO.txt
 build
 dist/
 *.egg-info
+
+results/
+*.json
+
+datasets/
+*.jsonl
+*.json
+*.jsonl.gz
+*.json.gz
+*.jsonl.tar.gz
+*.json.tar.gz
