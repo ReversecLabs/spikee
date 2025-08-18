@@ -64,6 +64,7 @@ import os
 import random
 import sys
 import uuid
+from pathlib import Path
 from threading import Lock
 from typing import Any, Callable, Optional, TypedDict, cast
 
@@ -415,6 +416,7 @@ def default_attack(
     call_judge: Callable[[dict[str, Any], str | bool], bool],
     max_iterations: int,
     initial_adv_suffix: str,
+    all_tokens_set: set[bytes],
     attempts_bar: Optional[tqdm] = None,
     bar_lock: Optional[Lock] = None,
   ) -> tuple[int, bool, str, str]:
@@ -439,21 +441,6 @@ def default_attack(
 
   response = ""
   best_tgt_prob = 0.0
-
-  with open("rsa/o200k_base.tiktoken", "r") as f:
-    _tok_to_id: dict[bytes, int] = {}
-    for line in f:
-      if line.strip():
-        key, value = line.split()
-        _tok_to_id[base64.b64decode(key)] = int(value)
-  _id_to_tok = {v: k for k, v in _tok_to_id.items()}
-  try:
-    assert _tok_to_id[base64.b64decode("SGVsbG8=")] == 13225
-    assert _id_to_tok[13225] == b'Hello'
-  except AssertionError:
-    raise ValueError("o200k_base.tiktoken file is not loaded correctly.")
-
-  all_tokens_set = set(filter(isprintable, _id_to_tok.values()))
 
   candidate = insert_adv_string(
     original_text, "".join(initial_adv_tokens), payload=payload_field)
@@ -537,15 +524,46 @@ def attack(
     bar_lock: Optional[Lock] = None,
   ) -> tuple[int, bool, str, str]:
   # Initialize the adversarial tokens
-  adv_tokens = """<bos>business Gl headed konk;?>
+  adv_suffix = """<bos>business Gl headed konk;?>
 usual_TOOcr	video Section wool Funktion double運行rač calculations comfortable的Defs cambiando**forder.AllArgsConstructoryssey.tem/dockerriamemo/INFO Damon,.(ExpectedConditionser_Entity stylKuva GENERATION Mudquido quantumentai(isinstance_packet的功能"""
+
+  # Find project root and load tiktoken file
+  current_file = Path(__file__)
+  # Go up from spikee/attacks/ to spikee/
+  project_root = current_file.parent.parent
+  tiktoken_file_path = project_root / "data" / \
+      "adaptive_rsa" / "o200k_base.tiktoken"
+
+  if not tiktoken_file_path.exists():
+    raise FileNotFoundError(f"Tiktoken file not found at {tiktoken_file_path}")
+
+  _tok_to_id: dict[bytes, int] = {}
+  try:
+    with open(tiktoken_file_path, "r") as f:
+      for line in f:
+        if line.strip():
+          key, value = line.split()
+          _tok_to_id[base64.b64decode(key)] = int(value)
+  except Exception as e:
+    raise ValueError(
+      f"Failed to load tiktoken file from {tiktoken_file_path}: {e}")
+
+  _id_to_tok = {v: k for k, v in _tok_to_id.items()}
+  try:
+    assert _tok_to_id[base64.b64decode("SGVsbG8=")] == 13225
+    assert _id_to_tok[13225] == b'Hello'
+  except AssertionError:
+    raise ValueError("o200k_base.tiktoken file is not loaded correctly.")
+
+  all_tokens_set = set(filter(isprintable, _id_to_tok.values()))
 
   return default_attack(
     entry,
     target_module,
     call_judge,
     max_iterations,
-    adv_tokens,
+    adv_suffix,
+    all_tokens_set,
     attempts_bar,
     bar_lock
   )
