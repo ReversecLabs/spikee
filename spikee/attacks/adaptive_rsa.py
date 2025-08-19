@@ -70,8 +70,9 @@ from typing import Any, Callable, Optional, TypedDict, cast
 
 import openai
 import tiktoken
-from tester import AdvancedTargetWrapper
 from tqdm import tqdm
+
+from spikee.tester import AdvancedTargetWrapper
 
 
 class AdaptiveRSAEntry(TypedDict):
@@ -429,13 +430,19 @@ def default_attack(
   """
 
   original_text = entry.get("text", "")
-  target = entry.get("target", "")
+  # reuse the dataset's canary (judge_args) as the adaptive target string
+  # so users do NOT need to add a new "target" field when generating datasets.
+  # If a dedicated "target" is present it takes precedence.
+  target = entry.get("target") or entry.get("judge_args") or ""
+  if not target:
+    raise ValueError(
+      "Adaptive RSA requires a non-empty 'target' field or 'judge_args' (canary) in the dataset entry.")
   system_message = entry.get("system_message", None)
   payload_field = entry.get("payload") or ""
   n_iter_revert = entry.get("n_iter_revert") or 35
   penalty = -abs(entry.get("penalty") or 6.0)
 
-  enc = tiktoken.get_encoding("o200k_base")
+  enc = tiktoken.get_encoding("o200k_base") # NOTE: requires internet connection, TODO add caching/offline support
   _init_token_ids = enc.encode(initial_adv_suffix)
   initial_adv_tokens = [enc.decode([tokid]) for tokid in _init_token_ids]
 
@@ -463,10 +470,10 @@ def default_attack(
 
     try:
       _res: tuple[str, LogProbsResponse] = target_module.process_input(
-        candidate, system_message, logprobs=True)
+        candidate, system_message, logprobs=True, n_logprobs=20)
       response, lp = _res
       success = call_judge(cast(dict[str, Any], entry), response)
-
+      print(f"Try {i} / {max_iterations}: {success}")  # debug
       if not success:
         output_tokens: list[str] = [t["token"] for t in lp["content"]]
         p_target = get_sequence_prob(
@@ -619,3 +626,119 @@ usual_TOOcr	video Section wool Funktion double運行rač calculations comfortabl
   ]
 }
 """
+
+
+# ==============================================================
+# Standalone debug helper
+# ==============================================================
+def debug_run(
+    dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755598911.jsonl",
+    entry_index: int = 0,
+    target_options: str = "gpt-4o-mini",
+    attack_iterations: int = 300,
+    custom_target: str | None = None,
+    show_entry: bool = True,
+):
+  """Run Adaptive RSA in isolation on a single dataset entry.
+
+  This simulates (a subset of) what the CLI command
+      spikee test --dataset DATASET --target openai_api --target-options gpt-4o-mini \
+                 --attack adaptive_rsa --attack-iterations N --threads 1
+  would eventually do when it reaches this attack, but without threading,
+  progress bars, or an initial standard attempt. Useful for rapid debugging
+  of token logic and probability adaptation.
+
+  Args:
+    dataset_path: Path to a JSONL dataset (same format used by spikee test).
+    entry_index:  Zero-based index of the entry to attack.
+    target_options: OpenAI target option (e.g. gpt-4o-mini).
+    attack_iterations: Max iterations to run (mirrors --attack-iterations).
+    custom_target: Optional override for the attack target substring.
+    show_entry: If True, print the selected entry before starting.
+
+  Environment:
+    Requires OPENAI_API_KEY (loaded via .env or env var) if using real OpenAI target.
+
+  Notes:
+    - Uses the real openai_api target + AdvancedTargetWrapper for logprobs.
+    - Prints every iteration's success flag already emitted inside default_attack.
+      We also enforce line-buffered stdout so you see output immediately.
+    - Does NOT perform an initial "standard" attempt; it jumps straight into the attack.
+  """
+  import json
+  import traceback
+
+  # local import to avoid overhead if unused
+  from spikee.targets import openai_api
+  from spikee.tester import call_judge as _call_judge
+
+  # Ensure stdout is line-buffered for immediate debug visibility.
+  try:
+    if hasattr(sys.stdout, "reconfigure"):
+      sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
+  except Exception:
+    pass  # non-fatal
+
+  # 1. Load dataset & pick entry
+  if not os.path.exists(dataset_path):
+    print(f"[debug] Dataset not found: {dataset_path}", flush=True)
+    return
+  with open(dataset_path, "r", encoding="utf-8") as f:
+    lines = f.readlines()
+  if entry_index < 0 or entry_index >= len(lines):
+    print(
+      f"[debug] entry_index {entry_index} out of range (dataset has {len(lines)} lines)", flush=True)
+    return
+  entry = json.loads(lines[entry_index])
+
+  # 2. Ensure judge metadata (fall back to canary judge if missing)
+  entry.setdefault("judge_name", "canary")
+  # some datasets might store under another key
+  entry.setdefault("judge_args", entry.get("canary", ""))
+  if custom_target:
+    entry["target"] = custom_target
+
+  if show_entry:
+    print("\n[debug] Selected entry (truncated fields):", flush=True)
+    preview = {k: (v[:160] + "..." if isinstance(v, str) and len(v) > 160 else v)
+               for k, v in entry.items() if k in {"id", "judge_name", "judge_args", "target", "text", "system_message", "payload"}}
+    for k, v in preview.items():
+      print(f"  {k}: {v}", flush=True)
+
+  # 3. Wrap target (logprobs=True inside attack calls)
+  target_wrapper = AdvancedTargetWrapper(
+    openai_api, target_options=target_options, max_retries=3, throttle=0
+  )
+
+  print("\n[debug] Starting Adaptive RSA attack iterations...", flush=True)
+  try:
+    attempts, success, crafted_input, last_response = attack(
+      entry=entry,
+      target_module=target_wrapper,
+      call_judge=_call_judge,
+      max_iterations=attack_iterations,
+      attempts_bar=None,
+      bar_lock=None,
+    )
+  except Exception as e:
+    print(f"[debug] Attack raised exception: {e}", flush=True)
+    traceback.print_exc()
+    return
+
+  # 4. Summary
+  print("\n[debug] ================= SUMMARY =================", flush=True)
+  print(f"[debug] Iterations attempted: {attempts}", flush=True)
+  print(f"[debug] Success: {success}", flush=True)
+  print("[debug] Final adversarial input (first 400 chars):", flush=True)
+  print(crafted_input[:400] +
+        ("..." if len(crafted_input) > 400 else ""), flush=True)
+  print("[debug] Last model response (first 400 chars):", flush=True)
+  print(last_response[:400] +
+        ("..." if len(last_response) > 400 else ""), flush=True)
+  print("[debug] ===========================================", flush=True)
+
+
+if __name__ == "__main__":
+  # Basic invocation when running this file directly.
+  # Adjust parameters as needed for ad-hoc debugging.
+  debug_run()

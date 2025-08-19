@@ -59,7 +59,8 @@ def process_input(
     input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
-    logprobs: bool = False
+    logprobs: bool = False,
+    n_logprobs: Optional[int] = None
 ) -> Union[str, Tuple[str, any]]:
     """
     Send messages to an OpenAI model based on a simple key.
@@ -78,6 +79,8 @@ def process_input(
     # attach logprobs when supported
     if model_id in _LOGPROBS_MODELS:
         llm = llm.bind(logprobs=logprobs)
+        if logprobs and n_logprobs is not None:
+            llm = llm.bind(top_logprobs=n_logprobs)
 
     # build messages
     if model_id in _NO_SYSTEM_MODELS:
@@ -104,6 +107,8 @@ def process_input(
 if __name__ == "__main__":
     print("Supported OpenAI keys:", get_available_option_values())
     # example without logprobs
-    print(process_input("Hello!", target_options="gpt4o"))
+    print(process_input("Hello!", target_options="gpt-4o"))
     # example with logprobs
-    print(process_input("Hello!", target_options="gpt4o", logprobs=True))
+    print(process_input("Hello!", target_options="gpt-4o", logprobs=True))
+    # example with top-20 logprobs
+    print(process_input("Hello!", target_options="gpt-4o", logprobs=True, n_logprobs=20))
