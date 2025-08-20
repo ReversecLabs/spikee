@@ -73,6 +73,8 @@ import tiktoken
 from tqdm import tqdm
 
 from spikee.tester import AdvancedTargetWrapper
+from spikee.tiktoken_offline import ensure_tiktoken_offline
+from spikee.utils import Timeout, TimeoutException
 
 
 class AdaptiveRSAEntry(TypedDict):
@@ -356,6 +358,16 @@ def get_n_change(prob: float, max_n: int = 4) -> int:
   return max(n_to_change, 1)
 
 
+@Timeout(30.0)
+def load_encoding() -> tiktoken.Encoding:
+  enc = tiktoken.get_encoding("o200k_base")
+  if len(enc.encode("Hello")) > 0:
+    # basic sanity check
+    return enc
+  else:
+    raise ValueError("Failed to load tiktoken encoding 'o200k_base'")
+
+
 def modify_suffix(suffix: list[str], best_tgt_prob: float, tokens_set: set[bytes]) -> list[str]:
   s = copy.deepcopy(suffix)
   start_pos = random.choice(range(len(s)))
@@ -442,7 +454,24 @@ def default_attack(
   n_iter_revert = entry.get("n_iter_revert") or 35
   penalty = -abs(entry.get("penalty") or 6.0)
 
-  enc = tiktoken.get_encoding("o200k_base") # NOTE: requires internet connection, TODO add caching/offline support
+  # Ensure bundled o200k file is available for tiktoken offline use.
+  # This sets TIKTOKEN_CACHE_DIR for this process only and copies the
+  # bundled `o200k_base.tiktoken` into the expected sha1 filename.
+  try:
+    ensure_tiktoken_offline()
+  except Exception:
+    # Fall back to best-effort: allow tiktoken to attempt online fetch / normal behaviour.
+    print("Loading tiktoken encoding without offline cache.") # debug
+    pass
+
+  try:
+    enc: tiktoken.Encoding = load_encoding()
+  except ValueError as e:
+    raise
+  except TimeoutException:
+    raise TimeoutException(
+      "Failed to load tiktoken encoding 'o200k_base'. Are you offline?")
+
   _init_token_ids = enc.encode(initial_adv_suffix)
   initial_adv_tokens = [enc.decode([tokid]) for tokid in _init_token_ids]
 
@@ -632,7 +661,7 @@ usual_TOOcr	video Section wool Funktion double運行rač calculations comfortabl
 # Standalone debug helper
 # ==============================================================
 def debug_run(
-    dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755598911.jsonl",
+    dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755612902.jsonl",
     entry_index: int = 0,
     target_options: str = "gpt-4o-mini",
     attack_iterations: int = 300,

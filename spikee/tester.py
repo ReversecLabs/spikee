@@ -38,6 +38,7 @@ class AdvancedTargetWrapper:
         # detect optional parameters that were only added in newer Spikee versions
         self.supports_options = 'target_options' in params
         self.supports_logprobs = 'logprobs' in params
+        self.supports_n_logprobs = 'n_logprobs' in params
 
     def process_input(self, input_text, system_message=None, logprobs=False, n_logprobs=0):
         last_error = None
@@ -52,7 +53,7 @@ class AdvancedTargetWrapper:
                     kwargs['target_options'] = self.target_options
                 if self.supports_logprobs:
                     kwargs['logprobs'] = logprobs
-                    if logprobs and n_logprobs > 0:
+                    if self.supports_n_logprobs and logprobs and n_logprobs > 0:
                         kwargs['n_logprobs'] = n_logprobs
 
                 # Delegate to the wrapped process_input
