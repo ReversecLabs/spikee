@@ -624,13 +624,18 @@ def random_suffix_attack(
   tries_no_improvement = 0
 
   for i in range(1, max_iterations + 1):
-    # modify suffix
-    test_adv_tokens = modify_suffix(
-      best_suffix_tokens,
-      best_tgt_prob,
-      all_tokens_set,
-      rng
-    )
+    # On the first iteration try the baseline/initial suffix unchanged.
+    # Subsequent iterations perform the scheduled modification as before.
+    if i == 1:
+      test_adv_tokens = best_suffix_tokens[:]
+    else:
+      # modify suffix
+      test_adv_tokens = modify_suffix(
+        best_suffix_tokens,
+        best_tgt_prob,
+        all_tokens_set,
+        rng
+      )
     test_adv_suffix = "".join(test_adv_tokens)
     candidate = insert_adv_string(
       original_text, test_adv_suffix, payload=payload_field)
