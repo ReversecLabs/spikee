@@ -59,10 +59,13 @@ Returns:
 
 import base64
 import copy
+import csv
 import math
 import os
 import random
+import re
 import sys
+import time
 from threading import Lock
 from typing import Any, Callable, Optional, TypedDict, cast
 
@@ -116,10 +119,6 @@ _ID_TO_TOKEN = tuple(tok for _, tok in sorted((v, k)
                      for k, v in _O200K.items()))
 _PRINTABLE_TOKENS: tuple[bytes, ...] = tuple(
   b for b in _ID_TO_TOKEN if isprintable(b))
-
-# Length reward coefficient (used in sequence score). Tunable.
-# scales (matched_len / est_tokens_count); keep <= 1.0 to avoid frequent saturation
-_LENGTH_REWARD_COEF = 0.5
 
 
 def pick_random_token(tokens: tuple[bytes, ...]) -> bytes:
@@ -317,17 +316,44 @@ def insert_adv_string(document: str, adv_string: str, payload: str | None = None
 
 
 def get_n_change(prob: float, max_n: int = 4) -> int:
-  "Scheduled-change function, taken from original paper."
-  if 0 <= prob <= 0.1:
+  "Scheduled-change function, adapted from original paper to work in log space."
+  if prob <= -2.30:  # -2.30 is approximately ln(0.1)
     n_to_change = max_n
-  elif 0.1 < prob <= 0.5:
+  elif -2.30 < prob <= -0.69:  # -0.69 approx ln(0.5)
     n_to_change = max_n // 2
-  elif 0.5 < prob <= 1.0:
+  elif -0.69 < prob <= 0.0:  # 0.0 is ln(1.0)
     n_to_change = max_n // 4
   else:
     raise ValueError(f'Wrong prob {prob}')
 
   return max(n_to_change, 1)
+
+
+def strings_overlap(a: str, b: str) -> str:
+  """
+  Check if two strings overlap, i.e., if a suffix of a is a prefix of b.
+  Returns the overlapping part if they overlap, otherwise an empty string.
+  """
+  for i in range(len(a)):
+    if b.startswith(a[i:]):
+      return a[i:]
+  return ""
+
+
+def subtract_strings(a: str, b: str) -> str:
+  """
+  Subtract first string from the second string (b - a).
+
+  E.g.
+    subtract_strings("pineapple", "apple pie") -> " pie"
+    "apple" is a suffix of the first string and prefix of the second,
+    so it is removed from the second string
+  """
+
+  for i in range(len(a)):
+    if b.startswith(a[i:]):
+      return b[len(a) - i:]
+  return b
 
 
 def modify_suffix(
@@ -351,6 +377,31 @@ def modify_suffix(
   return s
 
 
+def get_all_prefixes(
+    lp: LogProbsResponse,
+    target: str
+) -> list[tuple[int, str, float]]:
+  if not target:
+    raise ValueError("Target must be a non-empty string for prefix scoring.")
+  if not lp or not lp["content"]:
+    raise ValueError("LogProbsResponse must contain non-empty content.")
+
+  # (index of token in output_tokens, token content, logprob)
+  all_prefixes: list[tuple[int, str, float]] = []
+  for i, token in enumerate(lp["content"]):
+    token_str = token["token"]
+    if not token_str:
+      continue  # Skip empty tokens
+
+    # Check if the token's suffix is a prefix of the target
+    # 'pineAPPLE' ^ 'APPLE pie' --> 'APPLE'
+    if strings_overlap(token_str, target):
+      # If it is, add it to the list with its index and logprob
+      all_prefixes.append((i, token_str, token["logprob"]))
+
+  return all_prefixes
+
+
 def get_sequence_score(
     response: str,
     output_tokens: list[str],
@@ -358,16 +409,9 @@ def get_sequence_score(
     lp: LogProbsResponse,
     penalty: float,
     enc: Optional[tiktoken.Encoding] = None,
-    target_len: Optional[int] = None
 ) -> float:
   """Heuristic sequence *score* for how strongly the model output is trending
   toward (or has already produced) ``target``.
-
-  Score formulation (when only a prefix matched):
-      base_log = sum(prefix_logprobs) + next_logprob_or_penalty + penalty * remaining_tail
-      base_prob = exp(base_log)            # in (0, 1]
-      reward_factor = 1 + C * (matched_len / est_tokens_count)   # C = _LENGTH_REWARD_COEF
-      score = min(1.0, base_prob * reward_factor)
 
   Args:
     response: Model response text (concatenation of output_tokens).
@@ -378,103 +422,73 @@ def get_sequence_score(
     enc: Optional tokenizer (used if target_len not provided).
     target_len: Optional precomputed token length of target (takes precedence).
   Returns:
-    float: A score in [0, 1]. 1.0 means full target already present.
+    float: A score in log space, < 0.0.
   Raises:
     ValueError: On missing encoding/length info or token/text mismatch.
   """
 
-  if enc is None and target_len is None:
-    raise ValueError("Either 'enc' or 'target_len' must be provided.")
-
-  if target_len is not None:
-    est_tokens_count = int(target_len)
-  else:
-    if enc is not None and target:
-      est_tokens_count = len(enc.encode(target))
-    else:
-      raise ValueError(
-        "Either 'enc' or 'target_len' must be provided, and target must not be empty.")
+  if enc is None:
+    raise ValueError("'enc' must be provided.")
 
   # Guard: tokens must reconstruct response to keep alignment logic valid.
   if "".join(output_tokens) != response:
     raise ValueError(
       "Output tokens do not concatenate to response text; cannot score.")
 
+  if not target:
+    raise ValueError(
+      "Target must be a non-empty string for sequence scoring.")
+
   # If full target already appears, short-circuit with max score.
   if target and target in response:
     try:
       full_match_token_idxs = find_tokens(response, output_tokens, target)
       if full_match_token_idxs:
-        return 1.0
+        full_match_token_lps = [lp["content"][i]["logprob"]
+                                for i in full_match_token_idxs]
+        # Return sum of logprobs for full match
+        return sum(full_match_token_lps)
     except ValueError:
       # Fallback: if find_tokens unexpectedly errors, proceed with prefix logic.
       pass
 
-  longest_prefix_idxs = find_tokens_longest_prefix(
-    response, output_tokens, target)
+  # (index, token, logprob)
+  all_prefixes: list[tuple[int, str, float]] = get_all_prefixes(lp, target)
 
-  if len(longest_prefix_idxs) > 0:
-    longest_pre_toks = [output_tokens[i] for i in longest_prefix_idxs]
-    longest_pre_lps = [lp["content"][i]["logprob"]
-                       for i in longest_prefix_idxs]
-    pre_lp = sum(longest_pre_lps)  # raw sum (no averaging)
-    matched_len = len(longest_prefix_idxs)
-    next_index = longest_prefix_idxs[-1] + 1
+  if not all_prefixes:
+    est_rem_target_len = len(enc.encode(target))
+    return est_rem_target_len * penalty
 
-    if next_index < len(lp["content"]):
-      poss_next_tokens_data = lp["content"][next_index]["top_logprobs"]
-      poss_next_tokens = [t["token"] for t in poss_next_tokens_data]
-      if poss_next_tokens:
-        next_tok = pick_next_token_extending_target(
-          longest_pre_toks, target, poss_next_tokens)
-        if next_tok is None:
-          next_lp = min(t["logprob"] for t in poss_next_tokens_data)
-        else:
-          next_lp = poss_next_tokens_data[poss_next_tokens.index(
-            next_tok)]["logprob"]
-      else:
-        next_lp = penalty
+  best_score = float("-inf")
+
+  for idx, tok, logprob in all_prefixes:
+    remaining_target = subtract_strings(tok, target)
+    if remaining_target:
+      rem_toks = [enc.decode([t]) for t in enc.encode(remaining_target)]
+      matched_next_tokens: list[float] = []
+      for i, next_tok in enumerate(rem_toks):
+        if len(matched_next_tokens) < i:
+          break  # No more matches possible
+
+        if idx + i + 1 >= len(lp["content"]):
+          break  # No more tokens to match against
+
+        next_top_lp = lp["content"][idx + i + 1]["top_logprobs"]
+        if next_top_lp:
+          for top_item in next_top_lp:
+            if top_item["token"] == next_tok:
+              matched_next_tokens.append(top_item["logprob"])
+              break
+
+      score = logprob + sum(matched_next_tokens) + \
+          (penalty * (len(rem_toks) - len(matched_next_tokens)))
+      best_score = max(best_score, score)
     else:
-      next_lp = penalty
-  else:
-    max_start_lp = float("-inf")
-    # assume first token uncertain, rest penalised
-    pre_lp = penalty * (est_tokens_count - 1)
+      # If the token itself is a full match, use its logprob directly
+      score = logprob
+      best_score = max(best_score, score)
 
-    for i, item in enumerate(lp["content"]):
-      poss_next_tokens_data = item["top_logprobs"]
-      poss_next_tokens = [t["token"] for t in poss_next_tokens_data]
-      if not poss_next_tokens:
-        continue
-      next_tok = pick_next_token_extending_target(
-        [], target, poss_next_tokens)
-      if next_tok is not None:
-        llp = poss_next_tokens_data[poss_next_tokens.index(
-          next_tok)]["logprob"]
-        max_start_lp = max(max_start_lp, llp)
-
-    if max_start_lp == float("-inf"):
-      # No tokens found that could start the target, use penalty for all tokens
-      total_log = penalty * est_tokens_count
-      assert total_log <= 0, "Unexpected positive total_log in no-prefix branch"
-      return math.exp(total_log)
-    else:
-      # Found a token that could start the target
-      total_log = max_start_lp + penalty * (est_tokens_count - 1)
-      assert total_log <= 0, "Unexpected positive total_log in start-token branch"
-      return math.exp(total_log)
-
-  remaining_tail = max(0, est_tokens_count - matched_len - 1)
-  total_log = pre_lp + next_lp + (penalty * remaining_tail)
-  assert total_log <= 0, "Unexpected positive total_log (log probabilities or penalties incorrect)"
-
-  base_prob = math.exp(total_log)
-  reward_factor = 1 + _LENGTH_REWARD_COEF * \
-      (matched_len / est_tokens_count if est_tokens_count > 0 else 0.0)
-  score = base_prob * reward_factor
-  if score > 1.0:
-    score = 1.0  # probability-like upper bound; does not reintroduce log clamping
-  return score
+  return best_score
 
 
 def random_suffix_attack(
@@ -513,7 +527,7 @@ def random_suffix_attack(
   initial_adv_tokens = [enc.decode([tokid]) for tokid in _init_token_ids]
 
   response = ""
-  best_tgt_prob = 0.0
+  best_tgt_prob = float("-inf")
 
   candidate = insert_adv_string(
     original_text, "".join(initial_adv_tokens), payload=payload_field)
@@ -523,26 +537,59 @@ def random_suffix_attack(
     (best_suffix_tokens[:], best_tgt_prob)]
   tries_no_improvement = 0
 
-  for i in range(1, max_iterations + 1):
-    # modify suffix
-    test_adv_tokens = modify_suffix(
-      best_suffix_tokens,
-      best_tgt_prob,
-      all_tokens_set,
-      rng
-    )
-    test_adv_suffix = "".join(test_adv_tokens)
-    candidate = insert_adv_string(
-      original_text, test_adv_suffix, payload=payload_field)
+  # -----------------------------------------------------------
+  # Debug convergence tracker (per-entry CSV) -- minimal add.
+  # Enabled unconditionally for local experimentation as requested.
+  # Directory can be overridden with ADAPTIVE_RSA_DEBUG_DIR env var.
+  # -----------------------------------------------------------
+  debug_dir = os.getenv("ADAPTIVE_RSA_DEBUG_DIR", "adaptive_rsa_debug")
+  try:
+    os.makedirs(debug_dir, exist_ok=True)
+  except Exception:
+    # If directory cannot be created, silently skip tracking.
+    debug_dir = None  # type: ignore
 
-    try:
-      _res: tuple[str, LogProbsResponse] = target_module.process_input(
-        candidate, system_message, logprobs=True, n_logprobs=OPENAI_MAX_LOGPROBS)
-      response, lp = _res
-      success = call_judge(cast(dict[str, Any], entry), response)
-      # debug
-      print(f"Try {i} / {max_iterations}: {success=}. Len={len(response)}")
-      if not success:
+  # Build a (mostly) stable, safe filename per entry.
+  # Prefer explicit entry id, else derive from target / hash.
+  raw_ident = str(entry.get("id") or entry.get("target")
+                  or entry.get("judge_args") or "no_id")
+  safe_ident = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw_ident)[:60]
+  ts_suffix = int(time.time())  # helps uniqueness if same id reused
+  csv_path = None if debug_dir is None else os.path.join(
+    debug_dir, f"{safe_ident}_{ts_suffix}.csv")
+
+  # Open CSV (if possible) and record iteration-wise metrics.
+  if csv_path:
+    csv_file = open(csv_path, "w", encoding="utf-8", newline="")
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(["iteration", "success", "target_score",
+                        "best_target_score", "tries_no_improvement"])
+  else:
+    csv_file = None
+    csv_writer = None  # type: ignore
+
+  try:
+    for i in range(1, max_iterations + 1):
+      # modify suffix
+      test_adv_tokens = modify_suffix(
+        best_suffix_tokens,
+        best_tgt_prob,
+        all_tokens_set,
+        rng
+      )
+      test_adv_suffix = "".join(test_adv_tokens)
+      candidate = insert_adv_string(
+        original_text, test_adv_suffix, payload=payload_field)
+
+      p_target: float | None = None
+      try:
+        _res: tuple[str, LogProbsResponse] = target_module.process_input(
+          candidate, system_message, logprobs=True, n_logprobs=OPENAI_MAX_LOGPROBS)
+        response, lp = _res
+        success = call_judge(cast(dict[str, Any], entry), response)
+        # debug
+        print(f"Try {i} / {max_iterations}: {success=}. Len={len(response)}")
+        # Always compute score (even on success) for convergence plot completeness.
         output_tokens: list[str] = [t["token"] for t in lp["content"]]
         p_target = get_sequence_score(
           response,
@@ -552,43 +599,59 @@ def random_suffix_attack(
           penalty,
           enc
         )
-        print(f"Target score: {p_target}")  # debug
+        if not success:
+          print(f"Target score: {p_target}")  # debug
 
-        # update best opts (improvement condition)
-        if p_target > best_tgt_prob:
-          best_tgt_prob = p_target
-          best_suffix_tokens = test_adv_tokens[:]
-          accepted_suffixes.append(
-            (best_suffix_tokens[:], best_tgt_prob))
-          tries_no_improvement = 0  # reset on improvement
+          # update best opts (improvement condition)
+          if p_target > best_tgt_prob:
+            best_tgt_prob = p_target
+            best_suffix_tokens = test_adv_tokens[:]
+            accepted_suffixes.append(
+              (best_suffix_tokens[:], best_tgt_prob))
+            tries_no_improvement = 0  # reset on improvement
+          else:
+            tries_no_improvement += 1
+            # Revert logic: revert to previous best after too many failed attempts
+            if tries_no_improvement >= n_iter_revert and len(accepted_suffixes) > 1:
+              accepted_suffixes.pop()  # drop current top
+              prev_suffix, prev_prob = accepted_suffixes[-1]
+              best_suffix_tokens = prev_suffix[:]
+              best_tgt_prob = prev_prob
+              candidate = insert_adv_string(
+                original_text, "".join(best_suffix_tokens), payload=payload_field)
+              tries_no_improvement = 0  # reset after revert
         else:
-          tries_no_improvement += 1
-          # Revert logic: revert to previous best after too many failed attempts
-          if tries_no_improvement >= n_iter_revert and len(accepted_suffixes) > 1:
-            # drop current top (most recent improvement) and revert to previous
-            accepted_suffixes.pop()
-            prev_suffix, prev_prob = accepted_suffixes[-1]
-            best_suffix_tokens = prev_suffix[:]
-            best_tgt_prob = prev_prob
-            candidate = insert_adv_string(
-              original_text, "".join(best_suffix_tokens), payload=payload_field)
-            tries_no_improvement = 0  # reset counter after revert
-    except Exception as e:
-      print("Error during processing:", e)  # debug
-      success = False
-      response = str(e)
+          print(f"Target score (success iteration): {p_target}")  # debug
+      except Exception as e:
+        print("Error during processing:", e)  # debug
+        success = False
+        response = str(e)
+        # p_target stays None (uncomputed) in this error case.
 
-    # Update progress bar safely.
-    if attempts_bar and bar_lock:
-      with bar_lock:
-        attempts_bar.update(1)
+      # Write convergence row.
+      if csv_writer:
+        csv_writer.writerow([i, int(
+          success), ("" if p_target is None else f"{p_target}"), f"{best_tgt_prob}", tries_no_improvement])
+        if csv_file:
+          csv_file.flush()
 
-    if success:
+      # Update progress bar safely.
       if attempts_bar and bar_lock:
         with bar_lock:
-          remaining = max_iterations - i
-          attempts_bar.total = attempts_bar.total - remaining
-      return i, True, candidate, response
+          attempts_bar.update(1)
+
+      if success:
+        if attempts_bar and bar_lock:
+          with bar_lock:
+            remaining = max_iterations - i
+            attempts_bar.total = attempts_bar.total - remaining
+        return i, True, candidate, response
+  finally:
+    if 'csv_file' in locals() and csv_file:
+      try:
+        csv_file.close()
+      except Exception:
+        pass
 
   return max_iterations, False, candidate, response
 
@@ -624,10 +687,10 @@ def attack(
 # Standalone debug helper
 # ==============================================================
 def debug_run(
-  dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755702194.jsonl",
+  dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755781541.jsonl",
   entry_index: int | None = None,
   target_options: str = "gpt-4o-mini",
-  attack_iterations: int = 300,
+  attack_iterations: int = 90,
   custom_target: str | None = None,
   show_entry: bool = True,
 ):
