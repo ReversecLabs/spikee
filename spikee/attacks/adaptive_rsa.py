@@ -1,71 +1,58 @@
 """
 adaptive_rsa.py
 
-Adaptive Random Suffix Attack (Adaptive RSA) implementation.
+Adaptive Random Suffix Attack (Adaptive RSA).
 
-This attack is an adaptive version of the random suffix search attack (random_suffix_search.py).
-Suffixes are chosen based on the log probabilities of the model's responses, aiming to maximise
-the probability of compliance and minimise the probability of a refusal response.
+This implements a token-level random suffix search that adapts using model
+log-probabilities. It targets recent OpenAI models via tiktoken's
+"o200k_base" encoding.
 
-This attack implements a random suffix search attack by operating at the token level.
-It is tailored for recent OpenAI models by using tiktoken's "o200k_base" encoding directly.
-The attack works as follows:
-  - The initial adversarial suffix is set to a value from the
-    [original paper](https://arxiv.org/abs/2404.02151), found by running the attack for many
-    iterations. This initial suffix is 65 tokens in length.
-  - At each iteration, a random contiguous block in the suffix (up to a maximum of 4 tokens,
-    length based on the highest found compliance probability) is replaced with new random tokens.
-  - The modified suffix is inserted into the original prompt:
-        • If a "payload" field exists in the entry, the suffix is appended immediately
-          after the payload.
-        • Otherwise, the suffix is appended at the end of the document.
-  - The resulting candidate is evaluated using the provided judge functions.
-  - If the judge function indicates success, the attack terminates early.
-  - If the judge function indicates an improvement in compliance probability,
-    the attack continues with the modified suffix.
-  - Otherwise, the attack continues with the current best suffix until the max number of
-    iterations is reached.
+High-level flow:
+  - Seed with an adversarial suffix derived from the EPFL paper on random
+    suffix attacks (https://arxiv.org/abs/2404.02151).
+  - On each iteration, replace a contiguous block of 1-4 tokens (chosen via a
+    schedule based on the best log-space sequence score observed so far).
+  - Insert the suffix into the input:
+      - If the dataset entry has a "payload" that occurs in the text, append the
+        suffix right after the first occurrence of that payload.
+      - Otherwise, append the suffix at the end of the document.
+  - Query the target with logprobs enabled and compute a heuristic log-space
+    sequence score that estimates how strongly the output is trending toward
+    the target substring.
+  - If the judge signals success, stop early. Otherwise, keep the modification
+    only if it improves the best sequence score seen. After too many
+    non-improving steps, revert to the previously accepted best suffix.
 
-Potential future directions for supporting endpoints without logprobs feedback:
-  - Run the attack with a best-guess prompt to obtain an initial suffix.
-    Then, use this suffix as a starting point for the attack, modifying it
-    randomly without logprobs.
-  - Run the attack against the target without feedback. This may decrease the
-    attack success rate or require more iterations, as the attack will not adapt based on the
-    model's responses.
+Notes on requirements and options:
+  - The dataset entry must contain "text", and either a dedicated "target" or a
+    "judge_args" string will be used as the target substring ("target" takes
+    precedence).
+  - Optional entry fields:
+      - system_message: str | None
+      - payload: str | None (anchor within the text where the suffix is injected)
+      - n_iter_revert: int (default 35) - consecutive non-improvements before revert
+      - penalty: float (default -6.0; coerced negative) - fallback logprob used for
+        unobserved tokens in sequence scoring
 
-Usage:
+    How to override via CLI: both `penalty` and `n_iter_revert` can be specified at
+    runtime using the `--attack-options` CLI flag. The expected format is a
+    comma- or semicolon-separated list of key=value pairs, e.g.
+      --attack-options "n_iter_revert=50,penalty=-5.5"
+    Values provided via `--attack-options` take precedence over the dataset
+    entry fields. If an option is not provided on the CLI, the code falls back
+    to the value present in the dataset entry (if any), and finally to the
+    module defaults (N_ITER_REVERT and PENALTY) when neither is present.
+
+CLI usage:
     spikee test --attack adaptive_rsa --attack-iterations 500
 
-Parameters:
-    entry (dict):
-        The dataset entry containing at least "text" and optionally "system_message" and "payload".
-        May also include "n_iter_revert" (default 35) to specify the maximum number of iterations
-        permitted with no change in score before reverting to the previous best suffix.
-        This is used to prevent the attack from getting stuck in a local minimum.
-    target_module (module):
-        The target module implementing process_input(input_text, system_message, logprobs=True).
-    call_judge (function):
-        A function to judge if the LLM response indicates success.
-    max_iterations (int):
-        Maximum number of attack iterations.
-    attempts_bar (tqdm, optional):
-        A progress bar to update with each iteration.
-
-Returns:
-    tuple: (iterations_attempted, success_flag, modified_input, last_response)
+Returns from the attack function:
+    (iterations_attempted, success_flag, modified_input, last_response)
 """
 
 
 import base64
-import copy
-import csv
-import math
-import os
 import random
-import re
-import sys
-import time
 from threading import Lock
 from typing import Any, Callable, Optional, TypedDict, cast
 
@@ -82,6 +69,7 @@ class AdaptiveRSAEntry(TypedDict):
   system_message: Optional[str]
   payload: Optional[str]
   n_iter_revert: Optional[int]
+  penalty: Optional[float]
   judge_name: Optional[str]
   judge_args: Optional[str]
   judge_options: Optional[dict[str, Any]]
@@ -119,6 +107,12 @@ _ID_TO_TOKEN = tuple(tok for _, tok in sorted((v, k)
                      for k, v in _O200K.items()))
 _PRINTABLE_TOKENS: tuple[bytes, ...] = tuple(
   b for b in _ID_TO_TOKEN if isprintable(b))
+N_ITER_REVERT = 35  # Default revert threshold for non-improvements.
+# Can be overridden per-dataset via `entry['n_iter_revert']`, or at runtime
+# via the CLI/runner using `--attack-options "n_iter_revert=<int>"`.
+PENALTY = -6.0  # Default penalty for unobserved tokens in sequence scoring.
+# Can be overridden per-dataset via `entry['penalty']`, or at runtime via
+# `--attack-options "penalty=<float>"` (values are coerced to negative).
 
 
 def pick_random_token(tokens: tuple[bytes, ...]) -> bytes:
@@ -208,7 +202,14 @@ def find_tokens_longest_prefix(output_text: str, output_tokens: list[str], targe
       (space not in target at that position, and 'f' not in prefix "abcde").
   """
 
-  # TODO raise ValueError on malformed inputs
+  if not target or not output_text or not output_tokens:
+    raise ValueError(
+      "Output text, output tokens, and target must be non-empty.")
+  if "".join(output_tokens) != output_text:
+    raise ValueError("Output tokens do not match output text.")
+  if not target:
+    raise ValueError(
+      "Target must be a non-empty string for token prefix matching.")
 
   # Try progressively shorter substrings starting from the full target
   for length in range(len(target), 0, -1):
@@ -261,7 +262,17 @@ def find_tokens_longest_prefix(output_text: str, output_tokens: list[str], targe
 
 
 def pick_next_token_extending_target(prefix_tokens: list[str], target: str, next_tokens: list[str]) -> str | None:
-  s = ''.join(prefix_tokens)
+  """
+  Choose the next token (from candidate `next_tokens`) that best extends the
+  current `prefix_tokens` toward the desired `target` substring.
+
+  Heuristic: prefer a candidate that keeps the combined prefix within the
+  target or that matches the next segment of the target; also allow slight
+  over-extension if the candidate starts with the remaining target text.
+
+  Returns the chosen token string or None if no candidate can extend the prefix.
+  """
+  s = "".join(prefix_tokens)
 
   if s == "":
     best_start_prefix = None
@@ -324,7 +335,7 @@ def get_n_change(prob: float, max_n: int = 4) -> int:
   elif -0.69 < prob <= 0.0:  # 0.0 is ln(1.0)
     n_to_change = max_n // 4
   else:
-    raise ValueError(f'Wrong prob {prob}')
+    raise ValueError(f"Wrong prob {prob}")
 
   return max(n_to_change, 1)
 
@@ -362,6 +373,13 @@ def modify_suffix(
     tokens_set: tuple[bytes, ...],
     rng: Optional[random.Random] = None
 ) -> list[str]:
+  """
+  Randomly modify a contiguous block of tokens within the current adversarial
+  suffix. The number of tokens replaced is determined by `get_n_change`, which
+  schedules 1-4 token changes based on the best log-space sequence score so far.
+
+  Returns a new token list (does not mutate the input list).
+  """
   rand = rng or random
 
   s = suffix[:]
@@ -377,10 +395,33 @@ def modify_suffix(
   return s
 
 
+def _parse_attack_option_string(option: Optional[str]) -> dict[str, str]:
+  """Parse a simple attack options string of the form "key=val,key2=val2".
+
+  Returns a dict mapping keys to string values. Empty or None input -> {}.
+  """
+  if not option:
+    return {}
+  out: dict[str, str] = {}
+  # allow comma or semicolon separated pairs
+  parts = [p.strip() for p in option.replace(';', ',').split(',') if p.strip()]
+  for p in parts:
+    if '=' in p:
+      k, v = p.split('=', 1)
+      out[k.strip()] = v.strip()
+  return out
+
+
 def get_all_prefixes(
     lp: LogProbsResponse,
     target: str
 ) -> list[tuple[int, str, float]]:
+  """Extract tokens whose suffix overlaps the start of `target`.
+
+  Returns a list of triples (token_index, token_text, token_logprob) for tokens
+  where the token's trailing characters are a prefix of the target. Used as
+  starting points for sequence scoring.
+  """
   if not target:
     raise ValueError("Target must be a non-empty string for prefix scoring.")
   if not lp or not lp["content"]:
@@ -410,21 +451,29 @@ def get_sequence_score(
     penalty: float,
     enc: Optional[tiktoken.Encoding] = None,
 ) -> float:
-  """Heuristic sequence *score* for how strongly the model output is trending
-  toward (or has already produced) ``target``.
+  """Heuristic log-space sequence score measuring how strongly the model's
+  output trends toward (or already contains) the `target` substring.
+
+  - If the full target appears in `response`, return the sum of the output
+    tokens' logprobs that cover the first occurrence.
+  - Otherwise, find tokens whose suffix overlaps the beginning of the target
+    and accumulate observed top-logprobs for the following expected target
+    tokens; unobserved positions are filled using `penalty`.
 
   Args:
-    response: Model response text (concatenation of output_tokens).
-    output_tokens: Model output tokens (string form) in order.
-    target: Target substring we want to elicit.
-    lp: Log probability structure from the model.
-    penalty: Negative fallback logprob used for unknown / unobserved tokens.
-    enc: Optional tokenizer (used if target_len not provided).
-    target_len: Optional precomputed token length of target (takes precedence).
+    response: Full model response text (must equal ''.join(output_tokens)).
+    output_tokens: Tokenized response text (string tokens).
+    target: The desired substring to elicit.
+    lp: Logprob metadata for each output token, including top alternatives.
+    penalty: Fallback logprob for expected tokens that are not in top-k.
+    enc: Tokenizer used to encode `target` into expected tokens.
+
   Returns:
-    float: A score in log space, < 0.0.
+    A log-space score (typically negative). Higher is "better" for our search.
+
   Raises:
-    ValueError: On missing encoding/length info or token/text mismatch.
+    ValueError: If `enc` is missing, inputs are empty/invalid, or tokens do not
+    reconstruct `response`.
   """
 
   if enc is None:
@@ -500,12 +549,17 @@ def random_suffix_attack(
     all_tokens_set: tuple[bytes, ...],
     attempts_bar: Optional[tqdm] = None,
     bar_lock: Optional[Lock] = None,
-    rng: Optional[random.Random] = None
+    rng: Optional[random.Random] = None,
+    attack_option: Optional[str] = None,
   ) -> tuple[int, bool, str, str]:
   """
-  Default attack function for the Adaptive RSA attack.
+  Core loop for Adaptive RSA.
 
-  After n_iter_revert consecutive failures, reverts to previous best suffix (if any).
+  - Iteratively mutate the adversarial suffix and evaluate the candidate input
+    using the target model (with logprobs) and the judge.
+  - Accept mutations that improve the sequence score toward the target; stop on
+    judge success. After `n_iter_revert` non-improvements, revert to the last
+    accepted best suffix.
   """
 
   original_text = entry.get("text", "")
@@ -518,8 +572,40 @@ def random_suffix_attack(
       "Adaptive RSA requires a non-empty 'target' field or 'judge_args' (canary) in the dataset entry.")
   system_message = entry.get("system_message", None)
   payload_field = entry.get("payload") or ""
-  n_iter_revert = entry.get("n_iter_revert") or 35
-  penalty = -abs(entry.get("penalty") or 6.0)
+  # Attack-level options parsing and precedence:
+  # 1) If the runner provides `attack_option` (typically via the CLI's
+  #    `--attack-options` flag), those key=value pairs take highest precedence.
+  # 2) Otherwise, per-dataset entry fields (e.g., `entry['n_iter_revert']`) are
+  #    used for backward compatibility.
+  # 3) If neither is supplied, hard-coded module defaults (N_ITER_REVERT,
+  #    PENALTY) are used.
+  #
+  # `attack_option` is parsed with `_parse_attack_option_string` and accepts
+  # comma- or semicolon-separated pairs, e.g.:
+  #   --attack-options "n_iter_revert=50,penalty=-5.5"
+  parsed_opts = _parse_attack_option_string(attack_option)
+
+  if 'n_iter_revert' in parsed_opts:
+    try:
+      n_iter_revert = int(parsed_opts['n_iter_revert'])
+    except Exception:
+      n_iter_revert = N_ITER_REVERT
+  else:
+    n_iter_revert = entry.get("n_iter_revert") or N_ITER_REVERT
+
+  if 'penalty' in parsed_opts:
+    try:
+      penalty_val = float(parsed_opts['penalty'])
+    except Exception:
+      penalty_val = PENALTY
+  else:
+    penalty_val = entry.get("penalty") or PENALTY
+
+  penalty = -abs(penalty_val)
+
+  if n_iter_revert < 1:
+    raise ValueError(
+      f"n_iter_revert must be at least 1, got {n_iter_revert}.")
 
   enc = tiktoken.get_encoding("o200k_base")
 
@@ -537,121 +623,75 @@ def random_suffix_attack(
     (best_suffix_tokens[:], best_tgt_prob)]
   tries_no_improvement = 0
 
-  # -----------------------------------------------------------
-  # Debug convergence tracker (per-entry CSV) -- minimal add.
-  # Enabled unconditionally for local experimentation as requested.
-  # Directory can be overridden with ADAPTIVE_RSA_DEBUG_DIR env var.
-  # -----------------------------------------------------------
-  debug_dir = os.getenv("ADAPTIVE_RSA_DEBUG_DIR", "adaptive_rsa_debug")
-  try:
-    os.makedirs(debug_dir, exist_ok=True)
-  except Exception:
-    # If directory cannot be created, silently skip tracking.
-    debug_dir = None  # type: ignore
+  for i in range(1, max_iterations + 1):
+    # modify suffix
+    test_adv_tokens = modify_suffix(
+      best_suffix_tokens,
+      best_tgt_prob,
+      all_tokens_set,
+      rng
+    )
+    test_adv_suffix = "".join(test_adv_tokens)
+    candidate = insert_adv_string(
+      original_text, test_adv_suffix, payload=payload_field)
 
-  # Build a (mostly) stable, safe filename per entry.
-  # Prefer explicit entry id, else derive from target / hash.
-  raw_ident = str(entry.get("id") or entry.get("target")
-                  or entry.get("judge_args") or "no_id")
-  safe_ident = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw_ident)[:60]
-  ts_suffix = int(time.time())  # helps uniqueness if same id reused
-  csv_path = None if debug_dir is None else os.path.join(
-    debug_dir, f"{safe_ident}_{ts_suffix}.csv")
-
-  # Open CSV (if possible) and record iteration-wise metrics.
-  if csv_path:
-    csv_file = open(csv_path, "w", encoding="utf-8", newline="")
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(["iteration", "success", "target_score",
-                        "best_target_score", "tries_no_improvement"])
-  else:
-    csv_file = None
-    csv_writer = None  # type: ignore
-
-  try:
-    for i in range(1, max_iterations + 1):
-      # modify suffix
-      test_adv_tokens = modify_suffix(
-        best_suffix_tokens,
-        best_tgt_prob,
-        all_tokens_set,
-        rng
+    p_target: float | None = None
+    try:
+      _res: tuple[str, LogProbsResponse] = target_module.process_input(
+        candidate, system_message, logprobs=True, n_logprobs=OPENAI_MAX_LOGPROBS)
+      response, lp = _res
+      success = call_judge(cast(dict[str, Any], entry), response)
+      # print(f"Try {i} / {max_iterations}: {success=}. Len={len(response)}")
+      # Always compute score (even on success) for convergence plot completeness.
+      output_tokens: list[str] = [t["token"] for t in lp["content"]]
+      p_target = get_sequence_score(
+        response,
+        output_tokens,
+        target,
+        lp,
+        penalty,
+        enc
       )
-      test_adv_suffix = "".join(test_adv_tokens)
-      candidate = insert_adv_string(
-        original_text, test_adv_suffix, payload=payload_field)
+      if not success:
+        # print(f"Target score: {p_target}")
 
-      p_target: float | None = None
-      try:
-        _res: tuple[str, LogProbsResponse] = target_module.process_input(
-          candidate, system_message, logprobs=True, n_logprobs=OPENAI_MAX_LOGPROBS)
-        response, lp = _res
-        success = call_judge(cast(dict[str, Any], entry), response)
-        # debug
-        print(f"Try {i} / {max_iterations}: {success=}. Len={len(response)}")
-        # Always compute score (even on success) for convergence plot completeness.
-        output_tokens: list[str] = [t["token"] for t in lp["content"]]
-        p_target = get_sequence_score(
-          response,
-          output_tokens,
-          target,
-          lp,
-          penalty,
-          enc
-        )
-        if not success:
-          print(f"Target score: {p_target}")  # debug
-
-          # update best opts (improvement condition)
-          if p_target > best_tgt_prob:
-            best_tgt_prob = p_target
-            best_suffix_tokens = test_adv_tokens[:]
-            accepted_suffixes.append(
-              (best_suffix_tokens[:], best_tgt_prob))
-            tries_no_improvement = 0  # reset on improvement
-          else:
-            tries_no_improvement += 1
-            # Revert logic: revert to previous best after too many failed attempts
-            if tries_no_improvement >= n_iter_revert and len(accepted_suffixes) > 1:
-              accepted_suffixes.pop()  # drop current top
-              prev_suffix, prev_prob = accepted_suffixes[-1]
-              best_suffix_tokens = prev_suffix[:]
-              best_tgt_prob = prev_prob
-              candidate = insert_adv_string(
-                original_text, "".join(best_suffix_tokens), payload=payload_field)
-              tries_no_improvement = 0  # reset after revert
+        # update best opts (improvement condition)
+        if p_target > best_tgt_prob:
+          best_tgt_prob = p_target
+          best_suffix_tokens = test_adv_tokens[:]
+          accepted_suffixes.append(
+            (best_suffix_tokens[:], best_tgt_prob))
+          tries_no_improvement = 0  # reset on improvement
         else:
-          print(f"Target score (success iteration): {p_target}")  # debug
-      except Exception as e:
-        print("Error during processing:", e)  # debug
-        success = False
-        response = str(e)
-        # p_target stays None (uncomputed) in this error case.
+          tries_no_improvement += 1
+          # Revert logic: revert to previous best after too many failed attempts
+          if tries_no_improvement >= n_iter_revert and len(accepted_suffixes) > 1:
+            accepted_suffixes.pop()  # drop current top
+            prev_suffix, prev_prob = accepted_suffixes[-1]
+            best_suffix_tokens = prev_suffix[:]
+            best_tgt_prob = prev_prob
+            candidate = insert_adv_string(
+              original_text, "".join(best_suffix_tokens), payload=payload_field)
+            tries_no_improvement = 0  # reset after revert
+      else:
+        pass
+        # print(f"Target score (success iteration): {p_target}")  # debug
+    except Exception as e:
+      # print("Error during processing:", e)  # debug
+      success = False
+      response = str(e)
 
-      # Write convergence row.
-      if csv_writer:
-        csv_writer.writerow([i, int(
-          success), ("" if p_target is None else f"{p_target}"), f"{best_tgt_prob}", tries_no_improvement])
-        if csv_file:
-          csv_file.flush()
+    # Update progress bar safely.
+    if attempts_bar and bar_lock:
+      with bar_lock:
+        attempts_bar.update(1)
 
-      # Update progress bar safely.
+    if success:
       if attempts_bar and bar_lock:
         with bar_lock:
-          attempts_bar.update(1)
-
-      if success:
-        if attempts_bar and bar_lock:
-          with bar_lock:
-            remaining = max_iterations - i
-            attempts_bar.total = attempts_bar.total - remaining
-        return i, True, candidate, response
-  finally:
-    if 'csv_file' in locals() and csv_file:
-      try:
-        csv_file.close()
-      except Exception:
-        pass
+          remaining = max_iterations - i
+          attempts_bar.total = attempts_bar.total - remaining
+      return i, True, candidate, response
 
   return max_iterations, False, candidate, response
 
@@ -663,11 +703,16 @@ def attack(
     max_iterations: int,
     attempts_bar: Optional[tqdm] = None,
     bar_lock: Optional[Lock] = None,
+    attack_option: Optional[str] = None,
   ) -> tuple[int, bool, str, str]:
+  """Entry point used by Spikee's attack runner.
 
+  Validates the tokenizer setup for o200k_base and dispatches to
+  `random_suffix_attack` with the built-in initial suffix and printable tokens.
+  """
   try:
     assert _O200K[base64.b64decode("SGVsbG8=")] == 13225
-    assert _ID_TO_TOKEN[13225] == b'Hello'
+    assert _ID_TO_TOKEN[13225] == b"Hello"
   except AssertionError:
     raise ValueError("tiktoken o200k_base encoding is not loaded correctly")
 
@@ -679,209 +724,6 @@ def attack(
     INITIAL_ADV_SUFFIX,
     _PRINTABLE_TOKENS,
     attempts_bar,
-    bar_lock
+    bar_lock,
+      attack_option=attack_option
   )
-
-
-# ==============================================================
-# Standalone debug helper
-# ==============================================================
-def debug_run(
-  dataset_path: str = "datasets/cybersec-2025-04-full-prompt-dataset-1755781541.jsonl",
-  entry_index: int | None = None,
-  target_options: str = "gpt-4o-mini",
-  attack_iterations: int = 90,
-  custom_target: str | None = None,
-  show_entry: bool = True,
-):
-  """Run Adaptive RSA in isolation on a single dataset entry.
-
-  This simulates (a subset of) what the CLI command
-      spikee test --dataset DATASET --target openai_api --target-options gpt-4o-mini \
-                 --attack adaptive_rsa --attack-iterations N --threads 1
-  would eventually do when it reaches this attack, but without threading,
-  progress bars, or an initial standard attempt. Useful for rapid debugging
-  of token logic and probability adaptation.
-
-  Args:
-    dataset_path: Path to a JSONL dataset (same format used by spikee test).
-    entry_index:  Zero-based index of the entry to attack.
-    target_options: OpenAI target option (e.g. gpt-4o-mini).
-    attack_iterations: Max iterations to run (mirrors --attack-iterations).
-    custom_target: Optional override for the attack target substring.
-    show_entry: If True, print the selected entry before starting.
-
-  Environment:
-    Requires OPENAI_API_KEY (loaded via .env or env var) if using real OpenAI target.
-
-  Notes:
-    - Uses the real openai_api target + AdvancedTargetWrapper for logprobs.
-    - Prints every iteration's success flag already emitted inside default_attack.
-      We also enforce line-buffered stdout so you see output immediately.
-    - Does NOT perform an initial "standard" attempt; it jumps straight into the attack.
-  """
-  import json
-  import traceback
-
-  # local import to avoid overhead if unused
-  # Ensure .env is loaded from repository/root or parent folders before importing
-  # the OpenAI target. Some invocation patterns run this file from a CWD where
-  # automatic dotenv lookup may fail; explicitly call load_dotenv(find_dotenv()).
-  try:
-    from dotenv import find_dotenv, load_dotenv
-    load_dotenv(find_dotenv())
-  except Exception:
-    # If python-dotenv isn't available or load fails, continue and let the
-    # downstream code raise a clear error.
-    pass
-
-  from spikee.targets import openai_api
-  from spikee.tester import call_judge as _call_judge
-
-  # Ensure stdout is line-buffered for immediate debug visibility.
-  try:
-    if hasattr(sys.stdout, "reconfigure"):
-      sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
-  except Exception:
-    pass  # non-fatal
-
-  # 1. Load dataset
-  if not os.path.exists(dataset_path):
-    print(f"[debug] Dataset not found: {dataset_path}", flush=True)
-    return
-  with open(dataset_path, "r", encoding="utf-8") as f:
-    lines = f.readlines()
-
-  # 2. Wrap target (reused across entries)
-  target_wrapper = AdvancedTargetWrapper(
-    openai_api, target_options=target_options, max_retries=3, throttle=0
-  )
-
-  # Helper to normalise an entry
-  def _prep_entry(raw_entry: dict) -> dict:
-    raw_entry.setdefault("judge_name", "canary")
-    raw_entry.setdefault("judge_args", raw_entry.get("canary", ""))
-    if custom_target:
-      raw_entry["target"] = custom_target
-    return raw_entry
-
-  # If entry_index is provided, keep single-entry behaviour for backward compat
-  if entry_index is not None:
-    if entry_index < 0 or entry_index >= len(lines):
-      print(
-        f"[debug] entry_index {entry_index} out of range (dataset has {len(lines)} lines)", flush=True)
-      return
-    entry = json.loads(lines[entry_index])
-    entry = _prep_entry(entry)
-    if show_entry:
-      print("\n[debug] Selected entry (truncated fields):", flush=True)
-      preview = {k: (v[:160] + "..." if isinstance(v, str) and len(v) > 160 else v)
-                 for k, v in entry.items() if k in {"id", "judge_name", "judge_args", "target", "text", "system_message", "payload"}}
-      for k, v in preview.items():
-        print(f"  {k}: {v}", flush=True)
-
-    print("\n[debug] Starting Adaptive RSA attack iterations...", flush=True)
-    try:
-      attempts, success, crafted_input, last_response = attack(
-        entry=cast(AdaptiveRSAEntry, entry),
-        target_module=target_wrapper,
-        call_judge=_call_judge,
-        max_iterations=attack_iterations,
-        attempts_bar=None,
-        bar_lock=None,
-      )
-    except Exception as e:
-      print(f"[debug] Attack raised exception: {e}", flush=True)
-      traceback.print_exc()
-      return
-
-    # Single-entry summary
-    print("\n[debug] ================= SUMMARY =================", flush=True)
-    print(f"[debug] Iterations attempted: {attempts}", flush=True)
-    print(f"[debug] Success: {success}", flush=True)
-    print("[debug] Final adversarial input (first 400 chars):", flush=True)
-    print(crafted_input[:400] +
-          ("..." if len(crafted_input) > 400 else ""), flush=True)
-    print("[debug] Last model response (first 400 chars):", flush=True)
-    print(last_response[:400] +
-          ("..." if len(last_response) > 400 else ""), flush=True)
-    print("[debug] ===========================================", flush=True)
-    return
-
-  # 3. Iterate through whole dataset
-  total = len(lines)
-  successes = 0
-  attempts_sum = 0
-  errors = 0
-
-  print(
-    f"\n[debug] Running Adaptive RSA over entire dataset ({total} entries)...", flush=True)
-  for idx, line in enumerate(lines):
-    try:
-      entry = json.loads(line)
-    except Exception as e:
-      print(
-        f"[debug] Skipping line {idx}: failed to parse JSON: {e}", flush=True)
-      errors += 1
-      continue
-
-    entry = _prep_entry(entry)
-
-    if show_entry:
-      print(
-        f"\n[debug] Entry {idx + 1}/{total}: id={entry.get('id')}", flush=True)
-
-    try:
-      attempts, success, crafted_input, last_response = attack(
-        entry=cast(AdaptiveRSAEntry, entry),
-        target_module=target_wrapper,
-        call_judge=_call_judge,
-        max_iterations=attack_iterations,
-        attempts_bar=None,
-        bar_lock=None,
-      )
-    except Exception as e:
-      print(
-        f"[debug] Entry {idx + 1} attack raised exception: {e}", flush=True)
-      traceback.print_exc()
-      errors += 1
-      continue
-
-    attempts_sum += attempts
-    if success:
-      successes += 1
-
-    # per-entry short summary
-    print(
-      f"[debug] Entry {idx + 1}/{total} - attempts: {attempts}, success: {success}", flush=True)
-
-  # 4. Overall summary
-  processed = total - errors
-  success_rate = (successes / processed) * 100 if processed > 0 else 0.0
-  avg_attempts = (attempts_sum / processed) if processed > 0 else 0.0
-
-  print("\n[debug] ================ OVERALL SUMMARY ================", flush=True)
-  print(f"[debug] Dataset: {dataset_path}", flush=True)
-  print(f"[debug] Total entries: {total}", flush=True)
-  print(f"[debug] Processed: {processed}", flush=True)
-  print(f"[debug] Errors/skipped: {errors}", flush=True)
-  print(f"[debug] Successes: {successes}", flush=True)
-  print(f"[debug] Success rate: {success_rate:.2f}%", flush=True)
-  print(
-    f"[debug] Average attempts per processed entry: {avg_attempts:.2f}", flush=True)
-  print("[debug] =================================================", flush=True)
-
-
-if __name__ == "__main__":
-  # Basic invocation when running this file directly.
-  # Adjust parameters as needed for ad-hoc debugging.
-  debug_run()
-
-
-"""
-pip install --upgrade --force-reinstall .
-"""
-
-
-# TODO move n_iter_revert to attack options (CLI)
-# clean up comments, docstrings, debug prints
