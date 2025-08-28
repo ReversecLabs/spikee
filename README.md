@@ -89,7 +89,7 @@ pip install --upgrade --force-reinstall spikee
 ### 1.2 Local Installation (From Source)
 
 ```bash
-git clone https://github.com/WithSecureLabs/spikee.git
+git clone https://github.com/ReversecLabs/spikee.git
 cd spikee
 python3 -m venv env
 source env/bin/activate
@@ -185,10 +185,10 @@ spikee test --dataset datasets/cybersec-2025-04-full-prompt-dataset-*.jsonl \
 >
 > The `cybersec-2025-04` dataset contains attacks whose success can be verified automatically by searching for specific "canary" words or matching regular expressions in the response (such as the presence of a *Markdown image*).
 >
-> For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./04_judges.md)** to learn more.
+> For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./docs/06_judges.md)** to learn more.
 
 #### B. Testing a Custom LLM Application
-To test an LLM application, you must create a custom **Target script**. This Python script, placed in the `targets/` directory in your workspace, tells Spikee how to send data to the application and receive its response. For details, see the **[Creating Custom Targets](./01_custom_targets.md)** guide.
+To test an LLM application, you must create a custom **Target script**. This Python script, placed in the `targets/` directory in your workspace, tells Spikee how to send data to the application and receive its response. For details, see the **[Creating Custom Targets](./docs/03_custom_targets.md)** guide.
 
 ```bash
 # Test a custom email application using malicious documents and your custom target
