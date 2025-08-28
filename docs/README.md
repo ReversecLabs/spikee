@@ -28,3 +28,6 @@ This page provides an index of all detailed guides for Spikee.
 
 9.  **[Generating Custom Datasets with an LLM](./09_llm_dataset_generation.md)**
     *   Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_attacks.jsonl` and custom `instructions.jsonl` files.
+
+10. **[Adaptive Random Suffix Attack](./10_adaptive_rsa.md)**
+    *   A comprehensive guide to the Adaptive RSA attack, including configuration options, dual optimization features, and guardrail testing workflows.

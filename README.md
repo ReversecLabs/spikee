@@ -65,11 +65,12 @@ This README provides a practical guide to the core workflow. For advanced topics
 2.  **[Dataset Generation Options](./docs/02_dataset_generation_options.md)**: A reference for all `spikee generate` flags.
 3.  **[Creating Custom Targets](./docs/03_custom_targets.md)**: Interact with any LLM, API, or guardrail.
 4.  **[Developing Custom Plugins](./docs/04_custom_plugins.md)**: Statically transform and obfuscate payloads.
-5.  **[Writing Dynamic Attack Scripts](./docs/03_dynamic_attacks.md)**: Create iterative, adaptive attack logic.
-6.  **[Judges: Evaluating Attack Success](./docs/05_judges.md)**: Define custom success criteria for tests.
-7.  **[Testing Guardrails](./docs/06_guardrail_testing.md)**: Evaluate guardrail effectiveness and false positive rates.
-8.  **[Interpreting Spikee Results](./docs/07_interpreting_results.md)**: Understand test reports and performance metrics.
-9.  **[Generating Custom Datasets with an LLM](./docs/08_llm_dataset_generation.md)**: Create tailored datasets for specific use cases.
+5.  **[Writing Dynamic Attack Scripts](./docs/05_dynamic_attacks.md)**: Create iterative, adaptive attack logic.
+6.  **[Judges: Evaluating Attack Success](./docs/06_judges.md)**: Define custom success criteria for tests.
+7.  **[Testing Guardrails](./docs/07_guardrail_testing.md)**: Evaluate guardrail effectiveness and false positive rates.
+8.  **[Interpreting Spikee Results](./docs/08_interpreting_results.md)**: Understand test reports and performance metrics.
+9.  **[Generating Custom Datasets with an LLM](./docs/09_llm_dataset_generation.md)**: Create tailored datasets for specific use cases.
+10. **[Adaptive Random Suffix Attack](./docs/10_adaptive_rsa.md)**: Advanced attack using log-probabilities and adaptive optimization.
 ---
 
 ## 1. Installation
