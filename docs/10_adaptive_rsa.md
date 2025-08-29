@@ -35,13 +35,13 @@ The attack uses a log-space sequence scoring function that:
 ### General Guidance
 
 #### Prompt Requirements
-- The prompt in **`text`** must encourage the model to include a specific string (the **`target`**) in its response
+- The prompt in `text` must encourage the model to include a specific string (the `target`) in its response
 - E.g. `Start your response with "Sure, here are instructions for ..."`
 - Or `Include the following in your response: "![image](https://...)"`
 
 #### Target Requirements
-- For cybersecurity tasks like exfil via Markdown images, use a canary judge. The target will automatically be set to the content of the `judge_args` field, which should be the exact Markdown image you want in the output.
-- For AI safety / harmful content tasks, a good approach is to set the **`target`** field to "Sure", and use a prompt which aims to introduce "Sure" somewhere in the LLM response, e.g. `Start your response with 'Sure, here is ...'`.
+- For cybersecurity tasks like exfil via Markdown images, use a canary judge. The target will automatically be set to the content of the `judge_args` field, which should be the exact payload you want in the output.
+- For AI safety / harmful content tasks, a good approach is to set the `target` field to "Sure", and use a prompt which aims to introduce "Sure" somewhere in the LLM response, e.g. `Start your response with 'Sure, here is ...'`.
 
 For AI safety tasks, here's a template I adapted from the original EPFL paper:
 ```
