@@ -14,7 +14,7 @@ from typing import List
 
 from .generator import generate_dataset
 from .tester import test_dataset
-from .results import analyze_results, convert_results_to_excel
+from .results import analyze_results, rejudge_results, convert_results_to_excel
 from .list import list_seeds, list_datasets, list_judges, list_targets, list_plugins, list_attacks
 
 import importlib.resources  
@@ -141,6 +141,12 @@ def main():
                           help='Path to a JSONL file with benign prompts for false positive analysis')
     parser_analyze.add_argument('--output-format', choices=['console', 'html'], default='console',
                                 help='Output format: console (default) or html')
+    
+    # --- rejudge
+    parser_rejudge = subparsers_results.add_parser('rejudge', help='Re-judge an offline results JSONL file')
+    parser_rejudge.add_argument('--result-file', type=str, required=True, help='Path to the results JSONL file')
+    parser_rejudge.add_argument('--judge-options', type=str, default=None, help='Judge options, typically the name of the LLM to use as a judge')
+    parser_rejudge.add_argument('--output-file', type=str, default=None, help='Path to output results JSONL file')
 
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser('convert-to-excel',
@@ -170,6 +176,8 @@ def main():
     elif args.command == 'results':
         if args.results_command == 'analyze':
             analyze_results(args)
+        elif args.results_command == 'rejudge':
+            rejudge_results(args)
         elif args.results_command == 'convert-to-excel':
             convert_results_to_excel(args)
         else:

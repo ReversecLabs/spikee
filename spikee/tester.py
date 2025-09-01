@@ -11,6 +11,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
+from .judge import annotate_judge_options, call_judge
+
 class AdvancedTargetWrapper:
     """
     A wrapper for a target module's process_input method that incorporates both:
@@ -189,20 +191,6 @@ def load_attack_by_name(attack_name):
     except ModuleNotFoundError:
         raise ValueError(f"Attack '{attack_name}' not found locally or in spikee.attacks")
 
-def _load_raw_judge_module(judge_name):
-    """Load judge module. Returns None if not found."""
-    local_path = Path(os.getcwd()) / "judges" / f"{judge_name}.py"
-    if local_path.is_file():
-        spec = importlib.util.spec_from_file_location(judge_name, local_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod
-    else:
-        try:
-            return importlib.import_module(f"spikee.judges.{judge_name}")
-        except ModuleNotFoundError:
-            return None
-
 def _get_effective_attack_options(attack_module, provided_options):
     """Get effective attack options, using default if none provided and attack supports options."""
     if provided_options is not None:
@@ -218,59 +206,6 @@ def _get_effective_attack_options(attack_module, provided_options):
             pass
     
     return None
-
-def _get_effective_judge_options(judge_name, provided_options):
-    """Get effective judge options, using default if none provided and judge supports options."""
-    if provided_options is not None:
-        return provided_options
-    
-    # Try to get default option if none provided
-    try:
-        mod = _load_raw_judge_module(judge_name)
-        if mod and hasattr(mod, 'get_available_option_values'):
-            available = mod.get_available_option_values()
-            if available:
-                return available[0]  # First option is default
-    except Exception:
-        pass
-    
-    return None
-
-def load_judge_module(judge_name):
-    """
-    Looks for `judges/{judge_name}.py` locally first,
-    then falls back to built-in judges.
-    """
-    mod = _load_raw_judge_module(judge_name)
-    if mod is None:
-        raise ValueError(f"Judge '{judge_name}' not found locally or built-in.")
-    return mod
-
-def call_judge(entry, output):
-    """
-    Determines if the LLM output indicates a successful attack.
-    
-    If the output provided is a boolean that value is used to indicate success or failure. 
-    This is used when testing LLM guardrail targets, which return True if the attack went 
-    through the guardrail (attack successful) and False if the guardrail stopped it.
-    
-    In all other cases (i.e. when using a target LLM), the appropriate judge module
-    for the attack is loaded and its judge() function is called.
-    """
-    if isinstance(output, bool):
-        return output
-      
-    else:
-        judge_name = entry.get("judge_name", "canary")
-        judge_args = entry.get("judge_args", "")
-        judge_options = entry.get("judge_options", None)
-        llm_input = entry["text"]
-        judge_module = load_judge_module(judge_name)
-        judge_func_params = inspect.signature(judge_module.judge).parameters
-        if "judge_options" in judge_func_params:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args, judge_options=judge_options)
-        else:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args)
 
 def _do_single_request(entry, input_text, target_module, num_attempt,
                         attempts_bar, global_lock):
@@ -517,22 +452,6 @@ def _load_resume(resume_file, attack_module, attack_iters):
 def _filter_entries(dataset, completed_ids):
     return [e for e in dataset if e['id'] not in completed_ids]
 
-
-def _annotate_judge_options(entries, judge_opts):
-    """Annotate entries with judge options, using defaults when appropriate."""
-    annotated = []
-    for entry in entries:
-        if judge_opts is not None:
-            # Use provided judge options for all entries
-            effective_options = judge_opts
-        else:
-            # Get default option for this specific judge
-            judge_name = entry.get("judge_name", "canary")
-            effective_options = _get_effective_judge_options(judge_name, None)
-        
-        annotated.append({**entry, 'judge_options': effective_options})
-    return annotated
-
 def _build_target_name(name, opts):
     """Build target name, using default option if opts is None and target supports options."""
     if opts is not None:
@@ -640,7 +559,7 @@ def test_dataset(args):
 
     completed_ids, results, already_done = _load_resume(args.resume_file, attack_module, args.attack_iterations)
     to_process = _filter_entries(dataset, completed_ids)
-    to_process = _annotate_judge_options(to_process, args.judge_options)
+    to_process = annotate_judge_options(to_process, args.judge_options)
 
     target_name_full = _build_target_name(args.target, args.target_options)
     output_file = _prepare_output_file(

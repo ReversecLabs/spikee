@@ -4,11 +4,22 @@ import pandas as pd  # Required for Excel conversion
 from collections import defaultdict
 from tabulate import tabulate
 import html
+import traceback
+import time
+from tqdm import tqdm
+
+from .judge import annotate_judge_options, call_judge
 
 def read_jsonl_file(file_path):
     """Reads a JSONL file and returns a list of dictionaries."""
     with open(file_path, 'r', encoding='utf-8') as f:
         return [json.loads(line) for line in f]
+
+def write_jsonl_file(output_file, data):
+    with open(output_file, 'w', encoding='utf-8') as f:
+        for entry in data:
+            json.dump(entry, f, ensure_ascii=False)
+            f.write('\n')
 
 def encode_special_characters(value):
     """Encodes special characters like newlines as '\\n' for Excel export."""
@@ -509,6 +520,34 @@ def analyze_results(args):
                           failed_groups, error_groups, total_attempts, 
                           attack_success_rate, breakdowns, 
                           combination_stats_sorted, fp_data, attack_statistics)
+
+def rejudge_results(args):
+    result_file = args.result_file
+    output_file = args.output_file
+    
+    if output_file == None:
+        output_file = result_file.removesuffix(".jsonl") + "-rejudge-" + str(round(time.time())) + ".jsonl"
+    
+    old_results = read_jsonl_file(result_file)
+    new_results = []
+    
+    judge_options = args.judge_options
+    annotate_judge_options(old_results, judge_options)
+
+    with tqdm(total=len(old_results), desc="Rejudged: ", position=1) as pbar:
+        for entry in old_results: # id, long_id, input, response, success, judge_name, judge_options
+            try:
+                entry['success'] = call_judge(entry, entry['response'])
+            except Exception as e:
+                error_message = str(e)
+                entry['success'] = False
+                print("[Error] {}: {}".format(entry["id"], error_message))
+                traceback.print_exc()
+            
+            new_results.append(entry)
+            pbar.update(1)
+    
+    write_jsonl_file(output_file, new_results)
 
 def generate_html_report(result_file, results, total_entries, total_successes, total_failures, total_errors, total_attempts, attack_success_rate, breakdowns, combination_stats_sorted, fp_data=None, attack_statistics=None):
     import os
