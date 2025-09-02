@@ -525,17 +525,18 @@ def rejudge_results(args):
     result_file = args.result_file
     output_file = args.output_file
     
-    if output_file == None:
+    if output_file is None:
         output_file = result_file.removesuffix(".jsonl") + "-rejudge-" + str(round(time.time())) + ".jsonl"
     
     old_results = read_jsonl_file(result_file)
     new_results = []
     
     judge_options = args.judge_options
-    annotate_judge_options(old_results, judge_options)
+    old_results = annotate_judge_options(old_results, judge_options)
 
     with tqdm(total=len(old_results), desc="Rejudged: ", position=1) as pbar:
-        for entry in old_results: # id, long_id, input, response, success, judge_name, judge_options
+        for entry in old_results:
+            
             try:
                 entry['success'] = call_judge(entry, entry['response'])
             except Exception as e:
