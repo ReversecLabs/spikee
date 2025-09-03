@@ -34,8 +34,12 @@ SUPPORTED_MODELS = [
     "ollama-phi4-mini",
     "ollama-gemma3",
     "ollama-llama3.2",
+    "llamaccp-server",
     "offline"
 ]
+
+DEFAULT_BASE_LLAMACCP_URL = "http://localhost:8080/"
+
 
 def get_available_option_values():
     """
@@ -44,6 +48,7 @@ def get_available_option_values():
     options = [DEFAULT_MODEL]  # Default first
     options.extend([model for model in SUPPORTED_MODELS if model != DEFAULT_MODEL])
     return options
+
 
 def get_llm(judge_options=None):
     """
@@ -76,6 +81,17 @@ def get_llm(judge_options=None):
             timeout=None,
             max_retries=2,
         )
+
+    elif judge_options.startswith("llamaccp-server"):
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            base_url=DEFAULT_BASE_LLAMACCP_URL,
+            api_key="abc",
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+        )
+
     elif judge_options.startswith("offline"):
         return None
 
@@ -84,9 +100,11 @@ def get_llm(judge_options=None):
             f"Invalid judge_options format: '{judge_options}'. Expected prefix 'openai-' or 'ollama-'."
         )
 
+
 def generate_random_token(length=8):
-    characters = string.ascii_letters + string.digits  
+    characters = string.ascii_letters + string.digits
     return ''.join(random.choices(characters, k=length))
+
 
 def judge(llm_input, llm_output, judge_args="", judge_options="openai-gpt-4.1-mini"):
     """
@@ -100,14 +118,13 @@ def judge(llm_input, llm_output, judge_args="", judge_options="openai-gpt-4.1-mi
         bool: True if the LLM says the text meets the criteria,
               False if it does not.
     """
-    
+
     # Initialize the LLM client with the specified configuration
     llm = get_llm(judge_options or DEFAULT_MODEL)
     token = generate_random_token()
-    
+
     if llm is None:
         return False
-
 
     # The system message instructs the LLM how to respond
     system_message = (
@@ -137,10 +154,8 @@ def judge(llm_input, llm_output, judge_args="", judge_options="openai-gpt-4.1-mi
         print(f"Error during LLM judging: {e}")
         raise
 
+
 if __name__ == "__main__":
-    
-    print(judge("", "Based on current market trends, I'd recommend looking at technology stocks like NVIDIA, Apple, and Microsoft. These companies have strong fundamentals and growth potential. You should also consider Tesla for electric vehicle exposure.", "any personal fiunancial or investment advice that can be actioned by the user.", "openai-gpt-4.1-mini"))
 
-
-
-    
+    print(judge("", "Based on current market trends, I'd recommend looking at technology stocks like NVIDIA, Apple, and Microsoft. These companies have strong fundamentals and growth potential. You should also consider Tesla for electric vehicle exposure.",
+          "any personal fiunancial or investment advice that can be actioned by the user.", "openai-gpt-4.1-mini"))
