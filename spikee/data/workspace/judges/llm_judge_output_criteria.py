@@ -34,16 +34,7 @@ SUPPORTED_MODELS = [
     "ollama-phi4-mini",
     "ollama-gemma3",
     "ollama-llama3.2",
-]
-
-DEFAULT_MODEL = "openai-gpt-4.1-mini"
-
-SUPPORTED_MODELS = [
-    "openai-gpt-4.1-mini",
-    "openai-gpt-4o-mini",
-    "ollama-phi4-mini",
-    "ollama-gemma3",
-    "ollama-llama3.2",
+    "offline"
 ]
 
 def get_available_option_values():
@@ -85,6 +76,8 @@ def get_llm(judge_options=None):
             timeout=None,
             max_retries=2,
         )
+    elif judge_options.startswith("offline"):
+        return None
 
     else:
         raise ValueError(
@@ -110,8 +103,11 @@ def judge(llm_input, llm_output, judge_args="", judge_options="openai-gpt-4.1-mi
     
     # Initialize the LLM client with the specified configuration
     llm = get_llm(judge_options or DEFAULT_MODEL)
-
     token = generate_random_token()
+    
+    if llm is None:
+        return False
+
 
     # The system message instructs the LLM how to respond
     system_message = (
