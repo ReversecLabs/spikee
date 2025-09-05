@@ -3,6 +3,7 @@ import importlib
 import inspect
 from pathlib import Path
 
+
 def _load_raw_judge_module(judge_name):
     """Load judge module. Returns None if not found."""
     local_path = Path(os.getcwd()) / "judges" / f"{judge_name}.py"
@@ -16,7 +17,8 @@ def _load_raw_judge_module(judge_name):
             return importlib.import_module(f"spikee.judges.{judge_name}")
         except ModuleNotFoundError:
             return None
-        
+
+
 def load_judge_module(judge_name):
     """
     Looks for `judges/{judge_name}.py` locally first,
@@ -27,11 +29,12 @@ def load_judge_module(judge_name):
         raise ValueError(f"Judge '{judge_name}' not found locally or built-in.")
     return mod
 
+
 def _get_effective_judge_options(judge_name, provided_options):
     """Get effective judge options, using default if none provided and judge supports options."""
     if provided_options is not None:
         return provided_options
-    
+
     # Try to get default option if none provided
     try:
         mod = _load_raw_judge_module(judge_name)
@@ -41,9 +44,10 @@ def _get_effective_judge_options(judge_name, provided_options):
                 return available[0]  # First option is default
     except Exception:
         pass
-    
+
     return None
-        
+
+
 def annotate_judge_options(entries, judge_opts):
     """Annotate entries with judge options, using defaults when appropriate."""
     annotated = []
@@ -55,25 +59,31 @@ def annotate_judge_options(entries, judge_opts):
             # Get default option for this specific judge
             judge_name = entry.get("judge_name", "canary")
             effective_options = _get_effective_judge_options(judge_name, None)
-        
+
         annotated.append({**entry, 'judge_options': effective_options})
     return annotated
+
 
 def call_judge(entry, output):
     """
     Determines if the LLM output indicates a successful attack.
-    
+
     If the output provided is a boolean that value is used to indicate success or failure. 
     This is used when testing LLM guardrail targets, which return True if the attack went 
     through the guardrail (attack successful) and False if the guardrail stopped it.
-    
+
     In all other cases (i.e. when using a target LLM), the appropriate judge module
     for the attack is loaded and its judge() function is called.
     """
     if isinstance(output, bool):
         return output
-      
+
     else:
+        # Remove failed empty responses.
+        if output == "":
+            return False
+
+        # Judge
         judge_name = entry.get("judge_name", "canary")
         judge_args = entry.get("judge_args", "")
         judge_options = entry.get("judge_options", None)
