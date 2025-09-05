@@ -135,7 +135,9 @@ In your dataset `.jsonl` file, set `judge_name` to your script's filename (witho
 When Spikee processes this entry, it will load `my_custom_judge.py` and call its `judge` function to determine if the test was a success.
 
 ## Using Rejudging
-This allows you to perform a scan within a restricted environment, and perform judging at a later time.
+This allows you to re-perform judging on existing results datasets. 
+
+For example, if a scan was performed within a restrictive environment without access to a judge it would allow you to perform judging in a less restrictive environment or would allow you to rejudge an existing results file with a different model/prompts.
 
 ### 1. Scan Using Offline Judge
 Specify the offline judge model, with the `--judge-options offline` flag during your test.
