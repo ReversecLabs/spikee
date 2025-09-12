@@ -148,7 +148,8 @@ def main():
     parser_rejudge = subparsers_results.add_parser('rejudge', help='Re-judge an offline results JSONL file')
     parser_rejudge.add_argument('--result-file', type=str, action='append', required=True, help='Path to the results JSONL file')
     parser_rejudge.add_argument('--judge-options', type=str, default=None, help='Judge options, typically the name of the LLM to use as a judge')
-
+    parser_rejudge.add_argument('--resume-rejudge-file', type=str, default=None,
+                            help='Path to a partial rejudge JSONL file to resume')
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser('convert-to-excel',
                                                             help='Convert results JSONL file to Excel')

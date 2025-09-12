@@ -537,30 +537,62 @@ def rejudge_results(args):
     print(f"Re-judging the following file(s): \n - {'\n - '.join(result_files)}")
 
     for result_file in result_files:
-        output_file = result_file.removesuffix(".jsonl") + "-rejudge-" + str(round(time.time())) + ".jsonl"
         print(f" \n\nCurrently Re-judging: {result_file.split(os.sep)[-1]}")
 
         old_results = read_jsonl_file(result_file)
-        new_results = []
 
         judge_options = args.judge_options
         old_results = annotate_judge_options(old_results, judge_options)
 
-        with tqdm(total=len(old_results), desc="Rejudged: ", position=1) as pbar:
-            for entry in old_results:
+        # Resume handling (per tester.py behavior)
+        resume_path = getattr(args, 'resume_rejudge_file', None)
+        completed_ids = set()
+        success_count = 0
 
-                try:
-                    entry['success'] = call_judge(entry, entry['response'])
-                except Exception as e:
-                    error_message = str(e)
-                    entry['success'] = False
-                    print("[Error] {}: {}".format(entry["id"], error_message))
-                    traceback.print_exc()
+        if resume_path and os.path.exists(resume_path):
+            output_file = resume_path
+            existing = read_jsonl_file(resume_path)
+            completed_ids = {r['id'] for r in existing}
+            success_count = sum(1 for r in existing if r.get('success'))
+            mode = 'a'
+            print(f"[Resume] Found {len(completed_ids)} completed entries in {resume_path}.")
+        else:
+            output_file = result_file.removesuffix(".jsonl") + "-rejudge-" + str(round(time.time())) + ".jsonl"
+            mode = 'w'
 
-                new_results.append(entry)
-                pbar.update(1)
+        # stream writes so CTRL+C leaves a partial file
+        with open(output_file, mode, encoding='utf-8') as out_f:
+            try:
+                with tqdm(total=len(old_results), desc="Rejudged: ", position=1,
+                          initial=len(completed_ids)) as pbar:
+                    # show current successes in the bar
+                    pbar.set_postfix(success=success_count)
 
-        write_jsonl_file(output_file, new_results)
+                    for entry in old_results:
+                        # skip already completed
+                        if entry['id'] in completed_ids:
+                            continue
+
+                        try:
+                            entry['success'] = call_judge(entry, entry['response'])
+                        except Exception as e:
+                            error_message = str(e)
+                            entry['success'] = False
+                            print("[Error] {}: {}".format(entry["id"], error_message))
+                            traceback.print_exc()
+
+                        if entry.get('success', False):
+                            success_count += 1
+
+                        json.dump(entry, out_f, ensure_ascii=False)
+                        out_f.write('\n')
+                        out_f.flush()
+
+                        pbar.update(1)
+                        pbar.set_postfix(success=success_count)
+
+            except KeyboardInterrupt:
+                print(f"\n[Interrupt] CTRL+C pressed. Partial results saved to {output_file}")
 
 
 def generate_html_report(result_file, results, total_entries, total_successes, total_failures, total_errors, total_attempts, attack_success_rate, breakdowns, combination_stats_sorted, fp_data=None, attack_statistics=None):
