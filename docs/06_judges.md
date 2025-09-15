@@ -158,7 +158,6 @@ spikee results rejudge --result-file .\results\results_openai-api_my-harmful-con
                        --result-file .\results\results_openai-api_my-first_jailbreaks.jsonl \
                        --judge-options ollama-llama3.2
 ```
-
 ### 3. Resuming a Halted Rejudging
 If a rejudging halts early due to a error or early termination using 'Ctrl+C', it can be resumed using the `--resume`. 
 
