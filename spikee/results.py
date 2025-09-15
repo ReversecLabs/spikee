@@ -539,48 +539,78 @@ def rejudge_results(args):
     for result_file in result_files:
         print(f" \n\nCurrently Re-judging: {result_file.split(os.sep)[-1]}")
 
-        old_results = read_jsonl_file(result_file)
+        # Obtain results to re-judge and annotate judge options
+        results = read_jsonl_file(result_file)
 
         judge_options = args.judge_options
-        old_results = annotate_judge_options(old_results, judge_options)
+        results = annotate_judge_options(results, judge_options)
 
         # Resume handling (per tester.py behavior)
-        resume_path = getattr(args, 'resume_rejudge_file', None)
+        output_file = None
+        mode = None
         completed_ids = set()
         success_count = 0
 
-        if resume_path and os.path.exists(resume_path):
-            output_file = resume_path
-            existing = read_jsonl_file(resume_path)
-            completed_ids = {r['id'] for r in existing}
-            success_count = sum(1 for r in existing if r.get('success'))
-            mode = 'a'
-            print(f"[Resume] Found {len(completed_ids)} completed entries in {resume_path}.")
-        else:
+        if args.resume:
+            # Attempt to obtain file name
+            file_dir, prefix_name = os.path.split(os.path.abspath(result_file))
+            prefix_name = prefix_name.removesuffix(".jsonl") + "-rejudge-"
+
+            file_index = os.listdir(file_dir)
+            newest = 0
+
+            # Obtain newest valid rejudge file, or fallback to new rejudge file.
+            for file in file_index:
+                if str(file).startswith(prefix_name):
+                    try:
+                        age = int(file.removeprefix(prefix_name).removesuffix(".jsonl"))
+
+                        if age > newest:
+                            newest = age
+                            output_file = file
+
+                    except Exception:
+                        continue
+
+            if output_file is not None:
+                output_file = file_dir + os.path.sep + output_file
+
+                existing = read_jsonl_file(output_file)
+                completed_ids = {r['id'] for r in existing}
+                success_count = sum(1 for r in existing if r.get('success'))
+                mode = 'a'
+
+                print(f"[Resume] Found {len(completed_ids)} completed entries in {'temp'}.")
+            else:
+                print("[Resume] Existing rejudge results file not found, generating new results.")
+
+        if output_file is None:
             output_file = result_file.removesuffix(".jsonl") + "-rejudge-" + str(round(time.time())) + ".jsonl"
             mode = 'w'
 
-        # stream writes so CTRL+C leaves a partial file
+        # Stream write, allows CTRL+C leaves a partial file
         with open(output_file, mode, encoding='utf-8') as out_f:
             try:
-                with tqdm(total=len(old_results), desc="Rejudged: ", position=1,
-                          initial=len(completed_ids)) as pbar:
-                    # show current successes in the bar
+                with tqdm(total=len(results), desc="Rejudged: ", position=1, initial=len(completed_ids)) as pbar:
+                    # Shows current successes in the loading bar
                     pbar.set_postfix(success=success_count)
 
-                    for entry in old_results:
-                        # skip already completed
+                    # Process results
+                    for entry in results:
+                        # Skip already completed
                         if entry['id'] in completed_ids:
                             continue
 
                         try:
                             entry['success'] = call_judge(entry, entry['response'])
+
                         except Exception as e:
                             error_message = str(e)
                             entry['success'] = False
                             print("[Error] {}: {}".format(entry["id"], error_message))
                             traceback.print_exc()
 
+                        # Update progress bar
                         if entry.get('success', False):
                             success_count += 1
 
