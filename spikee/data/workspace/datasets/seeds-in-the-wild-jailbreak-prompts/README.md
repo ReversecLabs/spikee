@@ -20,7 +20,7 @@ The script will download the dataset and filter for actual jailbreak prompts (wh
 After completion, the converted prompts will be available at:
 
 ```
-datasets/seeds-in-the-wild-jailbreak-prompts/standalone_attacks.jsonl
+datasets/seeds-in-the-wild-jailbreak-prompts/standalone_user_inputs.jsonl
 ```
 
 ### Generate the Spikee Test Dataset
@@ -30,7 +30,7 @@ Use the `spikee` CLI to generate a test dataset for Spikee's tester script:
 ```bash
 spikee generate \
   --seed-folder datasets/seeds-in-the-wild-jailbreak-prompts \
-  --standalone-attacks datasets/seeds-in-the-wild-jailbreak-prompts/standalone_attacks.jsonl
+  --include-standalone-inputs
 ```
 
 ### Optional: Plugins & Variations
@@ -40,7 +40,7 @@ Apply additional transformations using plugins:
 ```bash
 spikee generate \
   --seed-folder datasets/seeds-in-the-wild-jailbreak-prompts \
-  --standalone-attacks datasets/seeds-in-the-wild-jailbreaks/standalone_attacks.jsonl \
+  --include-standalone-inputs \
   --plugins 1337 base64
 ```
 

@@ -138,10 +138,10 @@ Your testing scenario determines what kind of testing dataset you need to genera
 When you test an LLM directly, you control the entire prompt. This is ideal for assessing a model's general resilience to jailbreaks and harmful instructions.
 
 *   **What to Generate:** A *full prompt*, which includes a task (like "Summarize this: <data>"), the data containing the prompt injection or jailbreak, and optionally a system message.
-*   **How to Generate:** Use the default `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2025-04` folder provides a great starting point with diverse jailbreaks and attack instructions.
+*   **How to Generate:** Use `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2025-04` folder provides a great starting point with diverse jailbreaks and attack instructions.
 
 ```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04
+spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format full-prompt
 ```
 
 This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-full-prompt-dataset-TIMESTAMP.jsonl`.
@@ -150,10 +150,10 @@ This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-full-
 When you test an application (like a chatbot or an email summarizer), the application itself builds the final prompt. Your input is just one part of it, which could be a prompt or data (such as documents/emails).
 
 *   **What to Generate:** Just the *user prompt* or *document* with the attack payload (e.g., the body of an email containing a prompt injection).
-*   **How to Generate:** Use `--format document`.
+*   **How to Generate:** Use `--format user-input` (you can omit as this is the default from v0.4.1).
 
 ```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format document
+spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format user-input
 ```
 
 This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-document-dataset-TIMESTAMP.jsonl`.
@@ -163,7 +163,7 @@ The `generate` command we saw before composes a dataset by combining documents w
 
 ```bash
 spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
-                --standalone-attacks datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_attacks.jsonl \
+                --include-standalone-inputs \
 ```
 
 
@@ -259,7 +259,7 @@ To test a guardrail's ability to block general jailbreaks, you could use a broad
 ```bash
 # Test Meta's Prompt Guard against jailbreaks
 spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
-                --standalone-attacks datasets/seeds-in-the-wild-jailbreak-prompts/standalone_attacks.jsonl \
+                --include-standalone-inputs \
 
 spikee test --dataset datasets/simsonsun-high-quality-jailbreaks-*.jsonl \
             --target prompt_guard_jailbreak
@@ -272,9 +272,8 @@ To test a guardrail that blocks specific topics (like financial advice), use a p
 
 ```bash
 spikee generate --seed-folder datasets/seeds-investment-advice \
-                --standalone-attacks datasets/seeds-investment-advice/standalone_attacks.jsonl \
+                --include-standalone-inputs \
                 --include-system-message \
-                --format document
 ```
 
 Notice that here we use `--format document`, as we just want to generate the raw prompts/queries from the seed folder, we don't want to add additional prompts. Also notice that we use `--include-system-message`, as the topical guardrail will use this to determine whether the input aligns wit hthe system_message rules.

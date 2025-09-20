@@ -43,6 +43,24 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+def convert_to_new_args(args):
+    """
+    Normalizes deprecated flags/values to the new canonical ones and emits warnings.
+    Keeps cli.py clean and readable.
+    """
+    # --format=document -> user-input
+    if getattr(args, 'format', None) == 'document':
+        print("DEPRECATION: --format=document → --format=user-input (default).")
+        args.format = 'user-input'
+
+    # --standalone-attacks <path>  ->  --include-standalone-inputs (ignore supplied path)
+    if getattr(args, 'standalone_attacks', None) is not None:
+        print(f"DEPRECATION: --standalone-attacks is ignored. "
+              f"Use --include-standalone-inputs instead. "
+              f"Ignoring supplied filename '{args.standalone_attacks}'.")
+        args.include_standalone_inputs = True
+
+    return args
 
 def main():
     print(banner)
@@ -76,11 +94,13 @@ def main():
                                  help='List of plugin names to modify the jailbreak+instruction text')
     parser_generate.add_argument('--plugin-options', default=None,
                                  help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"')
+    parser_generate.add_argument('--include-standalone-inputs', action='store_true',
+                             help='Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)')      
     parser_generate.add_argument('--standalone-attacks', default=None,
-                                 help='Path to standalone_attacks.jsonl')
-    parser_generate.add_argument('--format', choices=['full-prompt', 'document', 'burp'],
-                                 default='full-prompt',
-                                 help='Output format: full-prompt (default), document, or burp')
+                             help=argparse.SUPPRESS)  # hidden legacy alias
+    parser_generate.add_argument('--format', choices=['user-input', 'full-prompt', 'burp'],
+                             default='user-input',
+                             help='Output format: user-input (default, for apps), full-prompt, or burp')
     parser_generate.add_argument('--spotlighting-data-markers', default='\nDOCUMENT\n',
                                  help='Comma-separated list of data markers (placeholder: "DOCUMENT")')
     parser_generate.add_argument('--languages', default=None,
@@ -168,7 +188,7 @@ def main():
     list_subparsers.add_parser('plugins', help='List available plugins')
     list_subparsers.add_parser('attacks', help='List available attack scripts')
 
-    args = parser.parse_args()
+    args = convert_to_new_args(parser.parse_args())
 
     if args.command == 'init':
         init_workspace(force=args.force, include_builtin=args.include_builtin)

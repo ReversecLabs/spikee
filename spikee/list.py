@@ -17,10 +17,21 @@ def list_seeds(args):
     if not base.is_dir():
         console.print(Panel("No 'datasets/' folder found", title="[seeds]", style="red"))
         return
-    seeds = [d.name for d in base.iterdir() if d.is_dir() and (d / "base_documents.jsonl").is_file()]
-    panel = Panel("\n".join(seeds) if seeds else "(none)", title="[seeds] Local", style="cyan")
-    console.print(panel)
 
+    want = {
+        "base_user_inputs.jsonl",
+        "base_documents.jsonl",
+        "standalone_user_inputs.jsonl",
+        "standalone_attacks.jsonl",
+    }
+
+    seeds = sorted({
+        d.name
+        for d in base.iterdir()
+        if d.is_dir() and any((d / fn).is_file() for fn in want)
+    })
+
+    console.print(Panel("\n".join(seeds) if seeds else "(none)", title="[seeds] Local", style="cyan"))
 
 def list_datasets(args):
     base = Path(os.getcwd(), "datasets")

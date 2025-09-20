@@ -27,4 +27,4 @@ This page provides an index of all detailed guides for Spikee.
     *   A guide to understanding the output of `spikee results analyze`. Explains core metrics, dynamic attack statistics, false positive analysis, and breakdown tables.
 
 9.  **[Generating Custom Datasets with an LLM](./09_llm_dataset_generation.md)**
-    *   Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_attacks.jsonl` and custom `instructions.jsonl` files.
+    *   Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_user_inputs.jsonl` and custom `instructions.jsonl` files.
