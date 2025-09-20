@@ -1,0 +1,122 @@
+name: Manual Release (auto-bump)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Type of release (major | minor | patch)"
+        required: true
+        default: "patch"
+
+permissions:
+  contents: write  # needed to push commit + tag
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate input
+        shell: bash
+        run: |
+          case "${{ github.event.inputs.release_type }}" in
+            major|minor|patch) echo "Release type OK";;
+            *) echo "Invalid release_type. Use: major | minor | patch"; exit 1;;
+          esac
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install tools
+        run: pip install toml
+
+      - name: Bump version in pyproject, __init__, and README
+        id: bump
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re, toml, pathlib, sys
+
+          release_type = "${{ github.event.inputs.release_type }}".strip()
+          root = pathlib.Path(".")
+
+          # --- Read current version from pyproject.toml
+          pp = root / "pyproject.toml"
+          data = toml.load(pp.open())
+          try:
+              current = data["project"]["version"]
+          except KeyError:
+              print("pyproject.toml missing [project].version", file=sys.stderr)
+              sys.exit(1)
+
+          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current)
+          if not m:
+              print(f"Current version not simple x.y.z: {current}", file=sys.stderr)
+              sys.exit(1)
+
+          major, minor, patch = map(int, m.groups())
+          if release_type == "major":
+              major, minor, patch = major + 1, 0, 0
+          elif release_type == "minor":
+              minor, patch = minor + 1, 0
+          else:  # patch
+              patch += 1
+
+          new_version = f"{major}.{minor}.{patch}"
+
+          # --- Write back pyproject.toml
+          data["project"]["version"] = new_version
+          pp.write_text(toml.dumps(data))
+
+          # --- spikee/__init__.py
+          initp = root / "spikee" / "__init__.py"
+          initp.write_text(f'__version__ = "{new_version}"\n')
+
+          # --- README.md (_Version: x.y.z_)
+          readme = root / "README.md"
+          if readme.exists():
+              txt = readme.read_text()
+              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+)(\s*_)",
+                                   rf"\g<1>{new_version}\3", txt, count=1)
+              if n:
+                  readme.write_text(new_txt)
+                  print("Updated README.md version.")
+              else:
+                  print("NOTE: README.md version pattern not found; left unchanged.")
+          else:
+              print("NOTE: README.md not found; skipping.")
+
+          # Output for later steps
+          print(f"current={current}")
+          print(f"new={new_version}")
+          (root / "NEW_VERSION.txt").write_text(new_version)
+          PY
+
+          echo "new_version=$(cat NEW_VERSION.txt)" >> $GITHUB_OUTPUT
+
+      - name: Commit and tag
+        shell: bash
+        run: |
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml spikee/__init__.py README.md || true
+          git commit -m "Release ${VERSION}" || echo "No changes to commit."
+          git tag "v${VERSION}"
+          git push origin HEAD --tags
+
+      - name: Install build tools
+        run: pip install --upgrade build twine
+
+      - name: Build
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

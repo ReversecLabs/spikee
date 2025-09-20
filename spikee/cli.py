@@ -6,6 +6,7 @@ import sys
 import shutil
 import time
 import argparse
+from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
 import importlib
@@ -46,7 +47,7 @@ def str2bool(v):
 def main():
     print(banner)
     print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
-    print("Version: 0.3.2\n")
+    print(f"Version: {__version__}\n")
     print("Author: Reversec (reversec.com)\n")
 
     parser = argparse.ArgumentParser(
