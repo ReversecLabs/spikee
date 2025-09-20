@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-09-20
+
+### Added
+
+* **Rejudge Feature**
+  - Spikee now supports the possibility of rejudging a results file. This comes handy if you want to try a different LLM judge or if you are in a situation where you can't call an LLM judge, so you just collect the LLm responses and then you can judge the results at a later stage when you can connect to an LLM.
+
 ## [0.3.1] - 2025-07-01
 
 ### Added
