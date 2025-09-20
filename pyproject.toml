@@ -1,62 +1,31 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = [ "setuptools>=61.0", "wheel",]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "spikee"
-version = "0.3.2"
+version = "0.4.0"
 description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitation"
 readme = "README.md"
+keywords = [ "prompt-injection", "LLM", "cyber-security", "pentesting",]
+classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: Apache Software License", "Operating System :: OS Independent",]
+dependencies = [ "tqdm", "rich", "six", "toml", "openai", "huggingface_hub", "datasets", "langchain", "langchain_openai", "langchain-google-genai", "langchain-anthropic", "langchain-together", "langchain-groq", "langchain-aws", "langchain-ollama", "tabulate", "jinja2", "pandas", "openpyxl", "boto3", "azure-ai-inference", "python-dotenv", "azure-ai-contentsafety",]
+[[project.authors]]
+name = "Reversec"
+email = "donato.capitella@reversec.com"
 
-authors = [
-  { name="Reversec", email="donato.capitella@reversec.com" }
-]
-
-license = { text = "Apache-2.0" }
-
-keywords = ["prompt-injection", "LLM", "cyber-security", "pentesting"]
-
-classifiers = [
-  "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: Apache Software License",
-  "Operating System :: OS Independent",
-]
-
-dependencies = [
-  "tqdm",
-  "rich",
-  "six",
-  "toml",
-  "openai",
-  "huggingface_hub",
-  "datasets",
-  "langchain",
-  "langchain_openai",
-  "langchain-google-genai",
-  "langchain-anthropic",
-  "langchain-together",
-  "langchain-groq",
-  "langchain-aws",
-  "langchain-ollama",
-  "tabulate",
-  "jinja2",
-  "pandas",
-  "openpyxl",
-  "boto3",
-  "azure-ai-inference",
-  "python-dotenv",
-  "azure-ai-contentsafety"
-]
+[project.license]
+text = "Apache-2.0"
 
 [project.optional-dependencies]
-huggingface = ["langchain-huggingface"]
+huggingface = [ "langchain-huggingface",]
 
 [project.scripts]
 spikee = "spikee.cli:main"
 
 [tool.setuptools.package-data]
-"spikee" = ["data/**/*"]
+spikee = [ "data/**/*",]
 
 [tool.setuptools.packages.find]
-include = ["spikee*"]
-exclude = ["datasets*", "results*", "targets*", "plugins*", "attacks*", "judges*"]
+include = [ "spikee*",]
+exclude = [ "datasets*", "results*", "targets*", "plugins*", "attacks*", "judges*",]
