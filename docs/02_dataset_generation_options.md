@@ -1,4 +1,4 @@
-# Advanced Dataset Generation
+# Dataset Generation
 
 The `spikee generate` command offers several flags to control precisely how test cases are constructed. Understanding these options is key to creating datasets that accurately simulate specific attack vectors and test potential defenses.
 
