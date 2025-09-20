@@ -6,8 +6,8 @@ The `spikee generate` command offers several flags to control precisely how test
 
 `spikee generate` can build test cases in two main ways:
 
-1.  **Composition:** This is the default method. It combines three types of data from a seed folder:
-    *   **Documents (`documents.jsonl`):** The base text, such as an email body or an article.
+1.  **Composable datasets:** This is the default method. It combines three types of data from a seed folder:
+    *   **Documents (`base_user_inputs.jsonl`):** The base text that represents user input, such as an email body or a prompt.
     *   **Jailbreaks (`jailbreaks.jsonl`):** Patterns designed to make an LLM ignore its original instructions or safety alignment.
     *   **Instructions (`instructions.jsonl`):** The malicious goal you want the LLM to follow.
     The tool combines a jailbreak and an instruction into a `payload`, then injects this payload into a document.
