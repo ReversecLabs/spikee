@@ -20,6 +20,8 @@ from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
+import requests # needed to progromatically list available Ollama models
+
 # Load environment variables
 load_dotenv()
 
@@ -27,16 +29,34 @@ load_dotenv()
 _OPTION_MAP: Dict[str, str] = {
     "phi4-mini": "phi4-mini",
     "gemma3":    "gemma3",
+    "gemma3n":   "gemma3n",
     "llama3.2":  "llama3.2",
+    "llama3.2:1b": "llama3.2:1b"
 }
 
 # Default key
 _DEFAULT_KEY = "phi4-mini"
 
+def get_available_ollama_models(baseurl="http://localhost:11434") -> List[str]:
+    """Progromatically gather the list of local models see: ollama list"""
+    try:
+        response = requests.get(f"{baseurl}/api/tags")
+        data = response.json()
+        return [model["model"] for model in data["models"]]
+    except Exception as e:
+        #Something went wrong, we should fallback to the priority list already defined
+        print(f"Error fetching Ollama models: {e}") # More informative error message
+        return []
+
 def get_available_option_values() -> List[str]:
     """Return supported keys; first option is default."""
-    options = [_DEFAULT_KEY]  # Default first
-    options.extend([key for key in _OPTION_MAP if key != _DEFAULT_KEY])
+    local_models = get_available_ollama_models()
+    if local_models:
+        #Sucessfully returned list of models for ollama local instance.
+        options = local_models
+    else:
+        options = [_DEFAULT_KEY]  # Default first
+        options.extend([key for key in _OPTION_MAP if key != _DEFAULT_KEY])
     return options
 
 def process_input(
