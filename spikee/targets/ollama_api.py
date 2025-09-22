@@ -29,9 +29,7 @@ load_dotenv()
 _OPTION_MAP: Dict[str, str] = {
     "phi4-mini": "phi4-mini",
     "gemma3":    "gemma3",
-    "gemma3n":   "gemma3n",
     "llama3.2":  "llama3.2",
-    "llama3.2:1b": "llama3.2:1b"
 }
 
 # Default key
