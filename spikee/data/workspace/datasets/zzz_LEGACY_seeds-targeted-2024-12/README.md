@@ -1,9 +1,9 @@
 # Dataset generation
 
-The dataset was generated using this command:
+The dataset can be generated using this command:
 
 ```bash
-$ spikee generate --standalone_attacks datasets/seeds-targeted-2024-12/standalone_attacks.jsonl --seed-folder datasets/seeds-targeted-2024-12
+$ spikee generate --include-standalone-inputs --seed-folder datasets/seeds-targeted-2024-12 --format full-prompt
 
 Dataset generated and saved to datasets/seeds-targeted-2024-12.jsonl
 
@@ -67,7 +67,7 @@ None             672
 You can also include spotlighting and adversarial suffixes to see if that has an impact on the attack success rate:
 
 ```bash
-$ spikee generate --standalone_attacks datasets/seeds-targeted-2024-12/standalone_attacks.jsonl --seed-folder datasets/seeds-targeted-2024-12 --spotlighting-data-markers $'\nDOCUMENT\n',$'\n<data>\nDOCUMENT\n</data>\n'
+$ spikee generate --include-standalone-inputs --seed-folder datasets/seeds-targeted-2024-12 --spotlighting-data-markers $'\nDOCUMENT\n',$'\n<data>\nDOCUMENT\n</data>\n' --format full-prompt
 
 W/SPIKE - Simple Prompt Injection Kit for Exploitation
 Author: Reversec

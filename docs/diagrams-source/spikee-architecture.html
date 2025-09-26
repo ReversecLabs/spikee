@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spikee Workflow Diagram</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        :root {
+            --bg-light-purple: #E6E0F0;
+            --bg-dark-purple: #2D1B3D;
+            --box-purple: #8E44AD;
+            --text-lime: #BEF264;
+            --text-white: #FFFFFF;
+            --arrow-color: #2D3748;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: transparent;
+            color: var(--bg-dark-purple);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .workflow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background-color: var(--bg-light-purple);
+            border-radius: 12px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .section-header {
+            color: var(--bg-dark-purple);
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+        }
+
+        .seeds-container {
+            background-color: var(--bg-dark-purple);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            position: relative;
+            height: 250px;
+        }
+
+        .seeds-header {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .seeds-layout {
+            display: flex;
+            height: 210px;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .seeds-left {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .seeds-top-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            height: 65px;
+        }
+
+        .seed-box {
+            background-color: var(--box-purple);
+            color: var(--text-white);
+            border-radius: 6px;
+            padding: 8px;
+            height: 70px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .seed-box .title {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .seed-box .description {
+            font-size: 0.7rem;
+            line-height: 1.1;
+        }
+
+        .plus-sign {
+            font-size: 1.5rem;
+            color: var(--text-lime);
+            font-weight: 700;
+            margin: 0 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arrow-down-small {
+            color: var(--text-lime);
+            font-size: 1.2rem;
+            text-align: center;
+            margin: -20px 0 0 190px;
+        }
+
+        .dashed-separator {
+            border-left: 3px dashed var(--text-lime);
+            height: 100%;
+            margin: 0 10px;
+        }
+
+        .seeds-center {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .seeds-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .connection-arrow-large {
+            text-align: center;
+            font-size: 2rem;
+            color: var(--arrow-color);
+            margin: 3px 0;
+        }
+
+        .process-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        .plugins-box {
+            background-color: var(--box-purple);
+            color: var(--text-white);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .plugins-box .title {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .plugins-box .description {
+            font-size: 0.8rem;
+        }
+
+        .curved-arrow {
+            font-size: 1.8rem;
+            color: var(--arrow-color);
+            margin: 0 5px;
+        }
+
+        .generate-box {
+            background-color: var(--box-purple);
+            color: var(--text-white);
+            border-radius: 8px;
+            padding: 12px;
+            flex: 1;
+        }
+
+        .generate-box .title {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+
+        .generate-box ul {
+            margin: 0;
+            padding-left: 12px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+        }
+
+        .generate-box li {
+            margin-bottom: 2px;
+        }
+
+        .output-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px auto;
+            max-width: 120px;
+        }
+
+        .output-icon {
+            font-size: 2rem;
+            color: var(--box-purple);
+            margin-bottom: 6px;
+        }
+
+        .output-label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .output-sublabel {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .testing-content {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .modules-container {
+            background-color: var(--bg-dark-purple);
+            border-radius: 8px;
+            padding: 12px;
+            width: 280px;
+        }
+
+        .modules-header {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 1.05rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .module-box {
+            background-color: var(--box-purple);
+            color: var(--text-white);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .module-box .title {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .module-box .description {
+            font-size: 0.7rem;
+            line-height: 1.1;
+        }
+
+        .arrow-right {
+            font-size: 1.8rem;
+            color: var(--arrow-color);
+            margin: 0 5px;
+        }
+
+        .test-result-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .test-box {
+            background-color: var(--box-purple);
+            color: var(--text-white);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 10px;
+        }
+
+        .test-box .title {
+            color: var(--text-lime);
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+
+        .test-box ul {
+            margin: 0;
+            padding-left: 12px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            text-align: left;
+        }
+
+        .test-box li {
+            margin-bottom: 2px;
+        }
+
+        /* Icons using Unicode symbols */
+        .icon-file::before {
+            content: "📄";
+        }
+
+        .icon-warning::before {
+            content: "⚠️";
+        }
+
+        .icon-target::before {
+            content: "🎯";
+        }
+
+        .icon-standalone::before {
+            content: "📝";
+        }
+
+        .icon-system::before {
+            content: "⚙️";
+        }
+
+        .icon-puzzle::before {
+            content: "🧩";
+        }
+
+        .icon-database::before {
+            content: "📊";
+        }
+
+        .icon-crosshairs::before {
+            content: "🎯";
+        }
+
+        .icon-gavel::before {
+            content: "⚖️";
+        }
+
+        .icon-bolt::before {
+            content: "⚡";
+        }
+
+        .icon-flask::before {
+            content: "🧪";
+        }
+
+        .icon-chart::before {
+            content: "📈";
+        }
+
+        .icon {
+            font-size: 1.5rem;
+            margin-bottom: 6px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="workflow-container">
+
+        <!-- Dataset Generation Section -->
+        <div class="section">
+            <div class="section-header">Dataset Generation</div>
+
+            <div class="seeds-container">
+                <div class="seeds-header">Seeds</div>
+
+                <div class="seeds-layout">
+                    <!-- Left Section -->
+                    <div class="seeds-left">
+                        <div style="color: var(--text-lime); text-align: center;">
+                            Composable datasets
+                        </div>
+                        <div class="seeds-top-row">
+                            <div class="seed-box">
+                                <div class="icon icon-warning"></div>
+                                <div class="title">jailbreaks.jsonl</div>
+                                <div class="description">(patterns to disalign LLMs)</div>
+                            </div>
+
+                            <div class="plus-sign">+</div>
+
+                            <div class="seed-box">
+                                <div class="icon icon-target"></div>
+                                <div class="title">instructions.jsonl</div>
+                                <div class="description">(malicious goal)</div>
+                            </div>
+                        </div>
+
+                        <svg class="arrow-down-small" viewBox="0 0 60 60"
+                            style="height: 45px !important; width: 45px !important; flex-shrink: 0; display: block;">
+                            <line x1="30" y1="10" x2="30" y2="40" stroke="#BEF264" stroke-width="5"
+                                stroke-linecap="round"></line>
+                            <polygon points="30,50 24,38 36,38" fill="#BEF264"></polygon>
+                        </svg>
+
+
+                        <div class="seed-box">
+                            <div class="icon icon-file"></div>
+                            <div class="title">base_user_inputs.jsonl</div>
+                            <div class="description">(base data - e.g., emails, user prompts)</div>
+                        </div>
+                    </div>
+
+                    <!-- First Separator -->
+                    <div class="dashed-separator"></div>
+
+                    <!-- Center Section -->
+                    <div class="seeds-center">
+                        <div class="seed-box">
+                            <div class="icon icon-standalone"></div>
+                            <div class="title">standalone_user_inputs.jsonl</div>
+                            <div class="description">(individual prompts not mixed with documents/jailbreaks)</div>
+                        </div>
+                    </div>
+
+                    <!-- Second Separator -->
+                    <div class="dashed-separator"></div>
+
+                    <!-- Right Section -->
+                    <div class="seeds-right">
+                        <div class="seed-box">
+                            <div class="icon icon-system"></div>
+                            <div class="title">system_messages.toml</div>
+                            <div class="description">(malicious goal)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <svg class="connection-arrow-large" viewBox="0 0 100 60"
+                style="height: 90px; width: 100px; left: 446px; position: absolute; top: 305px;">
+                <!-- Shaft (20% taller) -->
+                <line x1="50" y1="5" x2="50" y2="36" stroke="#BEF264" stroke-width="6" stroke-linecap="round"></line>
+
+                <!-- Arrowhead moved down -->
+                <polygon points="50,46 42,34 58,34" fill="#BEF264"></polygon>
+            </svg>
+
+            <div class="process-flow">
+                <div class="plugins-box">
+                    <div class="icon icon-puzzle"></div>
+                    <div class="title">Plugins</div>
+                    <div class="description">(Payload transformers)</div>
+                </div>
+
+                <svg class="curved-arrow" viewBox="0 0 80 30" style="height: 30px; width: 80px;">
+                    <line x1="10" y1="15" x2="60" y2="15" stroke="#2D3748" stroke-width="5" stroke-linecap="round" />
+                    <polygon points="70,15 60,10 60,20" fill="#2D3748" />
+                </svg>
+
+                <div class="generate-box">
+                    <div class="title">spikee generate</div>
+                    <ul>
+                        <li>Injects jailbreak/instructions into user inputs</li>
+                        <li>Adds standalone inputs (optional)</li>
+                        <li>Applies plugins (optional)</li>
+                        <li>Adds system message (optional)</li>
+                    </ul>
+                </div>
+
+                <svg class="curved-arrow" viewBox="0 0 80 30" style="height: 30px; width: 80px;">
+                    <line x1="10" y1="15" x2="60" y2="15" stroke="#2D3748" stroke-width="5" stroke-linecap="round" />
+                    <polygon points="70,15 60,10 60,20" fill="#2D3748" />
+                </svg>
+
+                <div class="output-item">
+                    <div class="icon icon-database"></div>
+                    <div class="output-label">Test Dataset</div>
+                    <div class="output-sublabel">(.jsonl)</div>
+                </div>
+            </div>
+        </div>
+        <svg viewBox="0 0 100 80"
+            style="height: 80px; width: 100px; margin-left: auto; z-index: 9999; margin-right: 20px; position: absolute; top: 490px; left: 1070px;">
+            <!-- Shaft made longer -->
+            <line x1="50" y1="5" x2="50" y2="60" stroke="#2D3748" stroke-width="6" stroke-linecap="round"></line>
+
+            <!-- Arrowhead moved down -->
+            <polygon points="50,70 42,55 58,55" fill="#2D3748"></polygon>
+        </svg>
+
+
+
+        <!-- Testing Section -->
+        <div class="section">
+            <div class="section-header">Testing</div>
+
+            <div class="testing-content">
+                <div class="modules-container">
+                    <div class="modules-header">Modules</div>
+                    <div class="module-box">
+                        <div class="icon icon-crosshairs"></div>
+                        <div class="title">Target (.py)</div>
+                        <div class="description">(Connects to LLM and application APIs)</div>
+                    </div>
+                    <div class="module-box">
+                        <div class="icon icon-gavel"></div>
+                        <div class="title">Judges (.py)</div>
+                        <div class="description">(Define attack success)</div>
+                    </div>
+                    <div class="module-box">
+                        <div class="icon icon-bolt"></div>
+                        <div class="title">Dynamic attacks (.py)</div>
+                        <div class="description">(bypass guardrails)</div>
+                    </div>
+                </div>
+
+                <svg class="arrow-right" viewBox="0 0 80 30" style="height: 30px; width: 80px;">
+                    <line x1="10" y1="15" x2="60" y2="15" stroke="#2D3748" stroke-width="5" stroke-linecap="round" />
+                    <polygon points="70,15 60,10 60,20" fill="#2D3748" />
+                </svg>
+
+                <div class="test-result-flow">
+                    <div class="test-box">
+                        <div class="title">spikee test</div>
+                        <ul>
+                            <li>Sends prompts to target</li>
+                            <li>Evaluates responses with judges</li>
+                            <li>Runs dynamic attacks</li>
+                        </ul>
+                    </div>
+
+                    <svg class="connection-arrow-large" viewBox="0 0 100 40" style="height: 40px; width: 100px;">
+                        <line x1="50" y1="5" x2="50" y2="25" stroke="#2D3748" stroke-width="6" stroke-linecap="round" />
+                        <polygon points="50,30 42,20 58,20" fill="#2D3748" />
+                    </svg>
+
+                    <div class="output-item">
+                        <div class="icon icon-chart"></div>
+                        <div class="output-label">Results</div>
+                        <div class="output-sublabel">(.jsonl)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

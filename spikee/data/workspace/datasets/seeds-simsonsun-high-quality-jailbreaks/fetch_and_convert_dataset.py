@@ -44,7 +44,7 @@ for i, item in enumerate(dataset):
 os.makedirs('datasets/seeds-simsonsun-high-quality-jailbreaks', exist_ok=True)
 
 # Write to JSONL file
-output_path = 'datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_attacks.jsonl'
+output_path = 'datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_user_inputs.jsonl'
 with open(output_path, 'w', encoding='utf-8') as f:
     for entry in jsonl_entries:
         f.write(json.dumps(entry, ensure_ascii=False) + '\n')

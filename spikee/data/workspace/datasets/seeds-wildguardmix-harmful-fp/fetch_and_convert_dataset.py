@@ -25,9 +25,9 @@ for i, item in enumerate(not_harmful_prompts):
     jsonl_entries.append(entry)
 
 # Write to JSONL file
-with open('datasets/seeds-wildguardmix-harmful-fp/standalone_attacks.jsonl', 'w', encoding='utf-8') as f:
+with open('datasets/seeds-wildguardmix-harmful-fp/standalone_user_inputs.jsonl', 'w', encoding='utf-8') as f:
     for entry in jsonl_entries:
         f.write(json.dumps(entry) + '\n')
 
 print(f"Successfully converted {len(jsonl_entries)} prompts to JSONL format.")
-print(f"Output saved to 'standalone_attacks.jsonl'")
+print(f"Output saved to 'standalone_user_inputs.jsonl'")

@@ -11,6 +11,9 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
+from .judge import annotate_judge_options, call_judge
+
+
 class AdvancedTargetWrapper:
     """
     A wrapper for a target module's process_input method that incorporates both:
@@ -27,6 +30,7 @@ class AdvancedTargetWrapper:
       max_retries (int): Maximum number of retries per attempt (e.g. on 429 errors).
       throttle (float): Number of seconds to wait after a successful call.
     """
+
     def __init__(self, target_module, target_options=None, max_retries=3, throttle=0):
         self.target_module = target_module
         self.target_options = target_options
@@ -89,13 +93,14 @@ class AdvancedTargetWrapper:
         # All retries exhausted
         raise last_error
 
+
 def validate_tag(tag):
     """
     Validates that a tag is safe to use in a filename.
-    
+
     Args:
         tag (str): The tag to validate
-        
+
     Returns:
         tuple: (is_valid, error_message)
             - is_valid (bool): True if tag is valid, False otherwise
@@ -103,22 +108,23 @@ def validate_tag(tag):
     """
     if tag is None:
         return True, None
-        
+
     # Check for empty string after stripping whitespace
     if len(tag.strip()) == 0:
         return False, "Tag cannot be empty or whitespace only"
-    
+
     # Check length (reasonable max length for filename component)
     MAX_LENGTH = 50
     if len(tag) > MAX_LENGTH:
         return False, f"Tag exceeds maximum length of {MAX_LENGTH} characters"
-    
+
     # Check for valid characters - alphanumeric, dash and underscore only
     pattern = re.compile(r'^[a-zA-Z0-9_-]+$')
     if not pattern.match(tag):
         return False, "Tag can only contain letters, numbers, dash (-) and underscore (_)"
-    
+
     return True, None
+
 
 def extract_dataset_name(file_name):
     file_name = os.path.basename(file_name)
@@ -128,15 +134,18 @@ def extract_dataset_name(file_name):
         file_name = file_name[len("seeds-"):]
     return file_name
 
+
 def read_jsonl_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return [json.loads(line) for line in f]
+
 
 def write_jsonl_file(output_file, data):
     with open(output_file, 'w', encoding='utf-8') as f:
         for entry in data:
             json.dump(entry, f, ensure_ascii=False)
             f.write('\n')
+
 
 def append_jsonl_entry(output_file, entry, file_lock):
     """Appends a single entry to a JSONL file in a thread-safe manner."""
@@ -145,10 +154,12 @@ def append_jsonl_entry(output_file, entry, file_lock):
             json.dump(entry, f, ensure_ascii=False)
             f.write('\n')
 
+
 def check_canary_in_response(response, canary):
     if not canary:
         return False
     return canary in response
+
 
 def load_module_from_path(path, module_name):
     spec = importlib.util.spec_from_file_location(module_name, path)
@@ -157,6 +168,7 @@ def load_module_from_path(path, module_name):
         spec.loader.exec_module(mod)
         return mod
     raise ImportError(f"Could not load module {module_name} from {path}")
+
 
 def _load_raw_target_module(target_name):
     """Load target module without wrapping. Returns None if not found."""
@@ -169,13 +181,15 @@ def _load_raw_target_module(target_name):
         except ModuleNotFoundError:
             return None
 
+
 def load_target_module(target_name, target_options, max_retries, throttle):
     target_mod = _load_raw_target_module(target_name)
     if target_mod is None:
         raise ValueError(f"Target '{target_name}' not found locally or in spikee.targets/")
-    
+
     # Wrap the target module with AdvancedTargetWrapper
     return AdvancedTargetWrapper(target_mod, max_retries=max_retries, throttle=throttle, target_options=target_options)
+
 
 def load_attack_by_name(attack_name):
     """
@@ -192,25 +206,12 @@ def load_attack_by_name(attack_name):
     except ModuleNotFoundError:
         raise ValueError(f"Attack '{attack_name}' not found locally or in spikee.attacks")
 
-def _load_raw_judge_module(judge_name):
-    """Load judge module. Returns None if not found."""
-    local_path = Path(os.getcwd()) / "judges" / f"{judge_name}.py"
-    if local_path.is_file():
-        spec = importlib.util.spec_from_file_location(judge_name, local_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod
-    else:
-        try:
-            return importlib.import_module(f"spikee.judges.{judge_name}")
-        except ModuleNotFoundError:
-            return None
 
 def _get_effective_attack_options(attack_module, provided_options):
     """Get effective attack options, using default if none provided and attack supports options."""
     if provided_options is not None:
         return provided_options
-    
+
     # Try to get default option if none provided
     if attack_module and hasattr(attack_module, 'get_available_option_values'):
         try:
@@ -219,64 +220,12 @@ def _get_effective_attack_options(attack_module, provided_options):
                 return available[0]  # First option is default
         except Exception:
             pass
-    
+
     return None
 
-def _get_effective_judge_options(judge_name, provided_options):
-    """Get effective judge options, using default if none provided and judge supports options."""
-    if provided_options is not None:
-        return provided_options
-    
-    # Try to get default option if none provided
-    try:
-        mod = _load_raw_judge_module(judge_name)
-        if mod and hasattr(mod, 'get_available_option_values'):
-            available = mod.get_available_option_values()
-            if available:
-                return available[0]  # First option is default
-    except Exception:
-        pass
-    
-    return None
-
-def load_judge_module(judge_name):
-    """
-    Looks for `judges/{judge_name}.py` locally first,
-    then falls back to built-in judges.
-    """
-    mod = _load_raw_judge_module(judge_name)
-    if mod is None:
-        raise ValueError(f"Judge '{judge_name}' not found locally or built-in.")
-    return mod
-
-def call_judge(entry, output):
-    """
-    Determines if the LLM output indicates a successful attack.
-    
-    If the output provided is a boolean that value is used to indicate success or failure. 
-    This is used when testing LLM guardrail targets, which return True if the attack went 
-    through the guardrail (attack successful) and False if the guardrail stopped it.
-    
-    In all other cases (i.e. when using a target LLM), the appropriate judge module
-    for the attack is loaded and its judge() function is called.
-    """
-    if isinstance(output, bool):
-        return output
-      
-    else:
-        judge_name = entry.get("judge_name", "canary")
-        judge_args = entry.get("judge_args", "")
-        judge_options = entry.get("judge_options", None)
-        llm_input = entry["text"]
-        judge_module = load_judge_module(judge_name)
-        judge_func_params = inspect.signature(judge_module.judge).parameters
-        if "judge_options" in judge_func_params:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args, judge_options=judge_options)
-        else:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args)
 
 def _do_single_request(entry, input_text, target_module, num_attempt,
-                        attempts_bar, global_lock):
+                       attempts_bar, global_lock):
     """
     Executes one request against the target by calling its process_input() method.
     The target_module is assumed to be an instance of AdvancedTargetWrapper that
@@ -322,7 +271,6 @@ def _do_single_request(entry, input_text, target_module, num_attempt,
         print("[Error] {}: {}".format(entry["id"], error_message))
         traceback.print_exc()
 
-
     with global_lock:
         attempts_bar.update(1)
 
@@ -353,6 +301,7 @@ def _do_single_request(entry, input_text, target_module, num_attempt,
     }
     return result_dict, success
 
+
 def process_entry(entry, target_module, attempts=1,
                   attack_module=None, attack_iterations=0, attack_options=None,
                   attempts_bar=None, global_lock=None):
@@ -376,7 +325,7 @@ def process_entry(entry, target_module, attempts=1,
 
     for attempt_num in range(1, attempts + 1):
         std_result, success_now = _do_single_request(
-            entry, original_input, target_module, 
+            entry, original_input, target_module,
             attempt_num, attempts_bar, global_lock
         )
         if success_now:
@@ -386,12 +335,12 @@ def process_entry(entry, target_module, attempts=1,
     results_list = [std_result]
 
     if std_success and attack_module:
-        # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks 
+        # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
         with global_lock:
             attempts_bar.total = attempts_bar.total - attack_iterations
 
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
-    if (not std_success) and attack_module:       
+    if (not std_success) and attack_module:
         try:
             start_time = time.time()
 
@@ -400,7 +349,7 @@ def process_entry(entry, target_module, attempts=1,
             # Check if attack function accepts attack_options parameter
             sig = inspect.signature(attack_module.attack)
             params = sig.parameters
-            
+
             if 'attack_option' in params:
                 attack_attempts, attack_success, attack_input, attack_response = attack_module.attack(
                     entry, target_module, call_judge, attack_iterations, attempts_bar, global_lock, attack_options
@@ -521,36 +470,32 @@ def _filter_entries(dataset, completed_ids):
     return [e for e in dataset if e['id'] not in completed_ids]
 
 
-def _annotate_judge_options(entries, judge_opts):
-    """Annotate entries with judge options, using defaults when appropriate."""
-    annotated = []
-    for entry in entries:
-        if judge_opts is not None:
-            # Use provided judge options for all entries
-            effective_options = judge_opts
-        else:
-            # Get default option for this specific judge
-            judge_name = entry.get("judge_name", "canary")
-            effective_options = _get_effective_judge_options(judge_name, None)
-        
-        annotated.append({**entry, 'judge_options': effective_options})
-    return annotated
-
 def _build_target_name(name, opts):
     """Build target name, using default option if opts is None and target supports options."""
+
+    regex_pattern = '(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'  # Matches Invalid Windows Characters,
+
+    def replacer(match):
+        if match.group(1) or match.group(2):  # If at start/end of string, just remove
+            return ""
+        else:  # If in middle of string, replace with '~'
+            return "~"
+
     if opts is not None:
+        opts = re.sub(regex_pattern, replacer, opts)  # Remove Invalid Windows Characters
         return f"{name}-{opts}"
-    
+
     # Try to get default option if none provided
     try:
         mod = _load_raw_target_module(name)
         if mod and hasattr(mod, 'get_available_option_values'):
             available = mod.get_available_option_values()
             if available:
-                return f"{name}-{available[0]}"
+                opts = re.sub(regex_pattern, replacer, available[0])  # Remove Invalid Windows Characters
+                return f"{name}-{opts}"
     except Exception:
         pass
-    
+
     return name
 
 
@@ -625,6 +570,7 @@ def _run_threaded(
         bar_all.close()
         bar_entries.close()
 
+
 def test_dataset(args):
     """
     Orchestrate testing of a dataset against a target.
@@ -643,9 +589,10 @@ def test_dataset(args):
 
     completed_ids, results, already_done = _load_resume(args.resume_file, attack_module, args.attack_iterations)
     to_process = _filter_entries(dataset, completed_ids)
-    to_process = _annotate_judge_options(to_process, args.judge_options)
+    to_process = annotate_judge_options(to_process, args.judge_options)
 
     target_name_full = _build_target_name(args.target, args.target_options)
+
     output_file = _prepare_output_file(
         'results',
         target_name_full,
@@ -667,7 +614,7 @@ def test_dataset(args):
         args.attempts,
         attack_module,
         args.attack_iterations,
-        args.attack_options,  
+        args.attack_options,
         args.threads,
         total_attempts,
         already_done,
@@ -678,4 +625,3 @@ def test_dataset(args):
     )
 
     print(f"[Done] Testing finished. Results saved to {output_file}")
-

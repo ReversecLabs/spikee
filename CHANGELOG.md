@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2025-09-20
+
+### Changed
+
+We changed seed dataset names and generation flags to reflect how Spikee is actually used today.  
+Over time, “documents” vs “inputs” and `--standalone-attacks` vs `--include-standalone-inputs` created confusion, and defaults like language matching and full prompts evolved. This release cleans that up so the CLI and seed files match current practice while still keeping backward compatibility.
+
+* **Seed Dataset Standardization**
+  - `base_documents.jsonl` → `base_user_inputs.jsonl`
+  - `standalone_attacks.jsonl` → `standalone_user_inputs.jsonl`
+  - READMEs and CLI examples updated accordingly.
+
+* **CLI Flags Simplified**
+  - `--format user-input` is now the canonical format.  
+    Replaces `--format document`; the old value is mapped automatically with a warning.
+  - `--include-standalone-inputs` is the new flag for standalone prompts.  
+    Looks for `standalone_user_inputs.jsonl` (or falls back to legacy `standalone_attacks.jsonl`).  
+    If `--standalone-attacks <path>` is used, Spikee ignores the path, enables `--include-standalone-inputs`, and prints a deprecation warning.
+  - Language matching is now **enabled by default** (`--match-languages true`).  
+    Use `--match-languages false` to disable cross-language filtering.
+
+### Notes
+
+All old filenames and flags still work with warnings.  
+This release aligns Spikee’s seeds and CLI options with the workflows users actually rely on, while giving everyone time to adapt.
+
+
+## [0.4.0] - 2025-09-18
+
+### Added
+
+* **Rejudge Feature**
+  - Spikee now supports the possibility of rejudging a results file. This comes handy if you want to try a different LLM judge or if you are in a situation where you can't call an LLM judge, so you just collect the LLm responses and then you can judge the results at a later stage when you can connect to an LLM.
+
 ## [0.3.1] - 2025-07-01
 
 ### Added

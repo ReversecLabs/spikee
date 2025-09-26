@@ -1,4 +1,4 @@
-# Advanced Dataset Generation
+# Dataset Generation
 
 The `spikee generate` command offers several flags to control precisely how test cases are constructed. Understanding these options is key to creating datasets that accurately simulate specific attack vectors and test potential defenses.
 
@@ -6,8 +6,8 @@ The `spikee generate` command offers several flags to control precisely how test
 
 `spikee generate` can build test cases in two main ways:
 
-1.  **Composition:** This is the default method. It combines three types of data from a seed folder:
-    *   **Documents (`documents.jsonl`):** The base text, such as an email body or an article.
+1.  **Composable datasets:** This is the default method. It combines three types of data from a seed folder:
+    *   **Documents (`base_user_inputs.jsonl`):** The base text that represents user input, such as an email body or a prompt.
     *   **Jailbreaks (`jailbreaks.jsonl`):** Patterns designed to make an LLM ignore its original instructions or safety alignment.
     *   **Instructions (`instructions.jsonl`):** The malicious goal you want the LLM to follow.
     The tool combines a jailbreak and an instruction into a `payload`, then injects this payload into a document.
@@ -18,15 +18,20 @@ The following flags allow you to control every aspect of this process.
 
 ---
 
-## Standalone Attack Prompts: `--standalone-attacks`
+## Standalone prompts: `--include-standalone-inputs`
 
-This flag provides a path to a `.jsonl` file where each line is a complete attack prompt. This is the most direct way to test a list of prompts, such as those found in public jailbreak collections or when testing a topical guardrail.
+Use `--include-standalone-inputs` to include the prompts from `standalone_user_inputs.jsonl` (one JSON object per line) when generating a dataset. This is the simplest way to test a fixed list of ready-to-run prompts, in contrast to composable datasets where Spikee combines base inputs, jailbreaks, and instructions to generate many variations.
 
-**Usage:**
+**Behavior**
+- The flag takes **no path**. Spikee looks for `standalone_user_inputs.jsonl` inside the seed folder.
+- If that file is missing, Spikee falls back to `standalone_attacks.jsonl` for backward compatibility (and prints a notice).
+- The legacy `--standalone-attacks <path>` flag is deprecated: if supplied, Spikee will ignore the given filename, enable `--include-standalone-inputs`, and emit a deprecation warning.
+
+**Usage**
 ```bash
-# Generate a dataset using only the prompts from a standalone file
-spikee generate --seed-folder datasets/seeds-empty \
-                --standalone-attacks datasets/seeds-in-the-wild-jailbreak-prompts/standalone_attacks.jsonl
+# Include standalone prompts found in the seed folder (no path)
+spikee generate --seed-folder datasets/seeds-in-the-wild-jailbreak-prompts \
+                --include-standalone-inputs
 ```
 
 ## Testing a Defense: Spotlighting Markers (`--spotlighting-data-markers`)

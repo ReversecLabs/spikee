@@ -41,7 +41,7 @@ def _parse_samples_option(option: str) -> int:
     """Parse samples option string like 'variants=50' and return the number."""
     if option and option.startswith("variants="):
         try:
-            n = int(option.split("-")[1])
+            n = int(option.split("=")[1])
             if 1 <= n <= 500:
                 return n
         except (ValueError, IndexError):

@@ -54,7 +54,7 @@ def _parse_options(plugin_option: str) -> tuple:
     for option in options:
         if option.startswith("variants="):
             try:
-                n = int(option.split("-")[1])
+                n = int(option.split("=")[1])
                 if 1 <= n <= 100:
                     num_variants = n
             except (ValueError, IndexError):

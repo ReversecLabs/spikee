@@ -30,7 +30,7 @@ for i, item in enumerate(jailbreak_prompts):
 os.makedirs('datasets/seeds-in-the-wild-jailbreak-prompts', exist_ok=True)
 
 # Write to JSONL file
-output_path = 'datasets/seeds-in-the-wild-jailbreak-prompts/standalone_attacks.jsonl'
+output_path = 'datasets/seeds-in-the-wild-jailbreak-prompts/standalone_user_inputs.jsonl'
 with open(output_path, 'w', encoding='utf-8') as f:
     for entry in jsonl_entries:
         f.write(json.dumps(entry, ensure_ascii=False) + '\n')

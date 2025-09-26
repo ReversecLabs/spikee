@@ -30,7 +30,7 @@ def _parse_variants_option(option: str) -> int:
     """Parse variants option string like 'variants=50' and return the number."""
     if option and option.startswith("variants="):
         try:
-            n = int(option.split("-")[1])
+            n = int(option.split("=")[1])
             if 1 <= n <= 500:
                 return n
         except (ValueError, IndexError):

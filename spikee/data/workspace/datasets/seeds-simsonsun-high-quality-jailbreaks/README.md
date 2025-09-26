@@ -31,7 +31,7 @@ python datasets/seeds-simsonsun-high-quality-jailbreaks/fetch_and_convert_datase
 After completion, the converted prompts will be available at:
 
 ```
-datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_attacks.jsonl
+datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_user_inputs.jsonl
 ```
 
 ### Generate the Spikee Test Dataset
@@ -41,7 +41,7 @@ Use the `spikee` CLI to generate a test dataset:
 ```bash
 spikee generate \
   --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
-  --standalone-attacks datasets/seeds-simsonsun-high-quality-jailbreaks/standalone_attacks.jsonl
+  --include-standalone-inputs
 ```
 
 ### Optional: Sample Testing

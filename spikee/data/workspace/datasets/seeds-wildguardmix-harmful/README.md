@@ -25,7 +25,7 @@ python datasets/seeds-wildguardmix-harmful/fetch_and_convert_dataset.py
 After completion, the converted prompts will be available at:
 
 ```
-datasets/seeds-wildguardmix-harmful/standalone_attacks.jsonl
+datasets/seeds-wildguardmix-harmful/standalone_user_inputs.jsonl
 ```
 
 ### Generate the Spikee Test Dataset
@@ -35,7 +35,7 @@ Use the `spikee` CLI to generate a test dataset for Spikee's tester script:
 ```bash
 spikee generate \
   --seed-folder datasets/seeds-wildguardmix-harmful \
-  --standalone-attacks datasets/seeds-wildguardmix-harmful/standalone_attacks.jsonl
+  --include-standalone-inputs
 ```
 
 ### Optional: Plugins & Variations
@@ -45,7 +45,7 @@ If you want to apply additional transformations (e.g., character substitutions, 
 ```bash
 spikee generate \
   --seed-folder datasets/seeds-wildguardmix-harmful \
-  --standalone-attacks datasets/seeds-wildguardmix-harmful/standalone_attacks.jsonl \
+  --include-standalone-inputs \
   --plugins 1337
 ```
 

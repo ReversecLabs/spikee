@@ -6,6 +6,7 @@ import sys
 import shutil
 import time
 import argparse
+from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
 import importlib
@@ -14,10 +15,10 @@ from typing import List
 
 from .generator import generate_dataset
 from .tester import test_dataset
-from .results import analyze_results, convert_results_to_excel
+from .results import analyze_results, rejudge_results, convert_results_to_excel
 from .list import list_seeds, list_datasets, list_judges, list_targets, list_plugins, list_attacks
 
-import importlib.resources  
+import importlib.resources
 
 banner = r'''
    _____ _____ _____ _  ________ ______ 
@@ -31,6 +32,7 @@ banner = r'''
 # Explicitly load the .env file
 env_loaded = load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
+
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -41,10 +43,29 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+def convert_to_new_args(args):
+    """
+    Normalizes deprecated flags/values to the new canonical ones and emits warnings.
+    Keeps cli.py clean and readable.
+    """
+    # --format=document -> user-input
+    if getattr(args, 'format', None) == 'document':
+        print("DEPRECATION: --format=document → --format=user-input (default).")
+        args.format = 'user-input'
+
+    # --standalone-attacks <path>  ->  --include-standalone-inputs (ignore supplied path)
+    if getattr(args, 'standalone_attacks', None) is not None:
+        print(f"DEPRECATION: --standalone-attacks is ignored. "
+              f"Use --include-standalone-inputs instead. "
+              f"Ignoring supplied filename '{args.standalone_attacks}'.")
+        args.include_standalone_inputs = True
+
+    return args
+
 def main():
     print(banner)
     print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
-    print("Version: 0.3.2\n")
+    print(f"Version: {__version__}\n")
     print("Author: Reversec (reversec.com)\n")
 
     parser = argparse.ArgumentParser(
@@ -55,7 +76,7 @@ def main():
 
     # === [INIT] Sub-command (NEW) ==============================================
     parser_init = subparsers.add_parser('init', help='Initialize a local SPIKEE workspace')
-    parser_init.add_argument('--force', action='store_true', 
+    parser_init.add_argument('--force', action='store_true',
                              help='Overwrite existing directories if they exist.')
     parser_init.add_argument('--include-builtin', choices=['none', 'all', 'plugins', 'judges', 'targets', 'attacks'],
                              default='none',
@@ -72,18 +93,20 @@ def main():
     parser_generate.add_argument('--plugins', nargs='*', default=[],
                                  help='List of plugin names to modify the jailbreak+instruction text')
     parser_generate.add_argument('--plugin-options', default=None,
-                             help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"')
+                                 help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"')
+    parser_generate.add_argument('--include-standalone-inputs', action='store_true',
+                             help='Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)')      
     parser_generate.add_argument('--standalone-attacks', default=None,
-                                 help='Path to standalone_attacks.jsonl')
-    parser_generate.add_argument('--format', choices=['full-prompt', 'document', 'burp'], 
-                                 default='full-prompt', 
-                                 help='Output format: full-prompt (default), document, or burp')
+                             help=argparse.SUPPRESS)  # hidden legacy alias
+    parser_generate.add_argument('--format', choices=['user-input', 'full-prompt', 'burp'],
+                             default='user-input',
+                             help='Output format: user-input (default, for apps), full-prompt, or burp')
     parser_generate.add_argument('--spotlighting-data-markers', default='\nDOCUMENT\n',
                                  help='Comma-separated list of data markers (placeholder: "DOCUMENT")')
     parser_generate.add_argument('--languages', default=None,
                                  help='Comma-separated list of languages to filter jailbreaks and instructions')
     parser_generate.add_argument('--match-languages', type=str2bool, nargs='?', const=True, default=True,
-                                help='Only combine jailbreaks and instructions with matching languages (default: True)')
+                                 help='Only combine jailbreaks and instructions with matching languages (default: True)')
     parser_generate.add_argument('--instruction-filter', default=None,
                                  help='Comma-separated list of instruction types to include')
     parser_generate.add_argument('--jailbreak-filter', default=None,
@@ -103,7 +126,7 @@ def main():
                              help='Name of the target to test (in local or built-in targets/ dir)')
     parser_test.add_argument('--target-options', type=str, required=False,
                              help='Option to pass to the target [Optional]')
-    parser_test.add_argument('--threads', type=int, default=4, 
+    parser_test.add_argument('--threads', type=int, default=4,
                              help='Number of threads for parallel processing')
     parser_test.add_argument('--attempts', type=int, default=1,
                              help='Number of attempts per payload (default: 1)')
@@ -120,9 +143,9 @@ def main():
     parser_test.add_argument('--attack-iterations', type=int, default=100,
                              help='Number of attack iterations per dataset entry (if --attack is provided)')
     parser_test.add_argument('--attack-options', default=None,
-                         help='Options to pass to the attack module (e.g., "mode-X")')
+                             help='Options to pass to the attack module (e.g., "mode-X")')
     parser_test.add_argument('--tag', default=None,
-                                 help='Include a tag at the end of the results filename')
+                             help='Include a tag at the end of the results filename')
     parser_test.add_argument('--sample', type=float, default=None,
                              help='Sample a percentage of the dataset (e.g., 0.15 for 15%%)')
     parser_test.add_argument('--sample-seed', default='42',
@@ -138,9 +161,16 @@ def main():
     parser_analyze.add_argument('--result-file', type=str, required=True,
                                 help='Path to the results JSONL file')
     parser_analyze.add_argument('--false-positive-checks', type=str, default=None,
-                          help='Path to a JSONL file with benign prompts for false positive analysis')
+                                help='Path to a JSONL file with benign prompts for false positive analysis')
     parser_analyze.add_argument('--output-format', choices=['console', 'html'], default='console',
                                 help='Output format: console (default) or html')
+
+    # --- rejudge
+    parser_rejudge = subparsers_results.add_parser('rejudge', help='Re-judge an offline results JSONL file')
+    parser_rejudge.add_argument('--result-file', type=str, action='append', required=True, help='Path to the results JSONL file')
+    parser_rejudge.add_argument('--judge-options', type=str, default=None, help='Judge options, typically the name of the LLM to use as a judge')
+    parser_rejudge.add_argument('--resume', action='store_true',
+                                help='This will attempt to resume a re-judge the most recent results file. (Requires filename to be unmodified and in the same folder.)')
 
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser('convert-to-excel',
@@ -158,18 +188,20 @@ def main():
     list_subparsers.add_parser('plugins', help='List available plugins')
     list_subparsers.add_parser('attacks', help='List available attack scripts')
 
-    args = parser.parse_args()
+    args = convert_to_new_args(parser.parse_args())
 
     if args.command == 'init':
         init_workspace(force=args.force, include_builtin=args.include_builtin)
 
     elif args.command == 'generate':
-        generate_dataset(args)  
+        generate_dataset(args)
     elif args.command == 'test':
-        test_dataset(args)      
+        test_dataset(args)
     elif args.command == 'results':
         if args.results_command == 'analyze':
             analyze_results(args)
+        elif args.results_command == 'rejudge':
+            rejudge_results(args)
         elif args.results_command == 'convert-to-excel':
             convert_results_to_excel(args)
         else:
@@ -193,17 +225,18 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+
 def init_workspace(force=False, include_builtin='none'):
     """
     Copy the entire 'data/workspace' directory from the installed package
     into the user's current working directory. This sets up the local spikee workspace
     (datasets, plugins, targets, env-example, etc.).
-    
+
     If include_builtin is specified, also copy built-in modules to their respective
     local directories for local modification.
     """
     cwd = Path(os.getcwd())
-    workspace_dest = cwd  
+    workspace_dest = cwd
 
     src_folder = Path(__file__).parent / "data" / "workspace"
 
@@ -233,10 +266,11 @@ def init_workspace(force=False, include_builtin='none'):
             print(f"[init] Could not copy {item.name} to {destination}: {e}")
 
     print("[init] Local spikee workspace has been initialized.")
-    
+
     # Handle copying built-in modules if requested
     if include_builtin != 'none':
         copy_builtin_modules(include_builtin, force)
+
 
 def copy_builtin_modules(include_option, force=False):
     """
@@ -244,10 +278,10 @@ def copy_builtin_modules(include_option, force=False):
     Uses direct file operations without importing the modules.
     """
     import spikee
-    
+
     # Get the path to the spikee package
     spikee_path = Path(spikee.__file__).parent
-    
+
     # Determine which module types to copy
     if include_option == 'all':
         module_types = ['plugins', 'judges', 'targets', 'attacks']
@@ -255,44 +289,44 @@ def copy_builtin_modules(include_option, force=False):
         module_types = [include_option]
     else:
         module_types = []
-    
+
     for module_type in module_types:
         try:
             # Path to built-in modules
             module_dir = spikee_path / module_type
-            
+
             # Ensure the module directory exists in the package
             if not module_dir.is_dir():
                 print(f"[init] Warning: Built-in {module_type} directory not found at {module_dir}")
                 continue
-                
+
             # Ensure local directory exists
             local_dir = Path(os.getcwd()) / module_type
             os.makedirs(local_dir, exist_ok=True)
-            
+
             # Copy each Python file (except __init__.py)
             modules_copied = 0
             for file_path in module_dir.glob("*.py"):
                 if file_path.name == "__init__.py":
                     continue
-                    
+
                 dest_file = local_dir / file_path.name
-                
+
                 if dest_file.exists() and not force:
                     print(f"[init] '{dest_file}' already exists. Use --force to overwrite.")
                     continue
-                    
+
                 try:
                     shutil.copy2(file_path, dest_file)
                     modules_copied += 1
                     print(f"[init] Copied built-in {module_type}/{file_path.name} to local workspace")
                 except Exception as e:
                     print(f"[init] Error copying {module_type}/{file_path.name}: {e}")
-            
+
             if modules_copied > 0:
                 print(f"[init] Copied {modules_copied} built-in {module_type} to local workspace")
             else:
                 print(f"[init] No built-in {module_type} were copied")
-                
+
         except Exception as e:
             print(f"[init] Error processing {module_type}: {e}")

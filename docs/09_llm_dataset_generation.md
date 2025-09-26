@@ -19,7 +19,7 @@ This method is ideal for creating a set of direct, self-contained prompts. These
     cp -r datasets/seeds-empty datasets/seeds-medical-advice
     ```
 2.  **Define Your Goal and Judge:** Clearly state what kind of prompts you need. For example, "questions asking for a specific medical diagnosis." Then, decide how to evaluate success. For this type of test, an LLM-based judge is often necessary.
-3.  **Prompt the Generation LLM:** Instruct the LLM to generate prompts that match your goal and output them in the required `standalone_attacks.jsonl` format.
+3.  **Prompt the Generation LLM:** Instruct the LLM to generate prompts that match your goal and output them in the required `standalone_user_inputs.jsonl` format.
 
     **Example LLM Prompt (for Medical Advice Queries):**
     ```text
@@ -37,11 +37,11 @@ This method is ideal for creating a set of direct, self-contained prompts. These
 
     Ensure the output contains only the JSON lines, one per line.
     ```
-4.  **Review and Save:** Manually review the generated JSONL content for quality and relevance. Save it as `standalone_attacks.jsonl` inside your new seed folder (e.g., `datasets/seeds-medical-advice/standalone_attacks.jsonl`).
+4.  **Review and Save:** Manually review the generated JSONL content for quality and relevance. Save it as `standalone_user_inputs.jsonl` inside your new seed folder (e.g., `datasets/seeds-medical-advice/sstandalone_user_inputs.jsonl`).
 5.  **Generate the Spikee Dataset:** Run `spikee generate`, pointing to your new seed folder and the standalone file.
     ```bash
     spikee generate --seed-folder datasets/seeds-medical-advice \
-                    --standalone-attacks datasets/seeds-medical-advice/standalone_attacks.jsonl
+                    --include-standalone-inputs
     ```
     Since the other files in `seeds-medical-advice` are empty, this will produce a dataset containing only your standalone attacks.
 

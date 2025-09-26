@@ -6,6 +6,33 @@ import importlib.util
 import time
 from collections import defaultdict
 from tabulate import tabulate
+from pathlib import Path
+
+
+def resolve_base_inputs_path(seed_folder: str) -> Path:
+    base = Path(seed_folder) / "base_user_inputs.jsonl"
+    if base.exists():
+        return base
+    legacy = Path(seed_folder) / "base_documents.jsonl"
+    if legacy.exists():
+        print("NOTICE: base_user_inputs.jsonl not found. Using legacy base_documents.jsonl.")
+        return legacy
+    raise FileNotFoundError("No base_user_inputs.jsonl or base_documents.jsonl found in seed folder.")
+
+def resolve_standalone_inputs_path(seed_folder: str, include_flag: bool):
+    if not include_flag:
+        return None
+    cur = Path(seed_folder) / "standalone_user_inputs.jsonl"
+    if cur.exists():
+        return cur
+    legacy = Path(seed_folder) / "standalone_attacks.jsonl"
+    if legacy.exists():
+        print("NOTICE: standalone_user_inputs.jsonl not found. Using legacy standalone_attacks.jsonl.")
+        return legacy
+    raise FileNotFoundError(
+        "No standalone_user_inputs.jsonl or standalone_attacks.jsonl found in seed folder "
+        "(required by --include-standalone-inputs)."
+    )
 
 def validate_tag(tag):
     """
@@ -554,7 +581,7 @@ def generate_variations(base_docs, jailbreaks, instructions, positions, injectio
                                         dataset.append(qa_entry)
                                         entry_id += 1
 
-                                    elif output_format == 'document':
+                                    elif output_format == 'user-input':
                                         system_message = get_system_message(
                                             system_message_config, spotlighting_data_marker
                                         )
@@ -632,7 +659,7 @@ def generate_variations(base_docs, jailbreaks, instructions, positions, injectio
                                                     dataset.append(qa_entry)
                                                     entry_id += 1
 
-                                                elif output_format == 'document':
+                                                elif output_format == 'user-input':
                                                     system_message = get_system_message(system_message_config)
                                                     doc_entry = _create_document_entry(
                                                         entry_id, base_id, jailbreak_id, instruction_id,
@@ -717,7 +744,9 @@ def generate_dataset(args):
     else:
         jailbreak_filters = None
 
-    base_documents_file = os.path.join(seed_folder, 'base_documents.jsonl')
+    base_file = resolve_base_inputs_path(seed_folder)
+    base_documents_file = str(base_file)
+
     jailbreaks_file = os.path.join(seed_folder, 'jailbreaks.jsonl')
     instructions_file = os.path.join(seed_folder, 'instructions.jsonl')
     adv_suffixes_file = os.path.join(seed_folder, 'adv_suffixes.jsonl')
@@ -787,14 +816,12 @@ def generate_dataset(args):
         plugin_options_map=plugin_options_map  
     )
 
-    if args.standalone_attacks:
-        if not os.path.isfile(args.standalone_attacks):
-            print(f"Error: File not found: {args.standalone_attacks}")
-            return
-        standalone_attacks = read_jsonl(args.standalone_attacks)
+    if getattr(args, 'include_standalone_inputs', False):
+        standalone_file = resolve_standalone_inputs_path(seed_folder, True)
+        standalone_inputs = read_jsonl(str(standalone_file))
         dataset, entry_id = process_standalone_attacks(
-            standalone_attacks, dataset, entry_id, 
-            plugins=plugins if args.plugins else None, 
+            standalone_inputs, dataset, entry_id,
+            plugins=plugins if args.plugins else None,
             output_format=output_format,
             plugin_options_map=plugin_options_map
         )
