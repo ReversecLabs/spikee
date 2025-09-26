@@ -137,8 +137,8 @@ def contextual_refusal_probability(logprobs_content: list[LogProbsItem], encoder
   probability AND decrease refusal probability.
 
   When testing AI safety guardrails, there are typically clear refusal
-  patterns e.g. "I can't assist with that". The Adaptive RSA attack can be
-  configured to only accept suffixes that both increase the probability
+  patterns e.g. "I can't assist with that". The Adaptive Random Suffix Attack
+  can be configured to only accept suffixes that both increase the probability
   of a target substring AND decrease the probability of a refusal pattern.
 
   Initial testing has shown that this can significantly speed up the search

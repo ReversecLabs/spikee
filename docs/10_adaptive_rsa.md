@@ -27,7 +27,7 @@ The attack is based on research from an EPFL paper on adaptive attacks ([arXiv:2
 
 The attack uses a log-space sequence scoring function that:
 - **Full match detection**: If the target appears in the response, returns the sum of covering token logprobs
-- **Prefix matching**: Finds tokens whose suffix overlaps with the target beginning and scores expected continuations
+- **Prefix matching**: Finds tokens whose suffix overlaps with the start of the target and scores expected continuations
 - **Penalty handling**: Applies configurable penalties for unobserved target tokens in the model's top-k predictions
 
 ## Requirements
@@ -137,6 +137,7 @@ spikee test --dataset datasets/investment-advice-full-prompt-dataset-*.jsonl \
 
 ### Requirements
 
+- **Encoding**: Target must use `o200k_base` encoding to avoid differences in tokenisation
 - **Logprob support**: Target must support `logprobs=True` parameter in `process_input()`
 - **Token-level output**: Target should return structured logprob data compatible with OpenAI's format
 - **Top-k logprobs**: Should support 20 top logprobs per token
@@ -188,7 +189,7 @@ When `logprobs=True`, the target must return a tuple `(content, logprobs_data)` 
 
 3. **Token Reconstruction**: The concatenation of all token strings must exactly equal the response text: `"".join([item["token"] for item in logprobs_data["content"]]) == response_content`
 
-4. **Encoding Compatibility**: The attack uses tiktoken's `o200k_base` encoding for token manipulation. While your target doesn't need to use the same encoding internally, the logprobs structure should be consistent with token-level probability analysis.
+4. **Encoding Compatibility**: The attack is currently only compatible with targets using tiktoken's `o200k_base` encoding.
 
 #### Example Implementation Pattern
 ```python
@@ -279,7 +280,7 @@ Enable debug output by modifying the attack script to uncomment debug print stat
 
 ## Research Background
 
-The Adaptive RSA is based on the technique from "Jailbreaking Leading Safety-Aligned LLMs with Simple Adaptive Attacks" (EPFL, 2024). Key innovations in this implementation:
+Adaptive RSA is based on the technique from "Jailbreaking Leading Safety-Aligned LLMs with Simple Adaptive Attacks" (EPFL, 2024). Key innovations in this implementation:
 
 - **Dual optimisation**: Optional refusal probability minimisation for safety applications
 - **Robust scoring**: Handles both exact matches and prefix-based sequence scoring
