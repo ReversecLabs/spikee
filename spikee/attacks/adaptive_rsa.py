@@ -91,13 +91,13 @@ class AdaptiveRSAEntry(TypedDict):
 class LogProbsBaseItem(TypedDict):
   token: str
   logprob: float
-  bytes: list[int]
+  # bytes: list[int]
 
 
 class LogProbsItem(TypedDict):
   token: str
   logprob: float
-  bytes: list[int]
+  # bytes: list[int]
   top_logprobs: list[LogProbsBaseItem]
 
 

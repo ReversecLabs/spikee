@@ -166,12 +166,10 @@ When `logprobs=True`, the target must return a tuple `(content, logprobs_data)` 
     {
       "token": str,           # The actual token text
       "logprob": float,       # Log probability of this token
-      "bytes": list[int],     # UTF-8 bytes of the token
       "top_logprobs": [       # Top-k alternative tokens
         {
           "token": str,
           "logprob": float,
-          "bytes": list[int]
         },
         # ... up to n_logprobs alternatives
       ]
@@ -205,7 +203,6 @@ def process_input(self, input_text, system_message=None, target_options=None,
         {
           "token": token_text,
           "logprob": token_logprob,
-          "bytes": list(token_text.encode('utf-8')),
           "top_logprobs": [
             # Top alternatives for this position
           ]
@@ -217,20 +214,6 @@ def process_input(self, input_text, system_message=None, target_options=None,
   else:
     return response
 ```
-
-### Compatible Targets
-
-- **OpenAI models**: GPT-4o, GPT-4.1, etc. via API
-- **OpenAI-compatible APIs**: Any service implementing OpenAI's logprobs format
-- **Local models**: With proper wrapper implementing the logprobs interface
-- **Custom targets**: Following the implementation requirements above
-
-### Incompatible Targets
-
-- **Claude models**: Do not provide logprobs
-- **Basic HTTP targets**: Without structured probability output
-- **Targets without token-level probabilities**: Cannot provide the required logprobs data structure
-
 ## Performance Considerations
 
 ### Optimisation Tips
