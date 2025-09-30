@@ -16,6 +16,7 @@ Exposed:
     get_available_option_values() -> list of supported keys (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
+
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
@@ -28,8 +29,8 @@ load_dotenv()
 # Map shorthand keys to Ollama model identifiers
 _OPTION_MAP: Dict[str, str] = {
     "phi4-mini": "phi4-mini",
-    "gemma3":    "gemma3",
-    "llama3.2":  "llama3.2",
+    "gemma3": "gemma3",
+    "llama3.2": "llama3.2",
 }
 
 # Default key
@@ -57,10 +58,11 @@ def get_available_option_values() -> List[str]:
         options.extend([key for key in _OPTION_MAP if key != _DEFAULT_KEY])
     return options
 
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
-    target_options: Optional[str] = None
+    target_options: Optional[str] = None,
 ) -> str:
     """
     Send messages to an Ollama model by key.
@@ -71,7 +73,7 @@ def process_input(
     # Determine key or default
     key = target_options if target_options is not None else _DEFAULT_KEY
     if key not in _OPTION_MAP:
-        valid = ', '.join(get_available_option_values())
+        valid = ", ".join(get_available_option_values())
         raise ValueError(f"Unknown Ollama key '{key}'. Valid keys: {valid}")
 
     model_name = _OPTION_MAP[key]
@@ -97,6 +99,7 @@ def process_input(
     except Exception as e:
         print(f"Error during Ollama completion ({model_name}): {e}")
         raise
+
 
 if __name__ == "__main__":
     print("Supported Ollama keys:", get_available_option_values())

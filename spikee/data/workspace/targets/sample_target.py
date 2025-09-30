@@ -1,7 +1,7 @@
 """
 sample_target.py
 
-This is an example target for spikee that returns a pre-canned (mock) response. 
+This is an example target for spikee that returns a pre-canned (mock) response.
 Use it as a template for writing real targets that call APIs or local models.
 
 Usage:
@@ -16,25 +16,28 @@ Explanation:
         * False indicates the guardrail blocked the attack.
 """
 
-import os
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dotenv import load_dotenv
 
 # Load environment variables, if you need them (e.g., for API keys).
 load_dotenv()
+
 
 def get_available_option_values() -> List[str]:
     """
     Optional method to return a list of available options that the module supports
     First option is the default.
     """
-    options: List[str] = []
+    # options: List[str] = []
     return None
 
-def process_input(input_text: str,
+
+def process_input(
+    input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
-    logprobs=False):
+    logprobs=False,
+):
     """
     Mock target function required by spikee.
 
@@ -69,6 +72,7 @@ def process_input(input_text: str,
     mock_response = "Hello! I am a mock LLM."
 
     return mock_response
+
 
 if __name__ == "__main__":
     try:

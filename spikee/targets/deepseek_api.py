@@ -14,6 +14,7 @@ Exposed:
     get_available_option_values() -> list of supported keys (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
+
 import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -31,16 +32,18 @@ _OPTION_MAP: Dict[str, str] = {
 # Default key
 _DEFAULT_KEY = "deepseek-v3"
 
+
 def get_available_option_values() -> List[str]:
     """Return supported keys; first option is default."""
     options = [_DEFAULT_KEY]  # Default first
     options.extend([key for key in _OPTION_MAP if key != _DEFAULT_KEY])
     return options
 
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
-    target_options: Optional[str] = None
+    target_options: Optional[str] = None,
 ) -> str:
     """
     Send messages to a Deepseek model by key.
@@ -51,7 +54,7 @@ def process_input(
     # Determine key or default
     key = target_options if target_options is not None else _DEFAULT_KEY
     if key not in _OPTION_MAP:
-        valid = ', '.join(get_available_option_values())
+        valid = ", ".join(get_available_option_values())
         raise ValueError(f"Unknown Deepseek key '{key}'. Valid keys: {valid}")
 
     # Resolve to actual model identifier

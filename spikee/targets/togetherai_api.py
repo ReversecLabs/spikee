@@ -11,6 +11,7 @@ Exposed:
     get_available_option_values() -> list of supported keys (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response
 """
+
 from typing import List, Dict
 from dotenv import load_dotenv
 from langchain_together import ChatTogether
@@ -36,11 +37,13 @@ OPTION_MAP: Dict[str, str] = {
 # Default shorthand key
 DEFAULT_KEY = "llama31-8b"
 
+
 def get_available_option_values() -> List[str]:
     """Return supported keys; first option is default."""
     options = [DEFAULT_KEY]  # Default first
     options.extend([key for key in OPTION_MAP if key != DEFAULT_KEY])
     return options
+
 
 def _resolve_model(key: str) -> str:
     """
@@ -48,15 +51,13 @@ def _resolve_model(key: str) -> str:
     Raises ValueError for unknown keys.
     """
     if key not in OPTION_MAP:
-        valid = ', '.join(OPTION_MAP.keys())
+        valid = ", ".join(OPTION_MAP.keys())
         raise ValueError(f"Unknown model key '{key}'. Valid keys: {valid}")
     return OPTION_MAP[key]
 
 
 def process_input(
-    input_text: str,
-    system_message: str = None,
-    target_options: str = None
+    input_text: str, system_message: str = None, target_options: str = None
 ) -> str:
     """
     Send messages to TogetherAI based on the provided key.

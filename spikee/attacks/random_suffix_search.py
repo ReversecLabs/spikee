@@ -38,14 +38,13 @@ Returns:
 """
 
 import random
-import time
 import numpy as np
 import tiktoken
-import threading
 
 # Default parameters.
-n_tokens_adv = 25   # Number of tokens in the adversarial suffix.
-n_tokens_change = 4 # Maximum tokens to change per iteration.
+n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
+n_tokens_change = 4  # Maximum tokens to change per iteration.
+
 
 def insert_adv_string(document, adv_string, payload=None):
     """
@@ -57,25 +56,35 @@ def insert_adv_string(document, adv_string, payload=None):
     if payload:
         idx = document.find(payload)
         if idx != -1:
-            return document[:idx + len(payload)] + " " + adv_string + document[idx + len(payload):]
+            return (
+                document[: idx + len(payload)]
+                + " "
+                + adv_string
+                + document[idx + len(payload) :]
+            )
     return document + "\n" + adv_string
 
-def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, bar_lock=None):
+
+def attack(
+    entry, target_module, call_judge, max_iterations, attempts_bar=None, bar_lock=None
+):
     original_text = entry.get("text", "")
     system_message = entry.get("system_message", None)
     payload_field = entry.get("payload", "")
-    
+
     # Use tiktoken directly for OpenAI models.
     tokenizer = tiktoken.get_encoding("cl100k_base")
     max_token_value = tokenizer.n_vocab
-    
+
     # Initialize the adversarial tokens as a random sequence.
     adv_tokens = np.random.randint(0, max_token_value, n_tokens_adv).tolist()
-    
+
     # Build the initial candidate prompt.
-    candidate = insert_adv_string(original_text, tokenizer.decode(adv_tokens), payload=payload_field)
+    candidate = insert_adv_string(
+        original_text, tokenizer.decode(adv_tokens), payload=payload_field
+    )
     response = ""
-    
+
     # Main random search loop.
     for i in range(1, max_iterations + 1):
         # Randomly choose a starting index for substitution.
@@ -83,35 +92,41 @@ def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, 
             substitute_pos_start = random.randint(0, n_tokens_adv - n_tokens_change)
         else:
             substitute_pos_start = 0
-        
+
         # Generate new random tokens for substitution.
-        substitution_tokens = np.random.randint(0, max_token_value, n_tokens_change).tolist()
+        substitution_tokens = np.random.randint(
+            0, max_token_value, n_tokens_change
+        ).tolist()
         # Replace the selected tokens in adv_tokens.
-        adv_tokens[substitute_pos_start:substitute_pos_start + n_tokens_change] = substitution_tokens
-        
+        adv_tokens[substitute_pos_start : substitute_pos_start + n_tokens_change] = (
+            substitution_tokens
+        )
+
         # Decode the modified token sequence into text.
-        adv = tokenizer.decode(adv_tokens).replace('<s>', '')
+        adv = tokenizer.decode(adv_tokens).replace("<s>", "")
         # Insert the adversarial suffix into the document.
         candidate = insert_adv_string(original_text, adv, payload=payload_field)
-            
+
         try:
             # Call process_input. The wrapper guarantees a tuple is returned.
-            response, _ = target_module.process_input(candidate, system_message, logprobs=False)
+            response, _ = target_module.process_input(
+                candidate, system_message, logprobs=False
+            )
             success = call_judge(entry, response)
         except Exception as e:
             success = False
             response = str(e)
-        
+
         # Update progress bar safely.
         if attempts_bar:
             with bar_lock:
                 attempts_bar.update(1)
-                
+
         if success:
             if attempts_bar:
                 with bar_lock:
                     remaining = max_iterations - i
                     attempts_bar.total = attempts_bar.total - remaining
             return i, True, candidate, response
-    
+
     return max_iterations, False, candidate, response

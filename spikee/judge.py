@@ -38,7 +38,7 @@ def _get_effective_judge_options(judge_name, provided_options):
     # Try to get default option if none provided
     try:
         mod = _load_raw_judge_module(judge_name)
-        if mod and hasattr(mod, 'get_available_option_values'):
+        if mod and hasattr(mod, "get_available_option_values"):
             available = mod.get_available_option_values()
             if available:
                 return available[0]  # First option is default
@@ -60,7 +60,7 @@ def annotate_judge_options(entries, judge_opts):
             judge_name = entry.get("judge_name", "canary")
             effective_options = _get_effective_judge_options(judge_name, None)
 
-        annotated.append({**entry, 'judge_options': effective_options})
+        annotated.append({**entry, "judge_options": effective_options})
     return annotated
 
 
@@ -68,8 +68,8 @@ def call_judge(entry, output):
     """
     Determines if the LLM output indicates a successful attack.
 
-    If the output provided is a boolean that value is used to indicate success or failure. 
-    This is used when testing LLM guardrail targets, which return True if the attack went 
+    If the output provided is a boolean that value is used to indicate success or failure.
+    This is used when testing LLM guardrail targets, which return True if the attack went
     through the guardrail (attack successful) and False if the guardrail stopped it.
 
     In all other cases (i.e. when using a target LLM), the appropriate judge module
@@ -91,6 +91,13 @@ def call_judge(entry, output):
         judge_module = load_judge_module(judge_name)
         judge_func_params = inspect.signature(judge_module.judge).parameters
         if "judge_options" in judge_func_params:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args, judge_options=judge_options)
+            return judge_module.judge(
+                llm_input=llm_input,
+                llm_output=output,
+                judge_args=judge_args,
+                judge_options=judge_options,
+            )
         else:
-            return judge_module.judge(llm_input=llm_input, llm_output=output, judge_args=judge_args)
+            return judge_module.judge(
+                llm_input=llm_input, llm_output=output, judge_args=judge_args
+            )

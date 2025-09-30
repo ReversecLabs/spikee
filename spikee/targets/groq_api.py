@@ -20,7 +20,7 @@ Exposed:
     get_available_option_values() -> list of supported model IDs (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
-import os
+
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from typing import List, Optional
@@ -42,16 +42,18 @@ _SUPPORTED_MODELS: List[str] = [
 # Default model ID
 DEFAULT_MODEL = "gemma2-9b-it"
 
+
 def get_available_option_values() -> List[str]:
     """Return supported model names; first option is default."""
     options = [DEFAULT_MODEL]  # Default first
     options.extend([model for model in _SUPPORTED_MODELS if model != DEFAULT_MODEL])
     return options
 
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
-    target_options: Optional[str] = None
+    target_options: Optional[str] = None,
 ) -> str:
     """
     Send messages to a Groq model by ID.
@@ -62,7 +64,7 @@ def process_input(
     # Determine which model to use
     model_id = target_options if target_options is not None else DEFAULT_MODEL
     if model_id not in _SUPPORTED_MODELS:
-        valid = ', '.join(_SUPPORTED_MODELS)
+        valid = ", ".join(_SUPPORTED_MODELS)
         raise ValueError(f"Unknown Groq model '{model_id}'. Valid models: {valid}")
 
     # Initialize the ChatGroq client
@@ -87,6 +89,7 @@ def process_input(
     except Exception as e:
         print(f"Error during Groq completion ({model_id}): {e}")
         raise
+
 
 if __name__ == "__main__":
     print("Supported Groq models:", get_available_option_values())

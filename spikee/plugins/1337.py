@@ -1,9 +1,9 @@
 """
 1337 Plugin
 
-This plugin transforms the input text into "1337 speak" (leetspeak) by replacing 
-certain letters with numerals according to a fixed dictionary. Any substring that 
-exactly matches one of the user-supplied exclusion regex patterns (passed via the 
+This plugin transforms the input text into "1337 speak" (leetspeak) by replacing
+certain letters with numerals according to a fixed dictionary. Any substring that
+exactly matches one of the user-supplied exclusion regex patterns (passed via the
 exclude_patterns parameter) is left unchanged.
 
 Usage:
@@ -11,10 +11,10 @@ Usage:
 
 Reference:
     https://mindgard.ai/blog/bypassing-azure-ai-content-safety-guardrails
-    
+
 Parameters:
     text (str): The input text to be transformed.
-    exclude_patterns (List[str], optional): A list of regex patterns. Any substring 
+    exclude_patterns (List[str], optional): A list of regex patterns. Any substring
         that exactly matches one of these patterns will be preserved as-is.
 
 Returns:
@@ -24,14 +24,15 @@ Returns:
 from typing import List
 import re
 
+
 def transform(text: str, exclude_patterns: List[str] = None) -> str:
     """
-    Transforms the input text into 1337 speak while preserving any substring that 
+    Transforms the input text into 1337 speak while preserving any substring that
     exactly matches one of the exclusion regex patterns.
 
-    If an exclusion list is provided, the plugin creates a compound regex by joining 
-    the patterns. It then splits the text using re.split() so that any substring that 
-    exactly matches one of the patterns is isolated and left unmodified. All other parts 
+    If an exclusion list is provided, the plugin creates a compound regex by joining
+    the patterns. It then splits the text using re.split() so that any substring that
+    exactly matches one of the patterns is isolated and left unmodified. All other parts
     are transformed using the leet dictionary.
 
     Args:
@@ -42,15 +43,24 @@ def transform(text: str, exclude_patterns: List[str] = None) -> str:
         str: The transformed text.
     """
     leet_dict = {
-        'A': '4', 'a': '4',
-        'E': '3', 'e': '3',
-        'I': '1', 'i': '1',
-        'O': '0', 'o': '0',
-        'T': '7', 't': '7',
-        'S': '5', 's': '5',
-        'B': '8', 'b': '8',
-        'G': '6', 'g': '6',
-        'Z': '2', 'z': '2'
+        "A": "4",
+        "a": "4",
+        "E": "3",
+        "e": "3",
+        "I": "1",
+        "i": "1",
+        "O": "0",
+        "o": "0",
+        "T": "7",
+        "t": "7",
+        "S": "5",
+        "s": "5",
+        "B": "8",
+        "b": "8",
+        "G": "6",
+        "g": "6",
+        "Z": "2",
+        "z": "2",
     }
 
     if exclude_patterns:

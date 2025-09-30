@@ -11,6 +11,7 @@ Exposed:
     get_available_option_values() -> list of supported model names (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
+
 from typing import List, Optional
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -31,16 +32,18 @@ _SUPPORTED_MODELS: List[str] = [
 # Default model name
 DEFAULT_MODEL = "gemini-2.0-flash"
 
+
 def get_available_option_values() -> List[str]:
     """Return supported model names; first option is default."""
     options = [DEFAULT_MODEL]  # Default first
     options.extend([model for model in _SUPPORTED_MODELS if model != DEFAULT_MODEL])
     return options
 
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
-    target_options: Optional[str] = None
+    target_options: Optional[str] = None,
 ) -> str:
     """
     Send messages to a Google Generative AI model by model name.
@@ -51,7 +54,7 @@ def process_input(
     # Determine model to use
     model_name = target_options if target_options is not None else DEFAULT_MODEL
     if model_name not in _SUPPORTED_MODELS:
-        valid = ', '.join(_SUPPORTED_MODELS)
+        valid = ", ".join(_SUPPORTED_MODELS)
         raise ValueError(f"Unknown model '{model_name}'. Valid models: {valid}")
 
     # Initialize the client

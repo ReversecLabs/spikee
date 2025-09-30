@@ -10,7 +10,7 @@
   <h1>Simple Prompt Injection Kit for Evaluation and Exploitation</h1>
 </div>
 
-_Version: 0.4.1_
+_Version: 0.4.2_
 
 
 Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience of LLMs, guardrails, and applications against prompt injection and jailbreaking. Spikee's strength is its modular design, which allows for easy customization of every part of the testing process.
@@ -35,9 +35,10 @@ Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience o
   - [Step 4: Test a Target](#step-4-test-a-target)
     - [A. Basic LLM Test](#a-basic-llm-test)
     - [B. Testing a Custom LLM Application](#b-testing-a-custom-llm-application)
-    - [C. Enhancing Tests with Attacks](#c-enhancing-tests-with-attacks)
-    - [C. Testing a Sample of a Large Dataset](#c-testing-a-sample-of-a-large-dataset)
-    - [D. Evaluating Guardrails](#d-evaluating-guardrails)
+    - [C. Resume Options](#c-resume-options)
+    - [D. Enhancing Tests with Attacks](#d-enhancing-tests-with-attacks)
+    - [E. Testing a Sample of a Large Dataset](#e-testing-a-sample-of-a-large-dataset)
+    - [F. Evaluating Guardrails](#f-evaluating-guardrails)
   - [Step 5: Analyze the Results](#step-5-analyze-the-results)
 - [Contributing](#3-contributing)
   - [Questions or Feedback?](#questions-or-feedback)
@@ -159,7 +160,7 @@ spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format user-inpu
 This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-document-dataset-TIMESTAMP.jsonl`.
 
 #### Bonus: Including standalone attacks
-The `generate` command we saw before composes a dataset by combining documents with jailbreaks and instructions. However, some datasets - such as `seeds-simsonsun-high-quality-jailbreaks` and `in-the-wild-jailbreak-prompts` - contain a static list of ready-to-use attack prompts. To include those in the generated dataset, we use `--standalone-attacks`:
+The `generate` command we saw before composes a dataset by combining documents with jailbreaks and instructions. However, some datasets - such as `seeds-simsonsun-high-quality-jailbreaks` and `in-the-wild-jailbreak-prompts` - contain a static list of ready-to-use attack prompts. To include those in the generated dataset, we use `--include-standalone-inputs`:
 
 ```bash
 spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
@@ -197,7 +198,25 @@ spikee test --dataset datasets/llm-mailbox-document-dataset-*.jsonl \
 
 > Especially when testing LLM applications, it's useful to create a custom dataset tailored to the specific use case. In the sample case of the LLM Webmail application, we create a custom dataset stating from `cybersec-2025-04`, that only focusses on testing exfiltration of confidential information via mardown images. Check this tutorial for more information: https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
 
-#### C. Enhancing Tests with Attacks
+#### C. Resume Options
+
+Spikee can resume interrupted runs:
+
+- `--resume-file <file>`  
+  Resume explicitly from the given results file.
+
+- `--auto-resume`  
+  * Non-TTY (scripts/CI): automatically resume from the latest matching results file without prompting.  
+  * TTY (interactive): same as default (you will be prompted).
+
+- `--no-auto-resume`  
+  Disable the interactive resume prompt in TTY mode.
+
+**Default behavior**  
+- In interactive TTY: Spikee searches for matching results files and prompts you to resume.  
+- In non-TTY: Spikee does not auto-resume unless `--auto-resume` is set.
+
+#### D. Enhancing Tests with Attacks
 If static prompts fail, use `--attack` to run iterative scripts that modifies the prompt/documents until they succeed (or run out of iterations).
 
 ```bash
@@ -221,7 +240,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
             --attack prompt_decomposition --attack-iterations 50 -attack-options 'mode=ollama-llama3.2'
 ```
 
-#### C. Testing a Sample of a Large Dataset
+#### E. Testing a Sample of a Large Dataset
 For large datasets, or when operating under time and cost constraints, you can test a random subset of the dataset using the `--sample` flag.
 
 By default, Spikee uses a static seed for sampling. This means that running the same command multiple times will always select the **same random sample**, ensuring your tests are reproducible. This is useful for regression testing.
@@ -250,7 +269,7 @@ spikee test --dataset datasets/large-dataset.jsonl \
             --sample-seed random
 ```
 
-#### D. Evaluating Guardrails
+#### F. Evaluating Guardrails
 When you're testing an LLM application, you're automatically testing any guardrail that the developers of the application have applied. Howeer, sometimes you might want to test individual guardrails in isolation.
 
 **1. Testing a Prompt Injection Guardrail:**

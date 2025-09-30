@@ -21,6 +21,7 @@ This sample plugin simply transforms the input text to uppercase.
 from typing import List, Union
 import re
 
+
 def transform(text: str, exclude_patterns: List[str] = None) -> Union[str, List[str]]:
     """
     Transforms the input text to uppercase, preserving any substrings that match the given exclusion patterns.

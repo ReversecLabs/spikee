@@ -1,8 +1,8 @@
 """
 Hex Encoding Plugin
 
-This plugin transforms the input text into hexadecimal encoding. Any substring that 
-exactly matches one of the user-supplied exclusion regex patterns (passed via the 
+This plugin transforms the input text into hexadecimal encoding. Any substring that
+exactly matches one of the user-supplied exclusion regex patterns (passed via the
 exclude_patterns parameter) is left unchanged.
 
 Usage:
@@ -10,7 +10,7 @@ Usage:
 
 Parameters:
     text (str): The input text to be transformed.
-    exclude_patterns (List[str], optional): A list of regex patterns. Any substring 
+    exclude_patterns (List[str], optional): A list of regex patterns. Any substring
         that exactly matches one of these patterns will be preserved as-is.
 
 Returns:
@@ -19,6 +19,7 @@ Returns:
 
 import re
 from typing import List
+
 
 def hex_encode(text: str) -> str:
     """
@@ -32,9 +33,10 @@ def hex_encode(text: str) -> str:
     """
     return text.encode().hex()
 
+
 def transform(text: str, exclude_patterns: List[str] = None) -> str:
     """
-    Transforms the input text into hexadecimal encoding while preserving any substring 
+    Transforms the input text into hexadecimal encoding while preserving any substring
     that exactly matches one of the exclusion regex patterns.
 
     Args:
@@ -60,5 +62,5 @@ def transform(text: str, exclude_patterns: List[str] = None) -> str:
         else:
             transformed = hex_encode(chunk)
             result_chunks.append(transformed)
-    
+
     return " ".join(result_chunks)

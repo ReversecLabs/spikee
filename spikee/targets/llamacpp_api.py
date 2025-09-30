@@ -8,11 +8,12 @@ Usage:
 
 Exposed:
     get_available_option_values() -> list of supported keys (default marked)
-    process_input(input_text, system_message=None, target_options=None, logprobs=False) -> 
+    process_input(input_text, system_message=None, target_options=None, logprobs=False) ->
         - For models supporting logprobs: returns (content, logprobs)
         - Otherwise: returns content only
 """
-from typing import Optional, List, Dict, Tuple, Union
+
+from typing import Optional, List, Tuple, Union
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
@@ -21,16 +22,18 @@ DEFAULT_BASE_URL = "http://localhost:8080/"
 # load environment variables
 load_dotenv()
 
+
 def get_available_option_values() -> List[str]:
     """Return supported keys; first option is default."""
     options = [DEFAULT_BASE_URL, "http://hostname:port"]  # Default first
     return options
 
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
-    logprobs: bool = False
+    logprobs: bool = False,
 ) -> Union[str, Tuple[str, any]]:
     """
     Send messages to an OpenAI model based on a simple key.
@@ -39,8 +42,8 @@ def process_input(
         - (content, logprobs) if model supports logprobs
         - content otherwise
     """
-    base_url = DEFAULT_BASE_URL if target_options == None else target_options
-    
+    base_url = DEFAULT_BASE_URL if target_options is None else target_options
+
     llm = ChatOpenAI(
         base_url=base_url,
         api_key="abc",
@@ -48,7 +51,7 @@ def process_input(
         timeout=None,
         max_retries=2,
     )
-    
+
     messages = []
     if system_message:
         messages.append(("system", system_message))

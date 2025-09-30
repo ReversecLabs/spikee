@@ -7,6 +7,7 @@ Typically used when you want to detect a specific substring
 in llm_output, e.g., an exfil string or secret token.
 """
 
+
 def judge(llm_input, llm_output, judge_args, judge_options=None):
     """
     Args:

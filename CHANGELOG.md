@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2025-09-27
+
+### Added
+
+- Spikee now prompts the user to auto-resume an interrupted test if it finds results files in the results folder. This behaviour can be controlled with `--auto-resume` and `no-auto-resume`. 
+
+### Changed
+
+- Fixed typos -> `llamaccp` -> `llamacpp`
+- Python code is now autimatically linted/formatted by the GitHub release action.
+
 ## [0.4.1] - 2025-09-20
 
 ### Changed

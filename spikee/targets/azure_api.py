@@ -13,6 +13,7 @@ Exposed:
     get_available_option_values() -> list of supported deployment names (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
+
 import os
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
@@ -34,16 +35,18 @@ _SUPPORTED_DEPLOYMENTS: List[str] = [
 # Default deployment
 DEFAULT_DEPLOYMENT = _SUPPORTED_DEPLOYMENTS[0]
 
+
 def get_available_option_values() -> List[str]:
     """Return supported deployment names; first option is default."""
     options = [DEFAULT_DEPLOYMENT]  # Default first
     options.extend([d for d in _SUPPORTED_DEPLOYMENTS if d != DEFAULT_DEPLOYMENT])
     return options
-    
+
+
 def process_input(
     input_text: str,
     system_message: Optional[str] = None,
-    target_options: Optional[str] = None
+    target_options: Optional[str] = None,
 ) -> str:
     """
     Send messages to an Azure OpenAI deployment specified by target_options.
@@ -54,8 +57,10 @@ def process_input(
     # deployment name selection
     deployment = target_options if target_options is not None else DEFAULT_DEPLOYMENT
     if deployment not in _SUPPORTED_DEPLOYMENTS:
-        valid = ', '.join(_SUPPORTED_DEPLOYMENTS)
-        raise ValueError(f"Unknown Azure deployment '{deployment}'. Valid options: {valid}")
+        valid = ", ".join(_SUPPORTED_DEPLOYMENTS)
+        raise ValueError(
+            f"Unknown Azure deployment '{deployment}'. Valid options: {valid}"
+        )
 
     # Initialize the Azure Chat client
     llm = AzureChatOpenAI(

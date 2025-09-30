@@ -8,10 +8,11 @@ Usage:
 
 Exposed:
     get_available_option_values() -> list of supported keys (default marked)
-    process_input(input_text, system_message=None, target_options=None, logprobs=False) -> 
+    process_input(input_text, system_message=None, target_options=None, logprobs=False) ->
         - For models supporting logprobs: returns (content, logprobs)
         - Otherwise: returns content only
 """
+
 from typing import Optional, List, Dict, Tuple, Union
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -21,15 +22,15 @@ load_dotenv()
 
 # shorthand to model identifier map
 _OPTION_MAP: Dict[str, str] = {
-    "gpt-4o":       "gpt-4o",
-    "gpt-4o-mini":   "gpt-4o-mini",
-    "gpt-4.1-mini":  "gpt-4.1-mini",
-    "gpt-4.1":       "gpt-4.1",
-    "o1-mini":     "o1-mini",
-    "o1":          "o1",
-    "o3-mini":     "o3-mini",
-    "o3":          "o3",
-    "o4-mini":     "o4-mini",
+    "gpt-4o": "gpt-4o",
+    "gpt-4o-mini": "gpt-4o-mini",
+    "gpt-4.1-mini": "gpt-4.1-mini",
+    "gpt-4.1": "gpt-4.1",
+    "o1-mini": "o1-mini",
+    "o1": "o1",
+    "o3-mini": "o3-mini",
+    "o3": "o3",
+    "o4-mini": "o4-mini",
 }
 
 # default key
@@ -40,17 +41,19 @@ _LOGPROBS_MODELS = {"gpt-4o", "gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"}
 # which models do NOT support system messages
 _NO_SYSTEM_MODELS = {"o1-mini", "o1", "o3-mini", "o3", "o4-mini"}
 
+
 def get_available_option_values() -> List[str]:
     """Return supported keys; first option is default."""
     options = [DEFAULT_KEY]  # Default first
     options.extend([key for key in _OPTION_MAP if key != DEFAULT_KEY])
     return options
 
+
 def _resolve_model(key: Optional[str]) -> str:
     """Convert shorthand key to full model id or error."""
     chosen = key if key is not None else DEFAULT_KEY
     if chosen not in _OPTION_MAP:
-        valid = ', '.join(_OPTION_MAP.keys())
+        valid = ", ".join(_OPTION_MAP.keys())
         raise ValueError(f"Unknown OpenAI key '{chosen}'. Valid keys: {valid}")
     return _OPTION_MAP[chosen]
 
@@ -59,7 +62,7 @@ def process_input(
     input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
-    logprobs: bool = False
+    logprobs: bool = False,
 ) -> Union[str, Tuple[str, any]]:
     """
     Send messages to an OpenAI model based on a simple key.

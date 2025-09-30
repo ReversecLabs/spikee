@@ -15,6 +15,9 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
+from typing import List
+
+
 def caesar_cipher(text: str, shift: int = 3) -> str:
     """
     Encrypts the input text using a Caesar cipher with the given shift value.
@@ -29,11 +32,12 @@ def caesar_cipher(text: str, shift: int = 3) -> str:
     result = []
     for char in text:
         if char.isalpha():
-            shift_base = ord('A') if char.isupper() else ord('a')
+            shift_base = ord("A") if char.isupper() else ord("a")
             result.append(chr((ord(char) - shift_base + shift) % 26 + shift_base))
         else:
             result.append(char)
     return "".join(result)
+
 
 def transform(text: str, exclude_patterns: List[str] = None) -> str:
     """

@@ -8,18 +8,24 @@ load_dotenv()
 invoke_url = "https://ai.api.nvidia.com/v1/security/nvidia/nemoguard-jailbreak-detect"
 
 headers = {
-  "Authorization": f"Bearer {os.getenv('NVIDIA_API_KEY')}",
-  "Accept": "application/json"
+    "Authorization": f"Bearer {os.getenv('NVIDIA_API_KEY')}",
+    "Accept": "application/json",
 }
+
 
 def process_input(input_text, system_message=None):
     try:
-        response = requests.post(invoke_url, headers=headers, json={
-            "input": input_text,})
+        response = requests.post(
+            invoke_url,
+            headers=headers,
+            json={
+                "input": input_text,
+            },
+        )
 
         if response.status_code == 200:
             result = response.json()
-            is_jailbreak = result.get('jailbreak', {})
+            is_jailbreak = result.get("jailbreak", {})
             return not is_jailbreak
         else:
             # Raise an exception to propagate the error to the tester

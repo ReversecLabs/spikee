@@ -26,14 +26,16 @@ Returns:
 
 import re
 import random
-import threading
 
 # Transformation probability constants
-SCRAMBLE_PROB = 0.6         
-CAPITALIZATION_PROB = 0.6     
-NOISE_PROB = 0.06           
+SCRAMBLE_PROB = 0.6
+CAPITALIZATION_PROB = 0.6
+NOISE_PROB = 0.06
 
-def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, bar_lock=None):
+
+def attack(
+    entry, target_module, call_judge, max_iterations, attempts_bar=None, bar_lock=None
+):
     original_text = entry.get("text", "")
     system_message = entry.get("system_message", None)
     # Use the payload field (if present) to restrict transformation.
@@ -42,10 +44,12 @@ def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, 
     exclusions = entry.get("exclude_from_transformations_regex", [])
     last_payload = original_text  # fallback if no transformation occurs
     last_response = ""
-        
+
     for i in range(1, max_iterations + 1):
         if payload_field:
-            candidate_text = _scramble_payload_only(original_text, payload_field, exclusions)
+            candidate_text = _scramble_payload_only(
+                original_text, payload_field, exclusions
+            )
         else:
             candidate_text = _generate_variant(original_text, exclusions)
         last_payload = candidate_text
@@ -62,7 +66,7 @@ def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, 
         if attempts_bar:
             with bar_lock:
                 attempts_bar.update(1)
-                
+
         if success:
             # If successful, update the progress bar.
             if attempts_bar:
@@ -72,6 +76,7 @@ def attack(entry, target_module, call_judge, max_iterations, attempts_bar=None, 
             return i, True, candidate_text, response
 
     return max_iterations, False, last_payload, last_response
+
 
 def _scramble_payload_only(original_text, payload, exclusions):
     """
@@ -83,7 +88,8 @@ def _scramble_payload_only(original_text, payload, exclusions):
     if idx == -1:
         return _generate_variant(original_text, exclusions)
     scrambled_payload = _generate_variant(payload, exclusions)
-    return original_text[:idx] + scrambled_payload + original_text[idx+len(payload):]
+    return original_text[:idx] + scrambled_payload + original_text[idx + len(payload) :]
+
 
 def _generate_variant(text, exclusions):
     """
@@ -108,6 +114,7 @@ def _generate_variant(text, exclusions):
             result_chunks.append(_augment_text(chunk))
     return "".join(result_chunks)
 
+
 def _augment_text(text):
     """
     Applies the following transformations:
@@ -116,7 +123,7 @@ def _augment_text(text):
       - Apply character noising (ASCII ±1) with probability NOISE_PROB.
     The text is split on whitespace to preserve spacing.
     """
-    tokens = re.split(r'(\s+)', text)
+    tokens = re.split(r"(\s+)", text)
     transformed_tokens = []
     for token in tokens:
         if token.strip() == "":
@@ -137,15 +144,16 @@ def _augment_text(text):
         result_chars.append(c)
     return "".join(result_chars)
 
+
 def _maybe_scramble_words(token):
     """
     For each subword (split on non-alphanumeric characters) in the token,
     scramble the middle letters (if the subword length ≥ 4 and with probability SCRAMBLE_PROB).
     """
-    subwords = re.split(r'([^a-zA-Z0-9]+)', token)
+    subwords = re.split(r"([^a-zA-Z0-9]+)", token)
     scrambled = []
     for sub in subwords:
-        if not sub or re.fullmatch(r'[^a-zA-Z0-9]+', sub):
+        if not sub or re.fullmatch(r"[^a-zA-Z0-9]+", sub):
             scrambled.append(sub)
         else:
             if len(sub) >= 4 and random.random() < SCRAMBLE_PROB:
