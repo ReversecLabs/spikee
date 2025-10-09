@@ -115,13 +115,72 @@ jobs:
 
           echo "new_version=$(cat NEW_VERSION.txt)" >> $GITHUB_OUTPUT
 
+      - name: Prepend release section to CHANGELOG.md
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          release_date="$(date -u +%Y-%m-%d)"
+
+          # find previous tag (if any)
+          if prev_tag=$(git describe --tags --abbrev=0 2>/dev/null); then
+            range="${prev_tag}..HEAD"
+          else
+            range="HEAD"
+          fi
+
+          # commit subjects excluding merges
+          mapfile -t COMMITS < <(git log --no-merges --pretty=format:%s "$range" || true)
+
+          ADDED=()
+          CHANGED=()
+          for s in "${COMMITS[@]:-}"; do
+            if [[ "$s" =~ ^(feat|add)(:|\b) ]]; then ADDED+=("$s"); else CHANGED+=("$s"); fi
+          done
+
+          # ensure CHANGELOG.md exists with the 3-line header
+          if [ ! -f CHANGELOG.md ]; then
+            printf '%s\n\n%s\n\n' \
+              '# Changelog' \
+              'All notable changes to this project will be documented in this file.' \
+              > CHANGELOG.md
+          fi
+
+          # build the new section in a temp file
+          section_file="$(mktemp)"
+          {
+            printf '## [%s] - %s\n\n' "$VERSION" "$release_date"
+            if [ "${#ADDED[@]}" -gt 0 ]; then
+              printf '### Added\n\n'
+              for s in "${ADDED[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#CHANGED[@]}" -gt 0 ]; then
+              printf '### Changed\n\n'
+              for s in "${CHANGED[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+          } > "$section_file"
+
+          # prepend the section right after the 3-line intro
+          new_file="$(mktemp)"
+          {
+            head -n 3 CHANGELOG.md 2>/dev/null || true
+            cat "$section_file"
+            if [ -f CHANGELOG.md ]; then
+              tail -n +4 CHANGELOG.md
+            fi
+          } > "$new_file"
+          mv "$new_file" CHANGELOG.md
+
+      
       - name: Commit and tag
         shell: bash
         run: |
           VERSION="${{ steps.bump.outputs.new_version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml spikee/__init__.py README.md || true
+          git add pyproject.toml spikee/__init__.py README.md CHANGELOG.md || true
           git commit -m "Release ${VERSION}" || echo "No changes to commit."
           git tag "v${VERSION}"
           git push origin HEAD --tags
