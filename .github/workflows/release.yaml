@@ -122,23 +122,32 @@ jobs:
           VERSION="${{ steps.bump.outputs.new_version }}"
           release_date="$(date -u +%Y-%m-%d)"
 
-          # find previous tag (if any)
+          # Determine previous tag if any
           if prev_tag=$(git describe --tags --abbrev=0 2>/dev/null); then
             range="${prev_tag}..HEAD"
           else
             range="HEAD"
           fi
 
-          # commit subjects excluding merges
+          # Collect commit subjects excluding merges
           mapfile -t COMMITS < <(git log --no-merges --pretty=format:%s "$range" || true)
 
-          ADDED=()
-          CHANGED=()
+          # Classify commits by prefix
+          FEATURES=()
+          FIXES=()
+          CHANGES=()
+          DATASETS=()
           for s in "${COMMITS[@]:-}"; do
-            if [[ "$s" =~ ^(feat|add)(:|\b) ]]; then ADDED+=("$s"); else CHANGED+=("$s"); fi
+            case "$s" in
+              feat:*|feature:*)  FEATURES+=("${s#*: }") ;;
+              fix:*|bug:*|bugfix:*)  FIXES+=("${s#*: }") ;;
+              change:*)  CHANGES+=("${s#*: }") ;;
+              dataset:*) DATASETS+=("${s#*: }") ;;
+              *) ;; # ignore dev:, docs:, chore:, etc.
+            esac
           done
 
-          # ensure CHANGELOG.md exists with the 3-line header
+          # Ensure CHANGELOG.md exists with header
           if [ ! -f CHANGELOG.md ]; then
             printf '%s\n\n%s\n\n' \
               '# Changelog' \
@@ -146,23 +155,33 @@ jobs:
               > CHANGELOG.md
           fi
 
-          # build the new section in a temp file
+          # Build new section
           section_file="$(mktemp)"
           {
             printf '## [%s] - %s\n\n' "$VERSION" "$release_date"
-            if [ "${#ADDED[@]}" -gt 0 ]; then
-              printf '### Added\n\n'
-              for s in "${ADDED[@]}"; do printf -- '- %s\n' "$s"; done
+            if [ "${#FEATURES[@]}" -gt 0 ]; then
+              printf '### Features\n\n'
+              for s in "${FEATURES[@]}"; do printf -- '- %s\n' "$s"; done
               printf '\n'
             fi
-            if [ "${#CHANGED[@]}" -gt 0 ]; then
-              printf '### Changed\n\n'
-              for s in "${CHANGED[@]}"; do printf -- '- %s\n' "$s"; done
+            if [ "${#FIXES[@]}" -gt 0 ]; then
+              printf '### Fixes\n\n'
+              for s in "${FIXES[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#CHANGES[@]}" -gt 0 ]; then
+              printf '### Changes\n\n'
+              for s in "${CHANGES[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#DATASETS[@]}" -gt 0 ]; then
+              printf '### Datasets\n\n'
+              for s in "${DATASETS[@]}"; do printf -- '- %s\n' "$s"; done
               printf '\n'
             fi
           } > "$section_file"
 
-          # prepend the section right after the 3-line intro
+          # Prepend new section after header (3 lines)
           new_file="$(mktemp)"
           {
             head -n 3 CHANGELOG.md 2>/dev/null || true
@@ -172,7 +191,6 @@ jobs:
             fi
           } > "$new_file"
           mv "$new_file" CHANGELOG.md
-
       
       - name: Commit and tag
         shell: bash
