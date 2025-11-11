@@ -65,16 +65,16 @@ python3 -m venv env_spikee
 source env_spikee/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 
-# 3. Install Spikee and its dependencies
-pip install . --prefer-binary 
+# 3. Create a requirements_wheel.txt
+cp requirements.txt requirements_wheel.txt
+echo "spikee" >> requirements_wheel.txt
 
-# 4. Verify it works
-env_spikee/bin/spikee
+# 4. Create a wheel folder
+python -m pip wheel --wheel-dir=./wheelhouse . -r requirements.txt
+# Verify that the wheelhouse folder contains all the dependencies in a .whl format
 
-# 5. Clean up and package for transfer
-rm -rf env_spikee/.cache
-find env_spikee -name '__pycache__' -exec rm -rf {} +
-tar -czf spikee_env.tar.gz env_spikee
+# 5. Add the wheel folder and requirements to an archive
+tar -czf spikee_wheel.tar.gz wheelhouse requirements_wheel.txt
 ```
 
 ---
@@ -85,21 +85,17 @@ Upload `spikee_env.tar.gz` by whatever method is available (e.g. USB, file uploa
 
 ```bash
 # 1. Extract to /tmp or your working directory
-tar -xzf spikee_env.tar.gz -C /tmp
+tar -xzf spikee_wheel.tar.gz -C ./
 
-# 2. Work interactively
-source /tmp/env_spikee/bin/activate
+# 2. Create a new venv enviroment
+python3 -m venv env_spikee
+source env_spikee/bin/activate
+
+python -m pip install --no-index --find-links=./wheelhouse -r requirements_wheel.txt
+
+# 3. Verify installation
 spikee list seeds
-deactivate
 ```
-
----
-
-## Troubleshooting
-
-* **“Error importing numpy: you should not try to import numpy from its source directory”** → Rebuild on a matching host and use `--prefer-binary` to ensure binary wheels.
-* **“Wrong ELF class” or “undefined symbol”** → Architecture or libc mismatch. Rebuild on a host identical to the remote.
-* **Missing system libs** → Install them on the remote before running Spikee.
 
 ---
 
