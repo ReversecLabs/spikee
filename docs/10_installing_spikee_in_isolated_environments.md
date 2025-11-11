@@ -66,7 +66,7 @@ source env_spikee/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 
 # 3. Install Spikee and its dependencies
-pip install --prefer-binary 
+pip install . --prefer-binary 
 
 # 4. Verify it works
 env_spikee/bin/spikee
