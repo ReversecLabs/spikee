@@ -69,13 +69,14 @@ def convert_to_new_args(args):
 
 
 def main():
-    print(banner)
-    print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
-    print(f"Version: {__version__}\n")
-    print("Author: Reversec (reversec.com)\n")
-
     parser = argparse.ArgumentParser(
         description="SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation"
+    )
+    
+    parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress banner and informational messages"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
@@ -355,6 +356,13 @@ def main():
     list_subparsers.add_parser("attacks", help="List available attack scripts")
 
     args = convert_to_new_args(parser.parse_args())
+
+    # Print banner and info unless quiet mode is enabled
+    if not getattr(args, 'quiet', False):
+        print(banner)
+        print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
+        print(f"Version: {__version__}\n")
+        print("Author: Reversec (reversec.com)\n")
 
     if args.command == "init":
         init_workspace(force=args.force, include_builtin=args.include_builtin)
