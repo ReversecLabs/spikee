@@ -16,15 +16,21 @@ Returns:
 import base64
 from typing import List
 
+from spikee.templates.plugin import Plugin
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text into Base64 encoding.
 
-    Args:
-        text (str): The input text.
+class Base64(Plugin):
+    def get_available_option_values(self) -> List[str]:
+        return None
 
-    Returns:
-        str: The transformed text in Base64 encoding.
-    """
-    return base64.b64encode(text.encode()).decode()
+    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+        """
+        Transforms the input text into Base64 encoding.
+
+        Args:
+            text (str): The input text.
+
+        Returns:
+            str: The transformed text in Base64 encoding.
+        """
+        return base64.b64encode(text.encode()).decode()

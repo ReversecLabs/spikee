@@ -21,63 +21,68 @@ import random
 import re
 from typing import List
 
-
-def obfuscate_with_splats(text: str) -> str:
-    """
-    Obfuscates the input text using splat-based techniques such as inserting asterisks,
-    breaking words with special characters, and spacing tricks while maintaining readability.
-
-    Args:
-        text (str): The input text.
-
-    Returns:
-        str: The obfuscated text.
-    """
-    obfuscated_text = []
-    for word in text.split():
-        obfuscated_word = word
-
-        # Randomly insert asterisks within words
-        if random.random() < 0.6:  # 60% chance
-            split_point = random.randint(1, len(word) - 1) if len(word) > 1 else 0
-            obfuscated_word = word[:split_point] + "*" + word[split_point:]
-
-        # Randomly pad words with splats
-        if random.random() < 0.4:  # 40% chance
-            obfuscated_word = "*" + obfuscated_word + "*"
-
-        obfuscated_text.append(obfuscated_word)
-
-    return " * ".join(obfuscated_text)  # Separating words with splats
+from spikee.templates.plugin import Plugin
 
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text using splat-based obfuscation while preserving substrings that match
-    the exclusion regex patterns.
+class SplatPlugin(Plugin):
+    def get_available_option_values(self) -> List[str]:
+        return None
 
-    Args:
-        text (str): The input text.
-        exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+    def obfuscate_with_splats(self, text: str) -> str:
+        """
+        Obfuscates the input text using splat-based techniques such as inserting asterisks,
+        breaking words with special characters, and spacing tricks while maintaining readability.
 
-    Returns:
-        str: The obfuscated text using splat-based techniques.
-    """
-    if exclude_patterns:
-        compound = "(" + "|".join(exclude_patterns) + ")"
-        compound_re = re.compile(compound)
-        chunks = re.split(compound, text)
-    else:
-        chunks = [text]
-        compound_re = None
+        Args:
+            text (str): The input text.
 
-    result_chunks = []
-    for chunk in chunks:
-        if compound_re and compound_re.fullmatch(chunk):
-            # Leave excluded substrings untouched.
-            result_chunks.append(chunk)
+        Returns:
+            str: The obfuscated text.
+        """
+        obfuscated_text = []
+        for word in text.split():
+            obfuscated_word = word
+
+            # Randomly insert asterisks within words
+            if random.random() < 0.6:  # 60% chance
+                split_point = random.randint(1, len(word) - 1) if len(word) > 1 else 0
+                obfuscated_word = word[:split_point] + "*" + word[split_point:]
+
+            # Randomly pad words with splats
+            if random.random() < 0.4:  # 40% chance
+                obfuscated_word = "*" + obfuscated_word + "*"
+
+            obfuscated_text.append(obfuscated_word)
+
+        return " * ".join(obfuscated_text)  # Separating words with splats
+
+    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+        """
+        Transforms the input text using splat-based obfuscation while preserving substrings that match
+        the exclusion regex patterns.
+
+        Args:
+            text (str): The input text.
+            exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+
+        Returns:
+            str: The obfuscated text using splat-based techniques.
+        """
+        if exclude_patterns:
+            compound = "(" + "|".join(exclude_patterns) + ")"
+            compound_re = re.compile(compound)
+            chunks = re.split(compound, text)
         else:
-            transformed = obfuscate_with_splats(chunk)
-            result_chunks.append(transformed)
+            chunks = [text]
+            compound_re = None
 
-    return " ".join(result_chunks)
+        result_chunks = []
+        for chunk in chunks:
+            if compound_re and compound_re.fullmatch(chunk):
+                # Leave excluded substrings untouched.
+                result_chunks.append(chunk)
+            else:
+                transformed = self.obfuscate_with_splats(chunk)
+                result_chunks.append(transformed)
+
+        return " ".join(result_chunks)

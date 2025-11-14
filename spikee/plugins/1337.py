@@ -24,59 +24,65 @@ Returns:
 from typing import List
 import re
 
+from spikee.templates.plugin import Plugin
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text into 1337 speak while preserving any substring that
-    exactly matches one of the exclusion regex patterns.
 
-    If an exclusion list is provided, the plugin creates a compound regex by joining
-    the patterns. It then splits the text using re.split() so that any substring that
-    exactly matches one of the patterns is isolated and left unmodified. All other parts
-    are transformed using the leet dictionary.
+class LeetspeekPlugin(Plugin):
+    def get_available_option_values(self) -> List[str]:
+        return None
 
-    Args:
-        text (str): The input text.
-        exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+        """
+        Transforms the input text into 1337 speak while preserving any substring that
+        exactly matches one of the exclusion regex patterns.
 
-    Returns:
-        str: The transformed text.
-    """
-    leet_dict = {
-        "A": "4",
-        "a": "4",
-        "E": "3",
-        "e": "3",
-        "I": "1",
-        "i": "1",
-        "O": "0",
-        "o": "0",
-        "T": "7",
-        "t": "7",
-        "S": "5",
-        "s": "5",
-        "B": "8",
-        "b": "8",
-        "G": "6",
-        "g": "6",
-        "Z": "2",
-        "z": "2",
-    }
+        If an exclusion list is provided, the plugin creates a compound regex by joining
+        the patterns. It then splits the text using re.split() so that any substring that
+        exactly matches one of the patterns is isolated and left unmodified. All other parts
+        are transformed using the leet dictionary.
 
-    if exclude_patterns:
-        compound = "(" + "|".join(exclude_patterns) + ")"
-        compound_re = re.compile(compound)
-        chunks = re.split(compound, text)
-    else:
-        chunks = [text]
-        compound_re = None
+        Args:
+            text (str): The input text.
+            exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
 
-    result_chunks = []
-    for chunk in chunks:
-        if compound_re and compound_re.fullmatch(chunk):
-            # Leave excluded substrings untouched.
-            result_chunks.append(chunk)
+        Returns:
+            str: The transformed text.
+        """
+        leet_dict = {
+            "A": "4",
+            "a": "4",
+            "E": "3",
+            "e": "3",
+            "I": "1",
+            "i": "1",
+            "O": "0",
+            "o": "0",
+            "T": "7",
+            "t": "7",
+            "S": "5",
+            "s": "5",
+            "B": "8",
+            "b": "8",
+            "G": "6",
+            "g": "6",
+            "Z": "2",
+            "z": "2",
+        }
+
+        if exclude_patterns:
+            compound = "(" + "|".join(exclude_patterns) + ")"
+            compound_re = re.compile(compound)
+            chunks = re.split(compound, text)
         else:
-            transformed = "".join(leet_dict.get(c, c) for c in chunk)
-            result_chunks.append(transformed)
-    return "".join(result_chunks)
+            chunks = [text]
+            compound_re = None
+
+        result_chunks = []
+        for chunk in chunks:
+            if compound_re and compound_re.fullmatch(chunk):
+                # Leave excluded substrings untouched.
+                result_chunks.append(chunk)
+            else:
+                transformed = "".join(leet_dict.get(c, c) for c in chunk)
+                result_chunks.append(transformed)
+        return "".join(result_chunks)

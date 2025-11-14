@@ -1,23 +1,30 @@
-from typing import Optional
+from typing import List, Optional
 
-CANARY_RESPONSES = "EN-CHECK IT-CHECK restricted-check"
-
-_CALL_COUNT = 0
-_SUCCESS_THRESHOLD = 3
+from spikee.templates.target import Target
 
 
-def get_available_option_values():
-    return None
+class PartialSuccessTarget(Target):
+    CANARY_RESPONSES = "EN-CHECK IT-CHECK restricted-check"
+    SUCCESS_THRESHOLD = 3
 
+    def __init__(self) -> None:
+        self._call_count = 0
 
-def process_input(
-    input_text: str,
-    system_message: Optional[str] = None,
-    target_options: Optional[str] = None,
-    logprobs: bool = False,
-):
-    global _CALL_COUNT
-    _CALL_COUNT += 1
-    if _CALL_COUNT <= _SUCCESS_THRESHOLD:
-        return CANARY_RESPONSES
-    return "Sorry, I can't answer that."
+    @property
+    def __name__(self) -> str:
+        return "partial_success"
+
+    def get_available_option_values(self) -> List[str]:
+        return []
+
+    def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = None,
+        logprobs: bool = False,
+    ) -> str:
+        self._call_count += 1
+        if self._call_count <= self.SUCCESS_THRESHOLD:
+            return self.CANARY_RESPONSES
+        return "Sorry, I can't answer that."

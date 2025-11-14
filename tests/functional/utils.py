@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 
@@ -79,11 +80,20 @@ def load_plugin_module(project_root: Path, module_path: str):
     module_rel = Path(*module_path.split("."))
     module_file = (project_root / module_rel).with_suffix(".py")
     assert module_file.exists(), f"Plugin module file not found: {module_file}"
-    spec = importlib.util.spec_from_file_location(module_path, module_file)
-    assert spec and spec.loader, f"Unable to load spec for {module_path}"
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    project_root_resolved = str(project_root.resolve())
+    inserted = False
+    if project_root_resolved not in sys.path:
+        sys.path.insert(0, project_root_resolved)
+        inserted = True
+    try:
+        spec = importlib.util.spec_from_file_location(module_path, module_file)
+        assert spec and spec.loader, f"Unable to load spec for {module_path}"
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        if inserted and sys.path[0] == project_root_resolved:
+            sys.path.pop(0)
 
 
 def extract_results_path(stdout: str, workspace: Path) -> Path:

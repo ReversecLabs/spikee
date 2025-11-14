@@ -18,3 +18,4 @@ pandas
 openpyxl
 boto3
 azure-ai-inference
+fpdf

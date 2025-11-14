@@ -40,93 +40,109 @@ Returns:
 import random
 import numpy as np
 import tiktoken
+from typing import List, Dict, Any, Tuple
 
-# Default parameters.
-n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
-n_tokens_change = 4  # Maximum tokens to change per iteration.
-
-
-def insert_adv_string(document, adv_string, payload=None):
-    """
-    Inserts the adversarial string into the document.
-    If a payload is provided and found in the document, the adversarial string is appended
-    immediately after the first occurrence of the payload.
-    Otherwise, the adversarial string is appended to the end of the document.
-    """
-    if payload:
-        idx = document.find(payload)
-        if idx != -1:
-            return (
-                document[: idx + len(payload)]
-                + " "
-                + adv_string
-                + document[idx + len(payload) :]
-            )
-    return document + "\n" + adv_string
+from spikee.templates.attack import Attack
 
 
-def attack(
-    entry, target_module, call_judge, max_iterations, attempts_bar=None, bar_lock=None
-):
-    original_text = entry.get("text", "")
-    system_message = entry.get("system_message", None)
-    payload_field = entry.get("payload", "")
+class RandomSuffixattack(Attack):
+    @property
+    def __name__(self):
+        return "random_suffix_search"
 
-    # Use tiktoken directly for OpenAI models.
-    tokenizer = tiktoken.get_encoding("cl100k_base")
-    max_token_value = tokenizer.n_vocab
+    # Default parameters.
+    n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
+    n_tokens_change = 4  # Maximum tokens to change per iteration.
 
-    # Initialize the adversarial tokens as a random sequence.
-    adv_tokens = np.random.randint(0, max_token_value, n_tokens_adv).tolist()
+    def get_available_option_values(self) -> List[str]:
+        return None
 
-    # Build the initial candidate prompt.
-    candidate = insert_adv_string(
-        original_text, tokenizer.decode(adv_tokens), payload=payload_field
-    )
-    response = ""
+    def insert_adv_string(self, document, adv_string, payload=None):
+        """
+        Inserts the adversarial string into the document.
+        If a payload is provided and found in the document, the adversarial string is appended
+        immediately after the first occurrence of the payload.
+        Otherwise, the adversarial string is appended to the end of the document.
+        """
+        if payload:
+            idx = document.find(payload)
+            if idx != -1:
+                return (
+                    document[: idx + len(payload)]
+                    + " "
+                    + adv_string
+                    + document[idx + len(payload):]
+                )
+        return document + "\n" + adv_string
 
-    # Main random search loop.
-    for i in range(1, max_iterations + 1):
-        # Randomly choose a starting index for substitution.
-        if n_tokens_adv >= n_tokens_change:
-            substitute_pos_start = random.randint(0, n_tokens_adv - n_tokens_change)
-        else:
-            substitute_pos_start = 0
+    def attack(
+        self,
+        entry: Dict[str, Any],
+        target_module: Any,
+        call_judge: callable,
+        max_iterations: int,
+        attempts_bar=None,
+        bar_lock=None,
+    ) -> Tuple[int, bool, str, str]:
+        original_text = entry.get("text", "")
+        system_message = entry.get("system_message", None)
+        payload_field = entry.get("payload", "")
 
-        # Generate new random tokens for substitution.
-        substitution_tokens = np.random.randint(
-            0, max_token_value, n_tokens_change
-        ).tolist()
-        # Replace the selected tokens in adv_tokens.
-        adv_tokens[substitute_pos_start : substitute_pos_start + n_tokens_change] = (
-            substitution_tokens
+        # Use tiktoken directly for OpenAI models.
+        tokenizer = tiktoken.get_encoding("cl100k_base")
+        max_token_value = tokenizer.n_vocab
+
+        # Initialize the adversarial tokens as a random sequence.
+        adv_tokens = np.random.randint(0, max_token_value, self.n_tokens_adv).tolist()
+
+        # Build the initial candidate prompt.
+        candidate = self.insert_adv_string(
+            original_text, tokenizer.decode(adv_tokens), payload=payload_field
         )
+        response = ""
 
-        # Decode the modified token sequence into text.
-        adv = tokenizer.decode(adv_tokens).replace("<s>", "")
-        # Insert the adversarial suffix into the document.
-        candidate = insert_adv_string(original_text, adv, payload=payload_field)
+        # Main random search loop.
+        for i in range(1, max_iterations + 1):
+            # Randomly choose a starting index for substitution.
+            if self.n_tokens_adv >= self.n_tokens_change:
+                substitute_pos_start = random.randint(0, self.n_tokens_adv - self.n_tokens_change)
+            else:
+                substitute_pos_start = 0
 
-        try:
-            # Call process_input. The wrapper guarantees a tuple is returned.
-            response, _ = target_module.process_input(
-                candidate, system_message, logprobs=False
+            # Generate new random tokens for substitution.
+            substitution_tokens = np.random.randint(
+                0, max_token_value, self.n_tokens_change
+            ).tolist()
+            # Replace the selected tokens in adv_tokens.
+            adv_tokens[substitute_pos_start: substitute_pos_start + self.n_tokens_change] = (
+                substitution_tokens
             )
-            success = call_judge(entry, response)
-        except Exception as e:
-            success = False
-            response = str(e)
 
-        # Update progress bar safely.
-        if attempts_bar:
-            with bar_lock:
-                attempts_bar.update(1)
+            # Decode the modified token sequence into text.
+            adv = tokenizer.decode(adv_tokens).replace("<s>", "")
+            # Insert the adversarial suffix into the document.
+            candidate = self.insert_adv_string(original_text, adv, payload=payload_field)
 
-        if success:
+            try:
+                # Call process_input. The wrapper guarantees a tuple is returned.
+                response, _ = target_module.process_input(
+                    candidate, system_message, logprobs=False
+                )
+                success = call_judge(entry, response)
+            except Exception as e:
+                success = False
+                response = str(e)
+
+            # Update progress bar safely.
             if attempts_bar:
                 with bar_lock:
-                    remaining = max_iterations - i
-                    attempts_bar.total = attempts_bar.total - remaining
-            return i, True, candidate, response
+                    attempts_bar.update(1)
 
-    return max_iterations, False, candidate, response
+            if success:
+                if attempts_bar:
+                    with bar_lock:
+                        remaining = max_iterations - i
+                        attempts_bar.total = attempts_bar.total - remaining
+                return i, True, candidate, response
+
+        return max_iterations, False, candidate, response

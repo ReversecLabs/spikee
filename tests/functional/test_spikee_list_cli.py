@@ -35,19 +35,27 @@ def test_spikee_list_datasets(run_spikee, workspace_dir):
 
 def test_spikee_list_judges(run_spikee, workspace_dir):
     output_lines = _run_list(run_spikee, workspace_dir, "judges")
-    expected_builtins = {"canary", "regex", "test_judge"}
-    _assert_contains(output_lines, expected_builtins)
+    expected_builtins = {"canary", "regex"}
+    expected_local = {"test_judge", "test_judge_legacy"}
+    _assert_contains(output_lines, expected_builtins | expected_local)
 
 
 def test_spikee_list_targets(run_spikee, workspace_dir):
     output_lines = _run_list(run_spikee, workspace_dir, "targets")
-    expected_local = {"always_refuse", "always_success", "partial_success"}
+    expected_local = {
+        "always_refuse",
+        "always_refuse_legacy",
+        "always_success",
+        "always_success_legacy",
+        "partial_success",
+        "partial_success_legacy",
+    }
     expected_builtin = {"sample_target", "llm_mailbox"}
     _assert_contains(output_lines, expected_local | expected_builtin)
 
 
 def test_spikee_list_attacks(run_spikee, workspace_dir):
     output_lines = _run_list(run_spikee, workspace_dir, "attacks")
-    expected_local = {"mock_attack"}
+    expected_local = {"mock_attack", "mock_attack_legacy"}
     expected_builtin = {"anti_spotlighting", "best_of_n", "prompt_decomposition", "random_suffix_search"}
     _assert_contains(output_lines, expected_local | expected_builtin)
