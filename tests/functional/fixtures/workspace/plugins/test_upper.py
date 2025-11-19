@@ -1,2 +1,20 @@
-def transform(text, exclude_patterns=None, plugin_option=None):
-    return [text.upper()]
+from typing import List, Optional, Union
+
+from spikee.templates.plugin import Plugin
+
+
+class TestUpperPlugin(Plugin):
+    @property
+    def __name__(self) -> str:
+        return "test_upper"
+
+    def get_available_option_values(self) -> List[str]:
+        return []
+
+    def transform(
+        self,
+        text: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: Optional[str] = None,
+    ) -> Union[str, List[str]]:
+        return [text.upper()]

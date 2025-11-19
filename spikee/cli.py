@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .generator import generate_dataset
 from .tester import test_dataset
-from .results import analyze_results, rejudge_results, convert_results_to_excel
+from .results import analyze_results, rejudge_results, extract_results, dataset_comparison, convert_results_to_excel
 from .list import (
     list_seeds,
     list_datasets,
@@ -23,11 +23,11 @@ from .list import (
 
 
 banner = r"""
-   _____ _____ _____ _  ________ ______ 
+   _____ _____ _____ _  ________ ______
   / ____|  __ \_   _| |/ /  ____|  ____|
- | (___ | |__) || | | ' /| |__  | |__   
-  \___ \|  ___/ | | |  < |  __| |  __|  
-  ____) | |    _| |_| . \| |____| |____ 
+ | (___ | |__) || | | ' /| |__  | |__
+  \___ \|  ___/ | | |  < |  __| |  __|
+  ____) | |    _| |_| . \| |____| |____
  |_____/|_|   |_____|_|\_\______|______|
 """
 
@@ -70,9 +70,8 @@ def convert_to_new_args(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation"
+        description=f"SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation - Version: {__version__}\n"
     )
-    
     parser.add_argument(
         "-q", "--quiet",
         action="store_true",
@@ -138,7 +137,7 @@ def main():
         "--format",
         choices=["user-input", "full-prompt", "burp"],
         default="user-input",
-        help="Output format: user-input (default, for apps), full-prompt, or burp",
+        help="Output format: user-input (default, for apps), full-prompt (for llms), or burp",
     )
     parser_generate.add_argument(
         "--spotlighting-data-markers",
@@ -191,8 +190,14 @@ def main():
     parser_test.add_argument(
         "--dataset",
         type=str,
-        required=True,
-        help="Path to the dataset file (local workspace)",
+        action="append",
+        help="Path to a dataset file (local workspace)",
+    )
+    parser_test.add_argument(
+        "--dataset-folder",
+        type=str,
+        action="append",
+        help="Path to a dataset folder containing multiple JSONL files",
     )
     parser_test.add_argument(
         "--target",
@@ -234,7 +239,7 @@ def main():
         "--resume-file",
         type=str,
         default=None,
-        help="Path to a results JSONL file to resume from",
+        help="Path to a results JSONL file to resume from. Only works with a single dataset.",
     )
     parser_test.add_argument(
         "--throttle",
@@ -276,12 +281,12 @@ def main():
     group_resume.add_argument(
         "--auto-resume",
         action="store_true",
-        help="(non-tty) silently pick the latest matching results file if present; (tty) still prompts",
+        help="Silently pick the latest matching results file if present",
     )
     group_resume.add_argument(
         "--no-auto-resume",
         action="store_true",
-        help="(tty) disable interactive auto-resume prompt",
+        help="Create new results file, do not attempt to resume",
     )
 
     # === [RESULTS] Sub-command ================================================
@@ -295,19 +300,38 @@ def main():
         "analyze", help="Analyze the results JSONL file"
     )
     parser_analyze.add_argument(
-        "--result-file", type=str, required=True, help="Path to the results JSONL file"
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to a results JSONL file"
+    )
+    parser_analyze.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
     )
     parser_analyze.add_argument(
         "--false-positive-checks",
         type=str,
         default=None,
-        help="Path to a JSONL file with benign prompts for false positive analysis",
+        help="Path to a JSONL file with benign prompts for false positive analysis. Only works with a single dataset.",
     )
     parser_analyze.add_argument(
         "--output-format",
         choices=["console", "html"],
         default="console",
         help="Output format: console (default) or html",
+    )
+    parser_analyze.add_argument(
+        "--overview",
+        action="store_true",
+        help="Only output the general statistics of results files.",
+    )
+    parser_analyze.add_argument(
+        "--combine",
+        action="store_true",
+        help="Combine results from multiple files into a single analysis.",
     )
 
     # --- rejudge
@@ -318,8 +342,13 @@ def main():
         "--result-file",
         type=str,
         action="append",
-        required=True,
-        help="Path to the results JSONL file",
+        help="Path to a results JSONL file",
+    )
+    parser_rejudge.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
     )
     parser_rejudge.add_argument(
         "--judge-options",
@@ -331,6 +360,86 @@ def main():
         "--resume",
         action="store_true",
         help="This will attempt to resume a re-judge the most recent results file. (Requires filename to be unmodified and in the same folder.)",
+    )
+
+    # --- extract
+    parser_extract = subparsers_results.add_parser(
+        "extract", help="Extract categories of prompts from results JSONL files"
+    )
+    parser_extract.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to a results JSONL file",
+    )
+    parser_extract.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
+    )
+    parser_extract.add_argument(
+        "--category",
+        help="Extracts prompts by category: success (default), fail, error, custom",
+    )
+    parser_extract.add_argument(
+        "--custom-search",
+        type=str,
+        action="append",
+        default=None,
+        help="Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match",
+    )
+    parser_extract.add_argument(
+        "--tag", default=None, help="Include a tag at the end of the results filename"
+    )
+
+    # -- dataset-comparison
+    parser_dataset_comparison = subparsers_results.add_parser(
+        "dataset-comparison", help="Compare a dataset's results across multiple targets"
+    )
+    parser_dataset_comparison.add_argument(
+        "--dataset",
+        type=str,
+        required=True,
+        help="Path to the dataset JSONL file",
+    )
+    parser_dataset_comparison.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to an results JSONL file, generated using the dataset",
+    )
+    parser_dataset_comparison.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files, generated using the dataset",
+    )
+    parser_dataset_comparison.add_argument(
+        "--success-threshold",
+        type=float,
+        default=0.8,
+        help="Success threshold for entries (default: 0.8). Success rate is defined as successes / no. datasets",
+    )
+    parser_dataset_comparison.add_argument(
+        "--success-definition",
+        choices=["gt", "lt"],
+        default="gt",
+        help="Definition of success threshold: gt (greater than, default) or lt (less than)",
+    )
+    parser_dataset_comparison.add_argument(
+        "-n", "--number",
+        type=int,
+        default="-1",
+        help="Number of top entries to include in the comparison (default: all entries)",
+    )
+    parser_dataset_comparison.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip validation of dataset entries against results files",
+    )
+    parser_dataset_comparison.add_argument(
+        "--tag", default=None, help="Include a tag at the end of the results filename"
     )
 
     # --- convert-to-excel
@@ -376,6 +485,10 @@ def main():
             analyze_results(args)
         elif args.results_command == "rejudge":
             rejudge_results(args)
+        elif args.results_command == "extract":
+            extract_results(args)
+        elif args.results_command == "dataset-comparison":
+            dataset_comparison(args)
         elif args.results_command == "convert-to-excel":
             convert_results_to_excel(args)
         else:

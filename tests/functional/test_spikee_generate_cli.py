@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from spikee.templates.plugin import Plugin as BasePlugin
+
 from .utils import (
     base_long_id,
     filter_entries,
@@ -21,6 +23,13 @@ _filter_entries = filter_entries
 _base_long_id = base_long_id
 _split_base_and_plugin_entries = split_base_and_plugin_entries
 _load_plugin_module = load_plugin_module
+
+
+def _instantiate_plugin(module):
+    for attr in vars(module).values():
+        if isinstance(attr, type) and issubclass(attr, BasePlugin) and attr is not BasePlugin:
+            return attr()
+    raise AssertionError(f"No Plugin subclass found in {module.__name__}")
 
 
 @pytest.mark.parametrize("match_languages", [True, False])
@@ -90,6 +99,29 @@ def test_generate_user_input_produces_expected_entries(
     assert all(entry.get("plugin") in (None, "None") for entry in entries)
 
 
+def test_generate_inserts_payload_at_document_placeholder(run_spikee, workspace_dir):
+    dataset_path, _ = _run_generate(
+        run_spikee,
+        workspace_dir,
+        ["--positions", "start"],
+        seed_folder="datasets/seeds-functional-placeholder",
+    )
+    entries = _read_jsonl(dataset_path)
+
+    assert len(entries) == 1
+    entry = entries[0]
+
+    assert entry["document_id"] == "doc-placeholder"
+    assert entry["position"] == "fixed"
+
+    expected_payload = "!! SAY HELLO TO THE USER !!"
+    expected_text = "User start \n!! SAY HELLO TO THE USER !!\n user end"
+
+    assert entry["payload"] == expected_payload
+    assert entry["text"] == expected_text
+    assert "<PLACEHOLDER>" not in entry["text"]
+
+
 @pytest.mark.parametrize("match_languages", [True, False])
 def test_generate_with_standalone_inputs_adds_entries(
     run_spikee, workspace_dir, match_languages
@@ -122,19 +154,20 @@ def test_generate_with_standalone_inputs_adds_entries(
 
 
 @pytest.mark.parametrize("match_languages", [True, False])
+@pytest.mark.parametrize("plugin_name", ["test_repeat", "test_repeat_legacy"])
 def test_generate_with_single_plugin_creates_variations(
-    run_spikee, workspace_dir, match_languages
+    run_spikee, workspace_dir, match_languages, plugin_name
 ):
     dataset_path, _ = _run_generate(
         run_spikee,
         workspace_dir,
-        ["--plugins", "test_repeat"],
+        ["--plugins", plugin_name],
         match_languages=match_languages,
     )
     entries = _read_jsonl(dataset_path)
 
     base_entries = [entry for entry in entries if entry.get("plugin") in (None, "None")]
-    plugin_entries = [entry for entry in entries if entry.get("plugin") == "test_repeat"]
+    plugin_entries = [entry for entry in entries if entry.get("plugin") == plugin_name]
 
     expected_base = 6 if match_languages else 12
     expected_plugin = expected_base * 2
@@ -154,20 +187,21 @@ def test_generate_with_single_plugin_creates_variations(
 
 
 @pytest.mark.parametrize("match_languages", [True, False])
+@pytest.mark.parametrize("plugin_name", ["test_repeat", "test_repeat_legacy"])
 def test_generate_with_plugin_options_controls_variation_count(
-    run_spikee, workspace_dir, match_languages
+    run_spikee, workspace_dir, match_languages, plugin_name
 ):
-    option = "test_repeat:n_variants=5"
+    option = f"{plugin_name}:n_variants=5"
     dataset_path, _ = _run_generate(
         run_spikee,
         workspace_dir,
-        ["--plugins", "test_repeat", "--plugin-options", option],
+        ["--plugins", plugin_name, "--plugin-options", option],
         match_languages=match_languages,
     )
     entries = _read_jsonl(dataset_path)
 
     base_entries = [entry for entry in entries if entry.get("plugin") in (None, "None")]
-    plugin_entries = [entry for entry in entries if entry.get("plugin") == "test_repeat"]
+    plugin_entries = [entry for entry in entries if entry.get("plugin") == plugin_name]
 
     expected_base = 6 if match_languages else 12
     expected_plugin = expected_base * 5
@@ -177,20 +211,22 @@ def test_generate_with_plugin_options_controls_variation_count(
 
     variants_by_long_id = {}
     for entry in plugin_entries:
-        base_id = _base_long_id(entry["long_id"], "test_repeat")
+        base_id = _base_long_id(entry["long_id"], plugin_name)
         variants_by_long_id[base_id] = variants_by_long_id.get(base_id, 0) + 1
 
     assert all(count == 5 for count in variants_by_long_id.values())
 
 
 @pytest.mark.parametrize("match_languages", [True, False])
+@pytest.mark.parametrize("repeat_plugin", ["test_repeat", "test_repeat_legacy"])
+@pytest.mark.parametrize("upper_plugin", ["test_upper", "test_upper_legacy"])
 def test_generate_with_multiple_plugins_combines_results(
-    run_spikee, workspace_dir, match_languages
+    run_spikee, workspace_dir, match_languages, repeat_plugin, upper_plugin
 ):
     dataset_path, _ = _run_generate(
         run_spikee,
         workspace_dir,
-        ["--plugins", "test_repeat", "test_upper"],
+        ["--plugins", repeat_plugin, upper_plugin],
         match_languages=match_languages,
     )
     entries = _read_jsonl(dataset_path)
@@ -200,19 +236,21 @@ def test_generate_with_multiple_plugins_combines_results(
     expected_upper = expected_base
 
     plugin_counts = {
-        "test_repeat": sum(1 for entry in entries if entry.get("plugin") == "test_repeat"),
-        "test_upper": sum(1 for entry in entries if entry.get("plugin") == "test_upper"),
+        repeat_plugin: sum(1 for entry in entries if entry.get("plugin") == repeat_plugin),
+        upper_plugin: sum(1 for entry in entries if entry.get("plugin") == upper_plugin),
     }
-    assert plugin_counts["test_repeat"] == expected_repeat
-    assert plugin_counts["test_upper"] == expected_upper
+    assert plugin_counts[repeat_plugin] == expected_repeat
+    assert plugin_counts[upper_plugin] == expected_upper
 
     upper_variants = [
-        entry["payload"] for entry in entries if entry.get("plugin") == "test_upper"
+        entry["payload"] for entry in entries if entry.get("plugin") == upper_plugin
     ]
     assert all(variant == variant.upper() for variant in upper_variants)
 
     repeat_with_suffix = [
-        entry for entry in entries if entry.get("plugin") == "test_repeat" and entry["payload"].endswith("-repeat")
+        entry
+        for entry in entries
+        if entry.get("plugin") == repeat_plugin and entry["payload"].endswith("-repeat")
     ]
     assert len(repeat_with_suffix) == expected_base
 
@@ -243,11 +281,12 @@ def test_generate_with_builtin_deterministic_plugins(run_spikee, workspace_dir, 
         assert plugin_entries, f"No entries generated for plugin {plugin}"
 
         module = _load_plugin_module(project_root, module_path)
+        plugin_instance = _instantiate_plugin(module)
 
         for entry in plugin_entries:
             base_long_id = _base_long_id(entry["long_id"], plugin)
             base_entry = base_by_long_id[base_long_id]
-            expected = module.transform(
+            expected = plugin_instance.transform(
                 base_entry["payload"],
                 base_entry.get("exclude_from_transformations_regex"),
             )

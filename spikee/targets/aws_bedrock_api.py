@@ -15,75 +15,78 @@ Exposed:
     get_available_option_values() -> list of supported keys (default marked)
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
+from spikee.templates.target import Target
 
 from dotenv import load_dotenv
 from langchain_aws import ChatBedrock
 from typing import List, Dict, Optional
 
-# Load environment variables (e.g., AWS credentials)
-load_dotenv()
 
-# Map shorthand keys to AWS Bedrock model identifiers
-_OPTION_MAP: Dict[str, str] = {
-    "claude35-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
-    "claude35-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "claude37-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-}
+class AWSBedrockTarget(Target):
 
-# Default key
-_DEFAULT_KEY = "claude35-haiku"
+    # Map shorthand keys to AWS Bedrock model identifiers
+    _OPTION_MAP: Dict[str, str] = {
+        "claude35-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+        "claude35-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "claude37-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    }
 
+    # Default key
+    _DEFAULT_KEY = "claude35-haiku"
 
-def get_available_option_values() -> List[str]:
-    """Return supported keys; first option is default."""
-    options = [_DEFAULT_KEY]  # Default first
-    options.extend([key for key in _OPTION_MAP if key != _DEFAULT_KEY])
-    return options
+    def get_available_option_values(self) -> List[str]:
+        """Return supported keys; first option is default."""
+        options = [self._DEFAULT_KEY]  # Default first
+        options.extend([key for key in self._OPTION_MAP if key != self._DEFAULT_KEY])
+        return options
 
+    def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = None,
+    ) -> str:
+        """
+        Send messages to an AWS Bedrock model by key.
 
-def process_input(
-    input_text: str,
-    system_message: Optional[str] = None,
-    target_options: Optional[str] = None,
-) -> str:
-    """
-    Send messages to an AWS Bedrock model by key.
+        Raises:
+            ValueError if target_options is provided but invalid.
+        """
+        # Determine key or default
+        key = target_options if target_options is not None else self._DEFAULT_KEY
+        if key not in self._OPTION_MAP:
+            valid = ", ".join(self.get_available_option_values())
+            raise ValueError(f"Unknown AWS Bedrock key '{key}'. Valid keys: {valid}")
 
-    Raises:
-        ValueError if target_options is provided but invalid.
-    """
-    # Determine key or default
-    key = target_options if target_options is not None else _DEFAULT_KEY
-    if key not in _OPTION_MAP:
-        valid = ", ".join(get_available_option_values())
-        raise ValueError(f"Unknown AWS Bedrock key '{key}'. Valid keys: {valid}")
+        model_id = self._OPTION_MAP[key]
 
-    model_id = _OPTION_MAP[key]
+        # Initialize Bedrock client
+        llm = ChatBedrock(
+            model_id=model_id,
+            model_kwargs={"temperature": 0},
+        )
 
-    # Initialize Bedrock client
-    llm = ChatBedrock(
-        model_id=model_id,
-        model_kwargs={"temperature": 0},
-    )
+        # Build messages
+        messages: List[tuple] = []
+        if system_message:
+            messages.append(("system", system_message))
+        messages.append(("user", input_text))
 
-    # Build messages
-    messages: List[tuple] = []
-    if system_message:
-        messages.append(("system", system_message))
-    messages.append(("user", input_text))
+        # Invoke model
+        try:
+            ai_msg = llm.invoke(messages)
+            return ai_msg.content
 
-    # Invoke model
-    try:
-        ai_msg = llm.invoke(messages)
-        return ai_msg.content
-    except Exception as e:
-        print(f"Error during AWS Bedrock completion ({model_id}): {e}")
-        raise
+        except Exception as e:
+            print(f"Error during AWS Bedrock completion ({model_id}): {e}")
+            raise
 
 
 if __name__ == "__main__":
-    print("Supported Bedrock keys:", get_available_option_values())
+    target = AWSBedrockTarget()
+    print("Supported Bedrock keys:", target.get_available_option_values())
     try:
-        print(process_input("Hello!", target_options="claude35-sonnet"))
+        load_dotenv()
+        print(target.process_input("Hello!", target_options="claude35-sonnet"))
     except Exception as err:
         print("Error:", err)

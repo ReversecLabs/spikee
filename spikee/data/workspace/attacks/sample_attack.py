@@ -50,90 +50,97 @@ Notes:
 import random
 from typing import List
 
-
-def get_available_option_values() -> List[str]:
-    """Return supported attack options; first option is default."""
-    return ["strategy=random", "strategy=aggressive", "strategy=stealth"]
+from spikee.templates.attack import Attack
 
 
-def attack(
-    entry,
-    target_module,
-    call_judge,
-    max_iterations,
-    attempts_bar=None,
-    bar_lock=None,
-    attack_option=None,
-):
-    """
-    Executes a dynamic attack on the given entry.
+class SampleAttack(Attack):
+    @property
+    def __name__(self):
+        return "sample_attack"
 
-    This sample attack plugin operates on either the malicious payload (if provided) or the full input.
-    For each iteration (up to max_iterations), it creates a modified candidate by appending a random
-    digit (0-9) to the base text. It then calls target_module.process_input() with the modified text,
-    and uses call_judge() to determine if the attack was successful.
+    def get_available_option_values(self) -> List[str]:
+        """Return supported attack options; first option is default."""
+        return ["strategy=random", "strategy=aggressive", "strategy=stealth"]
 
-    The plugin must ensure it does not exceed max_iterations.
+    def attack(
+        self,
+        entry,
+        target_module,
+        call_judge,
+        max_iterations,
+        attempts_bar=None,
+        bar_lock=None,
+        attack_option=None,
+    ):
+        """
+        Executes a dynamic attack on the given entry.
 
-    Args:
-        entry (dict): The dataset entry. Expected keys: "text", optionally "payload" and
-                      "exclude_from_transformations_regex".
-        target_module (module): The target module (must implement process_input(input_text, system_message)).
-        call_judge (function): A function that accepts (entry, llm_response) and returns True if the attack
-                               is successful.
-        max_iterations (int): The maximum number of attack iterations to try.
-        attempts_bar (tqdm, optional): A progress bar to update for each iteration.
-        attack_option (str, optional): Configuration option like "strategy=aggressive".
+        This sample attack plugin operates on either the malicious payload (if provided) or the full input.
+        For each iteration (up to max_iterations), it creates a modified candidate by appending a random
+        digit (0-9) to the base text. It then calls target_module.process_input() with the modified text,
+        and uses call_judge() to determine if the attack was successful.
 
-    Returns:
-        tuple: (iterations_attempted, success_flag, modified_input, last_response)
-    """
-    # Parse attack option
-    strategy = "random"  # default
-    if attack_option and attack_option.startswith("strategy="):
-        strategy = attack_option.replace("strategy=", "")
+        The plugin must ensure it does not exceed max_iterations.
 
-    # Retrieve the full input text and, if available, the malicious payload.
-    original_text = entry.get("text", "")
-    payload = entry.get("payload", "")
-    # Use the payload if present; otherwise, operate on the full input.
-    base = payload if payload else original_text
+        Args:
+            entry (dict): The dataset entry. Expected keys: "text", optionally "payload" and
+                        "exclude_from_transformations_regex".
+            target_module (module): The target module (must implement process_input(input_text, system_message)).
+            call_judge (function): A function that accepts (entry, llm_response) and returns True if the attack
+                                is successful.
+            max_iterations (int): The maximum number of attack iterations to try.
+            attempts_bar (tqdm, optional): A progress bar to update for each iteration.
+            attack_option (str, optional): Configuration option like "strategy=aggressive".
 
-    last_response = ""
-    candidate_text = original_text  # default fallback
+        Returns:
+            tuple: (iterations_attempted, success_flag, modified_input, last_response)
+        """
+        # Parse attack option
+        strategy = "random"  # default
+        if attack_option and attack_option.startswith("strategy="):
+            strategy = attack_option.replace("strategy=", "")
 
-    for i in range(1, max_iterations + 1):
-        # Create a candidate variation based on strategy
-        if strategy == "aggressive":
-            candidate_base = base + f" [ATTACK_{i}]" + str(random.randint(0, 999))
-        elif strategy == "stealth":
-            candidate_base = base + str(random.randint(0, 9))
-        else:  # random strategy
-            candidate_base = base + str(random.randint(0, 9))
+        # Retrieve the full input text and, if available, the malicious payload.
+        original_text = entry.get("text", "")
+        payload = entry.get("payload", "")
+        # Use the payload if present; otherwise, operate on the full input.
+        base = payload if payload else original_text
 
-        # If operating on only the payload, substitute the modified payload back into the full text.
-        if payload and payload in original_text:
-            candidate_text = original_text.replace(payload, candidate_base)
-        else:
-            candidate_text = candidate_base
+        last_response = ""
+        candidate_text = original_text  # default fallback
 
-        try:
-            response, logprobs = target_module.process_input(
-                candidate_text, entry.get("system_message", None)
-            )
-            last_response = response
-            # Determine if this candidate is successful using the provided call_judge() function.
-            if call_judge(entry, response):
-                if attempts_bar:
-                    # If we finish early, update the progress bar to remove iterations we did not run
-                    remaining = max_iterations - i
-                    attempts_bar.total = attempts_bar.total - remaining
-                return i, True, candidate_text, response
-        except Exception as e:
-            last_response = str(e)
-        if attempts_bar:
-            with bar_lock:
-                attempts_bar.update(1)
-        # Implement throttling: wait briefly before next attempt.
-        # time.sleep(0.5)
-    return max_iterations, False, candidate_text, last_response
+        for i in range(1, max_iterations + 1):
+            # Create a candidate variation based on strategy
+            if strategy == "aggressive":
+                candidate_base = base + f" [ATTACK_{i}]" + str(random.randint(0, 999))
+            elif strategy == "stealth":
+                candidate_base = base + str(random.randint(0, 9))
+            else:  # random strategy
+                candidate_base = base + str(random.randint(0, 9))
+
+            # If operating on only the payload, substitute the modified payload back into the full text.
+            if payload and payload in original_text:
+                candidate_text = original_text.replace(payload, candidate_base)
+            else:
+                candidate_text = candidate_base
+
+            try:
+                response, logprobs = target_module.process_input(
+                    candidate_text, entry.get("system_message", None)
+                )
+                last_response = response
+                # Determine if this candidate is successful using the provided call_judge() function.
+                if call_judge(entry, response):
+                    if attempts_bar:
+                        # If we finish early, update the progress bar to remove iterations we did not run
+                        remaining = max_iterations - i
+                        attempts_bar.total = attempts_bar.total - remaining
+                    return i, True, candidate_text, response
+            except Exception as e:
+                last_response = str(e)
+            if attempts_bar:
+                with bar_lock:
+                    attempts_bar.update(1)
+            # Implement throttling: wait briefly before next attempt.
+            # time.sleep(0.5)
+        return max_iterations, False, candidate_text, last_response

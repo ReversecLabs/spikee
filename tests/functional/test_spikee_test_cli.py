@@ -13,7 +13,13 @@ def _attack_base_name(entry):
 
 
 @pytest.mark.parametrize(
-    "target_name,expected_success", [("always_refuse", False), ("always_success", True)]
+    "target_name,expected_success",
+    [
+        ("always_refuse", False),
+        ("always_refuse_legacy", False),
+        ("always_success", True),
+        ("always_success_legacy", True),
+    ],
 )
 def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_success):
     dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
@@ -31,7 +37,11 @@ def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_su
     assert all(entry["success"] == expected_success for entry in results)
 
 
-def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir):
+@pytest.mark.parametrize("target_name", ["always_refuse", "always_refuse_legacy"])
+@pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
+def test_spikee_test_runs_attack_when_base_fails(
+    run_spikee, workspace_dir, target_name, attack_name
+):
     dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
     dataset_rel = dataset_path.relative_to(workspace_dir)
 
@@ -42,9 +52,9 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir):
             "--dataset",
             str(dataset_rel),
             "--target",
-            "always_refuse",
+            target_name,
             "--attack",
-            "mock_attack",
+            attack_name,
             "--attack-iterations",
             "5",
         ],
@@ -56,7 +66,7 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir):
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
-        entry for entry in results if _attack_base_name(entry) == "mock_attack"
+        entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
     assert len(base_results) == len(attack_results)
@@ -66,7 +76,11 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir):
         assert not attack_entry["success"]
 
 
-def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir):
+@pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
+@pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
+def test_spikee_test_skips_attack_when_base_succeeds(
+    run_spikee, workspace_dir, target_name, attack_name
+):
     dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
     dataset_rel = dataset_path.relative_to(workspace_dir)
 
@@ -77,9 +91,9 @@ def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir):
             "--dataset",
             str(dataset_rel),
             "--target",
-            "always_success",
+            target_name,
             "--attack",
-            "mock_attack",
+            attack_name,
             "--attack-iterations",
             "5",
         ],
@@ -91,7 +105,7 @@ def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir):
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
-        entry for entry in results if _attack_base_name(entry) == "mock_attack"
+        entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
     assert base_results
@@ -99,7 +113,11 @@ def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir):
     assert not attack_results
 
 
-def test_spikee_test_partial_success_target(run_spikee, workspace_dir):
+@pytest.mark.parametrize("target_name", ["partial_success", "partial_success_legacy"])
+@pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
+def test_spikee_test_partial_success_target(
+    run_spikee, workspace_dir, target_name, attack_name
+):
     dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
     dataset_rel = dataset_path.relative_to(workspace_dir)
 
@@ -110,9 +128,9 @@ def test_spikee_test_partial_success_target(run_spikee, workspace_dir):
             "--dataset",
             str(dataset_rel),
             "--target",
-            "partial_success",
+            target_name,
             "--attack",
-            "mock_attack",
+            attack_name,
             "--attack-iterations",
             "5",
         ],
@@ -124,7 +142,7 @@ def test_spikee_test_partial_success_target(run_spikee, workspace_dir):
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
-        entry for entry in results if _attack_base_name(entry) == "mock_attack"
+        entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
     assert len(base_results) > 0
@@ -138,8 +156,17 @@ def test_spikee_test_partial_success_target(run_spikee, workspace_dir):
     assert all(not entry["success"] for entry in attack_results)
 
 
-def test_spikee_test_custom_judge_default_mode(run_spikee, workspace_dir):
-    dataset_path = workspace_dir / "datasets" / "test_judge_dataset.jsonl"
+@pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
+@pytest.mark.parametrize("judge_variant", ["test_judge", "test_judge_legacy"])
+def test_spikee_test_custom_judge_default_mode(
+    run_spikee, workspace_dir, target_name, judge_variant
+):
+    dataset_filename = (
+        "test_judge_dataset_legacy.jsonl"
+        if judge_variant.endswith("_legacy")
+        else "test_judge_dataset.jsonl"
+    )
+    dataset_path = workspace_dir / "datasets" / dataset_filename
     assert dataset_path.exists()
 
     result = run_test_command(
@@ -149,7 +176,7 @@ def test_spikee_test_custom_judge_default_mode(run_spikee, workspace_dir):
             "--dataset",
             str(dataset_path),
             "--target",
-            "always_success",
+            target_name,
         ],
     )
 
@@ -159,8 +186,17 @@ def test_spikee_test_custom_judge_default_mode(run_spikee, workspace_dir):
     assert all(not entry["success"] for entry in results)
 
 
-def test_spikee_test_custom_judge_with_options(run_spikee, workspace_dir):
-    dataset_path = workspace_dir / "datasets" / "test_judge_dataset.jsonl"
+@pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
+@pytest.mark.parametrize("judge_variant", ["test_judge", "test_judge_legacy"])
+def test_spikee_test_custom_judge_with_options(
+    run_spikee, workspace_dir, target_name, judge_variant
+):
+    dataset_filename = (
+        "test_judge_dataset_legacy.jsonl"
+        if judge_variant.endswith("_legacy")
+        else "test_judge_dataset.jsonl"
+    )
+    dataset_path = workspace_dir / "datasets" / dataset_filename
     assert dataset_path.exists()
 
     result = run_test_command(
@@ -170,9 +206,9 @@ def test_spikee_test_custom_judge_with_options(run_spikee, workspace_dir):
             "--dataset",
             str(dataset_path),
             "--target",
-            "always_success",
+            target_name,
             "--judge-options",
-            "test_judge:mode=success",
+            f"{judge_variant}:mode=success",
         ],
     )
 

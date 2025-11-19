@@ -10,6 +10,8 @@ from rich.tree import Tree
 from rich.panel import Panel
 from rich.rule import Rule
 
+from spikee.utilities.modules import get_options_from_module
+
 console = Console()
 
 
@@ -64,7 +66,17 @@ def _has_options(path: Path) -> bool:
     try:
         tree = ast.parse(path.read_text())
         return any(
-            isinstance(n, ast.FunctionDef) and n.name == "get_available_option_values"
+            (
+                isinstance(n, ast.FunctionDef) and n.name == "get_available_option_values"
+            )
+            or (
+                isinstance(n, ast.ClassDef)
+                and any(
+                    isinstance(body_item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and body_item.name == "get_available_option_values"
+                    for body_item in n.body
+                )
+            )
             for n in tree.body
         )
     except Exception:
@@ -78,9 +90,9 @@ def _load_module(name, path: Path):
     return mod
 
 
-def _collect_local(local_dir: str):
+def _collect_local(module_type: str):
     entries = []
-    path = Path(os.getcwd()) / local_dir
+    path = Path(os.getcwd()) / module_type
     if path.is_dir():
         for p in sorted(path.glob("*.py")):
             if p.name == "__init__.py":
@@ -89,15 +101,15 @@ def _collect_local(local_dir: str):
             opts = None
             if _has_options(p):
                 try:
-                    mod = _load_module(f"{local_dir}.{name}", p)
-                    opts = mod.get_available_option_values()
+                    mod = _load_module(f"{module_type}.{name}", p)
+                    opts = get_options_from_module(mod, module_type)
                 except Exception:
                     opts = ["<error>"]
             entries.append((name, opts))
     return entries
 
 
-def _collect_builtin(pkg: str):
+def _collect_builtin(pkg: str, module_type: str):
     entries = []
     try:
         pkg_mod = importlib.import_module(pkg)
@@ -109,7 +121,7 @@ def _collect_builtin(pkg: str):
                 spec = importlib.util.find_spec(f"{pkg}.{name}")
                 if spec and spec.origin and _has_options(Path(spec.origin)):
                     mod = importlib.import_module(f"{pkg}.{name}")
-                    opts = mod.get_available_option_values()
+                    opts = get_options_from_module(mod, module_type)
             except Exception:
                 opts = ["<error>"]
             entries.append((name, opts))
@@ -154,23 +166,23 @@ def _render_section(title: str, local_entries, builtin_entries):
 
 def list_judges(args):
     local = _collect_local("judges")
-    builtin = _collect_builtin("spikee.judges")
+    builtin = _collect_builtin("spikee.judges", "judges")
     _render_section("Judges", local, builtin)
 
 
 def list_targets(args):
     local = _collect_local("targets")
-    builtin = _collect_builtin("spikee.targets")
+    builtin = _collect_builtin("spikee.targets", "targets")
     _render_section("Targets", local, builtin)
 
 
 def list_plugins(args):
     local = _collect_local("plugins")
-    builtin = _collect_builtin("spikee.plugins")
+    builtin = _collect_builtin("spikee.plugins", "plugins")
     _render_section("Plugins", local, builtin)
 
 
 def list_attacks(args):
     local = _collect_local("attacks")
-    builtin = _collect_builtin("spikee.attacks")
+    builtin = _collect_builtin("spikee.attacks", "attacks")
     _render_section("Attacks", local, builtin)

@@ -3,17 +3,26 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
+
 from .utils import (
     extract_results_path,
     read_jsonl,
-    run_generate_command,
     run_results_command,
     run_test_command,
 )
 
 
-def _create_judge_results(run_spikee, workspace_dir: Path):
-    dataset_path = workspace_dir / "datasets" / "test_judge_dataset.jsonl"
+def _judge_dataset_filename(judge_variant: str) -> str:
+    return (
+        "test_judge_dataset_legacy.jsonl"
+        if judge_variant.endswith("_legacy")
+        else "test_judge_dataset.jsonl"
+    )
+
+
+def _create_judge_results(run_spikee, workspace_dir: Path, target_name: str, judge_variant: str):
+    dataset_path = workspace_dir / "datasets" / _judge_dataset_filename(judge_variant)
     assert dataset_path.exists()
 
     result = run_test_command(
@@ -23,16 +32,18 @@ def _create_judge_results(run_spikee, workspace_dir: Path):
             "--dataset",
             str(dataset_path),
             "--target",
-            "always_success",
+            target_name,
             "--judge-options",
-            "test_judge:mode=fail",
+            f"{judge_variant}:mode=fail",
         ],
     )
     return extract_results_path(result.stdout, workspace_dir)
 
 
-def test_spikee_results_analyze(run_spikee, workspace_dir):
-    results_file = _create_judge_results(run_spikee, workspace_dir)
+@pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
+@pytest.mark.parametrize("judge_variant", ["test_judge", "test_judge_legacy"])
+def test_spikee_results_analyze(run_spikee, workspace_dir, target_name, judge_variant):
+    results_file = _create_judge_results(run_spikee, workspace_dir, target_name, judge_variant)
 
     analyze = run_results_command(
         run_spikee,
@@ -48,12 +59,12 @@ def test_spikee_results_analyze(run_spikee, workspace_dir):
     assert "Attack Success Rate" in output
 
 
-def test_spikee_results_rejudge_with_options(run_spikee, workspace_dir):
-    results_file = _create_judge_results(run_spikee, workspace_dir)
-
-    existing = {
-        path for path in results_file.parent.glob(f"{results_file.stem}-rejudge-*.jsonl")
-    }
+@pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
+@pytest.mark.parametrize("judge_variant", ["test_judge", "test_judge_legacy"])
+def test_spikee_results_rejudge_with_options(
+    run_spikee, workspace_dir, target_name, judge_variant
+):
+    results_file = _create_judge_results(run_spikee, workspace_dir, target_name, judge_variant)
 
     rejudge = run_results_command(
         run_spikee,
@@ -63,26 +74,28 @@ def test_spikee_results_rejudge_with_options(run_spikee, workspace_dir):
             "--result-file",
             str(results_file),
             "--judge-options",
-            "test_judge:mode=success",
+            f"{judge_variant}:mode=success",
         ],
     )
-    assert "Re-judging the following file(s)" in rejudge.stdout
+    assert "Currently Re-judging" in rejudge.stdout
 
-    # Identify new rejudge file
+    from spikee.utilities.files import extract_prefix_from_file_name
+
+    _, resource_name = extract_prefix_from_file_name(results_file.name)
+    expected_prefix = f"rejudge_{resource_name}_"
+
     timeout = time.time() + 5
     new_file = None
-    while time.time() < timeout and new_file is None:
-        candidates = {
+    while time.time() < timeout:
+        candidates = list(
             path
-            for path in results_file.parent.glob(
-                f"{results_file.stem}-rejudge-*.jsonl"
-            )
-        }
-        new_candidates = candidates - existing
-        if new_candidates:
-            new_file = max(new_candidates, key=lambda p: p.stat().st_mtime)
-        else:
-            time.sleep(0.1)
+            for path in results_file.parent.glob("rejudge_*.jsonl")
+            if path.name.startswith(expected_prefix)
+        )
+        if candidates:
+            new_file = max(candidates, key=lambda p: p.stat().st_mtime)
+            break
+        time.sleep(0.2)
 
     assert new_file and new_file.exists(), "Rejudge output file not created"
 

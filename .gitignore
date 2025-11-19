@@ -9,3 +9,5 @@ dist/
 /workspace
 demo
 llmwebmail-test
+.vscode
+.vscode/* 

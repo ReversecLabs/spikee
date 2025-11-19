@@ -20,47 +20,52 @@ Returns:
 import re
 from typing import List
 
-
-def hex_encode(text: str) -> str:
-    """
-    Encodes the input text into hexadecimal format.
-
-    Args:
-        text (str): The input text.
-
-    Returns:
-        str: The hex-encoded representation of the text.
-    """
-    return text.encode().hex()
+from spikee.templates.plugin import Plugin
 
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text into hexadecimal encoding while preserving any substring
-    that exactly matches one of the exclusion regex patterns.
+class HexPlugin(Plugin):
+    def get_available_option_values(self) -> List[str]:
+        return None
 
-    Args:
-        text (str): The input text.
-        exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+    def hex_encode(self, text: str) -> str:
+        """
+        Encodes the input text into hexadecimal format.
 
-    Returns:
-        str: The transformed text in hexadecimal encoding.
-    """
-    if exclude_patterns:
-        compound = "(" + "|".join(exclude_patterns) + ")"
-        compound_re = re.compile(compound)
-        chunks = re.split(compound, text)
-    else:
-        chunks = [text]
-        compound_re = None
+        Args:
+            text (str): The input text.
 
-    result_chunks = []
-    for chunk in chunks:
-        if compound_re and compound_re.fullmatch(chunk):
-            # Leave excluded substrings untouched.
-            result_chunks.append(chunk)
+        Returns:
+            str: The hex-encoded representation of the text.
+        """
+        return text.encode().hex()
+
+    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+        """
+        Transforms the input text into hexadecimal encoding while preserving any substring
+        that exactly matches one of the exclusion regex patterns.
+
+        Args:
+            text (str): The input text.
+            exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+
+        Returns:
+            str: The transformed text in hexadecimal encoding.
+        """
+        if exclude_patterns:
+            compound = "(" + "|".join(exclude_patterns) + ")"
+            compound_re = re.compile(compound)
+            chunks = re.split(compound, text)
         else:
-            transformed = hex_encode(chunk)
-            result_chunks.append(transformed)
+            chunks = [text]
+            compound_re = None
 
-    return " ".join(result_chunks)
+        result_chunks = []
+        for chunk in chunks:
+            if compound_re and compound_re.fullmatch(chunk):
+                # Leave excluded substrings untouched.
+                result_chunks.append(chunk)
+            else:
+                transformed = self.hex_encode(chunk)
+                result_chunks.append(transformed)
+
+        return " ".join(result_chunks)
