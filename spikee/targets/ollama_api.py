@@ -3,11 +3,6 @@ spikee/targets/ollama.py
 
 Unified Ollama target that invokes models based on a simple string key.
 
-Supported models:
-  - "phi4-mini"
-  - "gemma3"
-  - "llama3.2"
-
 Usage:
     target_options: str, one of the keys returned by get_available_option_values().
     If None, DEFAULT_KEY is used.
@@ -19,7 +14,7 @@ Exposed:
 
 from spikee.templates.target import Target
 
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
@@ -27,13 +22,6 @@ import requests  # needed to progromatically list available Ollama models
 
 
 class OllamaTarget(Target):
-    # Map shorthand keys to Ollama model identifiers
-    _OPTION_MAP: Dict[str, str] = {
-        "phi4-mini": "phi4-mini",
-        "gemma3": "gemma3",
-        "llama3.2": "llama3.2",
-    }
-
     # Default key
     _DEFAULT_KEY = "phi4-mini"
 
@@ -59,10 +47,7 @@ class OllamaTarget(Target):
             # Sucessfully returned list of models for ollama local instance.
             options = local_models
         else:
-            options = [self._DEFAULT_KEY]  # Default first
-            options.extend(
-                [key for key in self._OPTION_MAP if key != self._DEFAULT_KEY]
-            )
+            options = [self._DEFAULT_KEY]  # Default
         return options
 
     def process_input(
@@ -77,13 +62,16 @@ class OllamaTarget(Target):
         Raises:
             ValueError if target_options is provided but invalid.
         """
-        # Determine key or default
-        key = target_options if target_options is not None else self._DEFAULT_KEY
-        if key not in self._OPTION_MAP:
-            valid = ", ".join(self.get_available_option_values())
+        models = self.get_available_option_values()
+
+        # Use model specified in target_option.
+        # If none provided, default to first model in the list.
+        key = target_options if target_options is not None else models[0]
+        if key not in models:
+            valid = ", ".join(models)
             raise ValueError(f"Unknown Ollama key '{key}'. Valid keys: {valid}")
 
-        model_name = self._OPTION_MAP[key]
+        model_name = key
 
         # Initialize the Ollama client
         llm = ChatOllama(
@@ -113,7 +101,8 @@ if __name__ == "__main__":
     target = OllamaTarget()
     print("Supported Ollama keys:", target.get_available_option_values())
     try:
-        out = target.process_input("Hello!", target_options="llama3.2")
+        # Test request, using the default model.
+        out = target.process_input("Hello!", target_options=None)
         print(out)
     except Exception as err:
         print("Error:", err)

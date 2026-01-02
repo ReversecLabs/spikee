@@ -10,4 +10,5 @@ dist/
 demo
 llmwebmail-test
 .vscode
-.vscode/* 
+.vscode/*
+.sonar
