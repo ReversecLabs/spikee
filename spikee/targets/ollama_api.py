@@ -88,9 +88,11 @@ class OllamaTarget(Target):
         # Initialize the Ollama client
         llm = ChatOllama(
             model=model_name,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
+            num_predict=None, #maximum number of tokens to predict
+            client_kwargs={"timeout":30} #timeout in seconds (None = not configured)
+        ).with_retry(
+            stop_after_attempt=3,          # total attempts (1 initial + 2 retries)
+            wait_exponential_jitter=True,  # backoff with jitter
         )
 
         # Build messages (no separate system role)

@@ -114,10 +114,12 @@ def get_llm(options=None, max_tokens=8):
         model_name = options.replace("ollama-", "")
         return ChatOllama(
             model=model_name,
-            max_tokens=max_tokens,
+            num_predict=max_tokens, #maximum number of tokens to predict
             temperature=0,
-            timeout=None,
-            max_retries=2,
+            client_kwargs={"timeout":30} #timeout in seconds (None = not configured)
+        ).with_retry(
+            stop_after_attempt=2,          # total attempts (1 initial + 1 retry)
+            wait_exponential_jitter=True,  # backoff with jitter
         )
 
     elif options.startswith("bedrock-"):
