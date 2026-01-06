@@ -9,7 +9,7 @@ from rich.tree import Tree
 from rich.panel import Panel
 from rich.rule import Rule
 
-from spikee.utilities.modules import get_options_from_module
+from spikee.utilities.modules import get_options_from_module, get_prefix_from_module
 
 console = Console()
 
@@ -80,9 +80,17 @@ def _collect_local(module_type: str):
             try:
                 mod = _load_module(f"{module_type}.{name}", p)
                 opts = get_options_from_module(mod, module_type)
+                prefixes = get_prefix_from_module(mod, module_type)
+
+                if prefixes and len(prefixes) == 2:
+                    examples, prefixes = prefixes
+                else:
+                    examples = False
             except Exception:
                 opts = ["<error>"]
-            entries.append((name, opts))
+                prefixes = ["<error>"]
+                examples = False
+            entries.append((name, opts, prefixes, examples))
     return entries
 
 
@@ -97,9 +105,17 @@ def _collect_builtin(pkg: str, module_type: str):
             try:
                 mod = importlib.import_module(f"{pkg}.{name}")
                 opts = get_options_from_module(mod, module_type)
+                prefixes = get_prefix_from_module(mod, module_type)
+
+                if prefixes and len(prefixes) == 2:
+                    examples, prefixes = prefixes
+                else:
+                    examples = False
             except Exception:
                 opts = ["<error>"]
-            entries.append((name, opts))
+                prefixes = ["<error>"]
+                examples = False
+            entries.append((name, opts, prefixes, examples))
     except ModuleNotFoundError:
         pass
     return entries
@@ -107,34 +123,34 @@ def _collect_builtin(pkg: str, module_type: str):
 
 def _render_section(title: str, local_entries, builtin_entries):
     console.print(Rule(f"[bold]{title}[/bold]"))
-    # local
-    tree = Tree(f"[bold]{title} (local)[/bold]")
-    if local_entries:
-        for name, opts in local_entries:
-            node = tree.add(f"[bold]{name}[/bold]")
-            if opts is not None:
-                opt_line = (
-                    [f"[bold]{opts[0]} (default)[/bold]"] + opts[1:] if opts else []
-                )
-                node.add("Available options: " + ", ".join(opt_line))
-    else:
-        tree.add("(none)")
-    console.print(tree)
 
-    # built-in
-    tree2 = Tree(f"[bold]{title} (built-in)[/bold]")
-    if builtin_entries:
-        for name, opts in builtin_entries:
-            node = tree2.add(f"[bold]{name}[/bold]")
-            if opts is not None:
-                opt_line = (
-                    [f"[bold]{opts[0]} (default)[/bold]"] + opts[1:] if opts else []
-                )
-                node.add("Available options: " + ", ".join(opt_line))
-    else:
-        tree2.add("(none)")
-    console.print(tree2)
+    def print_section(entries, label) -> Tree:
+        tree = Tree(f"[bold]{title} ({label})[/bold]")
+        if entries:
+            for name, opts, prefixes, examples in entries:
+                node = tree.add(f"[bold]{name}[/bold]")
+                if opts is not None:
+                    opt_line = (
+                        [f"[bold]{opts[0]} (default)[/bold]"] + opts[1:] if opts else []
+                    )
+                    if examples:  # Presume it's an example if there are prefixes
+                        node.add("Example options: " + ", ".join(opt_line))
+                    else:
+                        node.add("Available options: " + ", ".join(opt_line))
 
+                if prefixes is not None:
+                    pref_line = prefixes if prefixes else []
+                    node.add("Supported prefixes: " + ", ".join(pref_line))
+        else:
+            tree.add("(none)")
+
+        return tree
+
+    local_tree = print_section(local_entries, "local")
+    console.print(local_tree)
+
+    builtin_tree = print_section(builtin_entries, "built-in")
+    console.print(builtin_tree)
 
 # --- Commands ---
 
