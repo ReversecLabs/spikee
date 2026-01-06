@@ -6,6 +6,7 @@ import threading
 import inspect
 import traceback
 import sys
+import multiprocessing
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
@@ -13,6 +14,7 @@ from datetime import datetime
 from InquirerPy import inquirer
 
 from .judge import annotate_judge_options, call_judge
+from .utilities.enums import Turn
 from .utilities.files import (
     read_jsonl_file,
     write_jsonl_file,
@@ -46,18 +48,26 @@ class RetryableError(Exception):
 class AdvancedTargetWrapper:
     """
     A wrapper for a target module's process_input method that incorporates both:
-      - A loop for a given number of independent attempts (num_attempts), and
       - A retry strategy for handling 429 errors (max_retries) with throttling.
+      - Transparent forwarding of only the kwargs the wrapped target supports.
 
     This is designed to be passed to the attack() function so that each call to process_input()
-    will try up to num_attempts times (each with up to max_retries on quota errors) before failing.
+    will try up to max_retries times before failing.
 
     Parameters:
       target_module: The original target module that provides process_input(input_text, system_message[, logprobs]).
       target_options: Target options, typically a string representing the name of the llm to call
-      num_attempts (int): Number of independent attempts to call process_input per invocation.
       max_retries (int): Maximum number of retries per attempt (e.g. on 429 errors).
       throttle (float): Number of seconds to wait after a successful call.
+
+    KWARGS (if supported):
+      target_options (str): User requested options to pass to the target.
+      logprobs (bool): Whether to request logprobs from the target.
+      input_id (str): Input identifier of current entry.
+      output_file (str): Output results file path.
+
+      spikee_session_id (str): Spikee session identifier - Multi-Turn.
+      backtrack (bool): Whether to backtrack the last turn - Multi-Turn.
     """
 
     def __init__(self, target_module, target_options=None, max_retries=3, throttle=0):
@@ -66,13 +76,18 @@ class AdvancedTargetWrapper:
         self.max_retries = max_retries
         self.throttle = throttle
 
+        self.config = self.target_module.config
+
         sig = inspect.signature(self.target_module.process_input)
         params = sig.parameters
-        # detect optional parameters that were only added in newer Spikee versions
+        # Detect support for optional features using available parameters and target config
         self.supports_options = "target_options" in params
         self.supports_logprobs = "logprobs" in params
         self.supports_input_id = "input_id" in params
         self.supports_output_file = "output_file" in params
+
+        self.supports_spikee_session_id = "spikee_session_id" in params
+        self.supports_backtrack = "backtrack" in params
 
     @classmethod
     def create_target_wrapper(cls, target_name, target_options, max_retries, throttle):
@@ -87,6 +102,10 @@ class AdvancedTargetWrapper:
             target_options=target_options,
         )
 
+    def get_target(self):
+        """Returns the underlying target module."""
+        return self.target_module
+
     def process_input(
         self,
         input_text,
@@ -94,6 +113,8 @@ class AdvancedTargetWrapper:
         logprobs=False,
         input_id=None,
         output_file=None,
+        spikee_session_id=None,
+        backtrack=False,
     ):
         last_error = None
         retries = 0
@@ -111,6 +132,10 @@ class AdvancedTargetWrapper:
                     kwargs["input_id"] = input_id
                 if self.supports_output_file:
                     kwargs["output_file"] = output_file
+                if self.supports_spikee_session_id:
+                    kwargs["spikee_session_id"] = spikee_session_id
+                if self.supports_backtrack:
+                    kwargs["backtrack"] = backtrack
 
                 # Delegate to the wrapped process_input
                 if kwargs:
@@ -122,16 +147,15 @@ class AdvancedTargetWrapper:
                         input_text, system_message
                     )
 
-                # Unpack (response, logprobs) if tuple returned
+                # Unpack (response, meta) if tuple returned
                 if isinstance(result, tuple) and len(result) == 2:
-                    response, lp = result
+                    response, meta = result
                 else:
-                    response, lp = result, None
-
+                    response, meta = result, None
                 if self.throttle > 0:
                     time.sleep(self.throttle)
 
-                return response, lp
+                return response, meta
 
             except RetryableError as e:
                 last_error = e
@@ -705,6 +729,34 @@ def test_dataset(args):
         args.max_retries,
         args.throttle,
     )
+
+    # Validate multi-turn capability
+    if attack_module and attack_module.turn_type == Turn.MULTI:
+        # Validate target supports multi-turn
+        if target_module.config.get("multi-turn", False):
+            manager = multiprocessing.Manager()
+            shared_target_data = manager.dict()
+            target_module.get_target().add_managed_dict(shared_target_data)
+
+            print(f"[Info] Performing a multi-turn attack using '{attack_module.__name__}' on target '{args.target}'.")
+
+        else:
+            print(
+                f"[Error] The selected attack '{attack_module.__name__}' requires multi-turn support, but the target '{args.target}' does not support multi-turn testing."
+            )
+            exit(1)
+
+    else:
+        # Validate target supports single-turn
+        if not target_module.config.get("single-turn", False):
+            print(
+                f"[Error] The selected target '{args.target}' does not support single-turn testing."
+            )
+            exit(1)
+
+        print(
+            f"[Info] Performing a single-turn attack using '{attack_module.__name__}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
+        )
 
     # Obtain datasets and ensure resume-file is only used with single dataset
     datasets = process_jsonl_input_files(args.dataset, args.dataset_folder)
