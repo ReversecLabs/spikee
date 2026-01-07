@@ -6,22 +6,25 @@ from spikee.utilities.enums import Turn
 
 
 class MultiTarget(Target, ABC):
-    def __init__(self, turn_types: List[Turn] = [Turn.SINGLE], backtrack: bool = False):
+    def __init__(self, turn_types: List[Turn] = [Turn.MULTI], backtrack: bool = False):
         """Define target capabilities and initialize shared dictionary for multi-turn data."""
         super().__init__(
             turn_types=turn_types,
             backtrack=backtrack
         )
 
-        self.__shared_dict = None
+        self.__session_dict = None
+        self.__id_dict = None
 
-    def add_managed_dict(self, shared_dict):
-        """Adds a managed dictionary for multi-turn session data.
+    def add_managed_dicts(self, session_data, id_data):
+        """Adds managed dictionaries for multi-turn session data.
 
         Args:
-            shared_dict: A multiprocessing managed dictionary to store session data.
+            history_data: A multiprocessing managed dictionary to store session history data.
+            correlation_data: A multiprocessing managed dictionary to store session ID correlation data.
         """
-        self.__shared_dict = shared_dict
+        self.__session_dict = session_data
+        self.__id_dict = id_data
 
     def _get_spikee_session_data(self, spikee_session_id: str) -> object:
         """Retrieves or initializes session data for a given Spikee session ID.
@@ -29,18 +32,42 @@ class MultiTarget(Target, ABC):
         Args:
             spikee_session_id (str): The unique identifier for the Spikee session.
         """
-        if spikee_session_id not in self.__shared_dict:
+        if spikee_session_id not in self.__session_dict:
             return None
-        return self.__shared_dict[spikee_session_id]
+        return self.__session_dict[spikee_session_id]
 
-    def update_spikee_session_data(self, spikee_session_id: str, data: object):
+    def _update_spikee_session_data(self, spikee_session_id: str, data: object):
         """Updates the session data for a given Spikee session ID.
 
         Args:
             spikee_session_id (str): The unique identifier for the Spikee session.
             data (object): The session data to store.
         """
-        self.__shared_dict[spikee_session_id] = data
+        self.__session_dict[spikee_session_id] = data
+
+    def _get_spikee_id_correlation(self, spikee_session_id: str) -> str:
+        """Retrieves the target-specified IDs for a given Spikee session ID.
+
+        Args:
+            spikee_session_id (str): The unique identifier for the Spikee session.
+        """
+        if spikee_session_id not in self.__id_dict:
+            return None
+        return self.__id_dict[spikee_session_id]
+
+    def _add_spikee_id_correlation(self, spikee_session_id: str, target_id: str):
+        """Adds a correlation between the Spikee session ID and the target-specified ID.
+
+        Args:
+            spikee_session_id (str): The unique identifier for the Spikee session.
+            target_id (str): The target-specified identifier to correlate.
+        """
+        temp = self._get_spikee_id_correlation(spikee_session_id)
+        if temp is None:
+            temp = []
+
+        temp.append(target_id)
+        self.__id_dict[spikee_session_id] = temp
 
     @abstractmethod
     def get_available_option_values(self) -> List[str]:

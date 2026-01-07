@@ -6,7 +6,7 @@ import json
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import Turn
-from spikee.utilities.llm import get_supported_llm_models, get_supported_prefixes, get_llm, validate_llm_option
+from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes, get_llm
 
 
 # Source: https://github.com/Azure/PyRIT/blob/bbed39cf249fca9ce20770550912b7254ae672fe/pyrit/datasets/orchestrators/crescendo/crescendo_variant_1.yaml
@@ -106,7 +106,7 @@ class Crescendo(Attack):
         Returns:
             List[str]: List of supported options; first is default.
         """
-        return ["max-turns=5"] + [f"model={model}" for model in get_supported_llm_models()]
+        return ["max-turns=5"] + [f"model={model}" for model in get_example_llm_models()] + [f"model={model}" for model in get_supported_llm_models()]
 
     def get_available_prefixes(self) -> Tuple[bool, List[str]]:
         """Return supported prefixes."""
@@ -347,7 +347,7 @@ class Crescendo(Attack):
         opts = self._parse_attack_option(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
-            llm = get_llm(opts.get("model", None))
+            llm = get_llm(opts.get("model", None), max_tokens=None)
         except ValueError as e:
             print(f"[Error] {e}")
             return None

@@ -1,8 +1,11 @@
 from typing import Dict, List
 
-SUPPORTED_LLM_MODELS = [
+EXAMPLE_LLM_MODELS = [
     "openai-gpt-4.1-mini",
     "openai-gpt-4o",
+]
+
+SUPPORTED_LLM_MODELS = [
     "llamaccp-server",
     "offline",
     "mock",
@@ -10,13 +13,18 @@ SUPPORTED_LLM_MODELS = [
 
 SUPPORTED_PREFIXES = [
     "openai-",
-    "google-"
+    "google-",
     "bedrock-",
     "ollama-",
-    "llamaccp-server-<port>",
+    "llamaccp-server-",
     "together-",
     "mock-",
 ]
+
+
+def get_example_llm_models() -> List[str]:
+    """Return the list of example LLM models."""
+    return EXAMPLE_LLM_MODELS
 
 
 def get_supported_llm_models() -> List[str]:
@@ -63,9 +71,7 @@ def validate_llm_option(option: str) -> bool:
     """
     Validate if the provided options correspond to a supported LLM model.
     """
-    return option in SUPPORTED_LLM_MODELS or any(
-        option.startswith(prefix) for prefix in SUPPORTED_PREFIXES
-    )
+    return option in SUPPORTED_LLM_MODELS or any(option.startswith(prefix) for prefix in SUPPORTED_PREFIXES)
 
 
 def get_llm(options=None, max_tokens=8):
@@ -79,7 +85,7 @@ def get_llm(options=None, max_tokens=8):
     if not validate_llm_option(options):
         raise ValueError(
             f"Unsupported LLM option: '{options}'. "
-            f"Supported options: {SUPPORTED_LLM_MODELS}"
+            f"Supported Prefixes: {SUPPORTED_PREFIXES}, Supported Models: {SUPPORTED_LLM_MODELS}"
         )
 
     if options.startswith("openai-"):

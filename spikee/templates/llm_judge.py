@@ -1,7 +1,7 @@
 from typing import Tuple, List
 
 from .judge import Judge
-from spikee.utilities.llm import get_llm, get_supported_llm_models, get_supported_prefixes
+from spikee.utilities.llm import get_llm, get_example_llm_models, get_supported_prefixes
 
 
 class LLMJudge(Judge):
@@ -15,7 +15,7 @@ class LLMJudge(Judge):
         options.extend(
             [
                 model
-                for model in get_supported_llm_models()
+                for model in get_example_llm_models()
                 if model != self.DEFAULT_LLM_MODEL
             ]
         )

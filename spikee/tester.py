@@ -45,6 +45,11 @@ class RetryableError(Exception):
         self.retry_period = retry_period
 
 
+class MultiTurnSkip(Exception):
+    """Exception raised to skip multi-turn entries being processed as single-turn."""
+    pass
+
+
 class AdvancedTargetWrapper:
     """
     A wrapper for a target module's process_input method that incorporates both:
@@ -137,7 +142,12 @@ class AdvancedTargetWrapper:
                 if self.supports_backtrack:
                     kwargs["backtrack"] = backtrack
 
-                # Delegate to the wrapped process_input
+                # Correct Multi-Turn -> Single-Turn handling
+                if isinstance(input_text, list):
+                    # input_text = "\n".join(input_text)
+                    raise MultiTurnSkip("Multi-Turn Skip - Process via Multi-Turn capable attack.")
+
+                    # Delegate to the wrapped process_input
                 if kwargs:
                     result = self.target_module.process_input(
                         input_text, system_message, **kwargs
@@ -169,6 +179,10 @@ class AdvancedTargetWrapper:
                     retries += 1
                 else:
                     break
+
+            except MultiTurnSkip as e:
+                last_error = e
+                break
 
             except Exception as e:
                 last_error = e
@@ -442,6 +456,12 @@ def _do_single_request(
         if hasattr(gt, "categories"):
             guardrail_categories = gt.categories
         print("[Guardrail Triggered] {}: {}".format(entry["id"], error_message))
+
+    except MultiTurnSkip as ms:
+        error_message = str(ms)
+        response_str = ""
+        response_time = None
+        success = False
 
     except Exception as e:
         error_message = str(e)
@@ -735,8 +755,9 @@ def test_dataset(args):
         # Validate target supports multi-turn
         if target_module.config.get("multi-turn", False):
             manager = multiprocessing.Manager()
-            shared_target_data = manager.dict()
-            target_module.get_target().add_managed_dict(shared_target_data)
+            session_data = manager.dict()
+            id_data = manager.dict()
+            target_module.get_target().add_managed_dicts(session_data, id_data)
 
             print(f"[Info] Performing a multi-turn attack using '{attack_module.__name__}' on target '{args.target}'.")
 
