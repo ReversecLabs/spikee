@@ -4,9 +4,6 @@ from spikee.templates.target import Target
 
 
 class AlwaysRefuseTarget(Target):
-    @property
-    def __name__(self) -> str:
-        return "always_refuse"
 
     def get_available_option_values(self) -> List[str]:
         return []

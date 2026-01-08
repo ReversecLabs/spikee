@@ -209,7 +209,7 @@ class Crescendo(Attack):
     def _format_history_for_prompt(self, history: List[Dict[str, str]]) -> str:
         lines: List[str] = []
         for m in history:
-            lines.append(f"{m['role'].upper()}: {m['text'].replace(chr(10), ' ').strip()}")
+            lines.append(f"{m['role'].upper()}: {m['content'].replace(chr(10), ' ').strip()}")
         return "\n".join(lines)
 
     def _generate_question(
@@ -299,7 +299,7 @@ class Crescendo(Attack):
             success = call_judge(entry, response_text)
             if success:
                 # record final successful prompt only
-                chat_history.append({"role": "user", "text": prompt, "spikee_session_id": session_id})
+                chat_history.append({"role": "user", "content": prompt, "spikee_session_id": session_id})
                 return calls, True, chat_history, response_text
 
             # classify refusal using LLM
@@ -311,8 +311,8 @@ class Crescendo(Attack):
                 continue
 
             # not a refusal: append exchange and advance non_backtrack_turns
-            chat_history.append({"role": "user", "text": prompt, "spikee_session_id": session_id})
-            chat_history.append({"role": "assistant", "text": response_text, "spikee_session_id": session_id})
+            chat_history.append({"role": "user", "content": prompt, "spikee_session_id": session_id})
+            chat_history.append({"role": "assistant", "content": response_text, "spikee_session_id": session_id})
             non_backtrack_turns += 1
             last_response = response_text
 

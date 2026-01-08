@@ -750,7 +750,7 @@ def test_dataset(args):
     tag = validate_and_get_tag(args.tag)
 
     # Load Attack module if specified
-    attack_name = args.attack.rstrip(".py").split(os.sep)[-1] if args.attack else ""
+    attack_name = args.attack if args.attack else ""
     attack_module = (
         load_module_from_path(args.attack, "attacks") if args.attack else None
     )

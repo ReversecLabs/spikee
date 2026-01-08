@@ -4,9 +4,6 @@ from spikee.templates.judge import Judge
 
 
 class TestJudge(Judge):
-    @property
-    def __name__(self) -> str:
-        return "test_judge"
 
     def get_available_option_values(self) -> List[str]:
         return ["mode=fail", "mode=success"]
