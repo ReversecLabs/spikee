@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional, Dict, Any
 import threading
 import re
 import json
+import traceback
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import Turn
@@ -371,6 +372,7 @@ class Crescendo(Attack):
                 )
             except Exception as e:
                 # surface generator / classifier / target errors in-line
+                traceback.print_exc()
                 return total_calls, False, {"objective": objective, "conversation": last_history}, str(e)
 
             total_calls += calls

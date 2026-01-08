@@ -73,4 +73,5 @@ class MultiTurnAttack(Attack):
 
             return len(entry["text"]), success, {"conversation": conversation}, response
         except Exception as e:
+            traceback.print_exc()
             return 0, False, f"Error during multi-turn attack: {str(e)}", ""
