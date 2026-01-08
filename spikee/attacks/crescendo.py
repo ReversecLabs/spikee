@@ -91,6 +91,8 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 
 """
 
+DEFAULT_LLM_MODEL = "openai-gpt-4.1-mini"
+
 
 class Crescendo(Attack):
     def __init__(self):
@@ -348,7 +350,7 @@ class Crescendo(Attack):
         opts = self._parse_attack_option(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
-            llm = get_llm(opts.get("model", None), max_tokens=None)
+            llm = get_llm(opts.get("model", DEFAULT_LLM_MODEL), max_tokens=None)
         except ValueError as e:
             print(f"[Error] {e}")
             return None
