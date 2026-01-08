@@ -71,6 +71,9 @@ def validate_llm_option(option: str) -> bool:
     """
     Validate if the provided options correspond to a supported LLM model.
     """
+    if option is None:
+        raise ValueError("LLM option cannot be None, ensure than modules leveraging LLM utilities specify an LLM option.")
+
     return option in SUPPORTED_LLM_MODELS or any(option.startswith(prefix) for prefix in SUPPORTED_PREFIXES)
 
 
