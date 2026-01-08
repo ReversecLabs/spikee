@@ -637,6 +637,7 @@ def process_entry(
             }
             results_list.append(attack_result)
         except Exception as e:
+            traceback.print_exc()
             error_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_module.__name__ + "-ERROR",
