@@ -81,7 +81,15 @@ class AdvancedTargetWrapper:
         self.max_retries = max_retries
         self.throttle = throttle
 
-        self.config = self.target_module.config
+        if not hasattr(self.target_module, "config"):
+            self.config = {
+                "single-turn": True,
+                "multi-turn": False,
+                "backtrack": False,
+            }
+            self.target_module.config = self.config
+        else:
+            self.config = self.target_module.config
 
         sig = inspect.signature(self.target_module.process_input)
         params = sig.parameters
