@@ -759,7 +759,7 @@ def test_dataset(args):
     )
 
     # Validate multi-turn capability
-    if attack_module and attack_module.turn_type == Turn.MULTI:
+    if attack_module and hasattr(attack_module, "turn_type") and attack_module.turn_type == Turn.MULTI:
         # Validate target supports multi-turn
         if target_module.config.get("multi-turn", False):
             manager = multiprocessing.Manager()
