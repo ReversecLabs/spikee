@@ -47,6 +47,7 @@ spikee test --dataset datasets/cybersec-2025-04.jsonl \
 Sample targets are provided within the `workspace/targets/` folder, created by running `spikee init`. These demonstrate how to write custom targets and can be easily modified to assess an LLM application of your choice.
 
 * `llm_mailbox`: Sample target for email summarisation application tutorial https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
+* `llmbank`: Sample multi-turn target for banking chatbot application tutorial https://llmbank.fs-playground.com/
 * `sample_pdf_request_target`: Sample target - Sends a POST request containing a PDF to a fictional application.
 * `sample_target_legacy` **(Legacy Target)**: Sample legacy target - Returns a mock message.
 * `sample_target`: Sample target - Sends a GET request to a fictional application, demonstrating options and advanced guardrail and error handling.
@@ -61,6 +62,8 @@ You can customize the behavior of attacks using the following command-line optio
 
 
 The following list provides an overview of each attack, further information on each attack can be found within each attack's file.
+
+**Single-Turn:**
 * `anti_spotlighting`: Assess spotlighting vulnerabilities by sequentially trying variations of delimiter-based attacks.
 * `best_of_n`: Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising.
 * `prompt_decomposition`: Decomposes a prompt into chunks and generates shuffled variations.
@@ -68,6 +71,12 @@ The following list provides an overview of each attack, further information on e
         `modes` (LLM model to apply, default: dumb),
         `variants` (number of variations to generate, default: 50).
 * `random_suffix_attack`: Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters.
+
+**Multi-Turn:**
+* `multi_turn`: Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. 
+* `crescendo`: Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). This is a simple multi-turn jailbreak that leverages an LLM Agent to prompt the target application with seemingly benign prompts, but gradually escalates the conversation by referencing the model's replies progressively leading to a successful jailbreak.
+
+(NB, See [Multi-Turn Datasets](./02_dataset_generation.md#multi-turn-datasets) for more information.)
 
 ## Usage Example
 ```bash
