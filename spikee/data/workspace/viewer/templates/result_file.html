@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="content" class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 d-flex flex-column">
+
+            <div class="btn-group mb-2" role="group" aria-label="Filter Results" style="align-self: flex-start;">
+                <button type="button" class="btn btn-secondary" onclick="filterResults('all')">All</button>
+                <button type="button" class="btn btn-success" onclick="filterResults('success')">Success</button>
+                <button type="button" class="btn btn-warning" onclick="filterResults('guardrail')">Guardrail</button>
+                <button type="button" class="btn btn-danger" onclick="filterResults('failed')">Failed</button>
+            </div>
+            <script>
+            function filterResults(type) {
+                document.querySelectorAll('.card').forEach(card => {
+                    let header = card.querySelector('.card-header');
+                    if (!header) return;
+                    if (type === 'all') {
+                        card.style.display = '';
+                    } else if (type === 'success' && header.classList.contains('bg-success')) {
+                        card.style.display = '';
+                    } else if (type === 'guardrail' && header.classList.contains('bg-warning')) {
+                        card.style.display = '';
+                    } else if (type === 'failed' && header.classList.contains('bg-danger')) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+            </script>
+            
+            {% set results_data = get_results_data() %}
+            {% for entry in results_data %}
+            <div class="card shadow-sm border-0 my-1">
+                <!-- Header -->
+                <a class="card-header py-1 d-flex justify-content-between align-items-center 
+                    {% if entry.success %}
+                        bg-success text-white
+                    {% elif entry.guardrail %}
+                        bg-warning text-dark
+                    {% else %}
+                        bg-danger text-white
+                    {% endif %}" href="/entry/{{ entry.id }}">
+
+                    <div class="mb-0">#{{ entry.id }} | {{ entry.long_id }}</div>
+
+                    <span class="badge bg-white rounded-pill px-3 
+                        {% if entry.success %}
+                            text-success
+                        {% elif entry.guardrail %}
+                            text-warning-emphasis
+                        {% else %}
+                            text-danger
+                        {% endif %}">
+                        
+                        {% if entry.success %}
+                            SUCCESS
+                        {% elif entry.guardrail %}
+                            GUARDRAIL TRIGGER
+                        {% else %}
+                            FAILED
+                        {% endif %}
+                    </span>
+                </a>
+
+                <div class="card-body p-4">
+                    {% if entry.input is string %}
+                    <!-- Single-Turn Input -->
+                    <div class="border-start px-3">
+                        <strong class="small me-2">Input Prompt:</strong>
+                        <div class="code-block h-100">{{ entry.input|e if entry.input is not none and entry.input != "" else "—" }}</div>
+                    </div>
+
+                    {% elif entry.input is mapping %}
+                    <!-- Instructional Multi-Turn Input -->
+                    <div class="border-start px-3">
+                        <strong class="small me-2">Instructional Multi-Turn Prompt:</strong>
+                        {% if entry.input.objective and entry.input.objective is not none %}
+                            <div class="code-block h-100"><strong class="text-primary">Objective:</strong>{{ entry.input.objective|e }}</div>
+                        {% endif %}
+                        <ol class="ps-3 mt-2">
+                            {% for message in entry.input.conversation %}
+                                <li class="mb-2">
+                                    <div class="code-block h-100"><strong class="text-success">{{ message.role|upper }}: </strong>{{ message.content|e }}</div>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+
+                    {% else %}
+                    <!-- Multi-Turn Input -->
+                    <div class="border-start px-3">
+                        <strong class="small me-2">Multi-Turn Input Prompt:</strong>
+                        <ol class="ps-3 mt-2">
+                        {% for message in entry.input %}
+                            <li class="mb-2">
+                                <div class="code-block h-100">{{ message|e}}</div>
+                            </li>
+                        {% endfor %}
+                        </ol>
+                    </div>
+                    {% endif %}
+                    
+                    {% if entry.guardrail %}
+                        <!-- Guardrail -->
+                        <div class="border-start px-3 mt-2 bg-warning bg-opacity-10 border-start border-warning">
+                            <strong class="small me-2 text-warning-emphasis">Guardrail Categories:</strong>
+                            <div class="code-block h-100">{{ entry.guardrail_categories|e if entry.guardrail_categories is not none else "—" }}</div>
+                        </div>
+                    {% elif entry.error and entry.error != "" %}
+                        <!-- Error Message -->
+                        <div class="border-start px-3 mt-2 bg-danger bg-opacity-10 border-start border-danger">
+                            <strong class="small me-2 text-danger-emphasis">Error Message:</strong>
+                            <div class="code-block h-100">{{ entry.error|e }}</div>
+                        </div>
+                    {% else %}
+                        <!-- Single-Turn Response -->
+                        <div class="border-start px-3 mt-2">
+                            <strong class="small me-2">Response:</strong>
+                            <div class="code-block h-100">{{ entry.response|e if entry.response is not none and entry.response != "" else "—" }}</div>
+                        </div>
+                    {% endif %}
+                    
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

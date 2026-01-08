@@ -71,6 +71,6 @@ class MultiTurnAttack(Attack):
                     remaining = max_iterations - count
                     attempts_bar.total = attempts_bar.total - remaining
 
-            return len(entry["text"]), success, {"conversation": conversation}, response
+            return len(entry["text"]), success, {"objective": None, "conversation": conversation}, response
         except Exception as e:
             return 0, False, f"Error during multi-turn attack: {str(e)}", ""

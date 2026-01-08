@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>{{ get_app_name() }}</title>
+
+    <link href="/static/bootstrap.5.3.8.min.css" rel="stylesheet">    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+<nav class="navbar navbar-dark fixed-top" style="background-color: #2a1635;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#"><img class="mx-2" style="height: 30px" src="/static/logo.png">{{ get_app_name() }}</a>
+        <ul class="navbar-nav me-auto mb-2 mb-md-0">
+            <li class="nav-item nav-link active">
+                {{ get_result_file() }}
+            </li>
+        </ul>
+
+        <div class="d-flex">
+            <a href="https://reversec.com"><img style="height: 30px" src="/static/reversec-menu-icon.svg"></a>
+        </div>
+    </div>
+</nav>
+
+
+<div class="row" style="height: 7vh; min-height: 65px"></div>
+
+<script src="/static/bootstrap.5.3.8.min.js"></script>
+
+{% block content %}{% endblock %}
+</body>
+
+</html>
