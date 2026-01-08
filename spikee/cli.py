@@ -262,7 +262,7 @@ def main():
     parser_test.add_argument(
         "--attack-iterations",
         type=int,
-        default=100,
+        default=10,
         help="Number of attack iterations per dataset entry (if --attack is provided)",
     )
     parser_test.add_argument(
