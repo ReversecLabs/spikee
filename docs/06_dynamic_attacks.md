@@ -31,10 +31,6 @@ from spikee.templates.attack import Attack
 from typing import List
 
 class SampleAttack(Attack):
-    @property
-    def __name__(self):
-        return "sample_attack" # Name of the attack - matches filename
-
     OPTIONS_MAP = {
         "strategy": ["random", "aggressive", "stealth"],
     }
@@ -155,11 +151,7 @@ class SampleMultiTurnAttack(Attack):
     def __init__(self):
         """Define multi-turn capabilities for attack."""
         # turn_type defines an attack's multi-turn capability, either Turn.SINGLE (Default) or Turn.MULTI
-        super().__init__(turn_type=Turn.MULTI) 
-
-    @property
-    def __name__(self):
-        return "sample_multi_turn_attack"
+        super().__init__(turn_type=Turn.MULTI)
     
     def get_available_option_values(self) -> str:
         return None

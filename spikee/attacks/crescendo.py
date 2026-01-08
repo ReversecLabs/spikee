@@ -91,17 +91,13 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 
 """
 
-DEFAULT_LLM_MODEL = "openai-gpt-4.1-mini"
+DEFAULT_LLM_MODEL = "openai-gpt-4o"
 
 
 class Crescendo(Attack):
     def __init__(self):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
-
-    @property
-    def __name__(self):
-        return "crescendo"
 
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.

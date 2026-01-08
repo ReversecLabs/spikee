@@ -12,10 +12,6 @@ class MultiTurnAttack(Attack):
         """Define multi-turn capabilities for attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    @property
-    def __name__(self):
-        return "multi_turn"
-
     def get_available_option_values(self) -> str:
         return None
 

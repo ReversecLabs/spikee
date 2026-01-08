@@ -21,10 +21,6 @@ from spikee.utilities.llm import get_example_llm_models, get_supported_llm_model
 
 
 class PromptDecompositionAttack(Attack):
-    @property
-    def __name__(self):
-        return "prompt_decomposition"
-
     # Default mode
     DEFAULT_MODE = "dumb"
 

@@ -520,6 +520,7 @@ def process_entry(
     entry,
     target_module,
     attempts=1,
+    attack_name="",
     attack_module=None,
     attack_iterations=0,
     attack_options=None,
@@ -609,7 +610,7 @@ def process_entry(
 
             attack_result = {
                 "id": f"{entry['id']}-attack",
-                "long_id": entry["long_id"] + "-" + attack_module.__name__,
+                "long_id": entry["long_id"] + "-" + attack_name,
                 "input": attack_input,
                 "response": attack_response,
                 "response_time": response_time,
@@ -632,7 +633,7 @@ def process_entry(
                 "system_message": entry.get("system_message", None),
                 "plugin": entry.get("plugin", None),
                 "error": None,
-                "attack_name": attack_module.__name__,
+                "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
             results_list.append(attack_result)
@@ -640,7 +641,7 @@ def process_entry(
             traceback.print_exc()
             error_result = {
                 "id": f"{entry['id']}-attack",
-                "long_id": entry["long_id"] + "-" + attack_module.__name__ + "-ERROR",
+                "long_id": entry["long_id"] + "-" + attack_name + "-ERROR",
                 "input": original_input,
                 "response": "",
                 "success": False,
@@ -662,7 +663,7 @@ def process_entry(
                 "system_message": entry.get("system_message", None),
                 "plugin": entry.get("plugin", None),
                 "error": str(e),
-                "attack_name": attack_module.__name__,
+                "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
             results_list.append(error_result)
@@ -674,6 +675,7 @@ def _run_threaded(
     entries,
     target_module,
     attempts,
+    attack_name,
     attack_module,
     attack_iters,
     attack_options,
@@ -703,6 +705,7 @@ def _run_threaded(
             entry,
             target_module,
             attempts,
+            attack_name,
             attack_module,
             attack_iters,
             attack_options,
@@ -747,6 +750,7 @@ def test_dataset(args):
     tag = validate_and_get_tag(args.tag)
 
     # Load Attack module if specified
+    attack_name = args.attack.rstrip(".py").split(os.sep)[-1] if args.attack else ""
     attack_module = (
         load_module_from_path(args.attack, "attacks") if args.attack else None
     )
@@ -768,11 +772,11 @@ def test_dataset(args):
             id_data = manager.dict()
             target_module.get_target().add_managed_dicts(session_data, id_data)
 
-            print(f"[Info] Performing a multi-turn attack using '{attack_module.__name__}' on target '{args.target}'.")
+            print(f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'.")
 
         else:
             print(
-                f"[Error] The selected attack '{attack_module.__name__}' requires multi-turn support, but the target '{args.target}' does not support multi-turn testing."
+                f"[Error] The selected attack '{attack_name}' requires multi-turn support, but the target '{args.target}' does not support multi-turn testing."
             )
             exit(1)
 
@@ -785,7 +789,7 @@ def test_dataset(args):
             exit(1)
 
         print(
-            f"[Info] Performing a single-turn attack using '{attack_module.__name__}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
+            f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
         )
 
     # Obtain datasets and ensure resume-file is only used with single dataset
@@ -873,6 +877,7 @@ def test_dataset(args):
             to_process,
             target_module,
             args.attempts,
+            attack_name,
             attack_module,
             args.attack_iterations,
             args.attack_options,
