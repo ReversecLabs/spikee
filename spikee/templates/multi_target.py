@@ -32,6 +32,8 @@ class MultiTarget(Target, ABC):
         Args:
             spikee_session_id (str): The unique identifier for the Spikee session.
         """
+        if spikee_session_id is None:
+            raise ValueError("spikee_session_id cannot be None")
         if spikee_session_id not in self.__session_dict:
             return None
         return self.__session_dict[spikee_session_id]
@@ -43,31 +45,36 @@ class MultiTarget(Target, ABC):
             spikee_session_id (str): The unique identifier for the Spikee session.
             data (object): The session data to store.
         """
+        if spikee_session_id is None:
+            raise ValueError("spikee_session_id cannot be None")
         self.__session_dict[spikee_session_id] = data
 
-    def _get_spikee_id_correlation(self, spikee_session_id: str) -> str:
-        """Retrieves the target-specified IDs for a given Spikee session ID.
+    def get_target_session_id(self, spikee_session_id: str) -> str:
+        """Retrieves the target-specified ID for a given Spikee session ID.
 
         Args:
             spikee_session_id (str): The unique identifier for the Spikee session.
         """
+        if spikee_session_id is None:
+            raise ValueError("spikee_session_id cannot be None")
         if spikee_session_id not in self.__id_dict:
             return None
         return self.__id_dict[spikee_session_id]
 
-    def _add_spikee_id_correlation(self, spikee_session_id: str, target_id: str):
-        """Adds a correlation between the Spikee session ID and the target-specified ID.
+    def set_target_session_id(self, spikee_session_id: str, target_session_id: str):
+        """Sets the correlation between the Spikee session ID and the target-specified ID.
+        This overwrites any existing mapping for this spikee_session_id.
 
         Args:
             spikee_session_id (str): The unique identifier for the Spikee session.
-            target_id (str): The target-specified identifier to correlate.
+            target_session_id (str): The target-specified identifier to correlate.
         """
-        temp = self._get_spikee_id_correlation(spikee_session_id)
-        if temp is None:
-            temp = []
+        if spikee_session_id is None:
+            raise ValueError("spikee_session_id cannot be None")
+        if target_session_id is None:
+            raise ValueError("target_session_id cannot be None")
 
-        temp.append(target_id)
-        self.__id_dict[spikee_session_id] = temp
+        self.__id_dict[spikee_session_id] = target_session_id
 
     @abstractmethod
     def get_available_option_values(self) -> List[str]:
