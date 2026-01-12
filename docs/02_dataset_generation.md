@@ -51,12 +51,13 @@ spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
 ```
 
 ## Multi-Turn Datasets
-Spikee v5.5 has introduced support for multi-turn attacks, using compatible attack (e.g., `multi_turn` and `crescendo`) and target scripts. This allows Spikee to be used to assess how susceptible conversational LLMs are to complex multi-turn prompt injection attacks that occur over several prompts, rather than a single prompt.
+Spikee supports multi-turn attacks, using compatible attack modules (e.g., `multi_turn` and `crescendo`) and target scripts. This allows Spikee to be used to assess how susceptible conversational LLMs are to complex multi-turn prompt injection attacks that occur over several prompts, rather than a single prompt.
 
 Spikee supports two types of multi-turn datasets:
-1. **Simple Multi-Turn Datasets:** These are simplistic datasets, which contain a sequential pre-defined list of user prompts.  This type of dataset is currently supported by the `multi_turn` attack module.
 
-This is an example of a simple multi-turn dataset entry in `standalone_user_inputs.jsonl`:
+1. **Static Multi-Turn Datasets:** These are simplistic datasets, which contain a sequential pre-defined list of user prompts to be played in a conversation, regardless of the answers given by the LLM.  This type of dataset is currently supported by the `multi_turn` attack module.
+
+This is an example of a static multi-turn dataset entry in `standalone_user_inputs.jsonl`:
 
 ```json
 {   
