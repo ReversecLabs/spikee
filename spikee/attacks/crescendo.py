@@ -306,6 +306,12 @@ class Crescendo(Attack):
             is_refuse = self._is_refusal(llm, response_text)
 
             if is_refuse:
+                # Check if target supports backtracking
+                if not target_module.config.get("backtrack", False):
+                    # If target does not support backtracking, abort this attempt.
+                    # The outer loop will restart with a new session ID.
+                    return calls, False, chat_history, response_text
+
                 # do not advance non_backtrack_turns; next call will include backtrack_last_turn=True
                 last_response = response_text
                 continue
