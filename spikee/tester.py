@@ -768,9 +768,8 @@ def test_dataset(args):
         # Validate target supports multi-turn
         if target_module.config.get("multi-turn", False):
             manager = multiprocessing.Manager()
-            session_data = manager.dict()
-            id_data = manager.dict()
-            target_module.get_target().add_managed_dicts(session_data, id_data)
+            target_data = manager.dict()
+            target_module.get_target().add_managed_dicts(target_data)
 
             print(f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'.")
 

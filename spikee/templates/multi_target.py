@@ -13,68 +13,42 @@ class MultiTarget(Target, ABC):
             backtrack=backtrack
         )
 
-        self.__session_dict = None
-        self.__id_dict = None
+        self.__target_data = None
 
-    def add_managed_dicts(self, session_data, id_data):
+    def add_managed_dicts(self, target_data, add_dicts: List[str] = []):
         """Adds managed dictionaries for multi-turn session data.
 
         Args:
-            history_data: A multiprocessing managed dictionary to store session history data.
-            correlation_data: A multiprocessing managed dictionary to store session ID correlation data.
+            target_data: A multiprocessing managed dictionary to store generic data.
+            add_dicts (List[str], optional): List of dictionary keys to add. Defaults to {}.
         """
-        self.__session_dict = session_data
-        self.__id_dict = id_data
+        self.__target_data = target_data
 
-    def _get_spikee_session_data(self, spikee_session_id: str) -> object:
-        """Retrieves or initializes session data for a given Spikee session ID.
+        for dict_key in add_dicts:
+            self.__target_data[dict_key] = {}
+
+    def _get_target_data(self, id: str) -> object:
+        """Retrieves or initializes session data for a given ID. (Generic Implementation)
 
         Args:
-            spikee_session_id (str): The unique identifier for the Spikee session.
+            id (str): The unique identifier for the session.
         """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
-        if spikee_session_id not in self.__session_dict:
+        if id is None:
+            raise ValueError("id cannot be None")
+        if id not in self.__target_data:
             return None
-        return self.__session_dict[spikee_session_id]
+        return self.__target_data[id]
 
-    def _update_spikee_session_data(self, spikee_session_id: str, data: object):
-        """Updates the session data for a given Spikee session ID.
+    def _update_target_data(self, id: str, data: object):
+        """Updates the session data for a given ID. (Generic Implementation)
 
         Args:
-            spikee_session_id (str): The unique identifier for the Spikee session.
+            id (str): The unique identifier for the session.
             data (object): The session data to store.
         """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
-        self.__session_dict[spikee_session_id] = data
-
-    def get_target_session_id(self, spikee_session_id: str) -> str:
-        """Retrieves the target-specified ID for a given Spikee session ID.
-
-        Args:
-            spikee_session_id (str): The unique identifier for the Spikee session.
-        """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
-        if spikee_session_id not in self.__id_dict:
-            return None
-        return self.__id_dict[spikee_session_id]
-
-    def set_target_session_id(self, spikee_session_id: str, target_session_id: str):
-        """Sets the correlation between the Spikee session ID and the target-specified ID.
-        This overwrites any existing mapping for this spikee_session_id.
-
-        Args:
-            spikee_session_id (str): The unique identifier for the Spikee session.
-            target_session_id (str): The target-specified identifier to correlate.
-        """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
-        if target_session_id is None:
-            raise ValueError("target_session_id cannot be None")
-
-        self.__id_dict[spikee_session_id] = target_session_id
+        if id is None:
+            raise ValueError("id cannot be None")
+        self.__target_data[id] = data
 
     @abstractmethod
     def get_available_option_values(self) -> List[str]:
