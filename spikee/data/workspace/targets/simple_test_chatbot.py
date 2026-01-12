@@ -1,5 +1,5 @@
 """
-test_chatbot.py
+simple_test_chatbot.py
 
 This is an example Multi-Turn target for the Spikee Test Chatbot (https://github.com/ReversecLabs/spikee-test-chatbot).
 This uses HTTP(s) requests to communicate with the Chatbot API, and manages multi-turn conversations 
@@ -12,6 +12,10 @@ Usage:
 
 Return values:
     - For typical LLM completion, return a string that represents the model's response.
+
+References:
+    - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
+    - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
 
 import traceback
