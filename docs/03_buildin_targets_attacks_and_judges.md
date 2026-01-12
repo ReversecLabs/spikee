@@ -47,7 +47,7 @@ spikee test --dataset datasets/cybersec-2025-04.jsonl \
 Sample targets are provided within the `workspace/targets/` folder, created by running `spikee init`. These demonstrate how to write custom targets and can be easily modified to assess an LLM application of your choice.
 
 * `llm_mailbox`: Sample target for email summarisation application tutorial https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
-* `llmbank`: Sample multi-turn target for banking chatbot application tutorial https://llmbank.fs-playground.com/
+* `test_chatbot`: Sample Multi-Turn target for the Spikee Test Chatbot (https://github.com/ReversecLabs/spikee-test-chatbot).
 * `sample_pdf_request_target`: Sample target - Sends a POST request containing a PDF to a fictional application.
 * `sample_target_legacy` **(Legacy Target)**: Sample legacy target - Returns a mock message.
 * `sample_target`: Sample target - Sends a GET request to a fictional application, demonstrating options and advanced guardrail and error handling.
