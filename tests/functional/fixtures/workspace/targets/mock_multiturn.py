@@ -21,37 +21,31 @@ class MockMultiTurnTarget(MultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
-        if spikee_session_id is None:
-            return f"Response to {input_text}"
-
-        # Initialize or retrieve internal session ID
-        # Using 1-to-1 mapping via get_target_session_id/set_target_session_id
-        
-        current_internal_id = self.get_target_session_id(spikee_session_id)
-        
-        if not current_internal_id:
-             # Create new session
-             current_internal_id = str(uuid.uuid4())
-             self.set_target_session_id(spikee_session_id, current_internal_id)
-             # Initialize history in session data
-             self._update_spikee_session_data(spikee_session_id, [])
+        # Retrieve current session state
+        session_state = self._get_target_data(spikee_session_id)
+        if session_state is None:
+            session_state = {
+                "internal_id": str(uuid.uuid4()),
+                "history": []
+            }
+            self._update_target_data(spikee_session_id, session_state)
 
         # Handle Backtracking
         if backtrack:
-            history = self._get_spikee_session_data(spikee_session_id)
+            history = session_state["history"]
             if history and len(history) >= 2:
                 # Remove last turn (user + assistant)
-                history = history[:-2]
-                self._update_spikee_session_data(spikee_session_id, history)
+                session_state["history"] = history[:-2]
                 
                 # Simulate creating a NEW internal session for the branch
-                current_internal_id = str(uuid.uuid4())
-                self.set_target_session_id(spikee_session_id, current_internal_id)
+                session_state["internal_id"] = str(uuid.uuid4())
+                self._update_target_data(spikee_session_id, session_state)
 
         # Logic
         response = ""
         if "RESET" in input_text:
-            self._update_spikee_session_data(spikee_session_id, [])
+            session_state["history"] = []
+            self._update_target_data(spikee_session_id, session_state)
             response = "History cleared"
         elif "REFUSE" in input_text:
             response = "I cannot do that"
@@ -61,11 +55,10 @@ class MockMultiTurnTarget(MultiTarget):
             response = f"Response to {input_text}"
         
         # Update History
-        history = self._get_spikee_session_data(spikee_session_id)
-        if history is None: history = []
-        
+        history = session_state["history"]
         history.append({"role": "user", "content": input_text})
         history.append({"role": "assistant", "content": response})
-        self._update_spikee_session_data(spikee_session_id, history)
+        session_state["history"] = history
+        self._update_target_data(spikee_session_id, session_state)
 
         return response
