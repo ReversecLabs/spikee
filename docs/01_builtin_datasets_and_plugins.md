@@ -50,6 +50,10 @@ This guide provides an overview of each available seed folder.
 ### `seeds-empty`
 *   **Purpose:** An empty template folder. It contains empty `documents.jsonl`, `jailbreaks.jsonl`, and `instructions.jsonl` files. This is the recommended starting point when creating a new dataset from scratch, especially for standalone attacks.
 
+### `seeds-harmful-instructions-only`
+*   **Purpose:** Specifically designed for **LLM-driven attacks** such as **Crescendo** and **LLM-Jailbreaker**. These attacks require only a plain instruction (objective) to generate their own attack vectors dynamically.
+*   **Content:** Contains harmful instructions in `instructions.jsonl`, while leaving jailbreaks and user inputs as empty placeholders.
+
 ### `zzz_LEGACY_seeds-targeted-2024-12`
 *   **Purpose:** A legacy dataset that has been superseded by `seeds-cybersec-2025-04`. It is kept for backward compatibility.
 
