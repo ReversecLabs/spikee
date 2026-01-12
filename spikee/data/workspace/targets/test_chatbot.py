@@ -1,7 +1,7 @@
 """
 test_chatbot.py
 
-This is an example Multi-Turn target for the Spikee Test Chatbot.
+This is an example Multi-Turn target for the Spikee Test Chatbot (https://github.com/ReversecLabs/spikee-test-chatbot).
 This uses HTTP(s) requests to communicate with the Chatbot API, and manages multi-turn conversations 
 using Spikee's MultiTarget template.
 
