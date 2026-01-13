@@ -767,10 +767,6 @@ def test_dataset(args):
     if attack_module and hasattr(attack_module, "turn_type") and attack_module.turn_type == Turn.MULTI:
         # Validate target supports multi-turn
         if target_module.config.get("multi-turn", False):
-            manager = multiprocessing.Manager()
-            target_data = manager.dict()
-            target_module.get_target().add_managed_dicts(target_data)
-
             print(f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'.")
 
         else:
@@ -790,6 +786,11 @@ def test_dataset(args):
         print(
             f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
         )
+
+    if hasattr(target_module, "add_managed_dicts"):
+        manager = multiprocessing.Manager()
+        target_data = manager.dict()
+        target_module.get_target().add_managed_dicts(target_data)
 
     # Obtain datasets and ensure resume-file is only used with single dataset
     datasets = process_jsonl_input_files(args.dataset, args.dataset_folder)
