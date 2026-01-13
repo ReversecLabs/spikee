@@ -787,7 +787,7 @@ def test_dataset(args):
             f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
         )
 
-    if hasattr(target_module, "add_managed_dicts"):
+    if hasattr(target_module.get_target(), "add_managed_dicts"):
         manager = multiprocessing.Manager()
         target_data = manager.dict()
         target_module.get_target().add_managed_dicts(target_data)
