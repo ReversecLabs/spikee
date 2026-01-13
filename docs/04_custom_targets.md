@@ -167,6 +167,21 @@ As part of this the `MultiTarget` and `SimpleMultiTarget` parent classes have be
 * `_get_id_map(spikee_session_id)`: Obtains the mapping of Spikee session IDs to target session IDs.
 * `_update_id_map(spikee_session_id, associated_ids)`: Updates the mapping of Spikee session IDs to target session IDs.
 
+### Backtracking Support
+Backtracking refers to the ability to "undo" the last turn in a conversation. This is crucial for certain multi-turn attacks (e.g., Crescendo) which rely on removing failed attempts (refusals) from the conversation history to prevent the LLM from entering a defensive state.
+
+**Configuration:**
+To assert that your target supports backtracking, set `backtrack=True` in the `__init__` method:
+```python
+super().__init__(turn_types=[Turn.MULTI], backtrack=True)
+```
+
+**Implementation:**
+When `process_input` is called with `backtrack=True`, your target **must** remove the last pair of user and assistant messages from its stored history before processing the new `input_text`.
+
+**Fallback Behavior:**
+If a target does not support backtracking (`backtrack=False`), attacks like Crescendo will automatically abort the current attempt upon refusal and restart with a fresh session ID, ensuring a clean state for the next attempt.
+
 ### Example Function Implementations
 ```python
 
@@ -196,7 +211,8 @@ associated_ids = self._get_id_map(spikee_session_id)  # Retrieve the mapped targ
 
 
 
-See `test_chatbot` target for an example implementation of a `MultiTarget` target.
+See `workspace/targets/test_chatbot.py` for an example implementation of a `MultiTarget` target that manually manages session state and history.
+See `workspace/targets/simple_test_chatbot.py` for an example implementation of a `SimpleMultiTarget` that simplifies this process.
 
 ### Multi-Turn Target Template
 ```python

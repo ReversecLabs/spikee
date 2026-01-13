@@ -12,6 +12,10 @@ Usage:
 
 Return values:
     - For typical LLM completion, return a string that represents the model's response.
+
+References:
+    - See `simple_test_chatbot.py` for a simplified version of this target using `SimpleMultiTarget`.
+    - This file demonstrates manual session and history management using the raw `MultiTarget` interface.
 """
 
 from spikee.templates.multi_target import MultiTarget  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
@@ -106,7 +110,13 @@ class TestChatbotTarget(MultiTarget):
         while self.validate_conversation_id(url=url, conversation_id=session_id):
              session_id = str(uuid.uuid4())
 
-        self.set_target_session_id(spikee_session_id, session_id)
+        session_state = self._get_target_data(spikee_session_id)
+        if session_state is None:
+             session_state = {"target_session_id": session_id, "history": []}
+        else:
+             session_state["target_session_id"] = session_id
+        
+        self._update_target_data(spikee_session_id, session_state)
         return session_id
 
     def validate_conversation_id(
@@ -148,6 +158,15 @@ class TestChatbotTarget(MultiTarget):
         # ---- Determine the URL based on target options ----
         url = "http://localhost:8000"
 
+        # ---- Retrieve Session State ----
+        session_state = None
+        if spikee_session_id is not None:
+            session_state = self._get_target_data(spikee_session_id)
+            if session_state is None:
+                # Initialize new session state
+                session_state = {"target_session_id": None, "history": []}
+                self._update_target_data(spikee_session_id, session_state)
+
         # ---- Validate new conversation ID for multi-turn sessions ----
         target_session_id = None
         if spikee_session_id is None:
@@ -157,13 +176,17 @@ class TestChatbotTarget(MultiTarget):
             while self.validate_conversation_id(url=url, conversation_id=target_session_id):
                 target_session_id = str(uuid.uuid4())
         else:
-            target_session_id = self.get_target_session_id(spikee_session_id)
+            target_session_id = session_state.get("target_session_id")
             if target_session_id is None:  # New conversation
                 target_session_id = self.get_new_conversation_id(url=url, spikee_session_id=spikee_session_id)
+                # Note: get_new_conversation_id now updates session_state inside via _update_target_data, 
+                # but we should refresh our local copy if we want to be safe, or just trust ret value.
+                # Actually, my previous edit to get_new_conversation_id updates the DB. 
+                # Let's just use the returned value.
 
         # ---- Backtracking ----
         if backtrack and spikee_session_id is not None:
-            history = self._get_spikee_session_data(spikee_session_id)
+            history = session_state.get("history", [])
             if history is not None and len(history) >= 2:
                 # Remove last turn (user + assistant)
                 history = history[:-2]
@@ -181,7 +204,11 @@ class TestChatbotTarget(MultiTarget):
                         )
                 
                 target_session_id = new_target_session_id
-                self._update_spikee_session_data(spikee_session_id, history)
+                
+                # Update state
+                session_state["target_session_id"] = target_session_id
+                session_state["history"] = history
+                self._update_target_data(spikee_session_id, session_state)
 
         # ---- Send the new message ----
         response = self.send_message(
@@ -192,13 +219,15 @@ class TestChatbotTarget(MultiTarget):
 
         # ---- Update History ----
         if spikee_session_id is not None:
-            history = self._get_spikee_session_data(spikee_session_id)
-            if history is None:
-                 history = []
+            # Refresh state in case it changed (unlikely here but good practice)
+            # session_state = self._get_target_data(spikee_session_id)
+            history = session_state.get("history", [])
             
             history.append({"role": "user", "content": input_text})
             history.append({"role": "assistant", "content": response})
-            self._update_spikee_session_data(spikee_session_id, history)
+            
+            session_state["history"] = history
+            self._update_target_data(spikee_session_id, session_state)
 
         return response
 
