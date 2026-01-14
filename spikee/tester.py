@@ -449,10 +449,12 @@ def _do_single_request(
         response, _ = target_module.process_input(
             input_text, system_message, False, entry_id, output_file
         )
+        response = str(response)
+
         end_time = time.time()
         response_time = end_time - start_time
         success = call_judge(entry, response)
-        response_str = response if isinstance(response, str) else ""
+        response_str = response
         error_message = None
 
     except GuardrailTrigger as gt:
