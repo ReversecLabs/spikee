@@ -1004,7 +1004,7 @@ def extract_results(args):
             if invert:
                 query = query[1:]
 
-            result = query in text
+            result = query in str(text)
             return not result if invert else result
 
     # Print overview
