@@ -1,7 +1,7 @@
 from flask import Flask, render_template, send_file, abort
 from io import BytesIO
 import os
-import base64
+import json
 import hashlib
 from selenium import webdriver
 
@@ -21,6 +21,13 @@ def create_viewer(viewer_folder, results_file, results_data, host, port) -> Flas
 
     results_dict = {}
     for entry in results_data:
+
+        backup = entry['response']
+        try:
+            entry['response'] = json.loads(entry['response'])
+        except json.JSONDecodeError:
+            entry['response'] = backup
+
         results_dict[str(entry['id'])] = entry
 
     # Context Processor (Allows templates to run functions)
