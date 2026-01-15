@@ -115,23 +115,27 @@ def create_viewer(viewer_folder, results, host, port) -> Flask:
         category = request.args.get('category', '')
         custom_search = request.args.get('custom_search', '')
 
-        print(f"[Viewer] Filtering results for category '{category}' with custom search '{custom_search}'")
-
         entries = loaded_results.get(loaded_file[0], {})
 
         # Filter entries based on category and custom search
-        if category != '':
-            try:
-                custom_query = generate_query(category, custom_search.split('|'))
+        try:
+            custom_query = generate_query('custom', custom_search.split('|'))
 
-                print(f"[Viewer] Generated query: {custom_query}")
-            except ValueError as e:
-                abort(400, description=str(e))
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            matching_entries = {}
-            for id, entry in entries.items():
-                if extract_entries(entry, category, custom_query):
-                    matching_entries[id] = entry
+        matching_entries = {}
+        for id, entry in entries.items():
+
+            flag = True
+            if category != '' and category != 'custom':
+                flag = extract_entries(entry, category)
+
+            if flag and custom_search != '':
+                flag = extract_entries(entry, 'custom', custom_query)
+
+            if flag:
+                matching_entries[id] = entry
 
             entries = matching_entries
 
