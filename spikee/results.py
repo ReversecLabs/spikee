@@ -16,7 +16,9 @@ from .utilities.files import (
 )
 from .utilities.results import (
     preprocess_results,
-    ResultProcessor
+    ResultProcessor,
+    generate_query,
+    extract_entries
 )
 from .utilities.tags import validate_and_get_tag
 
@@ -213,127 +215,45 @@ def extract_results(args):
         exit(1)
 
     # Custom Category
-    custom_query = []
+    custom_query = None
     if args.category == "custom":
         if args.custom_search is None:
             print("[Error] Custom search requires the --custom_value to be specified.")
             exit(1)
-
-        for query in args.custom_search:
-            query = query.split(":", 1)
-            query.reverse()
-            custom_query.append(query)
-
-        def search(query, text):
-            invert = query.startswith("!")
-            if invert:
-                query = query[1:]
-
-            result = query in text
-            return not result if invert else result
+        else:
+            custom_query = generate_query(category, args.custom_search)
 
     # Print overview
     print("[Overview] Results will be extracted from the following file(s): ")
 
-    matching_results = []
+    matching_entries = []
     id_count = 0
     total_count = 0
+
     for result_file in result_files:
         print(f" - {result_file}")
 
-        result_name = result_file.split(os.sep)[-1].removesuffix(".jsonl")
+        source = result_file.split(os.sep)[-1].removesuffix(".jsonl")
 
         # Load the results data
         results = read_jsonl_file(result_file)
 
-        for result in results:
+        for entry in results:
             total_count += 1
-            result["source_file"] = result_file  # Track source file for each entry
-            match category:
-                case "success":
-                    if result.get("success", False):
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
+            entry["source_file"] = result_file
 
-                        matching_results.append(result)
-
-                case "failure":
-                    if not result.get("success", False):
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
-
-                        matching_results.append(result)
-
-                case "error":
-                    if result.get("error", None) not in [None, "No response received"]:
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
-
-                        matching_results.append(result)
-
-                case "guardrail":
-                    if result.get("guardrail_triggered", False):
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
-
-                        matching_results.append(result)
-
-                case "no-guardrail":
-                    if not result.get("guardrail_triggered", False):
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
-
-                        matching_results.append(result)
-
-                case "custom":
-                    query_match = True
-                    for query in custom_query:
-                        if len(query) > 1:
-                            field = result.get(query[1], None)
-                            if field is None:
-                                trimmed_query = query[0].lstrip("!")
-                                invert = query[0].startswith("!")
-                                if trimmed_query == "None" or trimmed_query == "null":
-                                    query_match = not invert
-                                else:
-                                    query_match = invert
-
-                            elif not search(query[0], field):
-                                query_match = False
-
-                        elif not search(query[0], result):
-                            query_match = False
-
-                    if query_match:
-                        id_count += 1
-                        result["id"] = id_count
-                        result["long_id"] = (
-                            f"{result['long_id']}_extracted_{result_name}"
-                        )
-
-                        matching_results.append(result)
+            if extract_entries(entry, category, custom_query):
+                id_count += 1
+                entry["id"] = id_count
+                entry["long_id"] = f"{entry['long_id']}_extracted_{source}"
+                matching_entries.append(entry)
 
     # Output File
     tag = validate_and_get_tag(args.tag)
     output_file = prepare_output_file("results", "extract", category, None, tag)
 
     # Output matching results
-    write_jsonl_file(output_file, matching_results)
+    write_jsonl_file(output_file, matching_entries)
     print(
         f"[Overview] Extracted {id_count} / {total_count} results to {output_file}. Extraction Rate: {round(id_count / total_count if total_count > 0 else 0, 2)}"
     )

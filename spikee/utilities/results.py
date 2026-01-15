@@ -108,7 +108,7 @@ HTML_TEMPLATE = """
     <body>
         <h1>Results Analysis Report</h1>
         <p><strong>Result File:</strong> {{ result_file }}</p>
-        
+
         <h2>General Statistics</h2>
         <ul>
             <li>Total Unique Entries: {{ total_entries }}</li>
@@ -130,7 +130,7 @@ HTML_TEMPLATE = """
                 <li>Attack Success Rate: {{ attack_success_rate }}</li>
             {% endif %}
         </ul>
-        
+
         {% if has_dynamic_attacks and attack_types %}
         <div class="attack-stats">
             <h3>Dynamic Attack Statistics</h3>
@@ -154,11 +154,11 @@ HTML_TEMPLATE = """
             </table>
         </div>
         {% endif %}
-        
+
         {% if fp_data %}
         <h2>False Positive Analysis</h2>
         <p><strong>False Positive Check File:</strong> {{ fp_data.file }}</p>
-        
+
         <div class="metrics">
             <h3>Confusion Matrix</h3>
             <ul>
@@ -167,7 +167,7 @@ HTML_TEMPLATE = """
                 <li><strong>True Negatives</strong> (benign prompts correctly allowed): {{ fp_data.true_negatives }}</li>
                 <li><strong>False Positives</strong> (benign prompts incorrectly blocked): {{ fp_data.false_positives }}</li>
             </ul>
-            
+
             <h3>Performance Metrics</h3>
             <ul>
                 <li><strong>Precision:</strong> {{ "%.4f"|format(fp_data.precision) }} - Of all blocked prompts, what fraction were actual attacks</li>
@@ -177,7 +177,7 @@ HTML_TEMPLATE = """
             </ul>
         </div>
         {% endif %}
-        
+
         {% for field, breakdown in breakdowns.items() %}
             <h2>Breakdown by {{ field.replace('_', ' ').title() }}</h2>
             <table>
@@ -215,7 +215,7 @@ HTML_TEMPLATE = """
                 {% endfor %}
             </table>
         {% endfor %}
-        
+
         <h2>Top 10 Most Successful Combinations</h2>
         <table>
             <tr>
@@ -259,7 +259,7 @@ HTML_TEMPLATE = """
             </tr>
             {% endfor %}
         </table>
-        
+
         <h2>Top 10 Least Successful Combinations</h2>
         <table>
             <tr>
@@ -1058,3 +1058,88 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
 
         output += "\n" + tabulate(table, headers=headers) + "\n"
         return output
+
+
+# -- EXTRACT --
+def generate_query(category, custom_search=None):
+    """Generates a search query based on the specified category or custom search criteria."""
+
+    # Category validation
+    if category not in [
+        "success",
+        "failure",
+        "error",
+        "guardrail",
+        "no-guardrail",
+        "custom",
+    ]:
+        raise ValueError("Invalid category specified for extraction.")
+
+    custom_query = []
+    if category == "custom":
+        if custom_search is None:
+            raise ValueError("Custom search query must be provided for 'custom' category.")
+
+        for query in custom_search:
+            query = query.split(":", 1)
+            query.reverse()
+            custom_query.append(query)
+
+    return custom_query
+
+
+def extract_entries(entry, category="success", custom_query=None):
+    """Extracts entries based on the specified category or custom search criteria."""
+    match category:
+        case "success":
+            if entry.get("success", False):
+                return True
+
+        case "failure":
+            if not entry.get("success", False):
+                return True
+
+        case "error":
+            if entry.get("error") not in [None, "No response received"]:
+                return True
+
+        case "guardrail":
+            if entry.get("guardrail_triggered", False):
+                return True
+
+        case "no-guardrail":
+            if not entry.get("guardrail_triggered", False):
+                return True
+
+        case "custom":
+            query_match = True
+            for query in custom_query:
+                if len(query) > 1:
+                    field = entry.get(query[1], None)
+                    if field is None:
+                        trimmed_query = query[0].lstrip("!")
+                        invert = query[0].startswith("!")
+                        if trimmed_query == "None" or trimmed_query == "null":
+                            query_match = not invert
+                        else:
+                            query_match = invert
+
+                    elif not extract_search(query[0], field):
+                        query_match = False
+
+                elif not extract_search(query[0], entry):
+                    query_match = False
+
+            return query_match
+
+    return False
+
+
+def extract_search(query, text):
+    """Searches for a query in the given text, supporting inversion with '!' prefix."""
+    invert = query.startswith("!")
+    if invert:
+        query = query[1:]
+
+    result = query in text
+    return not result if invert else result

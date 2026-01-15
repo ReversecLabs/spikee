@@ -390,7 +390,7 @@ def main():
     )
     parser_extract.add_argument(
         "--category",
-        choices=["success", "fail", "error", "guardrail", "no-guardrail", "custom"],
+        choices=["success", "failure", "error", "guardrail", "no-guardrail", "custom"],
         default="success",
         help="Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom",
     )
