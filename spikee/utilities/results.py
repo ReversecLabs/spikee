@@ -1141,5 +1141,5 @@ def extract_search(query, text):
     if invert:
         query = query[1:]
 
-    result = query in text
+    result = query in str(text)
     return not result if invert else result

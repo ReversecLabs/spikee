@@ -35,6 +35,8 @@
                             <option value="{{ file }}" {% if file == loaded_file %}selected{% endif %}>{{ file }}</option>
                         {% endfor %}
                     </select>
+                    <input type="hidden" name="category" value="{{ category }}">
+                    <input type="hidden" name="custom_search" value="{{ custom_search }}">
                 </form>
 
                 <a href="https://reversec.com"><img style="height: 30px" src="/static/reversec-menu-icon.svg"></a>

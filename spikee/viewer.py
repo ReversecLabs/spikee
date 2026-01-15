@@ -6,7 +6,7 @@ import hashlib
 from selenium import webdriver
 
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, extract_resource_name
-from spikee.utilities.results import ResultProcessor
+from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
 
 
 VIEWER_NAME = "SPIKEE Viewer"
@@ -112,7 +112,30 @@ def create_viewer(viewer_folder, results, host, port) -> Flask:
 
     @viewer.route("/file/")
     def result_file():
-        return render_template("result_file.html", truncated=True)
+        category = request.args.get('category', '')
+        custom_search = request.args.get('custom_search', '')
+
+        print(f"[Viewer] Filtering results for category '{category}' with custom search '{custom_search}'")
+
+        entries = loaded_results.get(loaded_file[0], {})
+
+        # Filter entries based on category and custom search
+        if category != '':
+            try:
+                custom_query = generate_query(category, custom_search.split('|'))
+
+                print(f"[Viewer] Generated query: {custom_query}")
+            except ValueError as e:
+                abort(400, description=str(e))
+
+            matching_entries = {}
+            for id, entry in entries.items():
+                if extract_entries(entry, category, custom_query):
+                    matching_entries[id] = entry
+
+            entries = matching_entries
+
+        return render_template("result_file.html", category=category, custom_search=custom_search, entries=entries, truncated=True)
 
     @viewer.route("/entry/<entry>")
     def result_entry(entry):
