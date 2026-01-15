@@ -9,17 +9,36 @@
 </head>
 
 <body>
-<nav class="navbar navbar-dark fixed-top" style="background-color: #2a1635;">
+<nav class="navbar navbar-expand-md navbar-dark fixed-top" style="background-color: #2a1635;">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#"><img class="mx-2" style="height: 30px" src="/static/logo.png">{{ get_app_name() }}</a>
-        <ul class="navbar-nav me-auto mb-2 mb-md-0">
-            <li class="nav-item nav-link active">
-                {{ get_result_file() }}
-            </li>
-        </ul>
+        <a class="navbar-brand" href="#"><img class="mx-2" style="height: 30px"
+                                              src="/static/logo.png">{{ get_app_name() }}</a>
 
-        <div class="d-flex">
-            <a href="https://reversec.com"><img style="height: 30px" src="/static/reversec-menu-icon.svg"></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/file">Entries</a>
+                </li>
+            </ul>
+            <div class="d-flex">
+                <form class="me-3" role="search" method="get" action="/load_results/">
+                    <select class="form-select" name="result_file" onchange="this.form.submit()">
+                        {% for file in get_result_files() %}
+                            <option value="{{ file }}" {% if file == get_loaded_result_file() %}selected{% endif %}>{{ file }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <a href="https://reversec.com"><img style="height: 30px" src="/static/reversec-menu-icon.svg"></a>
+            </div>
         </div>
     </div>
 </nav>
@@ -28,6 +47,7 @@
 <div class="row" style="height: 7vh; min-height: 65px"></div>
 
 <script src="/static/bootstrap.5.3.8.min.js"></script>
+<script src="/static/popper2.11.8.min.js"></script>
 
 {% block content %}{% endblock %}
 </body>

@@ -1,0 +1,45 @@
+<div class="card shadow-sm border-0">
+    {% include "utilities/header.html" with context %}
+    <div class="card-body p-4">
+        <!-- Metadata Grid -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Language</div>
+                <div class="fw-bold">{{ entry.lang if entry.lang and entry.lang is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Jailbreak Type</div>
+                <div class="fw-bold">{{ entry.jailbreak_type if entry.jailbreak_type and entry.jailbreak_type is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Instruction Type</div>
+                <div class="fw-bold">{{ entry.instruction_type if entry.instruction_type and entry.instruction_type is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="meta-label">Document Type</div>
+                <div class="fw-bold">{{ entry.document_id if entry.document_id and entry.document_id is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Position</div>
+                <div class="fw-bold">{{ entry.position if entry.position and entry.position is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Spotlighting Marker</div>
+                <div class="fw-bold">{{ entry.spotlighting_data_markers if entry.spotlighting_data_markers and entry.spotlighting_data_markers is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+                <div class="meta-label">Injection Delimiter</div>
+                <div class="fw-bold">{{ entry.injection_delimiters if entry.injection_delimiters and entry.injection_delimiters is not none else "—" }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="meta-label">Suffix ID</div>
+                <div class="fw-bold">{{ entry.suffix_id if entry.suffix_id and entry.suffix_id is not none else "—" }}</div>
+            </div>
+        </div>
+
+        <hr>
+        
+        {% include "utilities/input.html" with context %}
+        {% include "utilities/response.html" with context %}      
+    </div>
+</div>

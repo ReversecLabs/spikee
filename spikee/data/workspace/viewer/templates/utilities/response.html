@@ -1,0 +1,39 @@
+{% if entry.guardrail %}
+    <!-- Guardrail -->
+    <div class="border-start px-3 mt-2 bg-warning bg-opacity-10 border-start border-warning">
+        <strong class="small me-2 text-warning-emphasis">Guardrail Categories:</strong>
+        <div class="code-block h-100 result-response">{{ entry.guardrail_categories|e if entry.guardrail_categories is not none else "—" }}</div>
+    </div>
+{% elif entry.error and entry.error != "" %}
+    <!-- Error Message -->
+    <div class="border-start px-3 mt-2 bg-danger bg-opacity-10 border-start border-danger">
+        <strong class="small me-2 text-danger-emphasis">Error Message:</strong>
+        <div class="code-block h-100 result-response">{{ entry.error|e }}</div>
+    </div>
+{% elif entry.response is sequence and entry.response is not string %}
+    <!-- List Response -->
+    <div class="border-start px-3 mt-2">
+        <strong class="small me-2">Response:</strong>
+        <ol class="ps-3 mt-2">
+            {% for message in entry.response %}
+                <li class="mb-2 result-response">
+                    {% if message is mapping %}
+                        {% for key, value in message.items() %}
+                            <div class="code-block h-100">
+                                <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ value|e }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="code-block h-100">{{ message|e }}</div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+{% else %}
+    <!-- Single-Turn Response -->
+    <div class="border-start px-3 mt-2">
+        <strong class="small me-2">Response:</strong>
+        <div class="code-block h-100 result-response">{{ entry.response|e if entry.response is not none and entry.response != "" else "—" }}</div>
+    </div>
+{% endif %}

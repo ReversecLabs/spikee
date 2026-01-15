@@ -1,0 +1,38 @@
+{% if entry.input is string %}
+    <!-- Single-Turn Input -->
+    <div class="border-start px-3">
+        <strong class="small me-2">Input Prompt:</strong>
+        <div class="code-block h-100 result-input">{{ entry.input|e if entry.input is not none and entry.input != "" else "—" }}</div>
+    </div>
+
+{% elif entry.input is mapping %}
+    <!-- Instructional Multi-Turn Input -->
+    <div class="border-start px-3">
+        <strong class="small me-2">Instructional Multi-Turn Prompt:</strong>
+        {% if entry.input.objective and entry.input.objective is not none %}
+            <div class="code-block h-100 result-input"><strong class="text-primary">Objective:</strong>{{ entry.input.objective|e }}</div>
+        {% endif %}
+        <ol class="ps-3 mt-2">
+            {% for message in entry.input.conversation %}
+                <li class="mb-2">
+                    <div class="code-block h-100 result-input">
+                        <strong style="color: {{ string_to_colour(message.role) }};">{{ message.role|upper }}: </strong>{{ message.content|e }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+
+{% else %}
+    <!-- Multi-Turn Input -->
+    <div class="border-start px-3">
+        <strong class="small me-2">Multi-Turn Input Prompt:</strong>
+        <ol class="ps-3 mt-2">
+            {% for message in entry.input %}
+                <li class="mb-2">
+                    <div class="code-block h-100 result-input">{{ message|e }}</div>
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+{% endif %}

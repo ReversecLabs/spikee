@@ -1,0 +1,54 @@
+<!-- Header -->
+{% if download %}
+<div class="card-header py-1 d-flex justify-content-between align-items-center"
+    style="background-color: #911ef0; color: #fff;">
+
+    <div class="mb-0">#{{ entry.id }} | {{ entry.long_id }}</div>
+
+    <span class="badge bg-white rounded-pill px-3
+       {% if entry.success %}
+          text-success
+       {% elif entry.guardrail %}
+          text-warning-emphasis
+       {% else %}
+          text-danger
+       {% endif %}">
+       {% if entry.success %}
+          SUCCESS
+       {% elif entry.guardrail %}
+          GUARDRAIL TRIGGER
+       {% else %}
+          FAILED
+       {% endif %}
+    </span>
+</div>
+{% else %}
+<a class="card-header py-1 d-flex justify-content-between align-items-center
+    {% if entry.success %}
+        bg-success text-white
+    {% elif entry.guardrail %}
+        bg-warning text-dark
+    {% else %}
+        bg-danger text-white
+    {% endif %}" href="/entry/{{ entry.id }}" style="text-decoration: none;">
+
+    <div class="mb-0">#<span class="result-id">{{ entry.id }}</span> | <span class="result-long-id">{{ entry.long_id }}</span></div>
+
+    <span class="badge bg-white rounded-pill px-3
+        {% if entry.success %}
+            text-success
+        {% elif entry.guardrail %}
+            text-warning-emphasis
+        {% else %}
+            text-danger
+        {% endif %}">
+        {% if entry.success %}
+            SUCCESS
+        {% elif entry.guardrail %}
+            GUARDRAIL TRIGGER
+        {% else %}
+            FAILED
+        {% endif %}
+    </span>
+</a>
+{% endif %}
