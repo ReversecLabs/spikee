@@ -474,8 +474,14 @@ def main():
     parser_web_viewer.add_argument(
         "--result-file",
         type=str,
-        required=True,
-        help="Path to the results JSONL file"
+        action="append",
+        help="Path to an results JSONL file, generated using the dataset",
+    )
+    parser_web_viewer.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files, generated using the dataset",
     )
 
     # --- convert-to-excel
