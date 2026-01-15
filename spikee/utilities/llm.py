@@ -2,45 +2,41 @@ from typing import Dict, List
 
 import os
 
-SUPPORTED_LLM_MODELS = [
+EXAMPLE_LLM_MODELS = [
     "openai-gpt-4.1-mini",
-    "openai-gpt-4o-mini",
-    "ollama-phi4-mini",
-    "ollama-gemma3",
-    "ollama-llama3.2",
-    "bedrock-us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    "bedrock-us.meta.llama4-scout-17b-instruct-v1:0",
-    "llamaccp-server",
-    "llamaccp-server-[port]",
-    "together-gemma2-8b",
-    "together-gemma2-27b",
-    "together-llama4-maverick-fp8",
-    "together-llama4-scout",
-    "together-llama31-8b",
-    "together-llama31-70b",
-    "together-llama31-405b",
-    "together-llama33-70b",
-    "together-mixtral-8x7b",
-    "together-mixtral-8x22b",
-    "together-qwen3-235b-fp8",
-    "offline",
+    "openai-gpt-4o",
 ]
 
-TESTING_LLM_MODELS = ["mock"]
+SUPPORTED_LLM_MODELS = [
+    "llamaccp-server",
+    "offline",
+    "mock",
+]
 
 SUPPORTED_PREFIXES = [
     "openai-",
-    "ollama-",
+    "google-",
     "bedrock-",
+    "ollama-",
     "llamaccp-server-",
     "together-",
-    "mock",
+    "mock-",
 ]
+
+
+def get_example_llm_models() -> List[str]:
+    """Return the list of example LLM models."""
+    return EXAMPLE_LLM_MODELS
 
 
 def get_supported_llm_models() -> List[str]:
     """Return the list of supported LLM models."""
     return SUPPORTED_LLM_MODELS
+
+
+def get_supported_prefixes() -> List[str]:
+    """Return the list of supported LLM model prefixes."""
+    return SUPPORTED_PREFIXES
 
 
 # Map of shorthand keys to TogetherAI model identifiers
@@ -77,9 +73,10 @@ def validate_llm_option(option: str) -> bool:
     """
     Validate if the provided options correspond to a supported LLM model.
     """
-    return option in SUPPORTED_LLM_MODELS or any(
-        option.startswith(prefix) for prefix in SUPPORTED_PREFIXES
-    )
+    if option is None:
+        raise ValueError("LLM option cannot be None, ensure than modules leveraging LLM utilities specify an LLM option.")
+
+    return option in SUPPORTED_LLM_MODELS or any(option.startswith(prefix) for prefix in SUPPORTED_PREFIXES)
 
 
 def get_llm(options=None, max_tokens=8):
@@ -90,12 +87,10 @@ def get_llm(options=None, max_tokens=8):
         options (str): The LLM model option string.
         max_tokens (int): Maximum tokens for the LLM response (Default: 8 for LLM Judging).
     """
-    if options not in SUPPORTED_LLM_MODELS and not any(
-        options.startswith(prefix) for prefix in SUPPORTED_PREFIXES
-    ):
+    if not validate_llm_option(options):
         raise ValueError(
             f"Unsupported LLM option: '{options}'. "
-            f"Supported options: {SUPPORTED_LLM_MODELS}"
+            f"Supported Prefixes: {SUPPORTED_PREFIXES}, Supported Models: {SUPPORTED_LLM_MODELS}"
         )
 
     if options.startswith("openai-"):
@@ -109,6 +104,25 @@ def get_llm(options=None, max_tokens=8):
             timeout=None,
             max_retries=2,
         )
+
+    elif options.startswith("google-"):
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        model_name = options.replace("google-", "")
+        return ChatGoogleGenerativeAI(
+            transport="rest",
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=0,
+            timeout=None,
+            max_retries=2
+        )
+
+    elif options.startswith("bedrock-"):
+        from langchain_aws import ChatBedrock
+
+        model_name = options.replace("bedrock-", "")
+        return ChatBedrock(model=model_name, max_tokens=max_tokens, temperature=0)
 
     elif options.startswith("ollama-"):
         from langchain_ollama import ChatOllama
@@ -127,12 +141,6 @@ def get_llm(options=None, max_tokens=8):
                 # total attempts (1 initial + retries)
             wait_exponential_jitter=True,  # backoff with jitter
         )
-
-    elif options.startswith("bedrock-"):
-        from langchain_aws import ChatBedrock
-
-        model_name = options.replace("bedrock-", "")
-        return ChatBedrock(model=model_name, max_tokens=max_tokens, temperature=0)
 
     elif options.startswith("llamaccp-server"):
         from langchain_openai import ChatOpenAI
@@ -184,7 +192,7 @@ def get_llm(options=None, max_tokens=8):
 
     else:
         raise ValueError(
-            f"Invalid options format: '{options}'. Expected prefix 'openai-', 'ollama-', 'bedrock-', 'llamaccp-server', 'together-', or 'offline'."
+            f"Invalid options format: '{options}'. Expected prefix 'openai-', 'google-', 'ollama-', 'bedrock-', 'llamaccp-server', 'together-', or 'offline'."
         )
 
 

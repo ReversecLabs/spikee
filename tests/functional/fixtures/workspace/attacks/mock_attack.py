@@ -4,10 +4,6 @@ from spikee.templates.attack import Attack
 
 
 class MockAttack(Attack):
-    @property
-    def __name__(self) -> str:
-        return "mock_attack"
-
     def get_available_option_values(self) -> List[str]:
         return []
 

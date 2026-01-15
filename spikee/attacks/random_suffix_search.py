@@ -46,10 +46,6 @@ from spikee.templates.attack import Attack
 
 
 class RandomSuffixattack(Attack):
-    @property
-    def __name__(self):
-        return "random_suffix_search"
-
     # Default parameters.
     n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
     n_tokens_change = 4  # Maximum tokens to change per iteration.
@@ -71,7 +67,7 @@ class RandomSuffixattack(Attack):
                     document[: idx + len(payload)]
                     + " "
                     + adv_string
-                    + document[idx + len(payload) :]
+                    + document[idx + len(payload):]
                 )
         return document + "\n" + adv_string
 
@@ -117,7 +113,7 @@ class RandomSuffixattack(Attack):
             ).tolist()
             # Replace the selected tokens in adv_tokens.
             adv_tokens[
-                substitute_pos_start : substitute_pos_start + self.n_tokens_change
+                substitute_pos_start: substitute_pos_start + self.n_tokens_change
             ] = substitution_tokens
 
             # Decode the modified token sequence into text.

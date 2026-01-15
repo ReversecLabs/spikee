@@ -1,5 +1,7 @@
+from typing import Tuple, List
+
 from .judge import Judge
-from spikee.utilities.llm import get_llm, get_supported_llm_models
+from spikee.utilities.llm import get_llm, get_example_llm_models, get_supported_prefixes
 
 
 class LLMJudge(Judge):
@@ -13,11 +15,17 @@ class LLMJudge(Judge):
         options.extend(
             [
                 model
-                for model in get_supported_llm_models()
+                for model in get_example_llm_models()
                 if model != self.DEFAULT_LLM_MODEL
             ]
         )
         return options
+
+    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
+        """
+        Returns the list of supported LLM model prefixes.
+        """
+        return True, get_supported_prefixes()
 
     def _get_llm(self, judge_options):
         """

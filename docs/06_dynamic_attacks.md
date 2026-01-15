@@ -31,10 +31,6 @@ from spikee.templates.attack import Attack
 from typing import List
 
 class SampleAttack(Attack):
-    @property
-    def __name__(self):
-        return "sample_attack" # Name of the attack - matches filename
-
     OPTIONS_MAP = {
         "strategy": ["random", "aggressive", "stealth"],
     }
@@ -65,7 +61,7 @@ class SampleAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option=None,
-    ):
+    ) -> Tuple[int, bool, str, str]:
         """
         Executes a dynamic attack on the given entry.
 
@@ -138,3 +134,66 @@ The `attack` function must return a tuple containing four elements:
 3.  **Update Progress Bar**: Call `attempts_bar.update(1)` inside the `bar_lock` for every iteration to keep the UI in sync.
 4.  **Handle Early Exit**: If an attack succeeds, break the loop. Before returning, you should adjust the progress bar's total to reflect the skipped iterations. This keeps the ETA accurate.
 5.  **Be Stateless**: An attack function should not carry state between different dataset entries. All necessary information should come from the `entry` dictionary.
+
+## Multi-Turn Dynamic Attacks
+Spikee v5.5 introduced support for multi-turn attacks, which enabled dynamic attacks to perform assess conversational LLM applications against multi-turn prompt injection attacks. 
+
+See `multi_turn` and `crescendo` attack scripts for examples of multi-turn dynamic attacks.
+
+### Multi-Turn Attack Template
+```python
+import uuid
+
+from spikee.templates.attack import Attack
+from spikee.utilities.enums import Turn
+
+class SampleMultiTurnAttack(Attack):
+    def __init__(self):
+        """Define multi-turn capabilities for attack."""
+        # turn_type defines an attack's multi-turn capability, either Turn.SINGLE (Default) or Turn.MULTI
+        super().__init__(turn_type=Turn.MULTI)
+    
+    def get_available_option_values(self) -> str:
+        return None
+
+    def attack(
+        self,
+        entry: dict,
+        target_module: object,
+        call_judge: callable,
+        max_iterations: int,
+        attempts_bar=None,
+        bar_lock=None,
+        attack_option: str = None,
+    ) -> Tuple[int, bool, str, str]:
+        """
+        Executes a dynamic multi-turn attack on a given entry.
+
+        Args:
+            entry (dict): The dataset entry. Expected keys: "text", optionally "payload" and "exclude_from_transformations_regex".
+            target_module (module): The target module (must implement process_input(input_text, system_message)).
+            call_judge (function): A function that accepts (entry, llm_response) and returns True if the attack is successful.
+            max_iterations (int): The maximum number of attack iterations to try.
+            attempts_bar (tqdm, optional): A progress bar to update for each iteration.
+            attack_option (str, optional): Configuration option like "strategy=aggressive".
+
+        Returns:
+            tuple: (iterations_used:int, success:bool, {"objective": str, "conversation": List[Dict]}, last_response:str)
+        """
+
+        session_id = str(uuid.uuid4()) # Unique session ID for multi-turn context
+        conversation = [] # To store the conversation history
+
+        
+        loop:
+            # Your implementation here...
+            conversation.append({"role": "user", "content": message})
+            conversation.append({"role": "assistant", "content": response})
+
+        success = call_judge(entry, response)
+
+        return len(entry["text"]), success, {"conversation": conversation}, response
+
+        
+
+```

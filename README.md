@@ -377,11 +377,25 @@ spikee generate --seed-folder datasets/seeds-investment-advice \
                 --include-system-message \
 ```
 
-Notice that here we use `--format document`, as we just want to generate the raw prompts/queries from the seed folder, we don't want to add additional prompts. Also notice that we use `--include-system-message`, as the topical guardrail will use this to determine whether the input aligns wit hthe system_message rules.
+Notice that here we use `--format document`, as we just want to generate the raw prompts/queries from the seed folder, we don't want to add additional prompts. Also notice that we use `--include-system-message`, as the topical guardrail will use this to determine whether the input aligns with the system_message rules.
 
 ```bash
 spikee test --dataset datasets/investment-advice-document-sys-dataset-TIMESTAMP.jsonl \
             --target nvidia_nemoguard_topic_control
+```
+
+#### H. Multi-Turn Attacks
+Spikee allows for multi-turn attacks, when an compatible target, attack script and dataset is used. This enabled Spikee to assess multi-turn applications, such as chatbots, against multi-turn prompt injection attacks. 
+
+See the following documentation to implement custom [targets](./docs/04_custom_targets.md#multi-turn-dynamic-targets) and [attacks](./docs/06_dynamic_attacks.md#multi-turn-dynamic-attacks) and the following on generating multi-turn [datasets](./docs/02_dataset_generation.md#multi-turn-datasets).
+
+The following command will perform a `crescendo` multi-turn attack using an instructional multi-turn dataset, against an `LLMBank` target:
+
+```bash
+spikee test --dataset datasets/multi-turn-dataset-*.jsonl \
+            --target LLMBank \
+            --attack crescendo
+            --attack-options 'model=openai-gpt-4o-mini'
 ```
 
 ### Step 5: Analyze the Results

@@ -11,13 +11,13 @@ Usage:
 
 # TODO: Update to modern OOP LLM
 
-from typing import List
+from typing import List, Tuple
 import json
 import random
 from dotenv import load_dotenv
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.llm import get_supported_llm_models, get_llm, validate_llm_option
+from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes, get_llm, validate_llm_option
 
 
 class PromptDecompositionPlugin(Plugin):
@@ -26,9 +26,7 @@ class PromptDecompositionPlugin(Plugin):
     DEFAULT_MODE = "dumb"
 
     # Supported modes
-    SUPPORTED_MODES = [DEFAULT_MODE] + [
-        model for model in get_supported_llm_models() if model != "offline"
-    ]
+    SUPPORTED_MODES = [DEFAULT_MODE] + [model for model in get_example_llm_models()] + [model for model in get_supported_llm_models() if model != "offline"]
 
     def get_available_option_values(self) -> List[str]:
         """Return supported options; first option is default."""
@@ -36,6 +34,10 @@ class PromptDecompositionPlugin(Plugin):
             "mode=dumb,variants=10",
             "available modes: " + ", ".join(self.SUPPORTED_MODES),
         ]
+
+    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
+        """Return supported prefixes."""
+        return False, get_supported_prefixes()
 
     def _parse_options(self, plugin_option: str) -> tuple:
         """Parse plugin option and return (num_variants, mode)."""

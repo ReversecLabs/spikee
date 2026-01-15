@@ -7,10 +7,6 @@ class TestRepeatPlugin(Plugin):
     DEFAULT_SUFFIX = "-repeat"
     DEFAULT_COUNT = 2
 
-    @property
-    def __name__(self) -> str:
-        return "test_repeat"
-
     def get_available_option_values(self) -> List[str]:
         return [
             "n_variants=2",

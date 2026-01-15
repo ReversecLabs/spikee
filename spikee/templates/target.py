@@ -1,8 +1,19 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from spikee.utilities.enums import Turn
+
 
 class Target(ABC):
+    def __init__(self, turn_types: List[Turn] = [Turn.SINGLE], backtrack: bool = False):
+        super().__init__()
+
+        self.config = {
+            "single-turn": Turn.SINGLE in turn_types,
+            "multi-turn": Turn.MULTI in turn_types,
+            "backtrack": backtrack
+        }
+
     @abstractmethod
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.

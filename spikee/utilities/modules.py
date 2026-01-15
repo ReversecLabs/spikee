@@ -85,6 +85,26 @@ def get_options_from_module(module, module_type=None):
     return None
 
 
+def get_prefix_from_module(module, module_type=None):
+    """
+    Return the prefix values advertised by the given module or instance.
+
+    Args:
+        module: Either an instantiated module (new OOP) or the imported module.
+        module_type: Optional str specifying the module category. Required when
+            `module` is a module rather than an instance.
+    """
+    if module and hasattr(module, "get_available_prefixes"):
+        return module.get_available_prefixes()
+
+    if inspect.ismodule(module) and module_type:
+        instance = _instantiate_impl(module, module_type)
+        if instance and hasattr(instance, "get_available_prefixes"):
+            return instance.get_available_prefixes()
+
+    return None
+
+
 def get_default_option(module, module_type=None):
     available = get_options_from_module(module, module_type)
     return available[0] if available else None
