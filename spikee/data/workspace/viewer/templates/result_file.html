@@ -69,8 +69,8 @@
                 </script>
                 </div>
             
-            {% set results_data = get_loaded_results_data(get_loaded_result_file()) %}
-            {% for entry in results_data %}
+            {% set results_data = get_loaded_results_data(loaded_file) %}
+            {% for id, entry in results_data.items() %}
                 {% include "utilities/result.html" with context %}
             {% endfor %}
         </div>

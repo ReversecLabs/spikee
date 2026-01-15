@@ -8,7 +8,7 @@
     <!-- Error Message -->
     <div class="border-start px-3 mt-2 bg-danger bg-opacity-10 border-start border-danger">
         <strong class="small me-2 text-danger-emphasis">Error Message:</strong>
-        <div class="code-block h-100 result-response">{{ entry.error|e }}</div>
+        <div class="code-block h-100 result-response">{{ process_output(entry.error, truncated=truncated)|e }}</div>
     </div>
 {% elif entry.response is sequence and entry.response is not string %}
     <!-- List Response -->
@@ -20,11 +20,11 @@
                     {% if message is mapping %}
                         {% for key, value in message.items() %}
                             <div class="code-block h-100">
-                                <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ value|e }}
+                                <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_output(value, truncated=truncated)|e }}
                             </div>
                         {% endfor %}
                     {% else %}
-                        <div class="code-block h-100">{{ message|e }}</div>
+                        <div class="code-block h-100">{{ process_output(message, truncated=truncated)|e }}</div>
                     {% endif %}
                 </li>
             {% endfor %}
@@ -34,6 +34,6 @@
     <!-- Single-Turn Response -->
     <div class="border-start px-3 mt-2">
         <strong class="small me-2">Response:</strong>
-        <div class="code-block h-100 result-response">{{ entry.response|e if entry.response is not none and entry.response != "" else "—" }}</div>
+        <div class="code-block h-100 result-response">{{ process_output(entry.response, truncated=truncated)|e }}</div>
     </div>
 {% endif %}

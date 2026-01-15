@@ -2,7 +2,7 @@
     <!-- Single-Turn Input -->
     <div class="border-start px-3">
         <strong class="small me-2">Input Prompt:</strong>
-        <div class="code-block h-100 result-input">{{ entry.input|e if entry.input is not none and entry.input != "" else "—" }}</div>
+        <div class="code-block h-100 result-input">{{ process_output(entry.input, truncated=truncated)|e }}</div>
     </div>
 
 {% elif entry.input is mapping %}
@@ -16,7 +16,7 @@
             {% for message in entry.input.conversation %}
                 <li class="mb-2">
                     <div class="code-block h-100 result-input">
-                        <strong style="color: {{ string_to_colour(message.role) }};">{{ message.role|upper }}: </strong>{{ message.content|e }}
+                        <strong style="color: {{ string_to_colour(message.role) }};">{{ message.role|upper }}: </strong>{{ process_output(message.content, truncated=truncated)|e }}
                     </div>
                 </li>
             {% endfor %}
@@ -30,7 +30,7 @@
         <ol class="ps-3 mt-2">
             {% for message in entry.input %}
                 <li class="mb-2">
-                    <div class="code-block h-100 result-input">{{ message|e }}</div>
+                    <div class="code-block h-100 result-input">{{ process_output(message, truncated=truncated)|e }}</div>
                 </li>
             {% endfor %}
         </ol>

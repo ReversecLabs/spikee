@@ -4,13 +4,11 @@
 <div id="content" class="container">
     <div class="row justify-content-center">
         <div class="col-12 d-flex flex-column">
-            <h3><strong>Overall</strong></h3>
-        </div>
-    </div>
+            <h3><strong>{{loaded_file|upper}}</strong></h3>
 
-    <div class="row justify-content-center mt-2">
-        <div class="col-12 d-flex flex-column">
-            <h3>Loaded: "<strong>{{ get_loaded_result_file() }}</strong>"</h3>
+            <pre>
+                {{ get_result_processor(loaded_file) }}
+            </pre>
         </div>
     </div>
 </div>

@@ -22,17 +22,17 @@
         <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav me-auto mb-2 mb-md-0">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/">Overview</a>
+                    <a class="nav-link active" href="/?result_file={{ loaded_file }}">Overview</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="/file">Entries</a>
+                    <a class="nav-link active" href="/file?result_file={{ loaded_file }}">Entries</a>
                 </li>
             </ul>
             <div class="d-flex">
-                <form class="me-3" role="search" method="get" action="/load_results/">
+                <form class="me-3" role="search" method="get">
                     <select class="form-select" name="result_file" onchange="this.form.submit()">
                         {% for file in get_result_files() %}
-                            <option value="{{ file }}" {% if file == get_loaded_result_file() %}selected{% endif %}>{{ file }}</option>
+                            <option value="{{ file }}" {% if file == loaded_file %}selected{% endif %}>{{ file }}</option>
                         {% endfor %}
                     </select>
                 </form>
