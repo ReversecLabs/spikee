@@ -10,10 +10,6 @@ class PartialSuccessTarget(Target):
     def __init__(self) -> None:
         self._call_count = 0
 
-    @property
-    def __name__(self) -> str:
-        return "partial_success"
-
     def get_available_option_values(self) -> List[str]:
         return []
 

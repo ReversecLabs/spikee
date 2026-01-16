@@ -335,7 +335,7 @@ def parse_plugin_options(plugin_options_str):
     return options_map
 
 
-def apply_plugin(plugin_module, text, exclude_patterns=None, plugin_option=None):
+def apply_plugin(plugin_name, plugin_module, text, exclude_patterns=None, plugin_option=None):
     """
     Applies a plugin module's transform function to the given text if available.
     """
@@ -352,7 +352,7 @@ def apply_plugin(plugin_module, text, exclude_patterns=None, plugin_option=None)
             # Older plugin without plugin_option support
             return plugin_module.transform(text, exclude_patterns)
 
-    print(f"Plugin '{plugin_module.__name__}' does not have a 'transform' function.")
+    print(f"Plugin '{plugin_name}' does not have a 'transform' function.")
     return text
 
 
@@ -428,7 +428,11 @@ def process_standalone_attacks(
 
                     # Get the transformed text(s) from the plugin
                     plugin_result = apply_plugin(
-                        plugin_module, attack_text, exclude_list, plugin_option
+                        plugin_name,
+                        plugin_module,
+                        attack_text,
+                        exclude_list,
+                        plugin_option
                     )
 
                     # Ensure the result is a list of variations
@@ -687,6 +691,7 @@ def generate_variations(
                         for suffix in suffixes:
                             # Get the transformed text(s) from the plugin.
                             plugin_result = apply_plugin(
+                                plugin_name,
                                 plugin_module,
                                 combined_text,
                                 local_exclude,

@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional, Dict, Any
 import threading
 import re
 import json
+import traceback
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import Turn
@@ -90,15 +91,13 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 
 """
 
+DEFAULT_LLM_MODEL = "openai-gpt-4o"
+
 
 class Crescendo(Attack):
     def __init__(self):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
-
-    @property
-    def __name__(self):
-        return "crescendo"
 
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.
@@ -307,6 +306,12 @@ class Crescendo(Attack):
             is_refuse = self._is_refusal(llm, response_text)
 
             if is_refuse:
+                # Check if target supports backtracking
+                if not target_module.config.get("backtrack", False):
+                    # If target does not support backtracking, abort this attempt.
+                    # The outer loop will restart with a new session ID.
+                    return calls, False, chat_history, response_text
+
                 # do not advance non_backtrack_turns; next call will include backtrack_last_turn=True
                 last_response = response_text
                 continue
@@ -347,7 +352,7 @@ class Crescendo(Attack):
         opts = self._parse_attack_option(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
-            llm = get_llm(opts.get("model", None), max_tokens=None)
+            llm = get_llm(opts.get("model", DEFAULT_LLM_MODEL), max_tokens=None)
         except ValueError as e:
             print(f"[Error] {e}")
             return None
@@ -371,6 +376,7 @@ class Crescendo(Attack):
                 )
             except Exception as e:
                 # surface generator / classifier / target errors in-line
+                traceback.print_exc()
                 return total_calls, False, {"objective": objective, "conversation": last_history}, str(e)
 
             total_calls += calls

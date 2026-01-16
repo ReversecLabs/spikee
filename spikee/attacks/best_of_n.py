@@ -33,10 +33,6 @@ from spikee.templates.attack import Attack
 
 
 class BestOfNAttack(Attack):
-    @property
-    def __name__(self):
-        return "best_of_n"
-
     # Transformation probability constants
     SCRAMBLE_PROB = 0.6
     CAPITALIZATION_PROB = 0.6
@@ -110,7 +106,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload) :]
+            + original_text[idx + len(payload):]
         )
 
     def _generate_variant(self, text, exclusions):

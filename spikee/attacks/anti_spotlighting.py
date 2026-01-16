@@ -35,10 +35,6 @@ from spikee.templates.attack import Attack
 
 
 class AntiSpotlightingAttack(Attack):
-    @property
-    def __name__(self):
-        return "anti_spotlighting"
-
     def get_available_option_values(self) -> List[str]:
         return None
 

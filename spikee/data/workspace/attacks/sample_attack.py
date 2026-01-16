@@ -54,10 +54,6 @@ from spikee.templates.attack import Attack
 
 
 class SampleAttack(Attack):
-    @property
-    def __name__(self):
-        return "sample_attack"
-
     def get_available_option_values(self) -> List[str]:
         """Return supported attack options; first option is default."""
         return ["strategy=random", "strategy=aggressive", "strategy=stealth"]

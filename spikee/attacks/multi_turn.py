@@ -12,10 +12,6 @@ class MultiTurnAttack(Attack):
         """Define multi-turn capabilities for attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    @property
-    def __name__(self):
-        return "multi_turn"
-
     def get_available_option_values(self) -> str:
         return None
 
@@ -71,6 +67,7 @@ class MultiTurnAttack(Attack):
                     remaining = max_iterations - count
                     attempts_bar.total = attempts_bar.total - remaining
 
-            return len(entry["text"]), success, {"objective": None, "conversation": conversation}, response
+            return len(entry["text"]), success, {"conversation": conversation}, response
         except Exception as e:
+            traceback.print_exc()
             return 0, False, f"Error during multi-turn attack: {str(e)}", ""
