@@ -4,10 +4,9 @@
 <div id="content" class="container">
     <div class="row justify-content-center">
         <div class="col-12 d-flex flex-column">
-            <h3><strong>{{loaded_file|upper}}</strong></h3>
-
+            <h5>Analysis of Results File: <strong>{{loaded_file}}</strong></h5>
             <pre>
-                {{ get_result_processor(loaded_file) }}
+                {{ get_result_processor(loaded_file)|safe }}
             </pre>
         </div>
     </div>

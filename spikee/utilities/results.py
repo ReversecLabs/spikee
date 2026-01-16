@@ -316,6 +316,7 @@ class ResultProcessor:
 
         self._fp_data = None
         self._combination_stats_sorted = []
+        self._breakdowns = {}
 
         # --- 1. SETUP ---
         # Group original entries with their dynamic attack entries
@@ -480,6 +481,12 @@ class ResultProcessor:
 
     def generate_html_report(self):
         """Generates an HTML report of the results analysis."""
+        self.generate_fp_analysis()
+        self.generate_detailed_breakdowns()
+        if len(self.guardrail_categories) > 0:
+            self.generate_guardrail_categories()
+        self.generate_combination_analysis()
+
         # Prepare data for the template
         template_data = {
             "result_file": self.result_file,

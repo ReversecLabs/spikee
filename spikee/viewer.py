@@ -7,6 +7,7 @@ from selenium import webdriver
 
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
+import re
 
 
 VIEWER_NAME = "SPIKEE Viewer"
@@ -20,27 +21,38 @@ def create_viewer(viewer_folder, results, host, port) -> Flask:
         static_folder=os.path.join(viewer_folder, "static"),
         template_folder=os.path.join(viewer_folder, "templates"),
     )
+
+    def highlight_headings(result_output):
+        if not isinstance(result_output, str):
+            return result_output
+
+        def repl(match):
+            heading = match.group(1)
+            return f'<mark><strong>=== {heading} ===</strong></mark>'
+
+        return re.sub(r"===\s*(.*?)\s*===", repl, result_output)
+
     loaded_file = ["combined"]
     loaded_results = {'combined': {}}
     result_processors = {}
-    combined_results = {}
     for name, entries in results.items():
         loaded_results[name] = {}
 
         # Attempt to parse 'response' field as JSON
         for entry in entries:
-            backup = entry['response']
-            try:
-                entry['response'] = json.loads(entry['response'])
-            except json.JSONDecodeError:
-                entry['response'] = backup
+            if entry['response'] is not None and entry['response'] != "":
+                backup = entry['response']
+                try:
+                    entry['response'] = json.loads(entry['response'])
+                except Exception:
+                    entry['response'] = backup
 
             loaded_results[name][str(entry['id'])] = entry
             loaded_results['combined'][str(name + "-" + str(entry['id']))] = entry
 
         # Create ResultProcessor for this results file
-        result_processors[name] = ResultProcessor(results=entries, result_file=name).generate_output()
-    result_processors["combined"] = ResultProcessor(results=loaded_results['combined'].values(), result_file="combined").generate_output()
+        result_processors[name] = highlight_headings(ResultProcessor(results=entries, result_file=name).generate_output())
+    result_processors["combined"] = highlight_headings(ResultProcessor(results=loaded_results['combined'].values(), result_file="combined").generate_output())
 
     # Context Processor (Allows templates to run functions)
     @viewer.context_processor
@@ -67,7 +79,7 @@ def create_viewer(viewer_folder, results, host, port) -> Flask:
             if output is None:
                 return "—"
 
-            elif truncated and len(output) > TRUNCATE_LENGTH:
+            elif truncated and isinstance(output, str) and len(output) > TRUNCATE_LENGTH:
                 return output[:TRUNCATE_LENGTH] + "...[Truncated]"
 
             return output

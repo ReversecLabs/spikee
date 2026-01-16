@@ -204,4 +204,42 @@ class SampleMultiTurnTarget(MultiTarget):
         """
 
         # Your implementation here...
+
+        self._update_target_data(spikee_session_id, target_data)
+        return response_text # Use json.dumps({"role": "app", "content": "Hi!"}) when using non string responses
+```
+
+### Simplified Multi-Turn Target Template
+```python
+import uuid
+
+from spikee.templates.simple_multi_target import SimpleMultiTarget
+from spikee.utilities.enums import Turn
+
+
+class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
+    def __init__(self):
+        super().__init__(
+            turn_types=[Turn.SINGLE, Turn.MULTI],  
+            backtrack=True 
+        )
+
+    def get_available_option_values(self) -> List[str]:
+        return None
+
+    def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = None,
+        spikee_session_id: Optional[str] = None,
+        backtrack: Optional[bool] = False,
+    ) -> str:
+        conversation_data = self._get_conversation_data(spikee_session_id)
+
+        # Your implementation here...
+
+        self._append_conversation_data(spikee_session_id, role="user", content=input_text)
+        self._append_conversation_data(spikee_session_id, role="assistant", content=response_text)
+        return response_text # Use json.dumps({"role": "app", "content": "Hi!"}) when using non string responses
 ```
