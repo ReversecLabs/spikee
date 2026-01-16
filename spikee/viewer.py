@@ -1,9 +1,11 @@
+import traceback
 from flask import Flask, render_template, send_file, abort, url_for, request
 from io import BytesIO
 import os
 import json
 import hashlib
 from selenium import webdriver
+import ast
 
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
@@ -14,7 +16,7 @@ VIEWER_NAME = "SPIKEE Viewer"
 TRUNCATE_LENGTH = 500
 
 
-def create_viewer(viewer_folder, results, host, port) -> Flask:
+def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
     viewer = Flask(
         VIEWER_NAME,
@@ -45,7 +47,13 @@ def create_viewer(viewer_folder, results, host, port) -> Flask:
                 try:
                     entry['response'] = json.loads(entry['response'])
                 except Exception:
-                    entry['response'] = backup
+                    if allow_ast:
+                        try:
+                            entry['response'] = ast.literal_eval(entry['response'])
+                        except Exception:
+                            entry['response'] = backup
+                    else:
+                        entry['response'] = backup
 
             loaded_results[name][str(entry['id'])] = entry
             loaded_results['combined'][str(name + "-" + str(entry['id']))] = entry
@@ -217,7 +225,8 @@ def run_viewer(args):
         viewer_folder=viewer_folder,
         results=results,
         host=args.host,
-        port=args.port
+        port=args.port,
+        allow_ast=args.allow_ast
     )
 
     viewer.run(

@@ -1,38 +1,47 @@
-{% if entry.input is string %}
-    <!-- Single-Turn Input -->
-    <div class="border-start px-3">
-        <strong class="small me-2">Input Prompt:</strong>
-        <div class="code-block h-100 result-input">{{ process_output(entry.input, truncated=truncated)|e }}</div>
+{% if entry.system_message and entry.system_message is not none and entry.system_message != '' %}
+    <div class="border-start px-3 mb-3">
+        <strong class="small me-2">System Message:</strong>
+        <div class="code-block h-100 result-input">{{ process_output(entry.system_message, truncated=truncated)|e }}</div>
     </div>
+{% endif %}
 
-{% elif entry.input is mapping %}
-    <!-- Instructional Multi-Turn Input -->
-    <div class="border-start px-3">
+<div class="border-start px-3">
+    {% if entry.input is string %}
+        <strong class="small me-2">Input Prompt:</strong>
+    {% elif entry.input.objective and entry.input.objective is not none %}
         <strong class="small me-2">Instructional Multi-Turn Prompt:</strong>
-        {% if entry.input.objective and entry.input.objective is not none %}
-            <div class="code-block h-100 result-input"><strong class="text-primary">Objective:</strong>{{ entry.input.objective|e }}</div>
-        {% endif %}
+        <div class="code-block h-100 result-input">
+            <strong class="text-primary">Objective:</strong>{{ entry.input.objective|e }}
+        </div>
+    {% else %}
+        <strong class="small me-2">Multi-Turn Input Prompt:</strong>
+    {% endif %}
+
+    {% if entry.input is mapping %}
         <ol class="ps-3 mt-2">
             {% for message in entry.input.conversation %}
                 <li class="mb-2">
                     <div class="code-block h-100 result-input">
-                        <strong style="color: {{ string_to_colour(message.role) }};">{{ message.role|upper }}: </strong>{{ process_output(message.content, truncated=truncated)|e }}
+                        <strong style="color: {{ string_to_colour(message.role) }};">
+                            {{ message.role|upper }}:
+                        </strong>{{ process_output(message.content, truncated=truncated)|e }}
                     </div>
                 </li>
             {% endfor %}
         </ol>
-    </div>
-
-{% else %}
-    <!-- Multi-Turn Input -->
-    <div class="border-start px-3">
-        <strong class="small me-2">Multi-Turn Input Prompt:</strong>
+    {% elif entry.input is sequence and entry.input is not string %}
         <ol class="ps-3 mt-2">
             {% for message in entry.input %}
                 <li class="mb-2">
-                    <div class="code-block h-100 result-input">{{ process_output(message, truncated=truncated)|e }}</div>
+                    <div class="code-block h-100 result-input">
+                        {{ process_output(message, truncated=truncated)|e }}
+                    </div>
                 </li>
             {% endfor %}
         </ol>
-    </div>
-{% endif %}
+    {% else %}
+        <div class="code-block h-100 result-input">
+            {{ process_output(entry.input, truncated=truncated)|e }}
+        </div>
+    {% endif %}
+</div>

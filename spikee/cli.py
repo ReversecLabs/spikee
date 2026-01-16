@@ -483,6 +483,11 @@ def main():
         action="append",
         help="Path to a results folder containing multiple JSONL files, generated using the dataset",
     )
+    parser_web_viewer.add_argument(
+        "--allow-ast",
+        action="store_true",
+        help="Allow AST parsing in the web viewer (use with caution)",
+    )
 
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser(

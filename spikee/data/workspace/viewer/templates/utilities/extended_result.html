@@ -1,45 +1,104 @@
 <div class="card shadow-sm border-0">
     {% include "utilities/header.html" with context %}
-    <div class="card-body p-4">
+    <div class="card-body">
         <!-- Metadata Grid -->
         <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3 border-end">
+            {% if entry.plugin and entry.plugin is not none %}
+            <div class="col-4 col-md-2 border-end">
+                <div class="meta-label">Plugin</div>
+                <div class="fw-bold">{{ entry.plugin }}</div>
+            </div>
+            {% endif %}
+            {% if entry.lang and entry.lang is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Language</div>
-                <div class="fw-bold">{{ entry.lang if entry.lang and entry.lang is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.lang }}</div>
             </div>
-            <div class="col-6 col-md-3 border-end">
+            {% endif %}
+            {% if entry.jailbreak_type and entry.jailbreak_type is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Jailbreak Type</div>
-                <div class="fw-bold">{{ entry.jailbreak_type if entry.jailbreak_type and entry.jailbreak_type is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.jailbreak_type }}</div>
             </div>
-            <div class="col-6 col-md-3 border-end">
+            {% endif %}
+            {% if entry.instruction_type and entry.instruction_type is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Instruction Type</div>
-                <div class="fw-bold">{{ entry.instruction_type if entry.instruction_type and entry.instruction_type is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.instruction_type }}</div>
             </div>
-            <div class="col-6 col-md-3">
+            {% endif %}
+            {% if entry.document_id and entry.document_id is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Document Type</div>
-                <div class="fw-bold">{{ entry.document_id if entry.document_id and entry.document_id is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.document_id }}</div>
             </div>
-            <div class="col-6 col-md-3 border-end">
+            {% endif %}
+            {% if entry.position and entry.position is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Position</div>
-                <div class="fw-bold">{{ entry.position if entry.position and entry.position is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.position }}</div>
             </div>
-            <div class="col-6 col-md-3 border-end">
+            {% endif %}
+            {% if entry.spotlighting_data_markers and entry.spotlighting_data_markers is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Spotlighting Marker</div>
-                <div class="fw-bold">{{ entry.spotlighting_data_markers if entry.spotlighting_data_markers and entry.spotlighting_data_markers is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.spotlighting_data_markers }}</div>
             </div>
-            <div class="col-6 col-md-3 border-end">
+            {% endif %}
+            {% if entry.injection_delimiters and entry.injection_delimiters is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Injection Delimiter</div>
-                <div class="fw-bold">{{ entry.injection_delimiters if entry.injection_delimiters and entry.injection_delimiters is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.injection_delimiters }}</div>
             </div>
-            <div class="col-6 col-md-3">
+            {% endif %}
+            {% if entry.suffix_id and entry.suffix_id is not none %}
+            <div class="col-4 col-md-2 border-end">
                 <div class="meta-label">Suffix ID</div>
-                <div class="fw-bold">{{ entry.suffix_id if entry.suffix_id and entry.suffix_id is not none else "—" }}</div>
+                <div class="fw-bold">{{ entry.suffix_id }}</div>
             </div>
+            {% endif %}
+            {% if entry.attempts and entry.attempts is not none %}
+            <div class="col-4 col-md-2 border-end">
+                <div class="meta-label">Attempts / Calls</div>
+                <div class="fw-bold">{{ entry.attempts }}</div>
+            </div>
+            {% endif %}
+            {% if entry.response_time and entry.response_time is not none %}
+            <div class="col-4 col-md-2 border-end">
+                <div class="meta-label">Response Time</div>
+                <div class="fw-bold">
+                    {{ "%.1f"|format(entry.response_time) }} sec
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <hr>
         
         {% include "utilities/input.html" with context %}
-        {% include "utilities/response.html" with context %}      
+        {% include "utilities/response.html" with context %} 
+        
+        {% if entry.judge_name and entry.judge_name != "None" and entry.judge_name != '' %}
+            <div class="alert alert-info mt-3 py-0 shadow-sm" role="alert" style="border-left: 5px solid #0d6efd;">
+                <div><strong>Judge Configuration</strong></div>
+                <div>Judge: <span class="text-muted">{{ entry.judge_name }}</span></div>
+                {% if entry.judge_args and entry.judge_args != '' %}
+                    <div>Arguments: <span class="text-muted">{{ entry.judge_args }}</span></div>
+                {% endif %}
+                {% if entry.judge_options and entry.judge_options != '' %}
+                    <div>Options: <span class="text-muted">{{ entry.judge_options }}</span></div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if entry.attack_name and entry.attack_name != "None" and entry.attack_name != '' %}
+            <div class="alert alert-success mt-3 py-0 shadow-sm" role="alert" style="border-left: 5px solid #198754;">
+                <div><strong>Attack Configuration</strong></div>
+                <div>Attack: <span class="text-muted">{{ entry.attack_name }}</span></div>
+                {% if entry.attack_options and entry.attack_options != '' %}
+                    <div>Options: <span class="text-muted">{{ entry.attack_options }}</span></div>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </div>

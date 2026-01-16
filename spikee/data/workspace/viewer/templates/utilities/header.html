@@ -32,7 +32,7 @@
         bg-danger text-white
     {% endif %}" href="/entry/{{ id }}?result_file={{ loaded_file }}" style="text-decoration: none;">
 
-    <div class="mb-0">#<span class="result-id">{{ id }}</span> | <span class="result-long-id">{{ entry.long_id }}</span></div>
+    <div class="mb-0 text-truncate">#<span class="result-id">{{ id }}</span> | <span class="result-long-id">{{ entry.long_id }}</span></div>
 
     <span class="badge bg-white rounded-pill px-3
         {% if entry.success %}
