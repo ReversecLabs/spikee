@@ -55,12 +55,14 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
                     else:
                         entry['response'] = backup
 
+            entry['source_file'] = name
+
             loaded_results[name][str(entry['id'])] = entry
             loaded_results['combined'][str(name + "-" + str(entry['id']))] = entry
 
         # Create ResultProcessor for this results file
         result_processors[name] = highlight_headings(ResultProcessor(results=entries, result_file=name).generate_output())
-    result_processors["combined"] = highlight_headings(ResultProcessor(results=loaded_results['combined'].values(), result_file="combined").generate_output())
+    result_processors["combined"] = highlight_headings(ResultProcessor(results=loaded_results['combined'].values(), result_file="combined").generate_output(combined=True))
 
     # Context Processor (Allows templates to run functions)
     @viewer.context_processor
@@ -230,7 +232,7 @@ def run_viewer(args):
     )
 
     viewer.run(
-        debug=True,
+        debug=False,
         host=args.host,
         port=args.port
     )

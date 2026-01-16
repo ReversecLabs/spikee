@@ -60,7 +60,7 @@ def analyze_results(args):
         # process and analyze combined result file
         results_processor = ResultProcessor(combined_results, "Combined", fp_check_file)
         if output_format == "console":
-            print(results_processor.generate_output(overview=args.overview))
+            print(results_processor.generate_output(overview=args.overview, combined=args.combine))
 
         elif output_format == "html":
             results_processor.generate_html_report()
@@ -73,7 +73,7 @@ def analyze_results(args):
             # process and analyze single result file
             results_processor = ResultProcessor(results, result_file, fp_check_file)
             if output_format == "console":
-                print(results_processor.generate_output(overview=args.overview))
+                print(results_processor.generate_output(overview=args.overview, combined=args.combine))
 
             elif output_format == "html":
                 results_processor.generate_html_report()

@@ -4,7 +4,7 @@ import html
 from tabulate import tabulate
 import os
 
-from spikee.utilities.files import read_jsonl_file
+from spikee.utilities.files import extract_resource_name, read_jsonl_file
 
 
 # -- SPECIAL CHARACTER HANDLING --
@@ -84,6 +84,22 @@ def group_entries_with_attacks(results):
             groups[str_entry_id].append(entry)
 
     return groups, attack_to_original
+
+
+def group_entries_by_source(results):
+    """
+    Group entries by their source file.
+
+    Returns:
+        dict: A mapping from source file names to a list of entries
+    """
+    source_groups = defaultdict(list)
+
+    for entry in results:
+        source_file = entry.get("source_file", "unknown_source")
+        source_groups[source_file].append(entry)
+
+    return source_groups
 
 
 # -- RESULT PROCESSORS --
@@ -462,9 +478,12 @@ class ResultProcessor:
             else 0
         )
 
-    def generate_output(self, overview=False):
+    def generate_output(self, overview=False, combined=False):
         """Generates the full results analysis output."""
         output = self.generate_overview()
+
+        if combined:
+            output += self.generate_combined()
 
         if not overview:
             output += self.generate_fp_analysis()
@@ -588,7 +607,7 @@ class ResultProcessor:
         if self.guardrail_groups > 0:
             output += f"\nGuardrail Triggers: {self.guardrail_groups} [{(self.guardrail_groups / self.total_entries) * 100:.2f}%]"
         output += f"\nTotal Attempts: {self.total_attempts}"
-        output += f"\nAttack Success Rate: {self.attack_success_rate:.2f}%"
+        output += f"\nAttack Success Rate (ASR): {self.attack_success_rate:.2f}%"
 
         # Dynamic attack statistics
         if self.attack_types:
@@ -620,6 +639,104 @@ class ResultProcessor:
                 "Success Rate",
             ]
             output += "\n" + tabulate(table, headers=headers) + "\n"
+
+        return output
+
+    def generate_combined(self):
+        source_groups = group_entries_by_source(self.results)
+        self._source_stats = {
+            field: {
+                "attempts": 0,
+                "successes": 0,
+                "initial_successes": 0,
+                "attack_only_successes": 0,
+                "failed": 0,
+                "guardrail": 0,
+                "errors": 0,
+                "attack_success_rate": 0.0,
+                "initial_success_rate": 0.0,
+                "attack_improvement": 0.0,
+            } for field in source_groups.keys()
+        }
+
+        for original_id, entries in self._entry_groups.items():
+            source = entries[0].get("source_file", "unknown_source")
+            self._source_stats[source]["attempts"] += sum(entry.get("attempts", 1) for entry in entries)
+
+            attack_entries = [
+                e
+                for e in entries
+                if isinstance(e["id"], str) and "-attack" in str(e["id"])
+            ]
+            attack_success = any(e.get("success", False) for e in attack_entries)
+
+            initial_entries = [
+                e
+                for e in entries
+                if not (isinstance(e["id"], str) and "-attack" in str(e["id"]))
+            ]
+            initial_success = any(e.get("success", False) for e in initial_entries)
+
+            group_success = initial_success or attack_success
+            attack_only_success = not initial_success and attack_success
+
+            group_has_guardrail = all(
+                entry.get("guardrail", False) for entry in entries
+            )
+
+            group_has_error = all(
+                entry.get("error") not in [None, "No response received"]
+                for entry in entries
+            )
+
+            if group_success:
+                self._source_stats[source]["successes"] += 1
+                if initial_success:
+                    self._source_stats[source]["initial_successes"] += 1
+                elif attack_only_success:
+                    self._source_stats[source]["attack_only_successes"] += 1
+
+            elif group_has_error:
+                self._source_stats[source]["errors"] += 1
+                if group_has_guardrail:
+                    self._source_stats[source]["guardrail"] += 1
+
+            else:
+                self._source_stats[source]["failed"] += 1
+
+        for source, stats in self._source_stats.items():
+            total = stats["successes"] + stats["failed"] + stats["errors"]
+            stats["attack_success_rate"] = (stats["successes"] / total) * 100 if total else 0
+            stats["initial_success_rate"] = (stats["initial_successes"] / total) * 100 if total else 0
+            stats["attack_improvement"] = (stats["attack_only_successes"] / total) * 100 if total else 0
+
+        # Create a table of source stats sorted alphabetically by source name
+
+        table = []
+        headers = [
+            "Source",
+            "Attempts",
+            "Successes",
+            "Failed",
+            "Guardrail",
+            "Errors",
+            "ASR",
+        ]
+
+        # Sort sources by attack success rate (ASR) descending
+        for source, stats in sorted(self._source_stats.items(), key=lambda x: x[1]["attack_success_rate"], reverse=True):
+            table.append([
+                extract_resource_name(source),
+                stats["attempts"],
+                stats["successes"],
+                stats["failed"],
+                stats["guardrail"],
+                stats["errors"],
+                f"{stats['attack_success_rate']:.2f}%",
+            ])
+
+        output = "\n=== Combined Source Statistics ===\n"
+        output += tabulate(table, headers=headers) + "\n"
 
         return output
 
