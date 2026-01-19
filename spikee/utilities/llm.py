@@ -5,6 +5,7 @@ import os
 EXAMPLE_LLM_MODELS = [
     "openai-gpt-4.1-mini",
     "openai-gpt-4o",
+    "offline",
 ]
 
 SUPPORTED_LLM_MODELS = [
