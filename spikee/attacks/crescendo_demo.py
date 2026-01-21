@@ -93,6 +93,11 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 """
 
 
+class LLM_JSON_Error(Exception):
+    """Custom exception for LLM JSON extraction errors."""
+    pass
+
+
 class CrescendoDemo(Attack):
     def __init__(self):
         """Define multi-turn capabilities for Crescendo attack."""
@@ -143,7 +148,7 @@ class CrescendoDemo(Attack):
         4) As a last resort, scan the whole text for the first balanced {...} and parse it.
         """
         if not text:
-            raise RuntimeError("LLM returned empty response")
+            raise LLM_JSON_Error("LLM returned empty response")
 
         t = text.strip()
 
@@ -204,7 +209,7 @@ class CrescendoDemo(Attack):
                             start = -1
                             continue
 
-        raise RuntimeError("LLM did not return valid JSON object:", text)
+        raise LLM_JSON_Error("LLM did not return valid JSON object:", text)
 
     def _make_session_id(self) -> str:
         return str(uuid.uuid4())
@@ -239,7 +244,7 @@ class CrescendoDemo(Attack):
         obj = self._extract_json_or_fail(res)
         q = obj.get("generated_question")
         if not q:
-            raise RuntimeError("LLM failed to produce 'generated_question'")
+            raise LLM_JSON_Error("LLM failed to produce 'generated_question'")
         return q.strip()
 
     def _is_refusal(self, llm, text: str) -> bool:
@@ -284,7 +289,17 @@ class CrescendoDemo(Attack):
         while max_iterations - conversation.get_message_total() > 0 and non_backtrack_turns < max_turns:
             remaining_turns = max_turns - non_backtrack_turns
             prompt_message_id = last_message_id
-            prompt = self._generate_question(llm, objective, conversation, last_message_id, max_turns, remaining_turns)
+
+            json_error_attempts = 3
+            while json_error_attempts > 0:
+                try:
+                    prompt = self._generate_question(llm, objective, conversation, last_message_id, max_turns, remaining_turns)
+                    json_error_attempts = 0  # success
+                except LLM_JSON_Error as e:
+                    print(f"[Warning] LLM did not return valid JSON object (attempts remaining {json_error_attempts}): {e}")
+                    json_error_attempts -= 1
+                    if json_error_attempts <= 0:
+                        raise RuntimeError from e
             last_message_id = conversation.add_message(last_message_id, {"role": "user", "content": prompt, "spikee_session_id": session_id})
 
             # call target; each call consumes budget immediately
@@ -367,7 +382,6 @@ class CrescendoDemo(Attack):
         conversation = StandardisedConversation({"objective": entry["text"]})
         last_message_id = conversation.get_root_id()  # last message id
         last_response = ""                      # last LLM response
-        objective = entry["text"]               # jailbreak objective from dataset
 
         # Loop until global budget exhausted
         while max_iterations - conversation.get_message_total() > 0:
@@ -388,10 +402,20 @@ class CrescendoDemo(Attack):
                     conversation,
                     last_message_id
                 )
+
             except Exception as e:
                 # surface generator / classifier / target errors in-line
                 traceback.print_exc()
-                return conversation.get_message_total(), False, str(conversation), str(e)
+                return (
+                    conversation.get_message_total(),
+                    False,
+                    CrescendoDemo.standardised_input_return(
+                        input=entry["text"],
+                        conversation=conversation,
+                        objective=entry["text"]
+                    ),
+                    str(e)
+                )
 
             # If success, end early and fast-forward the attempts bar total like other attacks do
             if success:
@@ -404,9 +428,27 @@ class CrescendoDemo(Attack):
                     else:
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
-                return conversation.get_message_total(), True, str(conversation), str(last_response)
+                return (
+                    conversation.get_message_total(),
+                    True,
+                    CrescendoDemo.standardised_input_return(
+                        input=entry["text"],
+                        conversation=conversation,
+                        objective=entry["text"]
+                    ),
+                    last_response
+                )
 
             if max_iterations - conversation.get_message_total() <= 0:
                 break
 
-        return conversation.get_message_total(), False, str(conversation), str(last_response)
+        return (
+            conversation.get_message_total(),
+            False,
+            CrescendoDemo.standardised_input_return(
+                input=entry["text"],
+                conversation=conversation,
+                objective=entry["text"]
+            ),
+            last_response
+        )

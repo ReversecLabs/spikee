@@ -613,7 +613,7 @@ def process_entry(
             attack_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name,
-                "input": attack_input,
+                "input": attack_input['input'] if isinstance(attack_input, dict) else attack_input,
                 "response": attack_response,
                 "response_time": response_time,
                 "success": attack_success,
@@ -638,13 +638,20 @@ def process_entry(
                 "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
+
+            if isinstance(attack_input, dict) and "conversation" in attack_input:
+                attack_result["conversation"] = attack_input["conversation"]
+
+            if isinstance(attack_input, dict) and "objective" in attack_input:
+                attack_result["objective"] = attack_input["objective"]
+
             results_list.append(attack_result)
         except Exception as e:
             traceback.print_exc()
             error_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name + "-ERROR",
-                "input": original_input,
+                "input": attack_input['input'] if isinstance(attack_input, dict) else attack_input if attack_input else original_input,
                 "response": "",
                 "success": False,
                 "judge_name": entry["judge_name"],
@@ -668,6 +675,13 @@ def process_entry(
                 "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
+
+            if attack_input and isinstance(attack_input, dict) and "conversation" in attack_input:
+                error_result["conversation"] = attack_input["conversation"]
+
+            if attack_input and isinstance(attack_input, dict) and "objective" in attack_input:
+                error_result["objective"] = attack_input["objective"]
+
             results_list.append(error_result)
 
     return results_list

@@ -1,12 +1,13 @@
-import traceback
-from flask import Flask, render_template, send_file, abort, url_for, request
-from io import BytesIO
+from flask import Flask, render_template, send_file, abort, request
 import os
 import json
-import hashlib
 from selenium import webdriver
 import ast
+import html
+import hashlib
+from io import BytesIO
 
+from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
 import re
@@ -94,6 +95,43 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
             return output
 
+        def process_conversation(conversation_data: str, truncated: bool = False) -> str:
+            standardised_conversation = StandardisedConversation()
+            standardised_conversation.add_conversation(conversation_data)
+
+            def render_message(node, message) -> str:
+                # node_entry = f'<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str("node"))};">node:</strong> {html.escape(str(node))}</div>'
+
+                if isinstance(message['data'], dict):
+                    data = [
+                        f'''<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>''' for key, value in message['data'].items()]
+
+                    message = f'{''.join(data)}'
+                elif isinstance(message['data'], list):
+                    data = [f'''<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>''' for item in message['data']]
+
+                    message = f'{''.join(data)}'
+                else:
+                    message = f'<div class="code-block h-100 result-input">{html.escape(process_output(str(message["data"]), truncated))}</div>'
+
+                return f'<li class="mb-2" id={node} value={node}><div class="d-flex flex-column">' + message + '</div></li>'
+
+            def render_node(message_id: int) -> str:
+                message = standardised_conversation.get_message(message_id)
+
+                if message['children'] == []:
+                    return render_message(message_id, message)
+
+                else:
+                    children = [render_node(child_id) for child_id in message['children']]
+
+                    return f'{render_message(message_id, message)}<ol class="ps-3 mt-2">{''.join(children)}</ol>'
+
+            conversation_html = f'<ol class="ps-3 mt-2">{render_node(0)}</ol>'
+
+            print("FINAL CONVERSATION HTML", conversation_html)
+            return conversation_html
+
         def string_to_colour(string: str) -> str:
             """
             Convert a string to a visually distinct hex colour code.
@@ -120,6 +158,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             get_result_files=get_result_files,
             get_result_processor=get_result_processor,
             process_output=process_output,
+            process_conversation=process_conversation,
             string_to_colour=string_to_colour
         )
 
@@ -232,7 +271,7 @@ def run_viewer(args):
     )
 
     viewer.run(
-        debug=False,
+        debug=True,
         host=args.host,
         port=args.port
     )
