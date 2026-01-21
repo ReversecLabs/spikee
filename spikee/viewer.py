@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file, abort, request
+from flask import Flask, render_template, send_file, abort, request, redirect
 import os
 import json
 from selenium import webdriver
@@ -8,7 +8,7 @@ import hashlib
 from io import BytesIO
 
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, extract_resource_name
+from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, write_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
 import re
 
@@ -36,10 +36,8 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         return re.sub(r"===\s*(.*?)\s*===", repl, result_output)
 
     def load_file(result_files: dict[str, str]) -> dict:
-
         results = {}
         for name, result_file in result_files.items():
-            print(f"[Viewer] Loading results from file: {result_file}")
             entries = read_jsonl_file(result_file)
 
             for entry in entries:
@@ -67,6 +65,10 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             result_processor = highlight_headings(ResultProcessor(results=results.values(), result_file=list(result_files.keys())[0]).generate_output())
 
         return results, result_processor
+
+    def is_safe_relative_url(url):
+        # Only allow relative URLs that start with a single slash and do not contain a scheme or netloc
+        return url and url.startswith('/') and not url.startswith('//') and ':' not in url.split('?', 1)[0]
 
     loaded_files = {extract_resource_name(f): f for f in results_files}
     selected_files = ["combined"]
@@ -178,19 +180,27 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             string_to_colour=string_to_colour
         )
 
+    def reload_files(result_file: str = "combined"):
+        """Reload the result files based on the selected result file."""
+        if result_file == "combined":
+            selected_files[0] = "combined"
+            loaded[0], result_processor[0] = load_file(result_files=loaded_files)
+            return True
+
+        elif result_file in loaded_files:
+            selected_files[0] = result_file
+            loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
+            return True
+
+        else:
+            return False
+
     @viewer.before_request
     def before_request_func():
         result_file = request.args.get('result_file', 'combined')
 
         if result_file != selected_files[0]:
-            if result_file == "combined":
-                selected_files[0] = "combined"
-                loaded[0], result_processor[0] = load_file(result_files=loaded_files)
-
-            elif result_file in loaded_files:
-                selected_files[0] = result_file
-                loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
-            else:
+            if not reload_files(result_file):
                 abort(404, description="Result file not found")
 
         viewer.jinja_env.globals['loaded_file'] = selected_files[0]
@@ -233,6 +243,30 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             abort(404, description="Entry not found")
 
         return render_template("result_entry.html", id=entry, entry=entry_data)
+
+    @viewer.route("/entry/<entry>/toggle_success")
+    def toggle_success(entry):
+        return_url = request.args.get('return_url', None)
+
+        entry_data = loaded[0].get(entry)
+        if not entry_data:
+            abort(404, description="Entry not found")
+
+        jsonl_data = read_jsonl_file(entry_data['source_file'])
+        entry_id = str(entry_data['id'])
+        for item in jsonl_data:
+            if str(item['id']) == entry_id:
+                item['success'] = not item.get('success', False)
+                break
+
+        write_jsonl_file(entry_data['source_file'], jsonl_data)
+
+        reload_files(selected_files[0])
+
+        if return_url and is_safe_relative_url(return_url):
+            return redirect(return_url)
+        else:
+            return redirect(f"/entry/{entry}")
 
     @viewer.route("/entry/<entry>/card")
     def result_card(entry):

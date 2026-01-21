@@ -5,6 +5,7 @@
     <div class="row justify-content-center">
         <div class="col-12 d-flex flex-column">
             <div class="btn-group mb-2" role="group" aria-label="Filter Results" style="align-self: flex-end;">
+                <button type="button" class="btn btn-success" onclick="window.location.href='/entry/{{ id }}/toggle_success?return_url={{ request.get_full_path|urlencode }}'">Toggle Success</button>
                 <button type="button" class="btn btn-danger" onclick="history.back()">Return Home</button>
                 <!--<a href="/entry/{{entry.id}}/download" class="btn btn-primary">Download</a>-->
             </div>
