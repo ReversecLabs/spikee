@@ -17,7 +17,7 @@ VIEWER_NAME = "SPIKEE Viewer"
 TRUNCATE_LENGTH = 500
 
 
-def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
+def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> Flask:
 
     viewer = Flask(
         VIEWER_NAME,
@@ -35,35 +35,46 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
         return re.sub(r"===\s*(.*?)\s*===", repl, result_output)
 
-    loaded_file = ["combined"]
-    loaded_results = {'combined': {}}
-    result_processors = {}
-    for name, entries in results.items():
-        loaded_results[name] = {}
+    def load_file(result_files: dict[str, str]) -> dict:
 
-        # Attempt to parse 'response' field as JSON
-        for entry in entries:
-            if entry['response'] is not None and entry['response'] != "":
-                backup = entry['response']
-                try:
-                    entry['response'] = json.loads(entry['response'])
-                except Exception:
-                    if allow_ast:
-                        try:
-                            entry['response'] = ast.literal_eval(entry['response'])
-                        except Exception:
+        results = {}
+        for name, result_file in result_files.items():
+            print(f"[Viewer] Loading results from file: {result_file}")
+            entries = read_jsonl_file(result_file)
+
+            for entry in entries:
+                entry['source_file'] = result_file
+
+                if entry['response'] is not None and entry['response'] != "":
+                    backup = entry['response']
+                    try:
+                        entry['response'] = json.loads(entry['response'])
+                    except Exception:
+                        if allow_ast:
+                            try:
+                                entry['response'] = ast.literal_eval(entry['response'])
+                            except Exception:
+                                entry['response'] = backup
+                        else:
                             entry['response'] = backup
-                    else:
-                        entry['response'] = backup
 
-            entry['source_file'] = name
+                results[str(name + "-" + str(entry['id']))] = (entry)
 
-            loaded_results[name][str(entry['id'])] = entry
-            loaded_results['combined'][str(name + "-" + str(entry['id']))] = entry
+        if len(result_files) > 1:
+            result_processor = highlight_headings(ResultProcessor(results=results.values(), result_file="combined").generate_output(combined=True))
 
-        # Create ResultProcessor for this results file
-        result_processors[name] = highlight_headings(ResultProcessor(results=entries, result_file=name).generate_output())
-    result_processors["combined"] = highlight_headings(ResultProcessor(results=loaded_results['combined'].values(), result_file="combined").generate_output(combined=True))
+        else:
+            result_processor = highlight_headings(ResultProcessor(results=results.values(), result_file=list(result_files.keys())[0]).generate_output())
+
+        return results, result_processor
+
+    loaded_files = {extract_resource_name(f): f for f in results_files}
+    selected_files = ["combined"]
+
+    loaded = [None]
+    result_processor = [None]
+
+    loaded[0], result_processor[0] = load_file(result_files=loaded_files)  # Load combined entries
 
     # Context Processor (Allows templates to run functions)
     @viewer.context_processor
@@ -72,17 +83,21 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             """Return the name of the viewer application."""
             return VIEWER_NAME
 
-        def get_loaded_results_data(name: str):
+        def get_loaded_results_data():
             """Return the results data."""
-            return loaded_results.get(name, {})
+            return loaded[0]
 
         def get_result_files():
             """Return the available results files."""
-            return list(loaded_results.keys())
+            return list(loaded_files.keys())
 
-        def get_result_processor(name: str):
-            """Return the result processor output."""
-            return result_processors.get(name)
+        def get_selected_file():
+            """Return the currently selected results file."""
+            return selected_files[0]
+
+        def get_result_processor():
+            """Return the result processor."""
+            return result_processor[0]
 
         def process_output(output: str, truncated: bool = False) -> str:
             """Process output string for display."""
@@ -156,6 +171,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             get_app_name=get_app_name,
             get_loaded_results_data=get_loaded_results_data,
             get_result_files=get_result_files,
+            get_selected_file=get_selected_file,
             get_result_processor=get_result_processor,
             process_output=process_output,
             process_conversation=process_conversation,
@@ -164,8 +180,20 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
     @viewer.before_request
     def before_request_func():
-        loaded_file[0] = request.args.get('result_file', 'combined')
-        viewer.jinja_env.globals['loaded_file'] = loaded_file[0]
+        result_file = request.args.get('result_file', 'combined')
+
+        if result_file != selected_files[0]:
+            if result_file == "combined":
+                selected_files[0] = "combined"
+                loaded[0], result_processor[0] = load_file(result_files=loaded_files)
+
+            elif result_file in loaded_files:
+                selected_files[0] = result_file
+                loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
+            else:
+                abort(404, description="Result file not found")
+
+        viewer.jinja_env.globals['loaded_file'] = selected_files[0]
 
     @viewer.route("/")
     def index():
@@ -176,8 +204,6 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
         category = request.args.get('category', '')
         custom_search = request.args.get('custom_search', '')
 
-        entries = loaded_results.get(loaded_file[0], {})
-
         # Filter entries based on category and custom search
         try:
             custom_query = generate_query('custom', custom_search.split('|'))
@@ -186,7 +212,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             abort(400, description=str(e))
 
         matching_entries = {}
-        for id, entry in entries.items():
+        for id, entry in loaded[0].items():
 
             flag = True
             if category != '' and category != 'custom':
@@ -198,13 +224,11 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             if flag:
                 matching_entries[id] = entry
 
-            entries = matching_entries
-
-        return render_template("result_file.html", category=category, custom_search=custom_search, entries=entries, truncated=True)
+        return render_template("result_file.html", category=category, custom_search=custom_search, entries=matching_entries, truncated=True)
 
     @viewer.route("/entry/<entry>")
     def result_entry(entry):
-        entry_data = loaded_results.get(loaded_file[0], {}).get(entry)
+        entry_data = loaded[0].get(entry)
         if not entry_data:
             abort(404, description="Entry not found")
 
@@ -212,7 +236,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
     @viewer.route("/entry/<entry>/card")
     def result_card(entry):
-        entry_data = loaded_results.get(loaded_file[0], {}).get(entry)
+        entry_data = loaded[0].get(entry)
         if not entry_data:
             abort(404, description="Entry not found")
 
@@ -228,7 +252,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
 
         driver = webdriver.Chrome(options=options)
         try:
-            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={loaded_file[0]}")  # Dummy URL
+            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={selected_files[0]}")  # Dummy URL
             img_bytes = driver.get_screenshot_as_png()
         finally:
             driver.quit()
@@ -238,7 +262,7 @@ def create_viewer(viewer_folder, results, host, port, allow_ast=False) -> Flask:
             BytesIO(img_bytes),
             mimetype='image/png',
             as_attachment=True,
-            download_name=f"{loaded_file[0]}_{entry}.png"
+            download_name=f"{selected_files[0]}_{entry}.png"
         )
 
     return viewer
@@ -250,11 +274,6 @@ def run_viewer(args):
     if len(results_files) == 0:
         raise ValueError("[Error] No results files provided, please specify at least one using --result-file or --result-folder.")
 
-    results = {}
-    for result_file in results_files:
-        name = extract_resource_name(result_file)
-        results[name] = read_jsonl_file(result_file)
-
     print("[Overview] Analyzing the following file(s): ")
     print(" - " + "\n - ".join(results_files))
 
@@ -264,7 +283,7 @@ def run_viewer(args):
 
     viewer = create_viewer(
         viewer_folder=viewer_folder,
-        results=results,
+        results_files=results_files,
         host=args.host,
         port=args.port,
         allow_ast=args.allow_ast

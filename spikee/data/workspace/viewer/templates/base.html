@@ -31,8 +31,9 @@
             <div class="d-flex">
                 <form class="me-3" role="search" method="get">
                     <select class="form-select" name="result_file" onchange="this.form.submit()">
+                        <option value="combined" {% if loaded_file == "combined" %}selected{% endif %}>Combined Results</option>
                         {% for file in get_result_files() %}
-                            <option value="{{ file }}" {% if file == loaded_file %}selected{% endif %}>{{ file }}</option>
+                            <option value="{{ file }}" {% if loaded_file == file %}selected{% endif %}>{{ file }}</option>
                         {% endfor %}
                     </select>
                     <input type="hidden" name="category" value="{{ category }}">
