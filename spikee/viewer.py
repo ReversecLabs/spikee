@@ -1,15 +1,16 @@
-from flask import Flask, render_template, send_file, abort, request, redirect
-import os
-import json
+from flask import Flask, abort, redirect, render_template, request, send_file
+from io import BytesIO
 from selenium import webdriver
 import ast
-import html
 import hashlib
-from io import BytesIO
+import html
+import json
+import os
 
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, write_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
+from spikee.judge import call_judge
 import re
 
 
@@ -25,7 +26,10 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         template_folder=os.path.join(viewer_folder, "templates"),
     )
 
+# region Helper Functions
+
     def highlight_headings(result_output):
+        """Highlight headings in the resource processor outputs by wrapping them in <mark> and <strong> tags."""
         if not isinstance(result_output, str):
             return result_output
 
@@ -36,6 +40,7 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         return re.sub(r"===\s*(.*?)\s*===", repl, result_output)
 
     def load_file(result_files: dict[str, str]) -> dict:
+        """Load and process result files, returning combined results and processed output."""
         results = {}
         for name, result_file in result_files.items():
             entries = read_jsonl_file(result_file)
@@ -66,17 +71,35 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         return results, result_processor
 
+    def reload_files(result_file: str = "combined"):
+        """Reload the result files based on the selected result file."""
+        if result_file == "combined":
+            selected_files[0] = "combined"
+            loaded[0], result_processor[0] = load_file(result_files=loaded_files)
+            return True
+
+        elif result_file in loaded_files:
+            selected_files[0] = result_file
+            loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
+            return True
+
+        else:
+            return False
+
     def is_safe_relative_url(url):
+        """Check if a URL is a safe relative URL to prevent open redirects."""
         # Only allow relative URLs that start with a single slash and do not contain a scheme or netloc
         return url and url.startswith('/') and not url.startswith('//') and ':' not in url.split('?', 1)[0]
 
+# endregion
+
+    # Load startup result files
     loaded_files = {extract_resource_name(f): f for f in results_files}
     selected_files = ["combined"]
-
     loaded = [None]
     result_processor = [None]
 
-    loaded[0], result_processor[0] = load_file(result_files=loaded_files)  # Load combined entries
+    reload_files(selected_files[0])
 
     # Context Processor (Allows templates to run functions)
     @viewer.context_processor
@@ -180,36 +203,25 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             string_to_colour=string_to_colour
         )
 
-    def reload_files(result_file: str = "combined"):
-        """Reload the result files based on the selected result file."""
-        if result_file == "combined":
-            selected_files[0] = "combined"
-            loaded[0], result_processor[0] = load_file(result_files=loaded_files)
-            return True
-
-        elif result_file in loaded_files:
-            selected_files[0] = result_file
-            loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
-            return True
-
-        else:
-            return False
-
     @viewer.before_request
     def before_request_func():
-        result_file = request.args.get('result_file', 'combined')
+        """Reload result file if changed in query parameters."""
+        result_file_get = request.args.get('result_file', None)
+        result_file_post = request.form.get('result_file', None)
 
-        if result_file != selected_files[0]:
+        result_file = result_file_get if result_file_get is not None else result_file_post
+
+        if result_file is not None and result_file != selected_files[0]:
             if not reload_files(result_file):
                 abort(404, description="Result file not found")
 
         viewer.jinja_env.globals['loaded_file'] = selected_files[0]
 
-    @viewer.route("/")
+    @viewer.route("/", methods=["GET"])
     def index():
         return render_template("overview.html")
 
-    @viewer.route("/file/")
+    @viewer.route("/file/", methods=["GET"])
     def result_file():
         category = request.args.get('category', '')
         custom_search = request.args.get('custom_search', '')
@@ -236,7 +248,7 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         return render_template("result_file.html", category=category, custom_search=custom_search, entries=matching_entries, truncated=True)
 
-    @viewer.route("/entry/<entry>")
+    @viewer.route("/entry/<entry>", methods=["GET"])
     def result_entry(entry):
         entry_data = loaded[0].get(entry)
         if not entry_data:
@@ -244,31 +256,44 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         return render_template("result_entry.html", id=entry, entry=entry_data)
 
-    @viewer.route("/entry/<entry>/toggle_success")
-    def toggle_success(entry):
-        return_url = request.args.get('return_url', None)
+    @viewer.route("/entry/<entry>/task", methods=["POST"])
+    def tasking(entry):
+        return_url = request.form.get('return_url', '')
+        task_action = request.form.get('task_action', '')
 
+        # Validate entry exists
         entry_data = loaded[0].get(entry)
         if not entry_data:
             abort(404, description="Entry not found")
 
+        # Process task action
         jsonl_data = read_jsonl_file(entry_data['source_file'])
         entry_id = str(entry_data['id'])
         for item in jsonl_data:
             if str(item['id']) == entry_id:
-                item['success'] = not item.get('success', False)
+                match task_action:
+                    case "toggle_success":
+                        # Toggle success status
+                        item['success'] = not item.get('success', False)
+
+                    case "rejudge":
+                        # Rejudge individual entry
+                        item['success'] = call_judge(item, item.get('response', ''))
+
                 break
 
         write_jsonl_file(entry_data['source_file'], jsonl_data)
 
+        # Reload files to reflect changes
         reload_files(selected_files[0])
 
+        # Redirect back to the return URL or entry page
         if return_url and is_safe_relative_url(return_url):
             return redirect(return_url)
         else:
             return redirect(f"/entry/{entry}")
 
-    @viewer.route("/entry/<entry>/card")
+    @viewer.route("/entry/<entry>/card", methods=["GET"])
     def result_card(entry):
         entry_data = loaded[0].get(entry)
         if not entry_data:
@@ -276,8 +301,10 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         return render_template("download.html", id=entry, entry=entry_data, download=True)
 
-    @viewer.route("/entry/<entry>/download")
+    @viewer.route("/entry/<entry>/download", methods=[])
     def result_to_image(entry):
+        return abort(404, description="Download functionality not enabled in this environment.")
+
         # Use Selenium to render the HTML and capture a screenshot as PNG bytes, allowing JS to run
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")  # Use new headless mode for better JS support
@@ -324,7 +351,7 @@ def run_viewer(args):
     )
 
     viewer.run(
-        debug=True,
+        debug=False,
         host=args.host,
         port=args.port
     )

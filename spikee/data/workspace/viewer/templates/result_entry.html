@@ -4,8 +4,17 @@
 <div id="content" class="container">
     <div class="row justify-content-center">
         <div class="col-12 d-flex flex-column">
-            <div class="btn-group mb-2" role="group" aria-label="Filter Results" style="align-self: flex-end;">
-                <button type="button" class="btn btn-success" onclick="window.location.href='/entry/{{ id }}/toggle_success?return_url={{ request.get_full_path|urlencode }}'">Toggle Success</button>
+            <div class="d-flex mb-2 justify-content-end gap-2">
+                <form method="post" action="/entry/{{ id }}/task">
+                    <input type="hidden" name="return_url" value="{{ request.get_full_path }}">
+                    <input type="hidden" name="task_action" value="toggle_success">
+                    <button type="submit" class="btn btn-success">Toggle Success</button>
+                </form>
+                <form method="post" action="/entry/{{ id }}/task">
+                    <input type="hidden" name="return_url" value="{{ request.get_full_path }}">
+                    <input type="hidden" name="task_action" value="rejudge">
+                    <button type="submit" class="btn btn-warning">Rejudge</button>
+                </form>
                 <button type="button" class="btn btn-danger" onclick="history.back()">Return Home</button>
                 <!--<a href="/entry/{{entry.id}}/download" class="btn btn-primary">Download</a>-->
             </div>
