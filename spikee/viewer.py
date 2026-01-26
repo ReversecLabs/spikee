@@ -151,11 +151,11 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
                     data = [
                         f'''<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>''' for key, value in message['data'].items()]
 
-                    message = f'{''.join(data)}'
+                    message = ''.join(data)
                 elif isinstance(message['data'], list):
                     data = [f'''<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>''' for item in message['data']]
 
-                    message = f'{''.join(data)}'
+                    message = ''.join(data)
                 else:
                     message = f'<div class="code-block h-100 result-input">{html.escape(process_output(str(message["data"]), truncated))}</div>'
 
