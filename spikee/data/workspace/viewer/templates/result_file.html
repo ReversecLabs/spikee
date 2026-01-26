@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="content" class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 d-flex flex-column">
+            <form class="d-flex justify-content-end" id="filterForm" method="get">
+                <div class="me-2 mb-2">
+                    <select class="form-select" name="category" id="category" style="min-width: 160px;">
+                        <option value=""> -- </option>
+                        <option {{ "selected" if category == "success" else "" }} value="success">Success</option>
+                        <option {{ "selected" if category == "failure" else "" }} value="failure">Failure</option>
+                        <option {{ "selected" if category == "error" else "" }} value="error">Error</option>
+                        <option {{ "selected" if category == "guardrail" else "" }} value="guardrail">Guardrail</option>
+                        <option {{ "selected" if category == "no-guardrail" else "" }} value="no-guardrail">No Guardrail</option>
+                    </select>
+                </div>
+                <div class="mb-2 flex-grow-1 d-flex align-items-center" style="flex:1;">
+                    <input type="text" class="form-control w-100" name="custom_search" id="customSearch" placeholder="Custom Search" value="{{custom_search}}" style="width:100%;">
+                </div>
+                <div class="mb-2 ms-2">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+                <input type="hidden" name="result_file" value="{{ loaded_file }}">
+            </form>
+
+            <div class="position-relative" style="width:100%;">
+                <div id="customSearchInfo" class="alert alert-info position-absolute" role="alert" style="display:none; z-index:10; top:100%; left:0; width:100%;">
+                    <strong>Categories:</strong>
+                    <ul class="mb-2">
+                        <li><code>success</code>: Extracts all successful entries.</li>
+                        <li><code>failure</code>: Extracts all failed entries.</li>
+                        <li><code>error</code>: Extracts all entries containing errors.</li>
+                        <li><code>guardrail</code>: Extracts all entries where a guardrail was triggered.</li>
+                        <li><code>no-guardrail</code>: Extracts all entries where a guardrail was not triggered.</li>
+                    </ul>
+
+                    <strong>Custom Search:</strong>
+                    <ul>
+                        <li><code>search_term</code>: Searches all entry fields for the specified search_term.</li>
+                        <li><code>field:search_term</code>: Searches a specific field within an entry for the search_term.</li>
+                        <li><code>!search_term</code> or <code>!field:search_term</code>: Inverse search</li>
+                        <li><code>search_term|search_term2</code>: Search for multiple search terms.</li>
+                    </ul>
+
+                    <strong>Common Fields:</strong>
+                    <ul>
+                        <li><code>id:1</code></li>
+                        <li><code>success:True</code></li>
+
+                        <li><code>input:search_term</code></li>
+                        <li><code>response:search_term</code></li>
+
+                        <li><code>judge_name:llm_judge_harmful</code></li>
+                        <li><code>plugin:best_of_n</code></li>
+                        <li><code>attack_name:crescendo</code></li>
+                </div>
+            </div>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var input = document.getElementById('filterForm');
+                var info = document.getElementById('customSearchInfo');
+                if (input && info) {
+                    input.addEventListener('mouseenter', function() {
+                        info.style.display = 'block';
+                    });
+                    input.addEventListener('mouseleave', function() {
+                        info.style.display = 'none';
+                    });
+                    input.addEventListener('focus', function() {
+                        info.style.display = 'block';
+                    });
+                    input.addEventListener('blur', function() {
+                        info.style.display = 'none';
+                    });
+                }
+            });
+            </script>
+
+            <div class="d-flex justify-content-end">
+                <span>Total Entries: {{ entries|length }}</span>
+            </div>
+            
+            {% if entries|length == 0 %}
+                <div class="alert alert-warning mt-3" role="alert">
+                    No entries found for the selected filter.
+                </div>
+            {% else %}
+                {% for id, entry in entries.items() %}
+                    {% include "utilities/result.html" with context %}
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% if entry.guardrail %}
+    <!-- Guardrail -->
+    <div class="alert alert-warning mt-3 py-0 shadow-sm" role="alert" style="border-left: 5px solid #ffc107;">
+        <div><strong>Guardrail Categories</strong></div>
+        <div class="code-block h-100 result-response">{{ entry.guardrail_categories|e if entry.guardrail_categories is not none else "—" }}</div>
+    </div>
+{% elif entry.error and entry.error != "" %}
+    <!-- Error Message -->
+    <div class="alert alert-danger mt-3 py-0 shadow-sm" role="alert" style="border-left: 5px solid #dc3545;">
+        <div><strong>Error Message</strong></div>
+        <div class="code-block h-100 result-response">{{ process_output(entry.error, truncated=truncated)|e }}</div>
+    </div>
+{% elif entry.response is sequence and entry.response is not string %}
+    <!-- List Response -->
+    <div class="border-start px-3 mt-2">
+        <strong class="small me-2">Response:</strong>
+        <ol class="ps-3 mt-2">
+            {% for message in entry.response %}
+                <li class="mb-2 result-response">
+                    {% if message is mapping %}
+                        {% for key, value in message.items() %}
+                            <div class="code-block h-100">
+                                <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_output(value, truncated=truncated)|e }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="code-block h-100">{{ process_output(message, truncated=truncated)|e }}</div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+{% elif entry.response is mapping %}
+    <!-- Mapping Response -->
+    <div class="border-start px-3 mt-2">
+        <strong class="small me-2">Response:</strong>
+        <div class="code-block h-100 result-response">
+            {% for key, value in entry.response.items() %}
+                <div class="mb-2">
+                    <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_output(value, truncated=truncated)|e }}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <!-- Single-Turn Response -->
+    <div class="border-start px-3 mt-2">
+        <strong class="small me-2">Response:</strong>
+        <div class="code-block h-100 result-response">{{ process_output(entry.response, truncated=truncated)|e }}</div>
+    </div>
+{% endif %}

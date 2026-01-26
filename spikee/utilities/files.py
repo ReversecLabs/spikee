@@ -95,7 +95,7 @@ def extract_resource_name(file_name: str):
     file_name = re.sub(r"^\d+-", "", file_name)
     file_name = re.sub(r".jsonl$", "", file_name)
     if file_name.startswith("seeds-"):
-        file_name = file_name[len("seeds-") :]
+        file_name = file_name[len("seeds-"):]
     return file_name
 
 
@@ -146,7 +146,7 @@ def does_resource_name_match(path: Path, resource_name: str) -> bool:
     name = path.name
     if name.startswith(resource_name + "_") and name.endswith(".jsonl"):
         remainder = name[
-            len(resource_name) + 1 : -len(".jsonl")
+            len(resource_name) + 1: -len(".jsonl")
         ]  # The remaining text should only be a timestamp
         return remainder.isdigit()
     else:

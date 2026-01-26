@@ -61,7 +61,7 @@ class SampleAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option=None,
-    ) -> Tuple[int, bool, str, str]:
+    ) -> Tuple[int, bool, object, str]:
         """
         Executes a dynamic attack on the given entry.
 
@@ -74,7 +74,7 @@ class SampleAttack(Attack):
             attack_option (str, optional): Configuration option like "strategy=aggressive".
 
         Returns:
-            tuple: (iterations_attempted, success_flag, modified_input, last_response)
+            tuple: (iterations_attempted, success_flag, modified_input (str, dict), last_response)
         """
         # Parse attack option
         attack_option = attack_option.split(";") if attack_option else []
@@ -146,6 +146,7 @@ import uuid
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import Turn
+from spikee.templates.standardised_conversation import StandardisedConversation
 
 class SampleMultiTurnAttack(Attack):
     def __init__(self):
@@ -165,7 +166,7 @@ class SampleMultiTurnAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = None,
-    ) -> Tuple[int, bool, str, str]:
+    ) -> Tuple[int, bool, object, str]:
         """
         Executes a dynamic multi-turn attack on a given entry.
 
@@ -182,17 +183,52 @@ class SampleMultiTurnAttack(Attack):
         """
 
         session_id = str(uuid.uuid4()) # Unique session ID for multi-turn context
-        conversation = [] # To store the conversation history
-
+        standardised_conversation = StandardisedConversation() # Helper for managing multi-turn conversation messages
+        last_message_id = standardised_conversation.get_root_id() # Variable to track last message ID in conversation
         
-        loop:
-            # Your implementation here...
-            conversation.append({"role": "user", "content": message})
-            conversation.append({"role": "assistant", "content": response})
+        while not success and standardised_conversation.get_message_total() < max_iterations:
+            prompt = "..."
+            prompt_message_id = last_message_id # Store last message ID to aid backtracking
 
-        success = call_judge(entry, response)
+            last_message_id = standardised_conversation.add_message(
+                parent_id=last_message_id,
+                data={
+                    "role": "user",
+                    "content": prompt,
+                    "session_id": session_id
+                }
+            )
+            standardised_conversation.add_attempt() # Increment attempt counter
 
-        return len(entry["text"]), success, {"conversation": conversation}, response
+            response = "..."
+            standardised_conversation.add_message(
+                parent_id=last_message_id,
+                data={
+                    "role": "assistant",
+                    "content": response,
+                    "session_id": session_id
+                }
+            )
+
+            success = call_judge(entry, response)
+            if success:
+                break
+
+            # More implementation here...
+
+            if backtrack:
+                last_message_id = prompt_message_id
+
+        return (
+            len(entry["text"]), 
+            success, 
+            Attack.standardised_input_return(
+                input=entry["text"],
+                conversation=standardised_conversation, # Optional, for multi-turn attacks
+                objective=entry["text"] # Optional, for instructional multi-turn attacks
+            ),
+            response
+        )
 
         
 

@@ -1,11 +1,12 @@
+import traceback
 import uuid
 from typing import List, Tuple, Optional, Dict, Any
 import threading
 import re
 import json
-import traceback
 
 from spikee.templates.attack import Attack
+from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn
 from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes, get_llm
 
@@ -91,7 +92,10 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 
 """
 
-DEFAULT_LLM_MODEL = "openai-gpt-4o"
+
+class LLM_JSON_Error(Exception):
+    """Custom exception for LLM JSON extraction errors."""
+    pass
 
 
 class Crescendo(Attack):
@@ -140,7 +144,7 @@ class Crescendo(Attack):
         4) As a last resort, scan the whole text for the first balanced {...} and parse it.
         """
         if not text:
-            raise RuntimeError("LLM returned empty response")
+            raise LLM_JSON_Error("LLM returned empty response")
 
         t = text.strip()
 
@@ -201,22 +205,24 @@ class Crescendo(Attack):
                             start = -1
                             continue
 
-        raise RuntimeError("LLM did not return valid JSON object:", text)
+        raise LLM_JSON_Error("LLM did not return valid JSON object:", text)
 
     def _make_session_id(self) -> str:
         return str(uuid.uuid4())
 
-    def _format_history_for_prompt(self, history: List[Dict[str, str]]) -> str:
+    def _format_history_for_prompt(self, conversation: StandardisedConversation, last_message_id: int) -> str:
         lines: List[str] = []
-        for m in history:
-            lines.append(f"{m['role'].upper()}: {m['content'].replace(chr(10), ' ').strip()}")
+        for node_id in conversation.get_path(last_message_id):
+            node = conversation.get_message_data(node_id)
+            lines.append(f"{node['role'].upper()}: {node['content'].replace(chr(10), ' ').strip()}")
         return "\n".join(lines)
 
     def _generate_question(
         self,
         llm,
         objective: str,
-        chat_history: List[Dict[str, str]],
+        conversation: StandardisedConversation,
+        last_message_id: int,
         max_turns: int,
         remaining_turns: int,
     ) -> str:
@@ -224,7 +230,7 @@ class Crescendo(Attack):
         prompt = (
             SPIKEE_CRESCENDO_PROMPT
             .replace("{{objective}}", objective)
-            .replace("{{chat_history}}", self._format_history_for_prompt(chat_history))
+            .replace("{{chat_history}}", self._format_history_for_prompt(conversation, last_message_id))
             .replace("{{max_turns}}", str(max_turns))
             .replace("{{remaining_turns}}", str(remaining_turns))
         )
@@ -234,7 +240,7 @@ class Crescendo(Attack):
         obj = self._extract_json_or_fail(res)
         q = obj.get("generated_question")
         if not q:
-            raise RuntimeError("LLM failed to produce 'generated_question'")
+            raise LLM_JSON_Error("LLM failed to produce 'generated_question'")
         return q.strip()
 
     def _is_refusal(self, llm, text: str) -> bool:
@@ -251,17 +257,19 @@ class Crescendo(Attack):
         call_judge: callable,
         llm,
         max_turns: int,
-        remaining_call_budget: int,
+        max_iterations: int,
         attempts_bar: Optional[object],
         bar_lock: Optional[threading.Lock],
         session_id: str,
+        conversation: StandardisedConversation,
+        last_message_id: int,
     ) -> Tuple[int, bool, List[Dict[str, str]], str]:
         """
         Run a single conversation attempt.
-        - remaining_call_budget: how many calls are allowed for this attempt (cannot exceed global budget).
+        - max_iterations: the maximum number of calls allowed for this attempt (cannot exceed global budget).
         Returns (calls_made_in_this_attempt, success, chat_history, last_response)
         Notes:
-        - Every prompt sent consumes one unit of remaining_call_budget.
+        - Every prompt sent consumes one unit of max_iterations.
         - max_turns counts only non-backtrack turns appended to chat_history.
         """
         # Extract objective and system message
@@ -269,24 +277,34 @@ class Crescendo(Attack):
         system_message = entry.get("system_message")
 
         # Variables
-        chat_history: List[Dict[str, str]] = []  # conversation history
         is_refuse = False                       # whether last response was a refusal
         last_response = ""                      # last LLM response
-        calls = 0                               # total calls made in this attempt
         non_backtrack_turns = 0                 # non-backtrack turns made
 
         # While we still have budget for at least one more call and haven't reached max_turns (non-backtrack)
-        while remaining_call_budget > 0 and non_backtrack_turns < max_turns:
+        while max_iterations - conversation.get_attempt_total() > 0 and non_backtrack_turns < max_turns:
             remaining_turns = max_turns - non_backtrack_turns
-            prompt = self._generate_question(llm, objective, chat_history, max_turns, remaining_turns)
+            prompt_message_id = last_message_id
+
+            json_error_attempts = 3
+            while json_error_attempts > 0:
+                try:
+                    prompt = self._generate_question(llm, objective, conversation, last_message_id, max_turns, remaining_turns)
+                    json_error_attempts = 0  # success
+                except LLM_JSON_Error as e:
+                    print(f"[Warning] LLM did not return valid JSON object (attempts remaining {json_error_attempts}): {e}")
+                    json_error_attempts -= 1
+                    if json_error_attempts <= 0:
+                        raise RuntimeError from e
+            last_message_id = conversation.add_message(last_message_id, {"role": "user", "content": prompt, "spikee_session_id": session_id})
+            conversation.add_attempt()
 
             # call target; each call consumes budget immediately
             resp = target_module.process_input(prompt, system_message, spikee_session_id=session_id, backtrack=is_refuse)
             response_text = str(resp[0] if isinstance(resp, (tuple, list)) else resp)
+            last_message_id = conversation.add_message(last_message_id, {"role": "assistant", "content": response_text, "spikee_session_id": session_id})
 
             # Count this call and update attempts_bar (backtracks are counted too)
-            calls += 1
-            remaining_call_budget -= 1
             if attempts_bar:
                 if bar_lock:
                     with bar_lock:
@@ -299,30 +317,30 @@ class Crescendo(Attack):
             success = call_judge(entry, response_text)
             if success:
                 # record final successful prompt only
-                chat_history.append({"role": "user", "content": prompt, "spikee_session_id": session_id})
-                return calls, True, chat_history, response_text
+                return True, conversation, last_message_id, response_text
 
             # classify refusal using LLM
             is_refuse = self._is_refusal(llm, response_text)
 
             if is_refuse:
                 # Check if target supports backtracking
+                last_message_id = prompt_message_id  # remove last user+assistant exchange
+
                 if not target_module.config.get("backtrack", False):
                     # If target does not support backtracking, abort this attempt.
                     # The outer loop will restart with a new session ID.
-                    return calls, False, chat_history, response_text
+                    return False, conversation, last_message_id, response_text
 
-                # do not advance non_backtrack_turns; next call will include backtrack_last_turn=True
-                last_response = response_text
-                continue
+                else:
+                    # do not advance non_backtrack_turns; next call will include backtrack_last_turn=True
+                    last_response = response_text
+                    continue
 
             # not a refusal: append exchange and advance non_backtrack_turns
-            chat_history.append({"role": "user", "content": prompt, "spikee_session_id": session_id})
-            chat_history.append({"role": "assistant", "content": response_text, "spikee_session_id": session_id})
             non_backtrack_turns += 1
             last_response = response_text
 
-        return calls, False, chat_history, last_response
+        return False, conversation, last_message_id, last_response
 
     def attack(
         self,
@@ -352,41 +370,54 @@ class Crescendo(Attack):
         opts = self._parse_attack_option(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
-            llm = get_llm(opts.get("model", DEFAULT_LLM_MODEL), max_tokens=None)
+            llm = get_llm(opts.get("model", None), max_tokens=None)
         except ValueError as e:
             print(f"[Error] {e}")
             return None
 
         # Variables
-        total_calls = 0                         # total LLM calls
-        remaining_budget = max_iterations       # global call budget
-        last_history: List[Dict[str, str]] = []  # conversation history
+        conversation = StandardisedConversation({"objective": entry["text"]})
+        last_message_id = conversation.get_root_id()  # last message id
         last_response = ""                      # last LLM response
-        objective = entry["text"]               # jailbreak objective from dataset
 
         # Loop until global budget exhausted
-        while remaining_budget > 0:
+        while max_iterations - conversation.get_attempt_total() > 0:
             # Start new conversation attempt
             session_id = self._make_session_id()
 
             try:
-                calls, success, chat_history, response = self._run_attempt(
-                    entry, target_module, call_judge, llm,
-                    max_turns, remaining_budget, attempts_bar, bar_lock, session_id
+                success, conversation, last_message_id, last_response = self._run_attempt(
+                    entry,
+                    target_module,
+                    call_judge,
+                    llm,
+                    max_turns,
+                    max_iterations,
+                    attempts_bar,
+                    bar_lock,
+                    session_id,
+                    conversation,
+                    last_message_id
                 )
+
             except Exception as e:
                 # surface generator / classifier / target errors in-line
                 traceback.print_exc()
-                return total_calls, False, {"objective": objective, "conversation": last_history}, str(e)
-
-            total_calls += calls
-            remaining_budget -= calls
-            last_history, last_response = chat_history, response
+                return (
+                    conversation.get_attempt_total(),
+                    False,
+                    Crescendo.standardised_input_return(
+                        input=entry["text"],
+                        conversation=conversation,
+                        objective=entry["text"]
+                    ),
+                    str(e)
+                )
 
             # If success, end early and fast-forward the attempts bar total like other attacks do
             if success:
                 if attempts_bar:
-                    remaining = remaining_budget
+                    remaining = max_iterations - conversation.get_attempt_total()
                     if bar_lock:
                         with bar_lock:
                             if getattr(attempts_bar, "total", None) is not None:
@@ -394,9 +425,27 @@ class Crescendo(Attack):
                     else:
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
-                return total_calls, True, {"objective": objective, "conversation": last_history}, last_response
+                return (
+                    conversation.get_attempt_total(),
+                    True,
+                    Crescendo.standardised_input_return(
+                        input=entry["text"],
+                        conversation=conversation,
+                        objective=entry["text"]
+                    ),
+                    last_response
+                )
 
-            if remaining_budget <= 0:
+            if max_iterations - conversation.get_attempt_total() <= 0:
                 break
 
-        return total_calls, False, {"objective": objective, "conversation": last_history}, last_response
+        return (
+            conversation.get_attempt_total(),
+            False,
+            Crescendo.standardised_input_return(
+                input=entry["text"],
+                conversation=conversation,
+                objective=entry["text"]
+            ),
+            last_response
+        )

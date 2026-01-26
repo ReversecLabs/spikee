@@ -1,0 +1,21 @@
+<div class="card shadow-sm border-0 m-1">
+    {% include "utilities/header.html" with context %}
+
+    <div class="card-body py-1">
+
+        <div class="d-flex justify-content-end gap-2">
+            {% if entry.judge_name and entry.judge_name != "None" and entry.judge_name != '' %}
+                <span class="badge bg-info text-dark">{{ entry.judge_name }}</span>
+            {% endif %}
+            {% if entry.attack_name and entry.attack_name != "None" and entry.attack_name != '' %}
+                <span class="badge bg-success">{{ entry.attack_name }}</span>
+            {% endif %}
+            {% if entry.plugin and entry.plugin != "None" and entry.plugin != '' %}
+                <span class="badge bg-secondary">{{ entry.plugin }}</span>
+            {% endif %}
+        </div>
+
+        {% include "utilities/input.html" with context %}
+        {% include "utilities/response.html" with context %}      
+    </div>
+</div>
