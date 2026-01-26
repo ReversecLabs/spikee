@@ -149,17 +149,16 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
                 if isinstance(message['data'], dict):
                     data = [
-                        f'''<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>''' for key, value in message['data'].items()]
+                        f"""<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>""" for key, value in message['data'].items()]
 
-                    message = ''.join(data)
+                    message = "".join(data)
                 elif isinstance(message['data'], list):
-                    data = [f'''<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>''' for item in message['data']]
-
-                    message = ''.join(data)
+                    data = [f"""<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>""" for item in message['data']]
+                    message = "".join(data)
                 else:
-                    message = f'<div class="code-block h-100 result-input">{html.escape(process_output(str(message["data"]), truncated))}</div>'
+                    message = f"""<div class="code-block h-100 result-input">{html.escape(process_output(str(message["data"]), truncated))}</div>"""
 
-                return f'<li class="mb-2" id={node} value={node}><div class="d-flex flex-column">' + message + '</div></li>'
+                return f"""<li class="mb-2" id={node} value={node}><div class="d-flex flex-column">{message}</div></li>"""
 
             def render_node(message_id: int) -> str:
                 message = standardised_conversation.get_message(message_id)
@@ -170,9 +169,9 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
                 else:
                     children = [render_node(child_id) for child_id in message['children']]
 
-                    return f'{render_message(message_id, message)}<ol class="ps-3 mt-2">{''.join(children)}</ol>'
+                    return f"""{render_message(message_id, message)}<ol class="ps-3 mt-2">{''.join(children)}</ol>"""
 
-            conversation_html = f'<ol class="ps-3 mt-2">{render_node(0)}</ol>'
+            conversation_html = f"""<ol class="ps-3 mt-2">{render_node(0)}</ol>"""
 
             print("FINAL CONVERSATION HTML", conversation_html)
             return conversation_html
