@@ -31,13 +31,13 @@ Built-in targets focus on several common LLM providers, and will require you to 
 ## Usage Example
 ```bash
 # Test an AWS Bedrock target using the built-in target module
-spikee test --dataset datasets/cybersec-2025-04.jsonl \
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
             --target aws_bedrock_api
 ```
 
 ```bash
 # Test an LLaMA CPP Server running on localhost port 9090
-spikee test --dataset datasets/cybersec-2025-04.jsonl \
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
             --target llamacpp_api \
             --target-options http://localhost:9090/
 ```
@@ -90,7 +90,7 @@ The following list provides an overview of each attack, further information on e
 ## Usage Example
 ```bash
 # Test an AWS Bedrock target using the prompt decomposition attack with 500 iterations and custom options
-spikee test --dataset datasets/cybersec-2025-04.jsonl \
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
             --target aws_bedrock_api \
             --attack prompt_decomposition \
             --attack-iterations 500 \
@@ -125,14 +125,14 @@ You can specify the LLM model used with the `--judge-options` flag. It currently
 ## Usage Example
 ```bash
 # Use an offline judge, allowing for later re-judging
-spikee test --dataset datasets/cybersec-2025-04.jsonl \
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
             --target aws_bedrock_api \
             --judge-options offline
 ```
 
 ```bash
 # Modify entries to use llm_judge_harmful, with the an OpenAI's gpt-4o-mini model for judging
-spikee test --dataset datasets/cybersec-2025-04.jsonl \
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
             --target aws_bedrock_api \
             --judge llm_judge_harmful \
             --judge-options openai-gpt-4o-mini
