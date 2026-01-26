@@ -10,23 +10,6 @@ Usage:
 Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
-import json
-import re
-import uuid
-from typing import Any, Dict, List, Optional, Tuple
-
-"""
-RAG Poisoner attack for spikee.
-This attack injects fake RAG context that appears to be legitimate document snippets
-supporting the attack objective.
-
-Usage:
-  spikee test --attack rag_poisoner --attack-iterations 5
-  spikee test --attack rag_poisoner --attack-iterations 10 --attack-options "model=openai-gpt-4o"
-
-Returns:
-  (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
-"""
 
 import json
 import re
