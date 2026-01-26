@@ -1,8 +1,11 @@
 from typing import Dict, List
 
+import os
+
 EXAMPLE_LLM_MODELS = [
     "openai-gpt-4.1-mini",
     "openai-gpt-4o",
+    "offline",
 ]
 
 SUPPORTED_LLM_MODELS = [
@@ -130,9 +133,13 @@ def get_llm(options=None, max_tokens=8):
             model=model_name,
             num_predict=max_tokens,  # maximum number of tokens to predict
             temperature=0,
-            client_kwargs={"timeout": 30},  # timeout in seconds (None = not configured)
+            client_kwargs={"timeout": float(os.environ['OLLAMA_TIMEOUT']) if os.environ.get(
+                'OLLAMA_TIMEOUT') not in (None, '') else None},
+                # timeout in seconds (None = not configured)
         ).with_retry(
-            stop_after_attempt=2,  # total attempts (1 initial + 1 retry)
+            stop_after_attempt=int(os.environ['OLLAMA_MAX_ATTEMPTS']) if os.environ.get(
+                'OLLAMA_MAX_ATTEMPTS') not in (None, '') else 1,
+                # total attempts (1 initial + retries)
             wait_exponential_jitter=True,  # backoff with jitter
         )
 
