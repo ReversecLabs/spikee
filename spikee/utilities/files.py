@@ -3,7 +3,10 @@ from pathlib import Path
 import os
 import re
 import time
-import toml
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 
 # ==== File I/O Operations for JSONL files ====
@@ -29,8 +32,8 @@ def read_toml_file(file_path):
     """
     Reads a TOML file and returns its parsed content.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
-        return toml.load(f)
+    with open(file_path, "rb") as f:
+        return tomllib.load(f)
 
 
 def write_jsonl_file(output_file, data):
