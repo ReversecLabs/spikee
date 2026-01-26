@@ -1,6 +1,6 @@
 # Dataset
 
-This is an example seeds folder to generate custom datasets for a specific use case (LLM Mailbox), as described in this article: https://labs.withsecure.com/tools/spikee. It's adapted from seeds-cybersec-2025-04 with instructions to target the specific user-case and intent, that isto steal a password reset token in the user's mailbox.
+This is an example seeds folder to generate custom datasets for a specific use case (LLM Mailbox), as described in this article: https://labs.withsecure.com/tools/spikee. It's adapted from seeds-cybersec-2026-01 with instructions to target the specific user-case and intent, that isto steal a password reset token in the user's mailbox.
 
 ## English dataset
 The English dataset can be generated using this command:

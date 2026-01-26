@@ -23,7 +23,7 @@ Spikee allows for multiple results files to be provided in a single analysis run
 
 ```bash
 # Analyze multiple results files together.
-spikee results analyze --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results analyze --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
 ```
 
@@ -108,14 +108,14 @@ This command is used to extract specific categories of results from one or more 
 ## Usage Examples
 ```bash
 # Extract all successful attacks to a new dataset file for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
                        --category success
 ```
 
 ```bash
 # Extract custom search query for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl \
                        --category custom \
                        --custom-search "error:Guardrail was triggered by the target"
@@ -146,20 +146,20 @@ This command is used to compare the results of a single dataset across multiple 
 ## Usage Examples
 ```bash
 # Compares the results of three different targets (Target A, B and C) against the same dataset, identifying which entries had a success rate greater than then threshold of 80%.
-spikee results dataset-comparison --dataset-file datasets/cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-A-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-B-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-C-cybersec-2025-04-*.jsonl \
+spikee results dataset-comparison --dataset-file datasets/cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-A-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-B-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-C-cybersec-2026-01-*.jsonl \
                                   --success-threshold 0.8 \
                                   --success-definition gt
 ```
 
 ```bash
 # Compares the results of three different targets (Target A, B and C) against the same dataset, identifying which entries had a success rate less than the threshold of 20%, outputting the top 10 entries.
-spikee results dataset-comparison --dataset-file datasets/cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-A-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-B-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-C-cybersec-2025-04-*.jsonl \
+spikee results dataset-comparison --dataset-file datasets/cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-A-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-B-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-C-cybersec-2026-01-*.jsonl \
                                   --success-threshold 0.2 \
                                   --success-definition lt
                                   --number 10
