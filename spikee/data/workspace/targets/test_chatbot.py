@@ -20,6 +20,7 @@ References:
 
 from spikee.templates.multi_target import MultiTarget  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
 from spikee.utilities.enums import Turn
+import traceback
 
 import json
 import uuid
@@ -231,7 +232,6 @@ class TestChatbotTarget(MultiTarget):
 
         return response
 
-import traceback
 if __name__ == "__main__":
     load_dotenv()
     try:
