@@ -17,7 +17,13 @@ import random
 from typing import List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes, get_llm, validate_llm_option
+from spikee.utilities.llm import (
+    get_example_llm_models,
+    get_supported_llm_models,
+    get_supported_prefixes,
+    get_llm,
+    validate_llm_option,
+)
 
 
 class PromptDecompositionAttack(Attack):
@@ -25,7 +31,11 @@ class PromptDecompositionAttack(Attack):
     DEFAULT_MODE = "dumb"
 
     # Supported modes
-    SUPPORTED_MODES = [DEFAULT_MODE] + [model for model in get_example_llm_models()] + [model for model in get_supported_llm_models() if model != "offline"]
+    SUPPORTED_MODES = (
+        [DEFAULT_MODE]
+        + [model for model in get_example_llm_models()]
+        + [model for model in get_supported_llm_models() if model != "offline"]
+    )
 
     def get_available_option_values(self) -> List[str]:
         """Return supported modes; first option is default."""

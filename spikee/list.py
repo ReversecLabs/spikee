@@ -152,6 +152,7 @@ def _render_section(title: str, local_entries, builtin_entries):
     builtin_tree = print_section(builtin_entries, "built-in")
     console.print(builtin_tree)
 
+
 # --- Commands ---
 
 

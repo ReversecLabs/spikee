@@ -5,9 +5,7 @@ class StandardisedConversation:
     def __init__(self, root_data=None):
         self._next_id = 1  # root is defined as 0
         self._attempts = 0
-        self.conversation = {
-            0: {"children": [], "data": root_data}
-        }
+        self.conversation = {0: {"children": [], "data": root_data}}
 
     def add_conversation(self, conversation_data: str):
         """Add an existing conversation from a JSON string."""
@@ -20,21 +18,22 @@ class StandardisedConversation:
         """Increment the attempt counter."""
         self._attempts += 1
 
-# region root
+    # region root
     def get_root_id(self) -> int:
         """Get the root message ID."""
         return 0
 
     def get_root_data(self):
         """Get the root message."""
-        return self.conversation[0]['data']
+        return self.conversation[0]["data"]
 
     def update_root_data(self, data):
         """Update the root message data."""
-        self.conversation[0]['data'] = data
-# endregion
+        self.conversation[0]["data"] = data
 
-# region messages
+    # endregion
+
+    # region messages
     def get_parent(self, message_id: int) -> int:
         """Get the parent ID of a given message."""
         message = self.conversation.get(message_id, None)
@@ -48,13 +47,11 @@ class StandardisedConversation:
         self._next_id += 1
 
         if parent_id not in self.conversation and parent_id != 0:
-            raise ValueError(f"Parent ID {parent_id} does not exist in the conversation.")
+            raise ValueError(
+                f"Parent ID {parent_id} does not exist in the conversation."
+            )
 
-        message = {
-            "parent": parent_id,
-            "children": [],
-            "data": data
-        }
+        message = {"parent": parent_id, "children": [], "data": data}
         self.conversation[message_id] = message
 
         if parent_id in self.conversation:
@@ -72,9 +69,10 @@ class StandardisedConversation:
         if message:
             return message["data"]
         return None
-# endregion
 
-# region utilities
+    # endregion
+
+    # region utilities
     def get_message_total(self) -> int:
         """Get the total number of messages in the conversation."""
         return len(self.conversation) - 1  # Exclude root
@@ -105,7 +103,8 @@ class StandardisedConversation:
     def get_path_length(self, message_id: int, root: bool = False) -> int:
         """Get the length of the path from root to the specified message ID."""
         return len(self.get_path(message_id, root))
-# endregion
+
+    # endregion
 
     def __str__(self):
         return json.dumps(self.conversation)

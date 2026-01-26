@@ -141,7 +141,7 @@ def extract_resource_name(file_name: str):
     file_name = re.sub(r"^\d+-", "", file_name)
     file_name = re.sub(r".jsonl$", "", file_name)
     if file_name.startswith("seeds-"):
-        file_name = file_name[len("seeds-"):]
+        file_name = file_name[len("seeds-") :]
     return file_name
 
 

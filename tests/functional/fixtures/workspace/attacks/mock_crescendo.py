@@ -1,5 +1,4 @@
-
-from typing import List, Dict, Optional, Tuple, Any
+from typing import Tuple
 import threading
 from collections import defaultdict
 import spikee.attacks.crescendo
@@ -11,7 +10,9 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 
 class MockLLM:
     def invoke(self, *args, **kwargs):
-        return type("MockResponse", (), {"content": '{"generated_question": "FALLBACK"}'})()
+        return type(
+            "MockResponse", (), {"content": '{"generated_question": "FALLBACK"}'}
+        )()
 
 
 # 2. Monkeypatch get_llm
@@ -45,7 +46,6 @@ class MockCrescendoAttack(Crescendo):
         bar_lock=None,
         attack_option: str = None,
     ) -> Tuple[int, bool, str, str]:
-
         # Parse scenario
         opts = self._parse_attack_option(attack_option)
         # Store scenario in thread-local because attack() sets it for the duration of the call
@@ -53,7 +53,15 @@ class MockCrescendoAttack(Crescendo):
             self._thread_local.scenario = "success"
         self._thread_local.scenario = opts.get("scenario", "success")
 
-        return super().attack(entry, target_module, call_judge, max_iterations, attempts_bar, bar_lock, attack_option)
+        return super().attack(
+            entry,
+            target_module,
+            call_judge,
+            max_iterations,
+            attempts_bar,
+            bar_lock,
+            attack_option,
+        )
 
     def _generate_question(
         self,

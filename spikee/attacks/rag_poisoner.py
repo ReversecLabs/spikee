@@ -13,11 +13,15 @@ Returns:
 
 import json
 import re
-import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.llm import get_llm, get_supported_llm_models, get_example_llm_models, get_supported_prefixes
+from spikee.utilities.llm import (
+    get_llm,
+    get_supported_llm_models,
+    get_example_llm_models,
+    get_supported_prefixes,
+)
 
 # RAG Poisoner prompt template
 SPIKEE_RAG_POISONER_PROMPT = """
@@ -162,14 +166,16 @@ class RAGPoisoner(Attack):
             response = attempt.get("response", "")
             if prompt and response:
                 prev_attempts_formatted.append(
-                    f"Attempt {i+1}:\nPrompt: {prompt}\nResponse: {response}"
+                    f"Attempt {i + 1}:\nPrompt: {prompt}\nResponse: {response}"
                 )
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
         prompt = SPIKEE_RAG_POISONER_PROMPT.replace("{{objective}}", objective).replace(
             "{{previous_attempts}}",
-            prev_attempts_str if prev_attempts_formatted else "No previous attempts yet.",
+            prev_attempts_str
+            if prev_attempts_formatted
+            else "No previous attempts yet.",
         )
         res_text = llm.invoke(prompt).content.strip()
 
@@ -216,7 +222,6 @@ class RAGPoisoner(Attack):
 
         # Try different attack variations
         for i in range(1, max_iterations + 1):
-
             try:
                 # Generate a new attack prompt
                 attack_prompt = self._generate_rag_attack(
@@ -246,7 +251,9 @@ class RAGPoisoner(Attack):
                         with bar_lock:
                             remaining = max_iterations - i
                             if hasattr(attempts_bar, "total"):
-                                attempts_bar.total = max(0, attempts_bar.total - remaining)
+                                attempts_bar.total = max(
+                                    0, attempts_bar.total - remaining
+                                )
                     return i, True, attack_prompt, last_response
 
             except Exception as e:

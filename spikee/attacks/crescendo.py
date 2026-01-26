@@ -8,7 +8,12 @@ import json
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn
-from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes, get_llm
+from spikee.utilities.llm import (
+    get_example_llm_models,
+    get_supported_llm_models,
+    get_supported_prefixes,
+    get_llm,
+)
 
 
 # Source: https://github.com/Azure/PyRIT/blob/bbed39cf249fca9ce20770550912b7254ae672fe/pyrit/datasets/orchestrators/crescendo/crescendo_variant_1.yaml
@@ -95,6 +100,7 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 
 class LLM_JSON_Error(Exception):
     """Custom exception for LLM JSON extraction errors."""
+
     pass
 
 
@@ -109,7 +115,11 @@ class Crescendo(Attack):
         Returns:
             List[str]: List of supported options; first is default.
         """
-        return ["max-turns=5"] + [f"model={model}" for model in get_example_llm_models()] + [f"model={model}" for model in get_supported_llm_models()]
+        return (
+            ["max-turns=5"]
+            + [f"model={model}" for model in get_example_llm_models()]
+            + [f"model={model}" for model in get_supported_llm_models()]
+        )
 
     def get_available_prefixes(self) -> Tuple[bool, List[str]]:
         """Return supported prefixes."""
@@ -155,7 +165,9 @@ class Crescendo(Attack):
 
         # 2) langchain-style: content='...{...}...'
         # capture the quoted payload after content=
-        m2 = re.search(r"content\s*=\s*(['\"])(.*?)\1", t, flags=re.DOTALL | re.IGNORECASE)
+        m2 = re.search(
+            r"content\s*=\s*(['\"])(.*?)\1", t, flags=re.DOTALL | re.IGNORECASE
+        )
         if m2:
             quoted = m2.group(2)
             # find first balanced {...} inside quoted
@@ -170,7 +182,7 @@ class Crescendo(Attack):
                     if depth > 0:
                         depth -= 1
                         if depth == 0 and start != -1:
-                            candidate = quoted[start: i + 1]
+                            candidate = quoted[start : i + 1]
                             try:
                                 return json.loads(candidate)
                             except Exception:
@@ -197,7 +209,7 @@ class Crescendo(Attack):
                 if depth > 0:
                     depth -= 1
                     if depth == 0 and start != -1:
-                        candidate = t[start: i + 1]
+                        candidate = t[start : i + 1]
                         try:
                             return json.loads(candidate)
                         except Exception:
@@ -210,11 +222,15 @@ class Crescendo(Attack):
     def _make_session_id(self) -> str:
         return str(uuid.uuid4())
 
-    def _format_history_for_prompt(self, conversation: StandardisedConversation, last_message_id: int) -> str:
+    def _format_history_for_prompt(
+        self, conversation: StandardisedConversation, last_message_id: int
+    ) -> str:
         lines: List[str] = []
         for node_id in conversation.get_path(last_message_id):
             node = conversation.get_message_data(node_id)
-            lines.append(f"{node['role'].upper()}: {node['content'].replace(chr(10), ' ').strip()}")
+            lines.append(
+                f"{node['role'].upper()}: {node['content'].replace(chr(10), ' ').strip()}"
+            )
         return "\n".join(lines)
 
     def _generate_question(
@@ -228,9 +244,11 @@ class Crescendo(Attack):
     ) -> str:
         # Fill Crescendo prompt template
         prompt = (
-            SPIKEE_CRESCENDO_PROMPT
-            .replace("{{objective}}", objective)
-            .replace("{{chat_history}}", self._format_history_for_prompt(conversation, last_message_id))
+            SPIKEE_CRESCENDO_PROMPT.replace("{{objective}}", objective)
+            .replace(
+                "{{chat_history}}",
+                self._format_history_for_prompt(conversation, last_message_id),
+            )
             .replace("{{max_turns}}", str(max_turns))
             .replace("{{remaining_turns}}", str(remaining_turns))
         )
@@ -277,32 +295,59 @@ class Crescendo(Attack):
         system_message = entry.get("system_message")
 
         # Variables
-        is_refuse = False                       # whether last response was a refusal
-        last_response = ""                      # last LLM response
-        non_backtrack_turns = 0                 # non-backtrack turns made
+        is_refuse = False  # whether last response was a refusal
+        last_response = ""  # last LLM response
+        non_backtrack_turns = 0  # non-backtrack turns made
 
         # While we still have budget for at least one more call and haven't reached max_turns (non-backtrack)
-        while max_iterations - conversation.get_attempt_total() > 0 and non_backtrack_turns < max_turns:
+        while (
+            max_iterations - conversation.get_attempt_total() > 0
+            and non_backtrack_turns < max_turns
+        ):
             remaining_turns = max_turns - non_backtrack_turns
             prompt_message_id = last_message_id
 
             json_error_attempts = 3
             while json_error_attempts > 0:
                 try:
-                    prompt = self._generate_question(llm, objective, conversation, last_message_id, max_turns, remaining_turns)
+                    prompt = self._generate_question(
+                        llm,
+                        objective,
+                        conversation,
+                        last_message_id,
+                        max_turns,
+                        remaining_turns,
+                    )
                     json_error_attempts = 0  # success
                 except LLM_JSON_Error as e:
-                    print(f"[Warning] LLM did not return valid JSON object (attempts remaining {json_error_attempts}): {e}")
+                    print(
+                        f"[Warning] LLM did not return valid JSON object (attempts remaining {json_error_attempts}): {e}"
+                    )
                     json_error_attempts -= 1
                     if json_error_attempts <= 0:
                         raise RuntimeError from e
-            last_message_id = conversation.add_message(last_message_id, {"role": "user", "content": prompt, "spikee_session_id": session_id})
+            last_message_id = conversation.add_message(
+                last_message_id,
+                {"role": "user", "content": prompt, "spikee_session_id": session_id},
+            )
             conversation.add_attempt()
 
             # call target; each call consumes budget immediately
-            resp = target_module.process_input(prompt, system_message, spikee_session_id=session_id, backtrack=is_refuse)
+            resp = target_module.process_input(
+                prompt,
+                system_message,
+                spikee_session_id=session_id,
+                backtrack=is_refuse,
+            )
             response_text = str(resp[0] if isinstance(resp, (tuple, list)) else resp)
-            last_message_id = conversation.add_message(last_message_id, {"role": "assistant", "content": response_text, "spikee_session_id": session_id})
+            last_message_id = conversation.add_message(
+                last_message_id,
+                {
+                    "role": "assistant",
+                    "content": response_text,
+                    "spikee_session_id": session_id,
+                },
+            )
 
             # Count this call and update attempts_bar (backtracks are counted too)
             if attempts_bar:
@@ -324,7 +369,9 @@ class Crescendo(Attack):
 
             if is_refuse:
                 # Check if target supports backtracking
-                last_message_id = prompt_message_id  # remove last user+assistant exchange
+                last_message_id = (
+                    prompt_message_id  # remove last user+assistant exchange
+                )
 
                 if not target_module.config.get("backtrack", False):
                     # If target does not support backtracking, abort this attempt.
@@ -378,7 +425,7 @@ class Crescendo(Attack):
         # Variables
         conversation = StandardisedConversation({"objective": entry["text"]})
         last_message_id = conversation.get_root_id()  # last message id
-        last_response = ""                      # last LLM response
+        last_response = ""  # last LLM response
 
         # Loop until global budget exhausted
         while max_iterations - conversation.get_attempt_total() > 0:
@@ -386,18 +433,20 @@ class Crescendo(Attack):
             session_id = self._make_session_id()
 
             try:
-                success, conversation, last_message_id, last_response = self._run_attempt(
-                    entry,
-                    target_module,
-                    call_judge,
-                    llm,
-                    max_turns,
-                    max_iterations,
-                    attempts_bar,
-                    bar_lock,
-                    session_id,
-                    conversation,
-                    last_message_id
+                success, conversation, last_message_id, last_response = (
+                    self._run_attempt(
+                        entry,
+                        target_module,
+                        call_judge,
+                        llm,
+                        max_turns,
+                        max_iterations,
+                        attempts_bar,
+                        bar_lock,
+                        session_id,
+                        conversation,
+                        last_message_id,
+                    )
                 )
 
             except Exception as e:
@@ -409,9 +458,9 @@ class Crescendo(Attack):
                     Crescendo.standardised_input_return(
                         input=entry["text"],
                         conversation=conversation,
-                        objective=entry["text"]
+                        objective=entry["text"],
                     ),
-                    str(e)
+                    str(e),
                 )
 
             # If success, end early and fast-forward the attempts bar total like other attacks do
@@ -421,7 +470,9 @@ class Crescendo(Attack):
                     if bar_lock:
                         with bar_lock:
                             if getattr(attempts_bar, "total", None) is not None:
-                                attempts_bar.total = max(0, attempts_bar.total - remaining)
+                                attempts_bar.total = max(
+                                    0, attempts_bar.total - remaining
+                                )
                     else:
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
@@ -431,9 +482,9 @@ class Crescendo(Attack):
                     Crescendo.standardised_input_return(
                         input=entry["text"],
                         conversation=conversation,
-                        objective=entry["text"]
+                        objective=entry["text"],
                     ),
-                    last_response
+                    last_response,
                 )
 
             if max_iterations - conversation.get_attempt_total() <= 0:
@@ -443,9 +494,7 @@ class Crescendo(Attack):
             conversation.get_attempt_total(),
             False,
             Crescendo.standardised_input_return(
-                input=entry["text"],
-                conversation=conversation,
-                objective=entry["text"]
+                input=entry["text"], conversation=conversation, objective=entry["text"]
             ),
-            last_response
+            last_response,
         )

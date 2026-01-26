@@ -4,7 +4,6 @@ from spikee.templates.plugin import Plugin
 
 
 class TestUpperPlugin(Plugin):
-
     def get_available_option_values(self) -> List[str]:
         return []
 

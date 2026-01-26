@@ -1,5 +1,5 @@
-from flask import Flask, abort, redirect, render_template, request, send_file
-from io import BytesIO
+from flask import Flask, abort, redirect, render_template, request
+
 # from selenium import webdriver
 import ast
 import hashlib
@@ -10,7 +10,12 @@ import re
 import logging
 
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, write_jsonl_file, extract_resource_name
+from spikee.utilities.files import (
+    process_jsonl_input_files,
+    read_jsonl_file,
+    write_jsonl_file,
+    extract_resource_name,
+)
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
 from spikee.judge import call_judge
 
@@ -20,7 +25,6 @@ TRUNCATE_LENGTH = 500
 
 
 def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> Flask:
-
     viewer = Flask(
         VIEWER_NAME,
         static_folder=os.path.join(viewer_folder, "static"),
@@ -28,10 +32,9 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
     )
 
     # Suppress Flask logging
-    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-
-# region Helper Functions
+    # region Helper Functions
 
     def highlight_headings(result_output):
         """Highlight headings in the resource processor outputs by wrapping them in <mark> and <strong> tags."""
@@ -40,7 +43,7 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         def repl(match):
             heading = match.group(1)
-            return f'<mark><strong>=== {heading} ===</strong></mark>'
+            return f"<mark><strong>=== {heading} ===</strong></mark>"
 
         return re.sub(r"===\s*(.*?)\s*===", repl, result_output)
 
@@ -51,28 +54,36 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             entries = read_jsonl_file(result_file)
 
             for entry in entries:
-                entry['source_file'] = result_file
+                entry["source_file"] = result_file
 
-                if entry['response'] is not None and entry['response'] != "":
-                    backup = entry['response']
+                if entry["response"] is not None and entry["response"] != "":
+                    backup = entry["response"]
                     try:
-                        entry['response'] = json.loads(entry['response'])
+                        entry["response"] = json.loads(entry["response"])
                     except Exception:
                         if allow_ast:
                             try:
-                                entry['response'] = ast.literal_eval(entry['response'])
+                                entry["response"] = ast.literal_eval(entry["response"])
                             except Exception:
-                                entry['response'] = backup
+                                entry["response"] = backup
                         else:
-                            entry['response'] = backup
+                            entry["response"] = backup
 
-                results[str(name + "-" + str(entry['id']))] = (entry)
+                results[str(name + "-" + str(entry["id"]))] = entry
 
         if len(result_files) > 1:
-            result_processor = highlight_headings(ResultProcessor(results=results.values(), result_file="combined").generate_output(combined=True))
+            result_processor = highlight_headings(
+                ResultProcessor(
+                    results=results.values(), result_file="combined"
+                ).generate_output(combined=True)
+            )
 
         else:
-            result_processor = highlight_headings(ResultProcessor(results=results.values(), result_file=list(result_files.keys())[0]).generate_output())
+            result_processor = highlight_headings(
+                ResultProcessor(
+                    results=results.values(), result_file=list(result_files.keys())[0]
+                ).generate_output()
+            )
 
         return results, result_processor
 
@@ -85,7 +96,9 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         elif result_file in loaded_files:
             selected_files[0] = result_file
-            loaded[0], result_processor[0] = load_file(result_files={result_file: loaded_files[result_file]})
+            loaded[0], result_processor[0] = load_file(
+                result_files={result_file: loaded_files[result_file]}
+            )
             return True
 
         else:
@@ -94,9 +107,14 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
     def is_safe_relative_url(url):
         """Check if a URL is a safe relative URL to prevent open redirects."""
         # Only allow relative URLs that start with a single slash and do not contain a scheme or netloc
-        return url and url.startswith('/') and not url.startswith('//') and ':' not in url.split('?', 1)[0]
+        return (
+            url
+            and url.startswith("/")
+            and not url.startswith("//")
+            and ":" not in url.split("?", 1)[0]
+        )
 
-# endregion
+    # endregion
 
     # Load startup result files
     loaded_files = {extract_resource_name(f): f for f in results_files}
@@ -135,25 +153,34 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             if output is None:
                 return "—"
 
-            elif truncated and isinstance(output, str) and len(output) > TRUNCATE_LENGTH:
+            elif (
+                truncated and isinstance(output, str) and len(output) > TRUNCATE_LENGTH
+            ):
                 return output[:TRUNCATE_LENGTH] + "...[Truncated]"
 
             return output
 
-        def process_conversation(conversation_data: str, truncated: bool = False) -> str:
+        def process_conversation(
+            conversation_data: str, truncated: bool = False
+        ) -> str:
             standardised_conversation = StandardisedConversation()
             standardised_conversation.add_conversation(conversation_data)
 
             def render_message(node, message) -> str:
                 # node_entry = f'<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str("node"))};">node:</strong> {html.escape(str(node))}</div>'
 
-                if isinstance(message['data'], dict):
+                if isinstance(message["data"], dict):
                     data = [
-                        f"""<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>""" for key, value in message['data'].items()]
+                        f"""<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str(key))};">{html.escape(str(key))}:</strong> {html.escape(process_output(str(value), truncated))}</div>"""
+                        for key, value in message["data"].items()
+                    ]
 
                     message = "".join(data)
-                elif isinstance(message['data'], list):
-                    data = [f"""<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>""" for item in message['data']]
+                elif isinstance(message["data"], list):
+                    data = [
+                        f"""<div class="code-block h-100 result-input">{html.escape(process_output(str(item), truncated))}</div>"""
+                        for item in message["data"]
+                    ]
                     message = "".join(data)
                 else:
                     message = f"""<div class="code-block h-100 result-input">{html.escape(process_output(str(message["data"]), truncated))}</div>"""
@@ -163,13 +190,15 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             def render_node(message_id: int) -> str:
                 message = standardised_conversation.get_message(message_id)
 
-                if message['children'] == []:
+                if message["children"] == []:
                     return render_message(message_id, message)
 
                 else:
-                    children = [render_node(child_id) for child_id in message['children']]
+                    children = [
+                        render_node(child_id) for child_id in message["children"]
+                    ]
 
-                    return f"""{render_message(message_id, message)}<ol class="ps-3 mt-2">{''.join(children)}</ol>"""
+                    return f"""{render_message(message_id, message)}<ol class="ps-3 mt-2">{"".join(children)}</ol>"""
 
             conversation_html = f"""<ol class="ps-3 mt-2">{render_node(0)}</ol>"""
 
@@ -191,10 +220,12 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
             # Clamp to avoid too-dark or too-light colours
             min_val, max_val = 80, 230  # allow slightly brighter colours
-            def clamp(x): return min_val + (x % (max_val - min_val))
+
+            def clamp(x):
+                return min_val + (x % (max_val - min_val))
 
             r, g, b = clamp(r), clamp(g), clamp(b)
-            return f'#{r:02x}{g:02x}{b:02x}'
+            return f"#{r:02x}{g:02x}{b:02x}"
 
         return dict(
             get_app_name=get_app_name,
@@ -204,22 +235,24 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             get_result_processor=get_result_processor,
             process_output=process_output,
             process_conversation=process_conversation,
-            string_to_colour=string_to_colour
+            string_to_colour=string_to_colour,
         )
 
     @viewer.before_request
     def before_request_func():
         """Reload result file if changed in query parameters."""
-        result_file_get = request.args.get('result_file', None)
-        result_file_post = request.form.get('result_file', None)
+        result_file_get = request.args.get("result_file", None)
+        result_file_post = request.form.get("result_file", None)
 
-        result_file = result_file_get if result_file_get is not None else result_file_post
+        result_file = (
+            result_file_get if result_file_get is not None else result_file_post
+        )
 
         if result_file is not None and result_file != selected_files[0]:
             if not reload_files(result_file):
                 abort(404, description="Result file not found")
 
-        viewer.jinja_env.globals['loaded_file'] = selected_files[0]
+        viewer.jinja_env.globals["loaded_file"] = selected_files[0]
 
     @viewer.route("/", methods=["GET"])
     def index():
@@ -227,30 +260,35 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
     @viewer.route("/file/", methods=["GET"])
     def result_file():
-        category = request.args.get('category', '')
-        custom_search = request.args.get('custom_search', '')
+        category = request.args.get("category", "")
+        custom_search = request.args.get("custom_search", "")
 
         # Filter entries based on category and custom search
         try:
-            custom_query = generate_query('custom', custom_search.split('|'))
+            custom_query = generate_query("custom", custom_search.split("|"))
 
         except ValueError as e:
             abort(400, description=str(e))
 
         matching_entries = {}
         for id, entry in loaded[0].items():
-
             flag = True
-            if category != '' and category != 'custom':
+            if category != "" and category != "custom":
                 flag = extract_entries(entry, category)
 
-            if flag and custom_search != '':
-                flag = extract_entries(entry, 'custom', custom_query)
+            if flag and custom_search != "":
+                flag = extract_entries(entry, "custom", custom_query)
 
             if flag:
                 matching_entries[id] = entry
 
-        return render_template("result_file.html", category=category, custom_search=custom_search, entries=matching_entries, truncated=True)
+        return render_template(
+            "result_file.html",
+            category=category,
+            custom_search=custom_search,
+            entries=matching_entries,
+            truncated=True,
+        )
 
     @viewer.route("/entry/<entry>", methods=["GET"])
     def result_entry(entry):
@@ -262,8 +300,8 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
     @viewer.route("/entry/<entry>/task", methods=["POST"])
     def tasking(entry):
-        return_url = request.form.get('return_url', '')
-        task_action = request.form.get('task_action', '')
+        return_url = request.form.get("return_url", "")
+        task_action = request.form.get("task_action", "")
 
         # Validate entry exists
         entry_data = loaded[0].get(entry)
@@ -271,22 +309,22 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
             abort(404, description="Entry not found")
 
         # Process task action
-        jsonl_data = read_jsonl_file(entry_data['source_file'])
-        entry_id = str(entry_data['id'])
+        jsonl_data = read_jsonl_file(entry_data["source_file"])
+        entry_id = str(entry_data["id"])
         for item in jsonl_data:
-            if str(item['id']) == entry_id:
+            if str(item["id"]) == entry_id:
                 match task_action:
                     case "toggle_success":
                         # Toggle success status
-                        item['success'] = not item.get('success', False)
+                        item["success"] = not item.get("success", False)
 
                     case "rejudge":
                         # Rejudge individual entry
-                        item['success'] = call_judge(item, item.get('response', ''))
+                        item["success"] = call_judge(item, item.get("response", ""))
 
                 break
 
-        write_jsonl_file(entry_data['source_file'], jsonl_data)
+        write_jsonl_file(entry_data["source_file"], jsonl_data)
 
         # Reload files to reflect changes
         reload_files(selected_files[0])
@@ -303,59 +341,63 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         if not entry_data:
             abort(404, description="Entry not found")
 
-        return render_template("download.html", id=entry, entry=entry_data, download=True)
+        return render_template(
+            "download.html", id=entry, entry=entry_data, download=True
+        )
 
-#    @viewer.route("/entry/<entry>/download", methods=[])
-#    def result_to_image(entry):
-#        return abort(404, description="Download functionality not enabled in this environment.")
+    #    @viewer.route("/entry/<entry>/download", methods=[])
+    #    def result_to_image(entry):
+    #        return abort(404, description="Download functionality not enabled in this environment.")
 
-        # Use Selenium to render the HTML and capture a screenshot as PNG bytes, allowing JS to run
-#        options = webdriver.ChromeOptions()
-#        options.add_argument("--headless=new")  # Use new headless mode for better JS support
-#        options.add_argument("--disable-gpu")
-#        options.add_argument("--no-sandbox")
+    # Use Selenium to render the HTML and capture a screenshot as PNG bytes, allowing JS to run
+    #        options = webdriver.ChromeOptions()
+    #        options.add_argument("--headless=new")  # Use new headless mode for better JS support
+    #        options.add_argument("--disable-gpu")
+    #        options.add_argument("--no-sandbox")
 
-#        driver = webdriver.Chrome(options=options)
-#        try:
-#            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={selected_files[0]}")  # Dummy URL
-#            img_bytes = driver.get_screenshot_as_png()
-#        finally:
-#            driver.quit()
+    #        driver = webdriver.Chrome(options=options)
+    #        try:
+    #            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={selected_files[0]}")  # Dummy URL
+    #            img_bytes = driver.get_screenshot_as_png()
+    #        finally:
+    #            driver.quit()
 
-        # Send as downloadable file
-#        return send_file(
-#            BytesIO(img_bytes),
-#            mimetype='image/png',
-#            as_attachment=True,
-#            download_name=f"{selected_files[0]}_{entry}.png"
-#        )
+    # Send as downloadable file
+    #        return send_file(
+    #            BytesIO(img_bytes),
+    #            mimetype='image/png',
+    #            as_attachment=True,
+    #            download_name=f"{selected_files[0]}_{entry}.png"
+    #        )
 
     return viewer
 
 
 def run_viewer(args):
-    results_files = process_jsonl_input_files(args.result_file, args.result_folder, ["results", "rejudge", "extract"])
+    results_files = process_jsonl_input_files(
+        args.result_file, args.result_folder, ["results", "rejudge", "extract"]
+    )
 
     if len(results_files) == 0:
-        raise ValueError("[Error] No results files provided, please specify at least one using --result-file or --result-folder.")
+        raise ValueError(
+            "[Error] No results files provided, please specify at least one using --result-file or --result-folder."
+        )
 
     print("[Overview] Analyzing the following file(s): ")
     print(" - " + "\n - ".join(results_files))
 
     viewer_folder = os.path.join(os.getcwd(), "viewer")
     if not os.path.isdir(viewer_folder):
-        raise FileNotFoundError(f"[Error] Viewer folder not found at {viewer_folder}, please run 'spikee init --include-viewer' to set up the viewer files.")
+        raise FileNotFoundError(
+            f"[Error] Viewer folder not found at {viewer_folder}, please run 'spikee init --include-viewer' to set up the viewer files."
+        )
 
     viewer = create_viewer(
         viewer_folder=viewer_folder,
         results_files=results_files,
         host=args.host,
         port=args.port,
-        allow_ast=args.allow_ast
+        allow_ast=args.allow_ast,
     )
 
-    viewer.run(
-        debug=False,
-        host=args.host,
-        port=args.port
-    )
+    viewer.run(debug=False, host=args.host, port=args.port)

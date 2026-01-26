@@ -79,12 +79,16 @@ class OllamaTarget(Target):
             model=model_name,
             num_predict=None,  # maximum number of tokens to predict
             # timeout in seconds (None = not configured)
-            client_kwargs={"timeout": float(os.environ['OLLAMA_TIMEOUT']) if os.environ.get(
-                'OLLAMA_TIMEOUT') not in (None, '') else None},
+            client_kwargs={
+                "timeout": float(os.environ["OLLAMA_TIMEOUT"])
+                if os.environ.get("OLLAMA_TIMEOUT") not in (None, "")
+                else None
+            },
         ).with_retry(
             # total attempts (1 initial + retries)
-            stop_after_attempt=int(os.environ['OLLAMA_MAX_ATTEMPTS']) if os.environ.get(
-                'OLLAMA_MAX_ATTEMPTS') not in (None, '') else 1,
+            stop_after_attempt=int(os.environ["OLLAMA_MAX_ATTEMPTS"])
+            if os.environ.get("OLLAMA_MAX_ATTEMPTS") not in (None, "")
+            else 1,
             wait_exponential_jitter=True,  # backoff with jitter
         )
 

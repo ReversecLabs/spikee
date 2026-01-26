@@ -85,7 +85,7 @@ def test_spikee_results_rejudge_with_options(
         ],
     )
     assert "Currently Re-judging" in rejudge.stdout
-    
+
     _, resource_name = extract_prefix_from_file_name(results_file.name)
     expected_prefix = f"rejudge_{resource_name}_"
 

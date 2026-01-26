@@ -335,7 +335,9 @@ def parse_plugin_options(plugin_options_str):
     return options_map
 
 
-def apply_plugin(plugin_name, plugin_module, text, exclude_patterns=None, plugin_option=None):
+def apply_plugin(
+    plugin_name, plugin_module, text, exclude_patterns=None, plugin_option=None
+):
     """
     Applies a plugin module's transform function to the given text if available.
     """
@@ -432,7 +434,7 @@ def process_standalone_attacks(
                         plugin_module,
                         attack_text,
                         exclude_list,
-                        plugin_option
+                        plugin_option,
                     )
 
                     # Ensure the result is a list of variations

@@ -75,9 +75,13 @@ def validate_llm_option(option: str) -> bool:
     Validate if the provided options correspond to a supported LLM model.
     """
     if option is None:
-        raise ValueError("LLM option cannot be None, ensure than modules leveraging LLM utilities specify an LLM option.")
+        raise ValueError(
+            "LLM option cannot be None, ensure than modules leveraging LLM utilities specify an LLM option."
+        )
 
-    return option in SUPPORTED_LLM_MODELS or any(option.startswith(prefix) for prefix in SUPPORTED_PREFIXES)
+    return option in SUPPORTED_LLM_MODELS or any(
+        option.startswith(prefix) for prefix in SUPPORTED_PREFIXES
+    )
 
 
 def get_llm(options=None, max_tokens=8):
@@ -116,7 +120,7 @@ def get_llm(options=None, max_tokens=8):
             max_tokens=max_tokens,
             temperature=0,
             timeout=None,
-            max_retries=2
+            max_retries=2,
         )
 
     elif options.startswith("bedrock-"):
@@ -133,13 +137,17 @@ def get_llm(options=None, max_tokens=8):
             model=model_name,
             num_predict=max_tokens,  # maximum number of tokens to predict
             temperature=0,
-            client_kwargs={"timeout": float(os.environ['OLLAMA_TIMEOUT']) if os.environ.get(
-                'OLLAMA_TIMEOUT') not in (None, '') else None},
-                # timeout in seconds (None = not configured)
+            client_kwargs={
+                "timeout": float(os.environ["OLLAMA_TIMEOUT"])
+                if os.environ.get("OLLAMA_TIMEOUT") not in (None, "")
+                else None
+            },
+            # timeout in seconds (None = not configured)
         ).with_retry(
-            stop_after_attempt=int(os.environ['OLLAMA_MAX_ATTEMPTS']) if os.environ.get(
-                'OLLAMA_MAX_ATTEMPTS') not in (None, '') else 1,
-                # total attempts (1 initial + retries)
+            stop_after_attempt=int(os.environ["OLLAMA_MAX_ATTEMPTS"])
+            if os.environ.get("OLLAMA_MAX_ATTEMPTS") not in (None, "")
+            else 1,
+            # total attempts (1 initial + retries)
             wait_exponential_jitter=True,  # backoff with jitter
         )
 

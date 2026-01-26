@@ -11,11 +11,15 @@ Returns:
 
 import json
 import re
-import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.llm import get_llm, get_supported_llm_models, get_example_llm_models, get_supported_prefixes
+from spikee.utilities.llm import (
+    get_llm,
+    get_supported_llm_models,
+    get_example_llm_models,
+    get_supported_prefixes,
+)
 
 # Multilingual Jailbreaker prompt template
 SPIKEE_MULTILINGUAL_JAILBREAKER_PROMPT = """
@@ -151,7 +155,7 @@ class LLMMultiLanguageJailbreaker(Attack):
             response = attempt.get("response", "")
             if prompt and response:
                 prev_attempts_formatted.append(
-                    f"Attempt {i+1}:\nPrompt: {prompt}\nResponse: {response}"
+                    f"Attempt {i + 1}:\nPrompt: {prompt}\nResponse: {response}"
                 )
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
@@ -160,7 +164,9 @@ class LLMMultiLanguageJailbreaker(Attack):
             "{{objective}}", objective
         ).replace(
             "{{previous_attempts}}",
-            prev_attempts_str if prev_attempts_formatted else "No previous attempts yet.",
+            prev_attempts_str
+            if prev_attempts_formatted
+            else "No previous attempts yet.",
         )
 
         # call the model via .invoke
@@ -211,7 +217,6 @@ class LLMMultiLanguageJailbreaker(Attack):
         # Try different attack variations
         # Note: range is 1-indexed to match nice user-facing counting
         for i in range(1, max_iterations + 1):
-
             try:
                 # Generate a new attack prompt in a different language
                 attack_prompt = self._generate_multilingual_jailbreak_attack(
@@ -242,7 +247,9 @@ class LLMMultiLanguageJailbreaker(Attack):
                         with bar_lock:
                             remaining = max_iterations - i
                             if hasattr(attempts_bar, "total"):
-                                attempts_bar.total = max(0, attempts_bar.total - remaining)
+                                attempts_bar.total = max(
+                                    0, attempts_bar.total - remaining
+                                )
                     return i, True, attack_prompt, last_response
 
             except Exception as e:

@@ -12,11 +12,11 @@ class Attack(ABC):
         self.turn_type = turn_type
 
     @staticmethod
-    def standardised_input_return(input: str, conversation: StandardisedConversation = None, objective: str = None) -> Dict[str, Any]:
+    def standardised_input_return(
+        input: str, conversation: StandardisedConversation = None, objective: str = None
+    ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
-        standardised_return = {
-            "input": str(input)
-        }
+        standardised_return = {"input": str(input)}
 
         if conversation:
             standardised_return["conversation"] = str(conversation.conversation)

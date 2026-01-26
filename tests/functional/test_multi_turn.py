@@ -1,6 +1,4 @@
-
 import os
-import pytest
 from .utils import (
     extract_results_path,
     read_jsonl,
@@ -30,19 +28,28 @@ def test_multiturn_success(run_spikee, workspace_dir):
         run_spikee,
         workspace_dir,
         [
-            "--dataset", str(dataset_rel),
-            "--target", TARGET_NAME,
-            "--attack", ATTACK_NAME,
-            "--attack-iterations", "5",
-            "--attack-options", "scenario=success",
-            "--judge", JUDGE_NAME,
-            "--judge-options", f"{JUDGE_NAME}:keyword=Here is the flag",
+            "--dataset",
+            str(dataset_rel),
+            "--target",
+            TARGET_NAME,
+            "--attack",
+            ATTACK_NAME,
+            "--attack-iterations",
+            "5",
+            "--attack-options",
+            "scenario=success",
+            "--judge",
+            JUDGE_NAME,
+            "--judge-options",
+            f"{JUDGE_NAME}:keyword=Here is the flag",
         ],
     )
 
     results_file = extract_results_path(result.stdout, workspace_dir)
     results = read_jsonl(results_file)
-    attack_entry = next((e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None)
+    attack_entry = next(
+        (e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None
+    )
 
     try:
         assert attack_entry
@@ -53,7 +60,7 @@ def test_multiturn_success(run_spikee, workspace_dir):
         print("\n=== STDERR ===\n", result.stderr)
         if os.path.exists(results_file):
             print(f"\n=== RESULTS FILE ({results_file}) ===\n")
-            with open(results_file, 'r') as f:
+            with open(results_file, "r") as f:
                 print(f.read())
         raise
 
@@ -67,19 +74,28 @@ def test_multiturn_refusal_backtrack(run_spikee, workspace_dir):
         run_spikee,
         workspace_dir,
         [
-            "--dataset", str(dataset_rel),
-            "--target", TARGET_NAME,
-            "--attack", ATTACK_NAME,
-            "--attack-iterations", "10",
-            "--attack-options", "scenario=refusal",
-            "--judge", JUDGE_NAME,
-            "--judge-options", f"{JUDGE_NAME}:keyword=Here is the flag",
+            "--dataset",
+            str(dataset_rel),
+            "--target",
+            TARGET_NAME,
+            "--attack",
+            ATTACK_NAME,
+            "--attack-iterations",
+            "10",
+            "--attack-options",
+            "scenario=refusal",
+            "--judge",
+            JUDGE_NAME,
+            "--judge-options",
+            f"{JUDGE_NAME}:keyword=Here is the flag",
         ],
     )
 
     results_file = extract_results_path(result.stdout, workspace_dir)
     results = read_jsonl(results_file)
-    attack_entry = next((e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None)
+    attack_entry = next(
+        (e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None
+    )
 
     try:
         assert attack_entry
@@ -92,7 +108,7 @@ def test_multiturn_refusal_backtrack(run_spikee, workspace_dir):
         print("\n=== STDERR ===\n", result.stderr)
         if os.path.exists(results_file):
             print(f"\n=== RESULTS FILE ({results_file}) ===\n")
-            with open(results_file, 'r') as f:
+            with open(results_file, "r") as f:
                 print(f.read())
         raise
 
@@ -106,19 +122,28 @@ def test_multiturn_max_turns_failure(run_spikee, workspace_dir):
         run_spikee,
         workspace_dir,
         [
-            "--dataset", str(dataset_rel),
-            "--target", TARGET_NAME,
-            "--attack", ATTACK_NAME,
-            "--attack-iterations", "4",  # Limit calls to 4
-            "--attack-options", "scenario=failure",  # Requires 6
-            "--judge", JUDGE_NAME,
-            "--judge-options", f"{JUDGE_NAME}:keyword=Here is the flag",
+            "--dataset",
+            str(dataset_rel),
+            "--target",
+            TARGET_NAME,
+            "--attack",
+            ATTACK_NAME,
+            "--attack-iterations",
+            "4",  # Limit calls to 4
+            "--attack-options",
+            "scenario=failure",  # Requires 6
+            "--judge",
+            JUDGE_NAME,
+            "--judge-options",
+            f"{JUDGE_NAME}:keyword=Here is the flag",
         ],
     )
 
     results_file = extract_results_path(result.stdout, workspace_dir)
     results = read_jsonl(results_file)
-    attack_entry = next((e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None)
+    attack_entry = next(
+        (e for e in results if e.get("attack_name", "").endswith(ATTACK_NAME)), None
+    )
 
     try:
         assert attack_entry

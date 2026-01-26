@@ -336,7 +336,9 @@ class ResultProcessor:
 
         # --- 1. SETUP ---
         # Group original entries with their dynamic attack entries
-        self._entry_groups, self._attack_to_original = group_entries_with_attacks(self.results)
+        self._entry_groups, self._attack_to_original = group_entries_with_attacks(
+            self.results
+        )
 
         # Count unique entries (considering original + attack as one logical entry)
         self.total_entries = len(self._entry_groups)
@@ -419,8 +421,8 @@ class ResultProcessor:
                         "spikee.attacks.", ""
                     ).replace("spikee.", "")
                     self.attack_types[clean_attack_name]["total"] += 1
-                    self.attack_types[clean_attack_name]["attempts"] += attack_entry.get(
-                        "attempts", 1
+                    self.attack_types[clean_attack_name]["attempts"] += (
+                        attack_entry.get("attempts", 1)
                     )
                     if attack_entry.get("success", False):
                         self.attack_types[clean_attack_name]["successes"] += 1
@@ -467,10 +469,14 @@ class ResultProcessor:
         # --- 3. CALCULATE STATISTICS ---
         # Calculate attack success rates
         self.attack_success_rate = (
-            (self.successful_groups / self.total_entries) * 100 if self.total_entries else 0
+            (self.successful_groups / self.total_entries) * 100
+            if self.total_entries
+            else 0
         )
         self.initial_success_rate = (
-            (self.initially_successful_groups / self.total_entries) * 100 if self.total_entries else 0
+            (self.initially_successful_groups / self.total_entries) * 100
+            if self.total_entries
+            else 0
         )
         self.attack_improvement = (
             (self.attack_only_successful_groups / self.total_entries) * 100
@@ -550,7 +556,9 @@ class ResultProcessor:
                 if self.has_dynamic_attacks:
                     initial_successes = stats["initial_successes"]
                     attack_only_successes = stats["attack_only_successes"]
-                    initial_success_rate = (initial_successes / total) * 100 if total else 0
+                    initial_success_rate = (
+                        (initial_successes / total) * 100 if total else 0
+                    )
                     attack_improvement = (
                         (attack_only_successes / total) * 100 if total else 0
                     )
@@ -591,7 +599,7 @@ class ResultProcessor:
 
         # General statistics
         output += f"\n=== Analysis of Results File: {self.result_file} ==="
-        output += f"\n=== General Statistics ==="
+        output += "\n=== General Statistics ==="
         output += f"\nTotal Unique Entries: {self.total_entries}"
 
         if self.has_dynamic_attacks:
@@ -656,12 +664,15 @@ class ResultProcessor:
                 "attack_success_rate": 0.0,
                 "initial_success_rate": 0.0,
                 "attack_improvement": 0.0,
-            } for field in source_groups.keys()
+            }
+            for field in source_groups.keys()
         }
 
         for original_id, entries in self._entry_groups.items():
             source = entries[0].get("source_file", "unknown_source")
-            self._source_stats[source]["attempts"] += sum(entry.get("attempts", 1) for entry in entries)
+            self._source_stats[source]["attempts"] += sum(
+                entry.get("attempts", 1) for entry in entries
+            )
 
             attack_entries = [
                 e
@@ -706,9 +717,15 @@ class ResultProcessor:
 
         for source, stats in self._source_stats.items():
             total = stats["successes"] + stats["failed"] + stats["errors"]
-            stats["attack_success_rate"] = (stats["successes"] / total) * 100 if total else 0
-            stats["initial_success_rate"] = (stats["initial_successes"] / total) * 100 if total else 0
-            stats["attack_improvement"] = (stats["attack_only_successes"] / total) * 100 if total else 0
+            stats["attack_success_rate"] = (
+                (stats["successes"] / total) * 100 if total else 0
+            )
+            stats["initial_success_rate"] = (
+                (stats["initial_successes"] / total) * 100 if total else 0
+            )
+            stats["attack_improvement"] = (
+                (stats["attack_only_successes"] / total) * 100 if total else 0
+            )
 
         # Create a table of source stats sorted alphabetically by source name
 
@@ -724,16 +741,22 @@ class ResultProcessor:
         ]
 
         # Sort sources by attack success rate (ASR) descending
-        for source, stats in sorted(self._source_stats.items(), key=lambda x: x[1]["attack_success_rate"], reverse=True):
-            table.append([
-                extract_resource_name(source),
-                stats["attempts"],
-                stats["successes"],
-                stats["failed"],
-                stats["guardrail"],
-                stats["errors"],
-                f"{stats['attack_success_rate']:.2f}%",
-            ])
+        for source, stats in sorted(
+            self._source_stats.items(),
+            key=lambda x: x[1]["attack_success_rate"],
+            reverse=True,
+        ):
+            table.append(
+                [
+                    extract_resource_name(source),
+                    stats["attempts"],
+                    stats["successes"],
+                    stats["failed"],
+                    stats["guardrail"],
+                    stats["errors"],
+                    f"{stats['attack_success_rate']:.2f}%",
+                ]
+            )
 
         output = "\n\n=== Combined Source Statistics ===\n"
         output += tabulate(table, headers=headers) + "\n"
@@ -751,7 +774,7 @@ class ResultProcessor:
                     f"\nWARNING: False positive check file '{self.fp_check_file}' not found or not accessible."
                 )
             else:
-                output += f"\n=== False Positive Analysis ==="
+                output += "\n=== False Positive Analysis ==="
                 output += f"\nFalse Positive Check File: {self.fp_check_file}\n"
 
                 try_output = ""
@@ -765,7 +788,9 @@ class ResultProcessor:
                     try_output += f"\nGrouped into {len(fp_groups)} unique entries\n"
                     # Count success/failure in false positive checks
                     fp_success = 0  # True Negatives (benign prompts correctly allowed)
-                    fp_failure = 0  # False Positives (benign prompts incorrectly blocked)
+                    fp_failure = (
+                        0  # False Positives (benign prompts incorrectly blocked)
+                    )
 
                     for fp_id, entries in fp_groups.items():
                         # If any entry in the group was successful, count it as a success
@@ -778,9 +803,15 @@ class ResultProcessor:
                     false_negatives = (
                         self.successful_groups  # Attacks that went through (should have been blocked)
                     )
-                    true_positives = self.failed_groups  # Attacks that were blocked (correctly)
-                    true_negatives = fp_success  # Benign prompts that went through (correctly)
-                    false_positives = fp_failure  # Benign prompts that were blocked (incorrectly)
+                    true_positives = (
+                        self.failed_groups
+                    )  # Attacks that were blocked (correctly)
+                    true_negatives = (
+                        fp_success  # Benign prompts that went through (correctly)
+                    )
+                    false_positives = (
+                        fp_failure  # Benign prompts that were blocked (incorrectly)
+                    )
 
                     # Calculate metrics
                     precision = (
@@ -800,8 +831,19 @@ class ResultProcessor:
                     )
                     accuracy = (
                         (true_positives + true_negatives)
-                        / (true_positives + true_negatives + false_positives + false_negatives)
-                        if (true_positives + true_negatives + false_positives + false_negatives) > 0
+                        / (
+                            true_positives
+                            + true_negatives
+                            + false_positives
+                            + false_negatives
+                        )
+                        if (
+                            true_positives
+                            + true_negatives
+                            + false_positives
+                            + false_negatives
+                        )
+                        > 0
                         else 0
                     )
 
@@ -890,7 +932,9 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                 if not (isinstance(e["id"], str) and "-attack" in str(e["id"]))
             ]
             attack_entries = [
-                e for e in entries if isinstance(e["id"], str) and "-attack" in str(e["id"])
+                e
+                for e in entries
+                if isinstance(e["id"], str) and "-attack" in str(e["id"])
             ]
 
             initial_success = any(e.get("success", False) for e in initial_entries)
@@ -950,8 +994,12 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                         attempts = stats["attempts"]
 
                         success_rate = (successes / total) * 100 if total else 0
-                        initial_success_rate = (initial_successes / total) * 100 if total else 0
-                        attack_improvement = (attack_only_successes / total) * 100 if total else 0
+                        initial_success_rate = (
+                            (initial_successes / total) * 100 if total else 0
+                        )
+                        attack_improvement = (
+                            (attack_only_successes / total) * 100 if total else 0
+                        )
 
                         escaped_value = escape_special_chars(value)
                         table.append(
@@ -992,7 +1040,13 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
 
                         escaped_value = escape_special_chars(value)
                         table.append(
-                            [escaped_value, total, successes, attempts, f"{success_rate:.2f}%"]
+                            [
+                                escaped_value,
+                                total,
+                                successes,
+                                attempts,
+                                f"{success_rate:.2f}%",
+                            ]
                         )
 
                     # Sort the table by success rate descending
@@ -1069,9 +1123,9 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
         top_10 = self._combination_stats_sorted[:10]
 
         # Get bottom 10 least successful combinations (excluding combinations with zero total)
-        bottom_10 = [combo for combo in self._combination_stats_sorted if combo["total"] > 0][
-            -10:
-        ]
+        bottom_10 = [
+            combo for combo in self._combination_stats_sorted if combo["total"] > 0
+        ][-10:]
 
         # Get top 10 and bottom 10 combinations
         output += self.generate_combination_stats(
@@ -1202,7 +1256,9 @@ def generate_query(category, custom_search=None):
     custom_query = []
     if category == "custom":
         if custom_search is None:
-            raise ValueError("Custom search query must be provided for 'custom' category.")
+            raise ValueError(
+                "Custom search query must be provided for 'custom' category."
+            )
 
         for query in custom_search:
             query = query.split(":", 1)

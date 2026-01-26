@@ -1,4 +1,3 @@
-
 import uuid
 from typing import List, Optional
 from spikee.templates.multi_target import MultiTarget
@@ -30,8 +29,8 @@ class MockMultiTurnTarget(MultiTarget):
                 session_state = {"internal_id": None, "history": []}
                 self._update_target_data(spikee_session_id, session_state)
 
-            if session_state['internal_id'] is None:
-                session_state['internal_id'] = str(uuid.uuid4())
+            if session_state["internal_id"] is None:
+                session_state["internal_id"] = str(uuid.uuid4())
                 self._update_target_data(spikee_session_id, session_state)
         else:
             session_state = {"internal_id": str(uuid.uuid4()), "history": []}

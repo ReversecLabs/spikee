@@ -106,7 +106,7 @@ def main():
     parser_init.add_argument(
         "--include-viewer",
         action="store_true",
-        help="Include the built-in web viewer in the local workspace"
+        help="Include the built-in web viewer in the local workspace",
     )
 
     # === [GENERATE] Sub-command ===============================================
@@ -463,13 +463,14 @@ def main():
         "--host",
         type=str,
         default="127.0.0.1",
-        help="Host address for the web viewer (default: 127.0.0.1)"
+        help="Host address for the web viewer (default: 127.0.0.1)",
     )
     parser_web_viewer.add_argument(
-        "-p", "--port",
+        "-p",
+        "--port",
         type=int,
         default=8080,
-        help="Port number for the web viewer (default: 8080)"
+        help="Port number for the web viewer (default: 8080)",
     )
     parser_web_viewer.add_argument(
         "--result-file",
@@ -521,7 +522,11 @@ def main():
         print("Author: Reversec (reversec.com)\n")
 
     if args.command == "init":
-        init_workspace(force=args.force, include_builtin=args.include_builtin, include_viewer=args.include_viewer)
+        init_workspace(
+            force=args.force,
+            include_builtin=args.include_builtin,
+            include_viewer=args.include_viewer,
+        )
 
     elif args.command == "generate":
         generate_dataset(args)

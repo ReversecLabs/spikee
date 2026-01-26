@@ -11,10 +11,7 @@ class SimpleMultiTarget(MultiTarget, ABC):
 
     def __init__(self, turn_types: List[Turn] = [Turn.MULTI], backtrack: bool = False):
         """Define target capabilities and initialize shared dictionary for multi-turn data."""
-        super().__init__(
-            turn_types=turn_types,
-            backtrack=backtrack
-        )
+        super().__init__(turn_types=turn_types, backtrack=backtrack)
 
     def add_managed_dicts(self, target_data):
         """Adds managed dictionaries for multi-turn session data.
@@ -22,7 +19,10 @@ class SimpleMultiTarget(MultiTarget, ABC):
         Args:
             target_data: A multiprocessing managed dictionary to store generic data.
         """
-        super().add_managed_dicts(target_data, [self.__SIMPLIFIED_CONVERSATION_KEY, self.__SIMPLIFIED_ID_MAP_KEY])
+        super().add_managed_dicts(
+            target_data,
+            [self.__SIMPLIFIED_CONVERSATION_KEY, self.__SIMPLIFIED_ID_MAP_KEY],
+        )
 
     def _get_conversation_data(self, session_id: str) -> object:
         """Retrieves or initializes conversation data for a given session ID. (Simplified Implementation - Conversation)
@@ -40,7 +40,9 @@ class SimpleMultiTarget(MultiTarget, ABC):
         # Create new blank conversation
         if conversation_data.get(session_id, None) is None:
             conversation_data[session_id] = []
-            self._update_target_data(self.__SIMPLIFIED_CONVERSATION_KEY, conversation_data)
+            self._update_target_data(
+                self.__SIMPLIFIED_CONVERSATION_KEY, conversation_data
+            )
 
         return conversation_data[session_id]
 
@@ -74,7 +76,9 @@ class SimpleMultiTarget(MultiTarget, ABC):
         # Append message to conversation data for a specific key
         conversation = self._get_conversation_data(session_id=session_id)
         conversation.append({"role": role, "content": content})
-        self._update_conversation_data(session_id=session_id, conversation_data=conversation)
+        self._update_conversation_data(
+            session_id=session_id, conversation_data=conversation
+        )
 
     def _get_id_map(self, spikee_session_id: str):
         """Returns the ID mapping for a given parent ID. (Simplified Implementation - ID Map)
