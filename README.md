@@ -27,7 +27,7 @@
   </p>
 </div>
 
-_Version: 0.5.4_
+_Version: 0.6.0_
 
 
 Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience of LLMs, guardrails, and applications against prompt injection and jailbreaking. Spikee's strength is its modular design, which allows for easy customization of every part of the testing process.
