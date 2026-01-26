@@ -80,7 +80,7 @@
         
         {% if entry.judge_name and entry.judge_name != "None" and entry.judge_name != '' %}
             <div class="alert alert-info mt-3 py-0 shadow-sm" role="alert" style="border-left: 5px solid #0d6efd;">
-                <div><strong>Judge Configuration</strong></div>
+                <strong>Judge Configuration</strong>
                 <div>Judge: <span class="text-muted">{{ entry.judge_name }}</span></div>
                 {% if entry.judge_args and entry.judge_args != '' %}
                     <div>Arguments: <span class="text-muted">{{ entry.judge_args }}</span></div>
