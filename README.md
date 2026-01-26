@@ -175,13 +175,13 @@ Your testing scenario determines what kind of testing dataset you need to genera
 When you test an LLM directly, you control the entire prompt. This is ideal for assessing a model's general resilience to jailbreaks and harmful instructions.
 
 *   **What to Generate:** A *full prompt*, which includes a task (like "Summarize this: <data>"), the data containing the prompt injection or jailbreak, and optionally a system message.
-*   **How to Generate:** Use `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2025-04` folder provides a great starting point with diverse jailbreaks and attack instructions.
+*   **How to Generate:** Use `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2026-01` folder provides a great starting point with diverse jailbreaks and attack instructions.
 
 ```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format full-prompt
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --format full-prompt
 ```
 
-This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-full-prompt-dataset-<TIMESTAMP>.jsonl`.
+This will generate the dataset in JSONL format: `datasets/cybersec-2026-01-full-prompt-dataset-<TIMESTAMP>.jsonl`.
 
 
 #### Scenario B: Testing an LLM Application 
@@ -191,10 +191,10 @@ When you test an application (like a chatbot or an email summarizer), the applic
 *   **How to Generate:** Use `--format user-input` (you can omit as this is the default from v0.4.1).
 
 ```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format user-input
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --format user-input
 ```
 
-This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-document-dataset-<TIMESTAMP>.jsonl`.
+This will generate the dataset in JSONL format: `datasets/cybersec-2026-01-document-dataset-<TIMESTAMP>.jsonl`.
 
 
 #### Bonus: Including standalone attacks
@@ -210,13 +210,13 @@ If static prompts fail, dataset generation can be enhanced with the use of Plugi
 
 ```bash
 # 1337 (leetspeak) plugin
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin 1337
 ```
 
 ```bash
 # Best of N plugin, with 50 variants per entry
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin best_of_n \
                 --plugin-options "best_of_n:variants=50"
 ```
@@ -231,14 +231,14 @@ spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
 This command tests gpt-4o-mini via the OpenAI API using the dataset generated in Scenario A (require `OPENAI_API_KEY` in `.env`).
 
 ```bash
-spikee test --dataset datasets/cybersec-2025-04-full-prompt-dataset-*.jsonl \
+spikee test --dataset datasets/cybersec-2026-01-full-prompt-dataset-*.jsonl \
             --target openai_api \
             --target-options gpt-4o-mini
 ```
 
 > **How is attack success determined? With Judges.**
 >
-> The `cybersec-2025-04` dataset contains attacks whose success can be verified automatically by searching for specific "canary" words or matching regular expressions in the response (such as the presence of a *Markdown image*).
+> The `cybersec-2026-01` dataset contains attacks whose success can be verified automatically by searching for specific "canary" words or matching regular expressions in the response (such as the presence of a *Markdown image*).
 >
 > For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./docs/07_judges.md)** to learn more.
 
@@ -252,7 +252,7 @@ spikee test --dataset datasets/llm-mailbox-document-dataset-*.jsonl \
             --target llm_mailbox
 ```
 
-> Especially when testing LLM applications, it's useful to create a custom dataset tailored to the specific use case. In the sample case of the LLM Webmail application, we create a custom dataset stating from `cybersec-2025-04`, that only focusses on testing exfiltration of confidential information via markdown images. Check this tutorial for more information: https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
+> Especially when testing LLM applications, it's useful to create a custom dataset tailored to the specific use case. In the sample case of the LLM Webmail application, we create a custom dataset stating from `cybersec-2026-01`, that only focusses on testing exfiltration of confidential information via markdown images. Check this tutorial for more information: https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
 
 
 #### C. Resume Options
@@ -280,7 +280,7 @@ Spikee allows for multiple dataset files to be provided in a single test run usi
 * Multi-file is not compatible with single dataset flags (e.g., `--resume-file`). (NB, other resume options are compatible, default interactive resume prompt will occur prior to each dataset file being processed).
 
 ```bash
-spikee test --dataset datasets/cybersec-2025-04-full-prompt-dataset-*.jsonl \
+spikee test --dataset datasets/cybersec-2026-01-full-prompt-dataset-*.jsonl \
             --dataset datasets/simsonsun-high-quality-jailbreaks-full-prompt-dataset-*.jsonl \
             --target openai_api \
             --target-options gpt-4o-mini
