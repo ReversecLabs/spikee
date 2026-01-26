@@ -170,6 +170,16 @@ spikee results dataset-comparison --dataset-file datasets/cybersec-2025-04-*.jso
 # The `web-viewer` Command
 This command processes results files and displays them in a Flask web application for interactive exploration.
 
+## Set-Up
+```bash
+# Install additional requirements
+pip install -r requirements-viewer.txt
+
+# Add viewer components to workspace
+spikee init --include-viewer
+
+```
+
 ## Usage Examples
 ```bash
 spikee results web-viewer --result-file results/results_cybersec-2025-04-*.jsonl 
