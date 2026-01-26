@@ -3,7 +3,10 @@ from pathlib import Path
 import os
 import re
 import time
-import toml
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 
 # ==== File I/O Operations for JSONL files ====
@@ -29,8 +32,8 @@ def read_toml_file(file_path):
     """
     Reads a TOML file and returns its parsed content.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
-        return toml.load(f)
+    with open(file_path, "rb") as f:
+        return tomllib.load(f)
 
 
 def write_jsonl_file(output_file, data):
@@ -85,7 +88,7 @@ def extract_resource_name(file_name: str):
     Takes a file path/name and extracts the resource name
 
     Example:
-    datasets\\cybersec-2025-04-user-input-dataset-1762359770.jsonl => cybersec-2025-04-user-input-dataset-1762359770
+    datasets\\cybersec-2026-01-user-input-dataset-1762359770.jsonl => cybersec-2026-01-user-input-dataset-1762359770
 
     """
     file_name = os.path.basename(file_name)
@@ -101,7 +104,7 @@ def extract_prefix_from_file_name(file_name: str):
     Takes a file path/name and extracts the prefix before the first underscore.
 
     Example:
-    /results/results_cybersec-2025-04-user-input-dataset_1762359770.jsonl => (results, cybersec-2025-04-user-input-dataset_1762359770)
+    /results/results_cybersec-2026-01-user-input-dataset_1762359770.jsonl => (results, cybersec-2026-01-user-input-dataset_1762359770)
     """
     file_name = os.path.basename(file_name)
     match = re.match(r"([^_]+)_(.+)", file_name)
@@ -115,7 +118,7 @@ def extract_directory_from_file_path(file_path: str):
     Takes a file path and extracts the directory.
 
     Example:
-    /results/results_cybersec-2025-04-user-input-dataset_1762359770.jsonl => /results
+    /results/results_cybersec-2026-01-user-input-dataset_1762359770.jsonl => /results
     """
     return os.path.dirname(file_path)
 

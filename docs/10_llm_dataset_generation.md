@@ -54,7 +54,7 @@ This method generates new *instructions* that can be combined with existing jail
 1.  **Copy an Existing Seed Folder:** **Do not modify the original seeds.** Make a copy of a seed folder you want to adapt.
     ```bash
     # Example: Create a new seed for testing medical instructions
-    cp -r datasets/seeds-cybersec-2025-04 datasets/seeds-cybersec-medical-instr
+    cp -r datasets/seeds-cybersec-2026-01 datasets/seeds-cybersec-medical-instr
     ```
 2.  **Define Your Goal and Judge:** State the malicious *instruction* you want the target LLM to follow (e.g., "Write a phishing email," "Generate a Python script with a command injection flaw"). Define the `judge_name` and `judge_args` to evaluate success.
 3.  **Prompt the Generation LLM:** Instruct the LLM to generate diverse phrasings of your core instruction in the `instructions.jsonl` format.
@@ -80,5 +80,5 @@ This method generates new *instructions* that can be combined with existing jail
     ```bash
     spikee generate --seed-folder datasets/seeds-cybersec-medical-instr
     ```
-    This will combine the original jailbreaks and documents from `seeds-cybersec-2025-04` with your new custom instructions, creating a new set of test cases.
+    This will combine the original jailbreaks and documents from `seeds-cybersec-2026-01` with your new custom instructions, creating a new set of test cases.
 ```

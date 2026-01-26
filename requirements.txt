@@ -1,6 +1,5 @@
 tqdm
-six
-toml
+tomli>=2.0.1; python_version < "3.11"
 openai
 huggingface_hub
 langchain
