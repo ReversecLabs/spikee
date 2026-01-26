@@ -60,16 +60,23 @@ def run_spikee(spikee_venv: Path, project_root: Path):
     )
 
     def _run(args, cwd: Path):
-        env = os.environ.copy()
-        result = subprocess.run(
-            [str(spikee_executable), *args],
-            cwd=cwd,
-            check=True,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        return result
+        try:
+            env = os.environ.copy()
+            result = subprocess.run(
+                [str(spikee_executable), *args],
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            return result
+        except subprocess.CalledProcessError as e:
+            print("STDOUT:")
+            print(e.stdout)
+            print("STDERR:")
+            print(e.stderr)
+            raise
 
     return _run
 
