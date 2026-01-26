@@ -735,7 +735,7 @@ class ResultProcessor:
                 f"{stats['attack_success_rate']:.2f}%",
             ])
 
-        output = "\n=== Combined Source Statistics ===\n"
+        output = "\n\n=== Combined Source Statistics ===\n"
         output += tabulate(table, headers=headers) + "\n"
 
         return output
@@ -1228,30 +1228,23 @@ def extract_entries(entry, category="success", custom_query=None):
                 return True
 
         case "guardrail":
-            if entry.get("guardrail_triggered", False):
+            if entry.get("guardrail", False):
                 return True
 
         case "no-guardrail":
-            if not entry.get("guardrail_triggered", False):
+            if not entry.get("guardrail", False):
                 return True
 
         case "custom":
             query_match = True
             for query in custom_query:
                 if len(query) > 1:
-                    field = entry.get(query[1], None)
-                    if field is None:
-                        trimmed_query = query[0].lstrip("!")
-                        invert = query[0].startswith("!")
-                        if trimmed_query == "None" or trimmed_query == "null":
-                            query_match = not invert
-                        else:
-                            query_match = invert
+                    query, field = query[0], query[1]
 
-                    elif not extract_search(query[0], field):
+                    if not extract_search(entry, query, field):
                         query_match = False
 
-                elif not extract_search(query[0], entry):
+                elif not extract_search(entry, query[0]):
                     query_match = False
 
             return query_match
@@ -1259,11 +1252,32 @@ def extract_entries(entry, category="success", custom_query=None):
     return False
 
 
-def extract_search(query, text):
+def extract_search(entry, query: str, field: str = None):
     """Searches for a query in the given text, supporting inversion with '!' prefix."""
-    invert = query.startswith("!")
-    if invert:
-        query = query[1:]
 
-    result = query in str(text)
-    return not result if invert else result
+    try:
+        q_invert = query.startswith("!")
+        if q_invert:
+            query = query[1:]
+
+        if field is not None:
+            f_invert = field.startswith("!")
+            if f_invert:
+                field = field[1:]
+
+            text = entry.get(field, None)
+            if text is None:
+                return f_invert
+
+            text = str(text)
+
+        else:
+            f_invert = False
+            text = str(entry)
+
+        result = query in text
+        return not result if q_invert else result
+
+    except Exception as e:
+        print(f"Error during search extraction (Entry {entry}): {e}")
+        return False
