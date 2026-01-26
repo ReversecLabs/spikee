@@ -1,17 +1,18 @@
 from flask import Flask, abort, redirect, render_template, request, send_file
 from io import BytesIO
-from selenium import webdriver
+# from selenium import webdriver
 import ast
 import hashlib
 import html
 import json
 import os
+import re
+import logging
 
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import process_jsonl_input_files, read_jsonl_file, write_jsonl_file, extract_resource_name
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
 from spikee.judge import call_judge
-import re
 
 
 VIEWER_NAME = "SPIKEE Viewer"
@@ -25,6 +26,10 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         static_folder=os.path.join(viewer_folder, "static"),
         template_folder=os.path.join(viewer_folder, "templates"),
     )
+
+    # Suppress Flask logging
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+
 
 # region Helper Functions
 
@@ -301,30 +306,30 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
 
         return render_template("download.html", id=entry, entry=entry_data, download=True)
 
-    @viewer.route("/entry/<entry>/download", methods=[])
-    def result_to_image(entry):
-        return abort(404, description="Download functionality not enabled in this environment.")
+#    @viewer.route("/entry/<entry>/download", methods=[])
+#    def result_to_image(entry):
+#        return abort(404, description="Download functionality not enabled in this environment.")
 
         # Use Selenium to render the HTML and capture a screenshot as PNG bytes, allowing JS to run
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless=new")  # Use new headless mode for better JS support
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
+#        options = webdriver.ChromeOptions()
+#        options.add_argument("--headless=new")  # Use new headless mode for better JS support
+#        options.add_argument("--disable-gpu")
+#        options.add_argument("--no-sandbox")
 
-        driver = webdriver.Chrome(options=options)
-        try:
-            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={selected_files[0]}")  # Dummy URL
-            img_bytes = driver.get_screenshot_as_png()
-        finally:
-            driver.quit()
+#        driver = webdriver.Chrome(options=options)
+#        try:
+#            driver.get(f"http://{host}:{port}/entry/{entry}/card?result_file={selected_files[0]}")  # Dummy URL
+#            img_bytes = driver.get_screenshot_as_png()
+#        finally:
+#            driver.quit()
 
         # Send as downloadable file
-        return send_file(
-            BytesIO(img_bytes),
-            mimetype='image/png',
-            as_attachment=True,
-            download_name=f"{selected_files[0]}_{entry}.png"
-        )
+#        return send_file(
+#            BytesIO(img_bytes),
+#            mimetype='image/png',
+#            as_attachment=True,
+#            download_name=f"{selected_files[0]}_{entry}.png"
+#        )
 
     return viewer
 
