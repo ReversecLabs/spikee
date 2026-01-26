@@ -141,7 +141,7 @@ pip install -r requirements-local-inference.txt
 
 Create a project directory and initialize it. 
 
-`spikee init` will create a folder `workspace` containing build-in datasets, and local sample targets, plugins and attacks.
+`spikee init` will create a folder `workspace` containing built-in datasets, and local sample targets, plugins and attacks.
 
 ```bash
 mkdir my-spikee-project
@@ -168,7 +168,7 @@ spikee list attacks
 
 Your testing scenario determines what kind of testing dataset you need to generate.
 
-> A list of build-in datasets and plugins is available within the **[Built-in Seeds and Datasets](./docs/01_builtin_datasets_and_plugins.md)** documentation and a complete list of dataset generation options is available in the **[Dataset Generation](./docs/02_dataset_generation.md)** documentation.
+> A list of built-in datasets and plugins is available within the **[Built-in Seeds and Datasets](./docs/01_builtin_datasets_and_plugins.md)** documentation and a complete list of dataset generation options is available in the **[Dataset Generation](./docs/02_dataset_generation.md)** documentation.
 
 
 #### Scenario A: Testing a Standalone LLM
@@ -225,7 +225,7 @@ spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
 
 `spikee test` runs your dataset against a target. First, rename `.env-example` to `.env` and add any necessary API keys.
 
-> A list of build-in targets is available within the **[Built-in Targets, Plugins, Attacks and Judges](./docs/04_builtin_targets_plugins_attacks_and_judges.md)** documentation.
+> A list of built-in targets is available within the **[Built-in Targets, Plugins, Attacks and Judges](./docs/04_builtin_targets_plugins_attacks_and_judges.md)** documentation.
 
 #### A. Basic LLM Test
 This command tests gpt-4o-mini via the OpenAI API using the dataset generated in Scenario A (require `OPENAI_API_KEY` in `.env`).
@@ -317,7 +317,21 @@ spikee test --dataset datasets/dataset-name.jsonl \
             --attack prompt_decomposition --attack-iterations 50 -attack-options 'prompt_decomposition:variants=15;mode=ollama-llama3.2'
 ```
 
-> See **[Built-in Targets, Plugins, Attacks and Judges](./docs/03_builtin_targets_plugins_attacks_and_judges.md)** for a list of build-in attacks and their alternate plugin versions, and **[Creating Dynamic Attack Scripts](./docs/06_dynamic_attacks.md)** for information on writing attacks.
+```bash
+# LLM Jailbreaker attack
+spikee test --dataset datasets/dataset-name.jsonl \
+            --target openai_api \
+            --attack llm_jailbreaker --attack-iterations 10
+```
+
+```bash
+# LLM Multi-language Jailbreaker attack
+spikee test --dataset datasets/dataset-name.jsonl \
+            --target openai_api \
+            --attack llm_multi_language_jailbreaker --attack-iterations 10
+```
+
+> See **[Built-in Targets, Plugins, Attacks and Judges](./docs/03_builtin_targets_attacks_and_judges.md)** for a list of built-in attacks and their alternate plugin versions, and **[Creating Dynamic Attack Scripts](./docs/06_dynamic_attacks.md)** for information on writing attacks.
 
 
 #### F. Testing a Sample of a Large Dataset
