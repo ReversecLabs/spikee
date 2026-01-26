@@ -148,3 +148,17 @@ def extract_resource_name(file_name: str):
 def build_resource_name(*args) -> str:
     parts = [arg for arg in args if arg is not None]
     return "_".join(parts)
+
+
+def extract_prefix_from_file_name(file_name: str):
+    """
+    Takes a file path/name and extracts the prefix before the first underscore.
+
+    Example:
+    /results/results_cybersec-2025-04-user-input-dataset_1762359770.jsonl => (results, cybersec-2025-04-user-input-dataset_1762359770)
+    """
+    file_name = os.path.basename(file_name)
+    match = re.match(r"([^_]+)_(.+)", file_name)
+    if match:
+        return match.group(1), match.group(2)
+    return None

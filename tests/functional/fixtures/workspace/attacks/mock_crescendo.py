@@ -65,7 +65,7 @@ class MockCrescendoAttack(Crescendo):
         remaining_turns: int,
     ) -> str:
         counters = self._get_counters()
-        hist_len = conversation.get_message_total()
+        hist_len = conversation.get_path_length(last_message_id, False)
 
         # If this is the start of a new attempt (empty history), reset counters for this thread/depth
         # Note: Crescendo calls _generate_question repeatedly.

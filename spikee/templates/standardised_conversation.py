@@ -102,6 +102,9 @@ class StandardisedConversation:
         path.reverse()
         return path
 
+    def get_path_length(self, message_id: int, root: bool = False) -> int:
+        """Get the length of the path from root to the specified message ID."""
+        return len(self.get_path(message_id, root))
 # endregion
 
     def __str__(self):
