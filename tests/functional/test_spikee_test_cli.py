@@ -4,14 +4,14 @@ import time
 
 import pytest
 
-from spikee.utilities.files import build_resource_name, extract_resource_name
-
 from .utils import (
     extract_results_path,
     read_jsonl,
     run_generate_command,
     run_test_command,
     write_jsonl,
+    build_resource_name,
+    extract_resource_name,
 )
 
 

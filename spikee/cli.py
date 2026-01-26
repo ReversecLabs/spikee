@@ -26,6 +26,7 @@ from .list import (
     list_plugins,
     list_attacks,
 )
+from .viewer import run_viewer
 
 
 banner = r"""
@@ -101,6 +102,11 @@ def main():
         choices=["none", "all", "plugins", "judges", "targets", "attacks"],
         default="none",
         help="Copy built-in modules to local workspace (default: none)",
+    )
+    parser_init.add_argument(
+        "--include-viewer",
+        action="store_true",
+        help="Include the built-in web viewer in the local workspace"
     )
 
     # === [GENERATE] Sub-command ===============================================
@@ -384,7 +390,7 @@ def main():
     )
     parser_extract.add_argument(
         "--category",
-        choices=["success", "fail", "error", "guardrail", "no-guardrail", "custom"],
+        choices=["success", "failure", "error", "guardrail", "no-guardrail", "custom"],
         default="success",
         help="Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom",
     )
@@ -449,6 +455,40 @@ def main():
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
 
+    # --- web-viewer
+    parser_web_viewer = subparsers_results.add_parser(
+        "web-viewer", help="Launch a local web viewer, for results JSONL files"
+    )
+    parser_web_viewer.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address for the web viewer (default: 127.0.0.1)"
+    )
+    parser_web_viewer.add_argument(
+        "-p", "--port",
+        type=int,
+        default=8080,
+        help="Port number for the web viewer (default: 8080)"
+    )
+    parser_web_viewer.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to an results JSONL file, generated using the dataset",
+    )
+    parser_web_viewer.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files, generated using the dataset",
+    )
+    parser_web_viewer.add_argument(
+        "--allow-ast",
+        action="store_true",
+        help="Allow AST parsing in the web viewer (use with caution)",
+    )
+
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser(
         "convert-to-excel", help="Convert results JSONL file to Excel"
@@ -481,7 +521,7 @@ def main():
         print("Author: Reversec (reversec.com)\n")
 
     if args.command == "init":
-        init_workspace(force=args.force, include_builtin=args.include_builtin)
+        init_workspace(force=args.force, include_builtin=args.include_builtin, include_viewer=args.include_viewer)
 
     elif args.command == "generate":
         generate_dataset(args)
@@ -496,6 +536,8 @@ def main():
             extract_results(args)
         elif args.results_command == "dataset-comparison":
             dataset_comparison(args)
+        elif args.results_command == "web-viewer":
+            run_viewer(args)
         elif args.results_command == "convert-to-excel":
             convert_results_to_excel(args)
         else:
@@ -520,7 +562,7 @@ def main():
         sys.exit(1)
 
 
-def init_workspace(force=False, include_builtin="none"):
+def init_workspace(force=False, include_builtin="none", include_viewer=False):
     """
     Copy the entire 'data/workspace' directory from the installed package
     into the user's current working directory. This sets up the local spikee workspace
@@ -538,6 +580,9 @@ def init_workspace(force=False, include_builtin="none"):
     # We'll do this by manually copying sub-items, skipping if they exist.
     for item in src_folder.iterdir():
         destination = workspace_dest / item.name
+
+        if item.name == "viewer" and not include_viewer:
+            continue
 
         if destination.exists() and not force:
             print(f"[init] '{destination}' already exists. Use --force to overwrite.")

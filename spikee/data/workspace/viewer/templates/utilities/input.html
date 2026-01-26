@@ -1,0 +1,53 @@
+{% if entry.system_message and entry.system_message is not none and entry.system_message != '' %}
+    <div class="border-start px-3 mb-3">
+        <strong class="small me-2">System Message:</strong>
+        <div class="code-block h-100 result-input">{{ process_output(entry.system_message, truncated=truncated)|e }}</div>
+    </div>
+{% endif %}
+
+<div class="border-start px-3">
+    {% if entry.input is string %}
+        <strong class="small me-2">Input Prompt:</strong>
+    {% else %}
+        <strong class="small me-2">Multi-Turn Input Prompt:</strong>
+    {% endif %}
+
+    {% if entry.objective and not entry.conversation and entry.objective is not none and entry.objective != '' %}
+        <div class="code-block h-100 result-input">
+            <strong class="text-primary">Objective:</strong>{{ entry.objective|e }}
+        </div>
+    {% endif %}
+
+    {% if entry.conversation %}
+        {{ process_conversation(entry.conversation, truncated=truncated) | safe }}
+
+    {% elif entry.input is mapping %}
+        <ol class="ps-3 mt-2">
+            {% for message in entry.input.conversation %}
+                <li class="mb-2">
+                    <div class="code-block h-100 result-input">
+                        <strong style="color: {{ string_to_colour(message.role) }};">
+                            {{ message.role|upper }}:
+                        </strong>{{ process_output(message.content, truncated=truncated)|e }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    
+    {% elif entry.input is sequence and entry.input is not string %}
+        <ol class="ps-3 mt-2">
+            {% for message in entry.input %}
+                <li class="mb-2">
+                    <div class="code-block h-100 result-input">
+                        {{ process_output(message, truncated=truncated)|e }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    
+    {% else %}
+        <div class="code-block h-100 result-input">
+            {{ process_output(entry.input, truncated=truncated)|e }}
+        </div>
+    {% endif %}
+</div>

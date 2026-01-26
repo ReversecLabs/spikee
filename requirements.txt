@@ -12,6 +12,7 @@ langchain-aws
 langchain-huggingface
 langchain-ollama
 tabulate
+flask
 jinja2
 pandas
 openpyxl
