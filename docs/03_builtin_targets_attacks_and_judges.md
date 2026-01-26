@@ -66,10 +66,19 @@ The following list provides an overview of each attack, further information on e
 **Single-Turn:**
 * `anti_spotlighting`: Assess spotlighting vulnerabilities by sequentially trying variations of delimiter-based attacks.
 * `best_of_n`: Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising.
+* `llm_jailbreaker`: Uses an LLM to iteratively generate jailbreak attacks against the target.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, e.g., `model=openai-gpt-4o`).
+* `llm_multi_language_jailbreaker`: Generates jailbreak attempts using different languages, focusing on low-resource languages.
+    * Options: 
+        `model` (The LLM model to use for generating attacks).
 * `prompt_decomposition`: Decomposes a prompt into chunks and generates shuffled variations.
     * Options: 
         `modes` (LLM model to apply, default: dumb),
         `variants` (number of variations to generate, default: 50).
+* `rag_poisoner`: Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective.
+    * Options: 
+        `model` (The LLM model to use for generating attacks).
 * `random_suffix_attack`: Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters.
 
 **Multi-Turn:**
