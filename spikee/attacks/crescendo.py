@@ -103,10 +103,6 @@ class Crescendo(Attack):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    @property
-    def __name__(self):
-        return "crescendo"
-
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.
 
@@ -286,7 +282,7 @@ class Crescendo(Attack):
         non_backtrack_turns = 0                 # non-backtrack turns made
 
         # While we still have budget for at least one more call and haven't reached max_turns (non-backtrack)
-        while max_iterations - conversation.get_message_total() > 0 and non_backtrack_turns < max_turns:
+        while max_iterations - conversation.get_attempt_total() > 0 and non_backtrack_turns < max_turns:
             remaining_turns = max_turns - non_backtrack_turns
             prompt_message_id = last_message_id
 
@@ -301,6 +297,7 @@ class Crescendo(Attack):
                     if json_error_attempts <= 0:
                         raise RuntimeError from e
             last_message_id = conversation.add_message(last_message_id, {"role": "user", "content": prompt, "spikee_session_id": session_id})
+            conversation.add_attempt()
 
             # call target; each call consumes budget immediately
             resp = target_module.process_input(prompt, system_message, spikee_session_id=session_id, backtrack=is_refuse)
@@ -384,7 +381,7 @@ class Crescendo(Attack):
         last_response = ""                      # last LLM response
 
         # Loop until global budget exhausted
-        while max_iterations - conversation.get_message_total() > 0:
+        while max_iterations - conversation.get_attempt_total() > 0:
             # Start new conversation attempt
             session_id = self._make_session_id()
 
@@ -407,7 +404,7 @@ class Crescendo(Attack):
                 # surface generator / classifier / target errors in-line
                 traceback.print_exc()
                 return (
-                    conversation.get_message_total(),
+                    conversation.get_attempt_total(),
                     False,
                     Crescendo.standardised_input_return(
                         input=entry["text"],
@@ -420,7 +417,7 @@ class Crescendo(Attack):
             # If success, end early and fast-forward the attempts bar total like other attacks do
             if success:
                 if attempts_bar:
-                    remaining = max_iterations - conversation.get_message_total()
+                    remaining = max_iterations - conversation.get_attempt_total()
                     if bar_lock:
                         with bar_lock:
                             if getattr(attempts_bar, "total", None) is not None:
@@ -429,7 +426,7 @@ class Crescendo(Attack):
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
                 return (
-                    conversation.get_message_total(),
+                    conversation.get_attempt_total(),
                     True,
                     Crescendo.standardised_input_return(
                         input=entry["text"],
@@ -439,11 +436,11 @@ class Crescendo(Attack):
                     last_response
                 )
 
-            if max_iterations - conversation.get_message_total() <= 0:
+            if max_iterations - conversation.get_attempt_total() <= 0:
                 break
 
         return (
-            conversation.get_message_total(),
+            conversation.get_attempt_total(),
             False,
             Crescendo.standardised_input_return(
                 input=entry["text"],

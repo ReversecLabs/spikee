@@ -4,6 +4,7 @@ import json
 class StandardisedConversation:
     def __init__(self, root_data=None):
         self._next_id = 1  # root is defined as 0
+        self._attempts = 0
         self.conversation = {
             0: {"children": [], "data": root_data}
         }
@@ -14,6 +15,10 @@ class StandardisedConversation:
         # Ensure all keys are int
         self.conversation = {int(k): v for k, v in loaded.items()}
         self._next_id = max(self.conversation.keys()) + 1
+
+    def add_attempt(self):
+        """Increment the attempt counter."""
+        self._attempts += 1
 
 # region root
     def get_root_id(self) -> int:
@@ -73,6 +78,10 @@ class StandardisedConversation:
     def get_message_total(self) -> int:
         """Get the total number of messages in the conversation."""
         return len(self.conversation) - 1  # Exclude root
+
+    def get_attempt_total(self) -> int:
+        """Get the total number of attempts made in the conversation."""
+        return self._attempts
 
     def get_path(self, message_id: int, root: bool = False) -> list:
         """Get the path from root to the specified message ID."""

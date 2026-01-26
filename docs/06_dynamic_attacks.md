@@ -198,6 +198,7 @@ class SampleMultiTurnAttack(Attack):
                     "session_id": session_id
                 }
             )
+            standardised_conversation.add_attempt() # Increment attempt counter
 
             response = "..."
             standardised_conversation.add_message(
