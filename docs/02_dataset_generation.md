@@ -39,13 +39,13 @@ This flag allows you to create multiple variations of each entry, by applying tr
 **Usage Examples:**
 ```bash
 # 1337 (leetspeak) and base64 plugin
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin 1337 base64
 ```
 
 ```bash
 # Best of N plugin, with 50 variants per entry
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin best_of_n \
                 --plugin-options "best_of_n:variants=50"
 ```
@@ -94,7 +94,7 @@ The `--spotlighting-data-markers` flag is used to **test the effectiveness of th
 **Usage:**
 ```bash
 # Simulate an application that wraps documents in <data>...</data> tags to see if it thwarts the injection.
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --format full-prompt \
                 --spotlighting-data-markers $'\n<data>\nDOCUMENT\n</data>\n'
 ```
@@ -112,7 +112,7 @@ This flag determines *where* in the base document a composed payload is injected
 **Usage:**
 ```bash
 # Test if the model is more susceptible to injections at the start of its context
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --positions start
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --positions start
 ```
 > **Note: Using a `placeholder` for Precise Injections**
 >
@@ -150,11 +150,11 @@ spikee generate --injection-delimiters $'</user_turn><system_instructions>INJECT
 
 *   `--include-system-message`: Adds a system prompt to each test case, based on the `system_messages.toml` file in the seed folder. This is primarily for testing standalone LLMs where you can control the system prompt.
 
-*   `--include-suffixes`: Appends an adversarial suffix from a file to the end of a payload. An example usage of this technique can be to suppress refusals and force the model to comply. The `seeds-cybersec-2025-04` seed contains an `adv_suffixes.jsonl` file with examples.
+*   `--include-suffixes`: Appends an adversarial suffix from a file to the end of a payload. An example usage of this technique can be to suppress refusals and force the model to comply. The `seeds-cybersec-2026-01` seed contains an `adv_suffixes.jsonl` file with examples.
     **Usage:**
     ```bash
     # Generate payloads and append adversarial suffixes to them
-    spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --include-suffixes
+    spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --include-suffixes
     ```
 
 
@@ -170,7 +170,7 @@ These flags allow you to create smaller, more targeted datasets by filtering the
 **Usage Example:**
 ```bash
 # Generate a dataset of German data exfiltration attacks using the "dan" jailbreak
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --languages de \
                 --jailbreak-filter dan \
                 --instruction-filter data-exfil-curl

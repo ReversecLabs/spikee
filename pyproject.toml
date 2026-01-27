@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spikee"
-version = "0.5.4"
+version = "0.6.0"
 description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitation"
 readme = "README.md"
 keywords = [ "prompt-injection", "LLM", "cyber-security", "pentesting",]
 classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: Apache Software License", "Operating System :: OS Independent",]
-dependencies = [ "tqdm", "rich", "six", "toml", "openai", "huggingface_hub", "datasets", "langchain", "langchain_openai", "langchain-google-genai", "langchain-anthropic", "langchain-together", "langchain-groq", "langchain-aws", "langchain-ollama", "tabulate", "jinja2", "pandas", "openpyxl", "boto3", "azure-ai-inference", "python-dotenv", "azure-ai-contentsafety", "InquirerPy", "fpdf", "python-docx", "toml",]
+dependencies = [ "tqdm", "rich", "six", "openai", "huggingface_hub", "datasets", "langchain", "langchain_openai", "langchain-google-genai", "langchain-anthropic", "langchain-together", "langchain-groq", "langchain-aws", "langchain-ollama", "tabulate", "flask", "jinja2", "pandas", "openpyxl", "boto3", "azure-ai-inference", "python-dotenv", "azure-ai-contentsafety", "InquirerPy", "fpdf", "python-docx", "tomli; python_version < '3.11'",]
 [[project.authors]]
 name = "Reversec"
 email = "donato.capitella@reversec.com"

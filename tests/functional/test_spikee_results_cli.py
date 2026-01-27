@@ -10,6 +10,7 @@ from .utils import (
     read_jsonl,
     run_results_command,
     run_test_command,
+    extract_prefix_from_file_name,
 )
 
 
@@ -84,8 +85,6 @@ def test_spikee_results_rejudge_with_options(
         ],
     )
     assert "Currently Re-judging" in rejudge.stdout
-
-    from spikee.utilities.files import extract_prefix_from_file_name
 
     _, resource_name = extract_prefix_from_file_name(results_file.name)
     expected_prefix = f"rejudge_{resource_name}_"

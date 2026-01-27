@@ -6,7 +6,7 @@ This guide provides an overview of each available seed folder.
 
 ---
 
-### `seeds-cybersec-2025-04`
+### `seeds-cybersec-2026-01`
 *   **Purpose:** A general-purpose dataset for testing prompt injection. It focuses on common attack goals seen in web application security, such as data exfiltration, cross-site scripting (XSS), and resource exhaustion.
 
 ### `seeds-in-the-wild-jailbreak-prompts`
@@ -55,7 +55,7 @@ This guide provides an overview of each available seed folder.
 *   **Content:** Contains harmful instructions in `instructions.jsonl`, while leaving jailbreaks and user inputs as empty placeholders.
 
 ### `zzz_LEGACY_seeds-targeted-2024-12`
-*   **Purpose:** A legacy dataset that has been superseded by `seeds-cybersec-2025-04`. It is kept for backward compatibility.
+*   **Purpose:** A legacy dataset that has been superseded by `seeds-cybersec-2026-01`. It is kept for backward compatibility.
 
 # Build-in Plugins
 
@@ -96,7 +96,7 @@ LLM applications against spotlighting vulnerabilities.
 ## Usage Example
 ```bash
 # base64 and best_of_n plugin
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 \
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin base64 best_of_n \
                 --plugin-options "best_of_n:variants=20"
 ```

@@ -67,7 +67,7 @@ class RandomSuffixattack(Attack):
                     document[: idx + len(payload)]
                     + " "
                     + adv_string
-                    + document[idx + len(payload):]
+                    + document[idx + len(payload) :]
                 )
         return document + "\n" + adv_string
 
@@ -113,7 +113,7 @@ class RandomSuffixattack(Attack):
             ).tolist()
             # Replace the selected tokens in adv_tokens.
             adv_tokens[
-                substitute_pos_start: substitute_pos_start + self.n_tokens_change
+                substitute_pos_start : substitute_pos_start + self.n_tokens_change
             ] = substitution_tokens
 
             # Decode the modified token sequence into text.

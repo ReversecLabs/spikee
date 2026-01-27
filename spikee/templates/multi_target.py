@@ -8,10 +8,7 @@ from spikee.utilities.enums import Turn
 class MultiTarget(Target, ABC):
     def __init__(self, turn_types: List[Turn] = [Turn.MULTI], backtrack: bool = False):
         """Define target capabilities and initialize shared dictionary for multi-turn data."""
-        super().__init__(
-            turn_types=turn_types,
-            backtrack=backtrack
-        )
+        super().__init__(turn_types=turn_types, backtrack=backtrack)
 
         self.__target_data = None
 

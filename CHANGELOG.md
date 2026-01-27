@@ -1,6 +1,29 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.6.0] - 2026-01-26
+
+### Features
+
+- web-viewer and StandardisedConversations (#64)
+- add LLM-based attacks (#65)
+- use environment vars for ollama timeout and retries (#58)
+
+### Fixes
+
+- imports that break release (#67)
+- bug in custom search - enforce string (#61)
+- shared dict - single-turn check bug (#59)
+
+### Changes
+
+- remove typo in cybersec dataset (#63)
+- add 'offline' to example LLM models list (#62)
+
+### Datasets
+
+- add cybersec-2026-01, make cybersec-2025-04 legacy  (#66)
+
 ## [0.5.4] - 2026-01-05
 
 ### Fixes

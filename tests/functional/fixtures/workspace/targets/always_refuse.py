@@ -4,7 +4,6 @@ from spikee.templates.target import Target
 
 
 class AlwaysRefuseTarget(Target):
-
     def get_available_option_values(self) -> List[str]:
         return []
 

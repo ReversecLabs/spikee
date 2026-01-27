@@ -30,7 +30,9 @@ class MultiTurnAttack(Attack):
             or not isinstance(entry["text"], list)
             or not all(isinstance(item, str) for item in entry["text"])
         ):
-            raise ValueError("Entry must contain a valid 'text' field for manual multi-turn attack.")
+            raise ValueError(
+                "Entry must contain a valid 'text' field for manual multi-turn attack."
+            )
 
         # Attempt multi-turn attack
         try:
@@ -45,7 +47,7 @@ class MultiTurnAttack(Attack):
                 response = target_module.process_input(
                     input_text=message,
                     system_message=system_message,
-                    spikee_session_id=session_id
+                    spikee_session_id=session_id,
                 )
                 conversation.append({"role": "assistant", "content": response})
 

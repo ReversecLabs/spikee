@@ -5,6 +5,7 @@ The `spikee results` command includes several tools to aid in the analysis of te
 * `spikee results rejudge`: See [re-judging](<./07_judges.md#Re-judging>), revaluate results using a different judge or options.
 * `spikee results extract`: Extracts user-defined categories of results from results files for further analysis.
 * `spikee results dataset-comparison`: Compares the results of a single dataset across multiple targets to identify trends or differences in performance.
+* `spikee results web-viewer`: Processes results files and displays them in a Flask web application for interactive exploration.
 * `spikee results convert-to-excel`: Converts results files into Excel format.
 
 
@@ -14,6 +15,7 @@ The `spikee results` command includes several tools to aid in the analysis of te
 # Analyze a single results file, providing all standard metrics and breakdowns
 spikee results analyze --result-file results/results_openai_api-gpt-4o-mini_*.jsonl
 ```
+
 ### Multi-file Options
 Spikee allows for multiple results files to be provided in a single analysis run using the `--result-file` and `--result-folder` flags.
 * Results files processed sequentially in the provided order (folders are scanned and included in alphabetical order), combining all results into a single analysis.
@@ -23,7 +25,7 @@ Spikee allows for multiple results files to be provided in a single analysis run
 
 ```bash
 # Analyze multiple results files together.
-spikee results analyze --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results analyze --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
 ```
 
@@ -108,14 +110,14 @@ This command is used to extract specific categories of results from one or more 
 ## Usage Examples
 ```bash
 # Extract all successful attacks to a new dataset file for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
                        --category success
 ```
 
 ```bash
 # Extract custom search query for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2025-04-*.jsonl \
+spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                        --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl \
                        --category custom \
                        --custom-search "error:Guardrail was triggered by the target"
@@ -146,21 +148,42 @@ This command is used to compare the results of a single dataset across multiple 
 ## Usage Examples
 ```bash
 # Compares the results of three different targets (Target A, B and C) against the same dataset, identifying which entries had a success rate greater than then threshold of 80%.
-spikee results dataset-comparison --dataset-file datasets/cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-A-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-B-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-C-cybersec-2025-04-*.jsonl \
+spikee results dataset-comparison --dataset-file datasets/cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-A-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-B-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-C-cybersec-2026-01-*.jsonl \
                                   --success-threshold 0.8 \
                                   --success-definition gt
 ```
 
 ```bash
 # Compares the results of three different targets (Target A, B and C) against the same dataset, identifying which entries had a success rate less than the threshold of 20%, outputting the top 10 entries.
-spikee results dataset-comparison --dataset-file datasets/cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-A-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-B-cybersec-2025-04-*.jsonl \
-                                  --result-file results/results_target-C-cybersec-2025-04-*.jsonl \
+spikee results dataset-comparison --dataset-file datasets/cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-A-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-B-cybersec-2026-01-*.jsonl \
+                                  --result-file results/results_target-C-cybersec-2026-01-*.jsonl \
                                   --success-threshold 0.2 \
                                   --success-definition lt
                                   --number 10
+```
+
+# The `web-viewer` Command
+This command processes results files and displays them in a Flask web application for interactive exploration.
+
+## Set-Up
+```bash
+# Install additional requirements
+pip install -r requirements-viewer.txt
+
+# Add viewer components to workspace
+spikee init --include-viewer
+
+```
+
+## Usage Examples
+```bash
+spikee results web-viewer --result-file results/results_cybersec-2025-04-*.jsonl 
+
+# Specify a different host and port (Defaults, host=127.0.0.1, port=8080)
+spikee results web-viewer --result-file results/results_cybersec-2025-04-*.jsonl --host 192.168.1.10 --port 8081
 ```

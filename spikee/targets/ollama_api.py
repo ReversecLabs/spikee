@@ -18,6 +18,7 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 
+import os
 import requests  # needed to progromatically list available Ollama models
 
 
@@ -77,9 +78,17 @@ class OllamaTarget(Target):
         llm = ChatOllama(
             model=model_name,
             num_predict=None,  # maximum number of tokens to predict
-            client_kwargs={"timeout": 30},  # timeout in seconds (None = not configured)
+            # timeout in seconds (None = not configured)
+            client_kwargs={
+                "timeout": float(os.environ["OLLAMA_TIMEOUT"])
+                if os.environ.get("OLLAMA_TIMEOUT") not in (None, "")
+                else None
+            },
         ).with_retry(
-            stop_after_attempt=3,  # total attempts (1 initial + 2 retries)
+            # total attempts (1 initial + retries)
+            stop_after_attempt=int(os.environ["OLLAMA_MAX_ATTEMPTS"])
+            if os.environ.get("OLLAMA_MAX_ATTEMPTS") not in (None, "")
+            else 1,
             wait_exponential_jitter=True,  # backoff with jitter
         )
 

@@ -4,6 +4,8 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+import os
+import re
 
 
 SEED_FOLDER = "datasets/seeds-functional-basic"
@@ -125,3 +127,38 @@ def extract_results_path(stdout: str, workspace: Path) -> Path:
                 if candidate.exists():
                     return candidate
     raise AssertionError(f"Could not determine results path from output:\n{stdout}")
+
+
+def extract_resource_name(file_name: str):
+    """
+    Takes a file path/name and extracts the resource name
+
+    Example:
+    datasets\\cybersec-2025-04-user-input-dataset-1762359770.jsonl => cybersec-2025-04-user-input-dataset-1762359770
+
+    """
+    file_name = os.path.basename(file_name)
+    file_name = re.sub(r"^\d+-", "", file_name)
+    file_name = re.sub(r".jsonl$", "", file_name)
+    if file_name.startswith("seeds-"):
+        file_name = file_name[len("seeds-") :]
+    return file_name
+
+
+def build_resource_name(*args) -> str:
+    parts = [arg for arg in args if arg is not None]
+    return "_".join(parts)
+
+
+def extract_prefix_from_file_name(file_name: str):
+    """
+    Takes a file path/name and extracts the prefix before the first underscore.
+
+    Example:
+    /results/results_cybersec-2025-04-user-input-dataset_1762359770.jsonl => (results, cybersec-2025-04-user-input-dataset_1762359770)
+    """
+    file_name = os.path.basename(file_name)
+    match = re.match(r"([^_]+)_(.+)", file_name)
+    if match:
+        return match.group(1), match.group(2)
+    return None

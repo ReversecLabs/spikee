@@ -7,7 +7,6 @@ CANARY_RESPONSES = "EN-CHECK IT-CHECK restricted-check"
 
 
 class AlwaysSuccessTarget(Target):
-
     def get_available_option_values(self) -> List[str]:
         return []
 

@@ -1,6 +1,6 @@
-
 from typing import List, Optional
 from spikee.templates.judge import Judge
+
 
 class MockKeywordJudge(Judge):
     def get_available_option_values(self) -> List[str]:
@@ -19,7 +19,7 @@ class MockKeywordJudge(Judge):
             for p in parts:
                 if "keyword=" in p:
                     keyword = p.split("keyword=")[1]
-        
+
         # Check if keyword is in the output (string check)
         # llm_output might be a string or dict? Target returns string.
         return keyword in str(llm_output)

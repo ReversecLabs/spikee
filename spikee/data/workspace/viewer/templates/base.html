@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>{{ get_app_name() }}</title>
+
+    <link href="/static/bootstrap.5.3.8.min.css" rel="stylesheet">    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+<nav class="navbar navbar-expand-md navbar-dark fixed-top" style="background-color: #2a1635;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#"><img class="mx-2" style="height: 30px"
+                                              src="/static/logo.png">{{ get_app_name() }}</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/?result_file={{ loaded_file }}">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/file?result_file={{ loaded_file }}">Entries</a>
+                </li>
+            </ul>
+            <div class="d-flex">
+                <form class="me-3" role="search" method="get">
+                    <select class="form-select" name="result_file" onchange="this.form.submit()">
+                        <option value="combined" {% if loaded_file == "combined" %}selected{% endif %}>Combined Results</option>
+                        {% for file in get_result_files() %}
+                            <option value="{{ file }}" {% if loaded_file == file %}selected{% endif %}>{{ file }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="category" value="{{ category }}">
+                    <input type="hidden" name="custom_search" value="{{ custom_search }}">
+                </form>
+
+                <a href="https://reversec.com"><img style="height: 30px" src="/static/reversec-menu-icon.svg"></a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+
+<div class="row" style="height: 7vh; min-height: 65px"></div>
+
+<script src="/static/bootstrap.5.3.8.min.js"></script>
+<script src="/static/popper2.11.8.min.js"></script>
+
+{% block content %}{% endblock %}
+</body>
+
+</html>

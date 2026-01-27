@@ -106,7 +106,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload):]
+            + original_text[idx + len(payload) :]
         )
 
     def _generate_variant(self, text, exclusions):

@@ -11,7 +11,7 @@ class Target(ABC):
         self.config = {
             "single-turn": Turn.SINGLE in turn_types,
             "multi-turn": Turn.MULTI in turn_types,
-            "backtrack": backtrack
+            "backtrack": backtrack,
         }
 
     @abstractmethod

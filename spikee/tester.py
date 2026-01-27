@@ -47,6 +47,7 @@ class RetryableError(Exception):
 
 class MultiTurnSkip(Exception):
     """Exception raised to skip multi-turn entries being processed as single-turn."""
+
     pass
 
 
@@ -153,7 +154,9 @@ class AdvancedTargetWrapper:
                 # Correct Multi-Turn -> Single-Turn handling
                 if isinstance(input_text, list):
                     # input_text = "\n".join(input_text)
-                    raise MultiTurnSkip("Multi-Turn Skip - Process via Multi-Turn capable attack.")
+                    raise MultiTurnSkip(
+                        "Multi-Turn Skip - Process via Multi-Turn capable attack."
+                    )
 
                     # Delegate to the wrapped process_input
                 if kwargs:
@@ -613,7 +616,9 @@ def process_entry(
             attack_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name,
-                "input": attack_input,
+                "input": attack_input["input"]
+                if isinstance(attack_input, dict)
+                else attack_input,
                 "response": attack_response,
                 "response_time": response_time,
                 "success": attack_success,
@@ -638,13 +643,24 @@ def process_entry(
                 "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
+
+            if isinstance(attack_input, dict) and "conversation" in attack_input:
+                attack_result["conversation"] = attack_input["conversation"]
+
+            if isinstance(attack_input, dict) and "objective" in attack_input:
+                attack_result["objective"] = attack_input["objective"]
+
             results_list.append(attack_result)
         except Exception as e:
             traceback.print_exc()
             error_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name + "-ERROR",
-                "input": original_input,
+                "input": attack_input["input"]
+                if isinstance(attack_input, dict)
+                else attack_input
+                if attack_input
+                else original_input,
                 "response": "",
                 "success": False,
                 "judge_name": entry["judge_name"],
@@ -668,6 +684,21 @@ def process_entry(
                 "attack_name": attack_name,
                 "attack_options": effective_attack_options,
             }
+
+            if (
+                attack_input
+                and isinstance(attack_input, dict)
+                and "conversation" in attack_input
+            ):
+                error_result["conversation"] = attack_input["conversation"]
+
+            if (
+                attack_input
+                and isinstance(attack_input, dict)
+                and "objective" in attack_input
+            ):
+                error_result["objective"] = attack_input["objective"]
+
             results_list.append(error_result)
 
     return results_list
@@ -766,10 +797,16 @@ def test_dataset(args):
     )
 
     # Validate multi-turn capability
-    if attack_module and hasattr(attack_module, "turn_type") and attack_module.turn_type == Turn.MULTI:
+    if (
+        attack_module
+        and hasattr(attack_module, "turn_type")
+        and attack_module.turn_type == Turn.MULTI
+    ):
         # Validate target supports multi-turn
         if target_module.config.get("multi-turn", False):
-            print(f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'.")
+            print(
+                f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'."
+            )
 
         else:
             print(
@@ -786,7 +823,9 @@ def test_dataset(args):
             exit(1)
 
         print(
-            f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'." if attack_module else f"[Info] Performing single-turn testing on target '{args.target}'."
+            f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'."
+            if attack_module
+            else f"[Info] Performing single-turn testing on target '{args.target}'."
         )
 
     if hasattr(target_module.get_target(), "add_managed_dicts"):
