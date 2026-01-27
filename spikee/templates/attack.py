@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
 
-from spikee.utilities.enums import AttackType, Turn
+from spikee.utilities.enums import Turn
 from spikee.templates.standardised_conversation import StandardisedConversation
 
 
@@ -10,10 +10,6 @@ class Attack(ABC):
         super().__init__()
 
         self.turn_type = turn_type
-
-    @abstractmethod
-    def get_description(self) -> Tuple[AttackType, str]:
-        pass
 
     @staticmethod
     def standardised_input_return(

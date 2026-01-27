@@ -1,13 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, Union, Tuple
+from typing import List, Union
 
 
 class Plugin(ABC):
-    @abstractmethod
-    def get_description(self) -> Tuple[str, str]:
-        """Return type and a short description of the plugin."""
-        pass
-
     @abstractmethod
     def get_available_option_values(self) -> List[str]:
         """Return supported plugin options; first option is default."""
