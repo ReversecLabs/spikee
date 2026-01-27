@@ -12,12 +12,7 @@ Usage:
 from spikee.templates.plugin import Plugin
 from typing import Dict, List, Tuple, Union
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import (
-    get_llm,
-    get_supported_llm_models,
-    get_example_llm_models,
-    get_supported_prefixes,
-)
+from spikee.utilities.llm import get_llm
 from spikee.attacks.llm_multi_language_jailbreaker import SPIKEE_MULTILINGUAL_JAILBREAKER_PROMPT
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
@@ -29,14 +24,8 @@ class LLMMultiLanguageJailbreaker(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates jailbreak attack prompts using an LLM and multi language techniques."
 
-    def get_available_option_values(self) -> List[str]:
-        return [f"model={model}" for model in get_example_llm_models()] + [
-            f"model={model}" for model in get_supported_llm_models()
-        ]
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        return [], True
 
     def _generate_multilingual_jailbreak_attack(
         self, llm, objective: str, previous_attempts: List[Dict]

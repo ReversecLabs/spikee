@@ -19,9 +19,6 @@ from typing import List, Dict, Any, Tuple
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
-    get_example_llm_models,
-    get_supported_llm_models,
-    get_supported_prefixes,
     get_llm,
     validate_llm_option,
 )
@@ -34,20 +31,9 @@ class PromptDecompositionAttack(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.SINGLE, ModuleTag.LLM], "Generates prompt reformulations by decomposing into labeled chunks and shuffling them."
 
-    # Supported modes
-    SUPPORTED_MODES = (
-        [DEFAULT_MODE]
-        + [model for model in get_example_llm_models()]
-        + [model for model in get_supported_llm_models() if model != "offline"]
-    )
-
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported modes; first option is default."""
-        return [f"mode={mode}" for mode in self.SUPPORTED_MODES]
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+        return ["mode=dumb", "mode=<utility-llm-model>"], True
 
     def _parse_mode(self, attack_option: str) -> str:
         """Parse attack option and return mode."""

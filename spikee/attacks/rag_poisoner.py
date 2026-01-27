@@ -15,12 +15,7 @@ from typing import Any, Dict, List, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import (
-    get_llm,
-    get_supported_llm_models,
-    get_example_llm_models,
-    get_supported_prefixes,
-)
+from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 
@@ -97,15 +92,9 @@ class RAGPoisoner(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates RAG Poisoner attack prompts using an LLM."
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options."""
-        return [f"model={model}" for model in get_example_llm_models()] + [
-            f"model={model}" for model in get_supported_llm_models()
-        ]
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+        return [], True
 
     def _generate_rag_attack(
         self, llm, objective: str, previous_attempts: List[Dict]

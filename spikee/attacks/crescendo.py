@@ -8,12 +8,7 @@ import json
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn, ModuleTag
-from spikee.utilities.llm import (
-    get_example_llm_models,
-    get_supported_llm_models,
-    get_supported_prefixes,
-    get_llm,
-)
+from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import parse_options
 
 
@@ -113,21 +108,13 @@ class Crescendo(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.MULTI, ModuleTag.LLM], "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak."
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Returns supported option values.
 
         Returns:
-            List[str]: List of supported options; first is default.
+            Tuple[List[str], bool]: List of supported options; first is default, and a boolean Utility_LLM.
         """
-        return (
-            ["max-turns=5"]
-            + [f"model={model}" for model in get_example_llm_models()]
-            + [f"model={model}" for model in get_supported_llm_models()]
-        )
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+        return ["max-turns=5"], True
 
     # Options Parsing
 
