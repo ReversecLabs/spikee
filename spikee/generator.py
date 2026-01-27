@@ -5,6 +5,7 @@ import time
 from collections import defaultdict
 from tabulate import tabulate
 from pathlib import Path
+from tqdm import tqdm
 
 from .utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
 from .utilities.modules import load_module_from_path
@@ -374,6 +375,12 @@ def process_standalone_attacks(
     If plugins are provided, applies them to each standalone attack.
     Returns the updated dataset and the next entry_id.
     """
+    bar_standalone = tqdm(
+        total=len(standalone_attacks) * (len(plugins) if plugins else 1),
+        desc="Standalone Attacks",
+        initial=1
+    )
+
     for attack in standalone_attacks:
         # If no judge_name, fallback
         if "judge_name" not in attack:
@@ -408,6 +415,7 @@ def process_standalone_attacks(
         }
         dataset.append(entry)
         entry_id += 1
+        bar_standalone.update(1)
 
         # Apply plugins if provided
         if plugins:
@@ -467,12 +475,14 @@ def process_standalone_attacks(
                         }
                         dataset.append(plugin_entry)
                         entry_id += 1
+                        bar_standalone.update(1)
                 except Exception as e:
                     print(
                         f"Warning: Plugin '{plugin_name}' failed for standalone attack '{attack['id']}': {e}"
                     )
                     continue
 
+    bar_standalone.close()
     return dataset, entry_id
 
 
@@ -499,6 +509,20 @@ def generate_variations(
     entry_id = 1
 
     suffixes = [None] + adv_suffixes if adv_suffixes else [None]
+
+    total_entries = (
+        len(base_docs)
+        * len(jailbreaks)
+        * len(instructions)
+        * len(positions)
+        * len(injection_delimiters)
+        * len(spotlighting_data_markers_list)
+        * (len(suffixes))
+        * (len(plugins) if plugins else 1)
+    )
+    bar_variations = tqdm(
+        total=total_entries, desc="Variations", initial=1
+    )
 
     for base_doc in base_docs:
         base_id = base_doc["id"]
@@ -531,6 +555,15 @@ def generate_variations(
 
                 # If match_languages is enabled, skip if jailbreak and instruction languages do not match
                 if match_languages and jailbreak_lang != instruction_lang:
+                    total_entries -= (
+                        len(positions)
+                        * len(injection_delimiters)
+                        * len(spotlighting_data_markers_list)
+                        * (len(suffixes))
+                        * (len(plugins) if plugins else 1)
+                    )
+                    bar_variations.total = total_entries
+                    bar_variations.refresh()
                     continue
 
                 # Creates combined jailbreak and instruction texts
@@ -682,6 +715,7 @@ def generate_variations(
                                         dataset.append(doc_entry)
                                         entry_id += 1
 
+                                bar_variations.update(len(spotlighting_data_markers_list))
                     # 2) Plugin entries
                     for plugin_name, plugin_module in plugins:
                         plugin_option = (
@@ -699,6 +733,10 @@ def generate_variations(
                                 local_exclude,
                                 plugin_option,
                             )
+
+                            total_entries += (len(plugin_result) - 1) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list)
+                            bar_variations.total = total_entries
+                            bar_variations.refresh()
 
                             # Ensure the plugin result is a list of variations.
                             if not isinstance(plugin_result, list):
@@ -840,6 +878,9 @@ def generate_variations(
                                                     dataset.append(doc_entry)
                                                     entry_id += 1
 
+                                        bar_variations.update(len(spotlighting_data_markers_list))
+
+    bar_variations.close()
     return dataset, entry_id
 
 
