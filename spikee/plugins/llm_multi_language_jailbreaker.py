@@ -7,8 +7,6 @@ the target system.
 Usage:
   spikee test --plugins llm_multi_language_jailbreaker --plugin-options "llm_multi_language_jailbreaker:model=openai-gpt-4o,variants=5"
 """
-
-
 from spikee.templates.plugin import Plugin
 from typing import Dict, List, Tuple, Union
 from spikee.utilities.enums import ModuleTag
@@ -75,10 +73,10 @@ class LLMMultiLanguageJailbreaker(Plugin):
         try:
             llm = get_llm(
                 llm_model,
-                max_tokens=400
+                max_tokens=1000
             )
         except Exception as e:
-            return None
+            raise RuntimeError(f"[LLMMultiLanguageJailbreaker] Error initializing LLM '{llm_model}': {str(e)}")
 
         previous_attempts = []
         attack_prompts = []

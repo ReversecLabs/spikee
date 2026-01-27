@@ -521,7 +521,7 @@ def generate_variations(
         * (len(plugins) if plugins else 1)
     )
     bar_variations = tqdm(
-        total=total_entries, desc="Variations", initial=1
+        total=total_entries, desc="Variations", initial=0
     )
 
     for base_doc in base_docs:

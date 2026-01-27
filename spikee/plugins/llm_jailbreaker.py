@@ -78,10 +78,10 @@ class LLMJailbreaker(Plugin):
         try:
             llm = get_llm(
                 llm_model,
-                max_tokens=400
+                max_tokens=800
             )
         except Exception as e:
-            return None
+            raise RuntimeError(f"[LLMJailbreaker] Error initializing LLM '{llm_model}': {str(e)}")
 
         previous_attempts = []
         attack_prompts = []
