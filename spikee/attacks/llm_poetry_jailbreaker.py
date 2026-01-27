@@ -16,7 +16,7 @@ Returns:
 from typing import Any, Dict, List, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import AttackType
+from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
     get_llm,
     get_supported_llm_models,
@@ -92,8 +92,8 @@ Format your response in JSON:
 class LLMJailbreaker(Attack):
     DEFAULT_MODEL = "openai-gpt-4o"
 
-    def get_description(self) -> Tuple[AttackType, str]:
-        return AttackType.LLM_DRIVEN, "Generates jailbreak attack prompts using an LLM and poetry techniques."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates jailbreak attack prompts using an LLM and poetry techniques."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported attack options."""

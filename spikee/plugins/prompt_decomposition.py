@@ -17,7 +17,7 @@ import random
 from dotenv import load_dotenv
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
     get_example_llm_models,
     get_supported_llm_models,
@@ -32,8 +32,8 @@ class PromptDecompositionPlugin(Plugin):
     DEFAULT_VARIANTS = 10
     DEFAULT_MODE = "dumb"
 
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.ATTACK_BASED, "Decomposes prompts into labeled components and generates shuffled variations."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ATTACK_BASED], "Decomposes prompts into labeled components and generates shuffled variations."
 
     # Supported modes
     SUPPORTED_MODES = (

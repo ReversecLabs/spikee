@@ -4,12 +4,14 @@ import importlib
 import importlib.util
 import pkgutil
 from dataclasses import dataclass
+from typing import List
 
 from rich.console import Console
 from rich.tree import Tree
 from rich.panel import Panel
 from rich.rule import Rule
 
+from spikee.utilities.enums import ModuleTag, module_tag_to_colour
 from spikee.utilities.modules import get_options_from_module, get_prefix_from_module, get_description_from_module
 
 console = Console()
@@ -67,7 +69,7 @@ class Module:
     options: list
     prefixes: list
     examples: bool = False
-    classification: str = None
+    tags: List[ModuleTag] = None
     description: str = ""
 
 
@@ -79,7 +81,7 @@ def _load_module(name, path: Path):
 
 
 def _collect_local(module_type: str):
-    entries = {None: []}
+    entries = []
     path = Path(os.getcwd()) / module_type
     if path.is_dir():
         for p in sorted(path.glob("*.py")):
@@ -91,7 +93,7 @@ def _collect_local(module_type: str):
                 mod = _load_module(f"{module_type}.{name}", p)
                 opts = get_options_from_module(mod, module_type)
                 prefixes = get_prefix_from_module(mod, module_type)
-                classification = get_description_from_module(mod, module_type)
+                description = get_description_from_module(mod, module_type)
 
                 # Load Examples/Available Options Flags
                 if prefixes and len(prefixes) == 2:
@@ -100,29 +102,26 @@ def _collect_local(module_type: str):
                     examples = False
 
                 # Get classification
-                if classification is not None and len(classification) == 2:
-                    classification, description = classification
+                if description is not None and len(description) == 2:
+                    tags, description = description
                 else:
-                    classification, description = None, ""
+                    tags, description = [], ""
 
             except Exception:
                 opts = ["<error>"]
                 prefixes = ["<error>"]
                 examples = False
-                classification = None
+                tags = []
                 description = ""
 
-            if classification not in entries:
-                entries[classification] = []
-
-            entries[classification].append(
-                Module(name, opts, prefixes, examples, classification, description)
+            entries.append(
+                Module(name, opts, prefixes, examples, tags, description)
             )
     return entries
 
 
 def _collect_builtin(pkg: str, module_type: str):
-    entries = {None: []}
+    entries = []
     try:
         pkg_mod = importlib.import_module(pkg)
         for _, name, is_pkg in pkgutil.iter_modules(pkg_mod.__path__):
@@ -133,7 +132,7 @@ def _collect_builtin(pkg: str, module_type: str):
                 mod = importlib.import_module(f"{pkg}.{name}")
                 opts = get_options_from_module(mod, module_type)
                 prefixes = get_prefix_from_module(mod, module_type)
-                classification = get_description_from_module(mod, module_type)
+                description = get_description_from_module(mod, module_type)
 
                 # Load Examples/Available Options Flags
                 if prefixes and len(prefixes) == 2:
@@ -142,23 +141,20 @@ def _collect_builtin(pkg: str, module_type: str):
                     examples = False
 
                 # Get classification
-                if classification is not None and len(classification) == 2:
-                    classification, description = classification
+                if description is not None and len(description) == 2:
+                    tags, description = description
                 else:
-                    classification, description = None, ""
+                    tags, description = [], ""
 
             except Exception:
                 opts = ["<error>"]
                 prefixes = ["<error>"]
                 examples = False
-                classification = None
+                tags = []
                 description = ""
 
-            if classification not in entries:
-                entries[classification] = []
-
-            entries[classification].append(
-                Module(name, opts, prefixes, examples, classification, description)
+            entries.append(
+                Module(name, opts, prefixes, examples, tags, description)
             )
     except ModuleNotFoundError:
         pass
@@ -171,31 +167,36 @@ def _render_section(title: str, local_entries, builtin_entries, description: boo
     def print_section(entries, label) -> Tree:
         tree = Tree(f"[bold]{title} ({label})[/bold]")
         if entries:
-            for classification in entries.keys():
+            for module in entries:
 
-                if classification is not None:
-                    node = tree.add(f"[bold red]{classification.value}[/bold red]")
-                else:
-                    node = tree
+                node_line = f"[bold cyan]{module.name}[/bold cyan]"
 
-                for module in entries[classification]:
-                    if not description or module.description is None:
-                        module_node = node.add(f"[bold cyan]{module.name}[/bold cyan]")
+                if module.tags:
+                    module.tags = sorted(module.tags, key=lambda x: x.value)
+
+                    tags = []
+                    for tag in module.tags:
+                        tags.append(f"[{module_tag_to_colour(tag)}][{tag.value}][/{module_tag_to_colour(tag)}]")
+
+                    node_line += " " + "".join(tags)
+
+                module_node = tree.add(node_line)
+
+                if description and module.description is not None:
+                    module_node.add(f"Description: {module.description}")
+
+                if module.options is not None:
+                    opt_line = (
+                        [f"[bold]{module.options[0]} (default)[/bold]"] + module.options[1:] if module.options else []
+                    )
+                    if module.examples:  # Presume it's an example if there are prefixes
+                        module_node.add("[bright_black]Example options: " + ", ".join(opt_line) + "[/bright_black]")
                     else:
-                        module_node = node.add(f"[bold cyan]{module.name}[/bold cyan]: {module.description}")
+                        module_node.add("[bright_black]Available options: " + ", ".join(opt_line) + "[/bright_black]")
 
-                    if module.options is not None:
-                        opt_line = (
-                            [f"[bold]{module.options[0]} (default)[/bold]"] + module.options[1:] if module.options else []
-                        )
-                        if module.examples:  # Presume it's an example if there are prefixes
-                            module_node.add("[bright_black]Example options: " + ", ".join(opt_line) + "[/bright_black]")
-                        else:
-                            module_node.add("[bright_black]Available options: " + ", ".join(opt_line) + "[/bright_black]")
-
-                    if module.prefixes is not None:
-                        pref_line = module.prefixes if module.prefixes else []
-                        module_node.add("[bright_black]Supported prefixes: " + ", ".join(pref_line) + "[/bright_black]")
+                if module.prefixes is not None:
+                    pref_line = module.prefixes if module.prefixes else []
+                    module_node.add("[bright_black]Supported prefixes: " + ", ".join(pref_line) + "[/bright_black]")
         else:
             tree.add("(none)")
 

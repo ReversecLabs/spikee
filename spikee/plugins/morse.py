@@ -22,12 +22,12 @@ from typing import List, Tuple
 import re
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 
 
 class MorsePlugin(Plugin):
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.BASIC, "Transforms text into Morse code."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into Morse code."
 
     MORSE_CODE_DICT = {
         "A": ".-",

@@ -1,10 +1,10 @@
 import uuid
-from typing import Tuple
+from typing import List, Tuple
 import traceback
 
 
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import AttackType, Turn
+from spikee.utilities.enums import Turn, ModuleTag
 
 
 class MultiTurnAttack(Attack):
@@ -12,8 +12,8 @@ class MultiTurnAttack(Attack):
         """Define multi-turn capabilities for attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[AttackType, str]:
-        return AttackType.MULTI, "Performs a manual multi-turn attack by sending a defined series of messages"
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.MULTI], "Performs a manual multi-turn attack by sending a defined series of messages"
 
     def get_available_option_values(self) -> str:
         return None

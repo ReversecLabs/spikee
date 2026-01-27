@@ -17,15 +17,15 @@ import random
 from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 
 
 class AntiSpotlighting(Plugin):
     # Default number of variants
     DEFAULT_VARIANTS = 50
 
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.ATTACK_BASED, "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ATTACK_BASED], "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported variant counts; first option is default."""

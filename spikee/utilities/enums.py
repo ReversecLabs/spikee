@@ -6,18 +6,19 @@ class Turn(enum.Enum):
     MULTI = "multi-turn"
 
 
-class PluginType(enum.Enum):
-    BASIC = "Basic"
+class ModuleTag(enum.Enum):
+    """Enumeration for module tags used to categorize modules."""
     ATTACK_BASED = "Attack-Based"
-    LLM_BASED = "LLM-Based"
-
-
-class AttackType(enum.Enum):
-    BASIC = "Basic"
-    LLM_DRIVEN = "LLM-Driven"
+    LLM = "LLM"
     MULTI = "Multi-Turn"
+    SINGLE = "Single-Turn"
 
 
-class JudgeType(enum.Enum):
-    BASIC = "Basic"
-    LLM_BASED = "LLM-Based"
+def module_tag_to_colour(tag: ModuleTag) -> str:
+    tag_colour_map = {
+        ModuleTag.SINGLE: "blue",
+        ModuleTag.MULTI: "magenta",
+        ModuleTag.LLM: "yellow",
+        ModuleTag.ATTACK_BASED: "red",
+    }
+    return tag_colour_map.get(tag, "white")

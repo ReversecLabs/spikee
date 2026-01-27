@@ -30,12 +30,12 @@ from typing import List, Tuple
 import re
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 
 
 class AsciiSmuggler(Plugin):
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.BASIC, "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique."
 
     def get_available_option_values(self) -> List[str]:
         return None

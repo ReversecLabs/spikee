@@ -11,7 +11,7 @@ Usage:
 
 from spikee.templates.plugin import Plugin
 from typing import Dict, List, Tuple, Union
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
     get_llm,
     get_supported_llm_models,
@@ -26,8 +26,8 @@ class LLMMultiLanguageJailbreaker(Plugin):
     DEFAULT_MODEL = "openai-gpt-4o"
     VARIANTS = 5
 
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.LLM_BASED, "Generates jailbreak attack prompts using an LLM and multi language techniques."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates jailbreak attack prompts using an LLM and multi language techniques."
 
     def get_available_option_values(self) -> List[str]:
         return [f"model={model}" for model in get_example_llm_models()] + [

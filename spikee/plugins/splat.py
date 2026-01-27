@@ -22,12 +22,12 @@ import re
 from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 
 
 class SplatPlugin(Plugin):
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.BASIC, "Transforms text using splat-based obfuscation techniques."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text using splat-based obfuscation techniques."
 
     def get_available_option_values(self) -> List[str]:
         return None

@@ -17,12 +17,12 @@ import base64
 from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 
 
 class Base64(Plugin):
-    def get_description(self) -> Tuple[PluginType, str]:
-        return PluginType.BASIC, "Transforms text into Base64 encoding."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into Base64 encoding."
 
     def get_available_option_values(self) -> List[str]:
         return None

@@ -32,12 +32,12 @@ import random
 from typing import List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import AttackType
+from spikee.utilities.enums import ModuleTag
 
 
 class AntiSpotlightingAttack(Attack):
-    def get_description(self) -> Tuple[AttackType, str]:
-        return AttackType.BASIC, "Attempts to bypass spotlighting delimiters using various wrapping techniques."
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.SINGLE], "Attempts to bypass spotlighting delimiters using various wrapping techniques."
 
     def get_available_option_values(self) -> List[str]:
         return None

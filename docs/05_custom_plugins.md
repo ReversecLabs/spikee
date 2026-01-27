@@ -27,13 +27,13 @@ Every plugin is a Python module located in the `plugins/` directory of your work
 ### Plugin Template
 ```python
 from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import PluginType
+from spikee.utilities.enums import ModuleTag
 from typing import List, Union, Tuple
 
 class SamplePlugin(Plugin):
-    def get_description(self) -> Tuple[PluginType, str]:
+    def get_description(self) -> Tuple[ModuleTag, str]:
         """Returns the type and a short description of the plugin."""
-        return PluginType.BASIC, "A brief description of what this plugin does."
+        return [], "A brief description of what this plugin does."
 
     def get_available_option_values(self) -> List[str]:
         """Returns a list of supported option values, first is default. None if no options."""

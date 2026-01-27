@@ -28,7 +28,7 @@ Every attack is a Python module located in the `attacks/` directory of your work
 
 ```python
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import AttackType
+from spikee.utilities.enums import ModuleTag
 from typing import List
 
 class SampleAttack(Attack):
@@ -40,9 +40,9 @@ class SampleAttack(Attack):
         "strategy": "random",
     }
 
-    def get_description(self) -> Tuple[AttackType, str]:
+    def get_description(self) -> Tuple[ModuleTag, str]:
         """Returns the type and a short description of the attack."""
-        return AttackType.BASIC, "A brief description of what this attack does."
+        return [], "A brief description of what this attack does."
 
     def get_available_option_values(self) -> List[str]:
         """Returns a list of supported option values, first is default. None if no options."""
@@ -150,7 +150,7 @@ See `multi_turn` and `crescendo` attack scripts for examples of multi-turn dynam
 import uuid
 
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import AttackType, Turn
+from spikee.utilities.enums import ModuleTag, Turn
 from spikee.templates.standardised_conversation import StandardisedConversation
 
 class SampleMultiTurnAttack(Attack):
@@ -159,9 +159,9 @@ class SampleMultiTurnAttack(Attack):
         # turn_type defines an attack's multi-turn capability, either Turn.SINGLE (Default) or Turn.MULTI
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[AttackType, str]:
+    def get_description(self) -> Tuple[ModuleTag, str]:
         """Returns the type and a short description of the attack."""
-        return AttackType.MULTI, "A brief description of what this attack does."
+        return [ModuleTag.MULTI], "A brief description of what this attack does."
     
     def get_available_option_values(self) -> str:
         return None
