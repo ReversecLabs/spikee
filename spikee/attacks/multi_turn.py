@@ -4,13 +4,16 @@ import traceback
 
 
 from spikee.templates.attack import Attack
-from spikee.utilities.enums import Turn
+from spikee.utilities.enums import AttackType, Turn
 
 
 class MultiTurnAttack(Attack):
     def __init__(self):
         """Define multi-turn capabilities for attack."""
         super().__init__(turn_type=Turn.MULTI)
+
+    def get_description(self) -> Tuple[AttackType, str]:
+        return AttackType.MULTI, "Performs a manual multi-turn attack by sending a defined series of messages"
 
     def get_available_option_values(self) -> str:
         return None

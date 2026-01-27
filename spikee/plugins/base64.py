@@ -14,12 +14,16 @@ Returns:
 """
 
 import base64
-from typing import List
+from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import PluginType
 
 
 class Base64(Plugin):
+    def get_description(self) -> Tuple[PluginType, str]:
+        return PluginType.BASIC, "Transforms text into Base64 encoding."
+
     def get_available_option_values(self) -> List[str]:
         return None
 

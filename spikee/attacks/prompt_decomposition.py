@@ -17,6 +17,7 @@ import random
 from typing import List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
+from spikee.utilities.enums import AttackType
 from spikee.utilities.llm import (
     get_example_llm_models,
     get_supported_llm_models,
@@ -29,6 +30,9 @@ from spikee.utilities.llm import (
 class PromptDecompositionAttack(Attack):
     # Default mode
     DEFAULT_MODE = "dumb"
+
+    def get_description(self) -> Tuple[AttackType, str]:
+        return AttackType.BASIC, "Generates prompt reformulations by decomposing into labeled chunks and shuffling them."
 
     # Supported modes
     SUPPORTED_MODES = (

@@ -7,7 +7,7 @@ import json
 
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.enums import Turn
+from spikee.utilities.enums import AttackType, Turn
 from spikee.utilities.llm import (
     get_example_llm_models,
     get_supported_llm_models,
@@ -109,6 +109,9 @@ class Crescendo(Attack):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
 
+    def get_description(self) -> Tuple[AttackType, str]:
+        return AttackType.MULTI, "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak."
+
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.
 
@@ -182,7 +185,7 @@ class Crescendo(Attack):
                     if depth > 0:
                         depth -= 1
                         if depth == 0 and start != -1:
-                            candidate = quoted[start : i + 1]
+                            candidate = quoted[start: i + 1]
                             try:
                                 return json.loads(candidate)
                             except Exception:
@@ -209,7 +212,7 @@ class Crescendo(Attack):
                 if depth > 0:
                     depth -= 1
                     if depth == 0 and start != -1:
-                        candidate = t[start : i + 1]
+                        candidate = t[start: i + 1]
                         try:
                             return json.loads(candidate)
                         except Exception:

@@ -19,12 +19,16 @@ Returns:
 
 import random
 import re
-from typing import List
+from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import PluginType
 
 
 class SplatPlugin(Plugin):
+    def get_description(self) -> Tuple[PluginType, str]:
+        return PluginType.BASIC, "Transforms text using splat-based obfuscation techniques."
+
     def get_available_option_values(self) -> List[str]:
         return None
 

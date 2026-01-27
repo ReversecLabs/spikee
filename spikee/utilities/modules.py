@@ -105,6 +105,26 @@ def get_prefix_from_module(module, module_type=None):
     return None
 
 
+def get_description_from_module(module, module_type=None):
+    """
+    Return the description advertised by the given module or instance.
+
+    Args:
+        module: Either an instantiated module (new OOP) or the imported module.
+        module_type: Optional str specifying the module category. Required when
+            `module` is a module rather than an instance.
+    """
+    if module and hasattr(module, "get_description"):
+        return module.get_description()
+
+    if inspect.ismodule(module) and module_type:
+        instance = _instantiate_impl(module, module_type)
+        if instance and hasattr(instance, "get_description"):
+            return instance.get_description()
+
+    return None
+
+
 def get_default_option(module, module_type=None):
     available = get_options_from_module(module, module_type)
     return available[0] if available else None

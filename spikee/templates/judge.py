@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 import random
 import string
 
+from spikee.utilities.enums import JudgeType
+
 
 class Judge(ABC):
+    @abstractmethod
+    def get_description(self) -> Tuple[JudgeType, str]:
+        """Returns the type and a short description of the judge."""
+        pass
+
     @abstractmethod
     def get_available_option_values(self) -> List[str]:
         """Returns supported option values.

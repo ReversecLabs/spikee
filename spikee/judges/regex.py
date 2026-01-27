@@ -8,11 +8,16 @@ partial matches, capturing groups, etc.).
 """
 
 import re
+from typing import Tuple
 
 from spikee.templates.judge import Judge
+from spikee.utilities.enums import JudgeType
 
 
 class RegexJudge(Judge):
+    def get_description(self) -> Tuple[JudgeType, str]:
+        return JudgeType.BASIC, "Checks if a specified regex pattern matches the model's output."
+
     def get_available_option_values(self):
         return None
 

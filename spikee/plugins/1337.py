@@ -21,13 +21,18 @@ Returns:
     str: The transformed text.
 """
 
-from typing import List
+from typing import List, Tuple
 import re
 
+
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import PluginType
 
 
 class LeetspeekPlugin(Plugin):
+    def get_description(self) -> Tuple[PluginType, str]:
+        return PluginType.BASIC, "Transforms text into 1337 speak."
+
     def get_available_option_values(self) -> List[str]:
         return None
 
