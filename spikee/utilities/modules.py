@@ -1,6 +1,9 @@
 import importlib
 import inspect
 import os
+import re
+import json
+from typing import Any, Dict, Optional
 
 from spikee.templates.target import Target
 from spikee.templates.judge import Judge
@@ -128,6 +131,56 @@ def get_description_from_module(module, module_type=None):
 def get_default_option(module, module_type=None):
     available = get_options_from_module(module, module_type)
     return available[0] if available else None
+
+
+def parse_options(option: Optional[str]) -> Dict[str, str]:
+    opts: Dict[str, str] = {}
+    if not option:
+        return opts
+    for p in (x.strip() for x in option.split(",") if x.strip()):
+        if "=" in p:
+            k, v = p.split("=", 1)
+            opts[k.strip()] = v.strip()
+    return opts
+
+
+def extract_json_or_fail(text: str) -> Dict[str, Any]:
+    """
+    Robust JSON extractor.
+    """
+    if not text:
+        raise RuntimeError("LLM returned empty response")
+
+    t = text.strip()
+
+    # 1) fenced code block
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
+    if m:
+        t = m.group(1).strip()
+
+    # 2) try direct JSON parse
+    try:
+        return json.loads(t)
+    except Exception:
+        # 3) scan for first balanced {...}
+        start = -1
+        depth = 0
+        for i, ch in enumerate(t):
+            if ch == "{":
+                if depth == 0:
+                    start = i
+                depth += 1
+            elif ch == "}":
+                if depth > 0:
+                    depth -= 1
+                    if depth == 0 and start != -1:
+                        candidate = t[start: i + 1]
+                        try:
+                            return json.loads(candidate)
+                        except Exception:
+                            start = -1
+
+    raise RuntimeError("LLM did not return valid JSON object")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from spikee.utilities.llm import (
     get_supported_prefixes,
     get_llm,
 )
+from spikee.utilities.modules import parse_options
 
 
 # Source: https://github.com/Azure/PyRIT/blob/bbed39cf249fca9ce20770550912b7254ae672fe/pyrit/datasets/orchestrators/crescendo/crescendo_variant_1.yaml
@@ -129,16 +130,6 @@ class Crescendo(Attack):
         return False, get_supported_prefixes()
 
     # Options Parsing
-
-    def _parse_attack_option(self, option: Optional[str]) -> Dict[str, str]:
-        opts: Dict[str, str] = {}
-        if not option:
-            return opts
-        for p in (x.strip() for x in option.split(",") if x.strip()):
-            if "=" in p:
-                k, v = p.split("=", 1)
-                opts[k.strip()] = v.strip()
-        return opts
 
     def _parse_max_turns(self, opts: Dict[str, str]) -> int:
         return max(1, int(opts.get("max-turns", "5")))
@@ -417,7 +408,7 @@ class Crescendo(Attack):
             raise ValueError("entry must contain 'text' (the jailbreak objective)")
 
         # Parse options
-        opts = self._parse_attack_option(attack_option)
+        opts = parse_options(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
             llm = get_llm(opts.get("model", None), max_tokens=None)
