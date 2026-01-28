@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 
 from .utils import (
     extract_results_path,
@@ -30,13 +29,14 @@ def test_boolean_response_handling(run_spikee, workspace_dir):
     results_file = extract_results_path(result.stdout, workspace_dir)
     results = read_jsonl(results_file)
     assert results, "No results recorded by spikee test"
-    
+
     # We expect success=True if the boolean logic is working correctly
     success_count = sum(1 for entry in results if entry["success"])
     failure_count = sum(1 for entry in results if not entry["success"])
-    
+
     print(f"Successes: {success_count}, Failures: {failure_count}")
-    
+
     # Assert all succeeded
-    assert all(entry["success"] for entry in results), \
+    assert all(entry["success"] for entry in results), (
         f"Expected all entries to succeed with boolean True, but found {failure_count} failures."
+    )
