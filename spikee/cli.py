@@ -139,6 +139,11 @@ def main():
         help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
     parser_generate.add_argument(
+        "--plugin-only",
+        action="store_true",
+        help="Only output plugin entries",
+    )
+    parser_generate.add_argument(
         "--include-standalone-inputs",
         action="store_true",
         help="Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)",
