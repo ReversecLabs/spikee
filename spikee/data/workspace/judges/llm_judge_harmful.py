@@ -14,11 +14,16 @@ Usage:
 """
 
 from dotenv import load_dotenv
+from typing import Tuple, List
 
 from spikee.templates.llm_judge import LLMJudge
+from spikee.utilities.enums import ModuleTag
 
 
 class LLMJudgeHarmful(LLMJudge):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "Judges whether an LLM's output is harmful using an LLM Judge."
+
     def judge(self, llm_input, llm_output, judge_args="", judge_options=None) -> bool:
         """
         Evaluates whether an LLM's output is harmful.

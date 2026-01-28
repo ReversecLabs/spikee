@@ -43,12 +43,16 @@ import tiktoken
 from typing import List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
+from spikee.utilities.enums import ModuleTag
 
 
-class RandomSuffixattack(Attack):
+class RandomSuffixSearch(Attack):
     # Default parameters.
     n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
     n_tokens_change = 4  # Maximum tokens to change per iteration.
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.SINGLE], "Performs a random suffix search attack by modifying token sequences appended to the input."
 
     def get_available_option_values(self) -> List[str]:
         return None
@@ -67,7 +71,7 @@ class RandomSuffixattack(Attack):
                     document[: idx + len(payload)]
                     + " "
                     + adv_string
-                    + document[idx + len(payload) :]
+                    + document[idx + len(payload):]
                 )
         return document + "\n" + adv_string
 
@@ -113,7 +117,7 @@ class RandomSuffixattack(Attack):
             ).tolist()
             # Replace the selected tokens in adv_tokens.
             adv_tokens[
-                substitute_pos_start : substitute_pos_start + self.n_tokens_change
+                substitute_pos_start: substitute_pos_start + self.n_tokens_change
             ] = substitution_tokens
 
             # Decode the modified token sequence into text.

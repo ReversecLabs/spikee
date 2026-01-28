@@ -139,6 +139,11 @@ def main():
         help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
     parser_generate.add_argument(
+        "--plugin-only",
+        action="store_true",
+        help="Only output plugin entries",
+    )
+    parser_generate.add_argument(
         "--include-standalone-inputs",
         action="store_true",
         help="Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)",
@@ -505,12 +510,21 @@ def main():
     list_subparsers = parser_list.add_subparsers(
         dest="list_command", help="What to list"
     )
-    list_subparsers.add_parser("seeds", help="List available seed folders")
-    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files")
-    list_subparsers.add_parser("judges", help="List available judges")
-    list_subparsers.add_parser("targets", help="List available targets")
-    list_subparsers.add_parser("plugins", help="List available plugins")
-    list_subparsers.add_parser("attacks", help="List available attack scripts")
+
+    list_subparsers.add_parser("seeds", help="List available seed folders"),
+    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files"),
+    list_subparsers.add_parser("targets", help="List available targets"),
+
+    for subparser in [
+        list_subparsers.add_parser("judges", help="List available judges"),
+        list_subparsers.add_parser("plugins", help="List available plugins"),
+        list_subparsers.add_parser("attacks", help="List available attack scripts"),
+    ]:
+        subparser.add_argument(
+            "-d", "--description",
+            action="store_true",
+            help="Include descriptions of modules where available",
+        )
 
     args = convert_to_new_args(parser.parse_args())
 
