@@ -169,7 +169,7 @@ def extract_json_or_fail(text: str) -> Dict[str, Any]:
                     except Exception:
                         start = -1
 
-    raise RuntimeError("LLM did not return valid JSON object")
+    raise RuntimeError(f"LLM did not return valid JSON object: \n\n {text}")
 
 
 def fix_unescaped_quotes(text: str) -> str:
