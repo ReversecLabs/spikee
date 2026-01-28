@@ -17,7 +17,8 @@ SUPPORTED_LLM_MODELS = [
 SUPPORTED_PREFIXES = [
     "openai-",
     "google-",
-    "bedrock-",
+    "bedrock-",     # BedrockChat for Anthropic Models
+    "bedrockcv-",   # BedrockChatConverse for other model compatibility
     "ollama-",
     "llamaccp-server-",
     "together-",
@@ -84,13 +85,14 @@ def validate_llm_option(option: str) -> bool:
     )
 
 
-def get_llm(options=None, max_tokens=8):
+def get_llm(options=None, max_tokens=8, temperature=0):
     """
     Initialize and return the appropriate LLM based on options.
 
     Arguments:
         options (str): The LLM model option string.
         max_tokens (int): Maximum tokens for the LLM response (Default: 8 for LLM Judging).
+        temperature (float): Sampling temperature for the LLM (Default: 0).
     """
     if not validate_llm_option(options):
         raise ValueError(
@@ -105,7 +107,7 @@ def get_llm(options=None, max_tokens=8):
         return ChatOpenAI(
             model=model_name,
             max_tokens=max_tokens,
-            temperature=0,
+            temperature=temperature,
             timeout=None,
             max_retries=2,
         )
@@ -118,7 +120,7 @@ def get_llm(options=None, max_tokens=8):
             transport="rest",
             model=model_name,
             max_tokens=max_tokens,
-            temperature=0,
+            temperature=temperature,
             timeout=None,
             max_retries=2,
         )
@@ -127,7 +129,24 @@ def get_llm(options=None, max_tokens=8):
         from langchain_aws import ChatBedrock
 
         model_name = options.replace("bedrock-", "")
-        return ChatBedrock(model=model_name, max_tokens=max_tokens, temperature=0)
+        return ChatBedrock(
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+
+    elif options.startswith("bedrockcv-"):
+        from langchain_aws import ChatBedrockConverse
+
+        if max_tokens is None:
+            max_tokens = 8192  # Set a high default if None is provided
+
+        model_name = options.replace("bedrockcv-", "")
+        return ChatBedrockConverse(
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
 
     elif options.startswith("ollama-"):
         from langchain_ollama import ChatOllama
@@ -136,7 +155,7 @@ def get_llm(options=None, max_tokens=8):
         return ChatOllama(
             model=model_name,
             num_predict=max_tokens,  # maximum number of tokens to predict
-            temperature=0,
+            temperature=temperature,
             client_kwargs={
                 "timeout": float(os.environ["OLLAMA_TIMEOUT"])
                 if os.environ.get("OLLAMA_TIMEOUT") not in (None, "")
@@ -183,7 +202,7 @@ def get_llm(options=None, max_tokens=8):
         return ChatTogether(
             model=model_name,
             max_tokens=max_tokens,
-            temperature=0,
+            temperature=temperature,
             timeout=None,
             max_retries=2,
         )
