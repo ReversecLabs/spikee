@@ -45,6 +45,10 @@ class AntiSpotlighting(Plugin):
                 pass
         return self.DEFAULT_VARIANTS
 
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        return self._parse_variants_option(plugin_option)
+
     def transform(
         self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None
     ) -> List[str]:

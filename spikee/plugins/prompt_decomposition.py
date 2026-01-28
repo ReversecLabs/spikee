@@ -36,6 +36,11 @@ class PromptDecompositionPlugin(Plugin):
         """Return supported options; first option is default."""
         return ["mode=dumb", "mode=<utility-llm-model>", "variants=10"]
 
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        num_variants, _ = self._parse_options(plugin_option)
+        return num_variants
+
     def _parse_options(self, plugin_option: str) -> tuple:
         """Parse plugin option and return (num_variants, mode)."""
         num_variants = self.DEFAULT_VARIANTS

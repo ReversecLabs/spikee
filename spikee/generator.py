@@ -336,6 +336,18 @@ def parse_plugin_options(plugin_options_str):
     return options_map
 
 
+def get_plugin_variants(plugin_module, plugin_option):
+    """
+    Obtains the number of variants a plugin will produce based on its options.
+    """
+
+    if hasattr(plugin_module, "get_variants"):
+        return plugin_module.get_variants(plugin_option)
+
+    else:
+        return 1
+
+
 def apply_plugin(
     plugin_name, plugin_module, text, exclude_patterns=None, plugin_option=None
 ):
@@ -375,8 +387,18 @@ def process_standalone_attacks(
     If plugins are provided, applies them to each standalone attack.
     Returns the updated dataset and the next entry_id.
     """
+    plugin_variants = {}
+    for plugin_name, plugin_module in plugins:
+        plugin_option = (
+            plugin_options_map.get(plugin_name)
+            if plugin_options_map
+            else None
+        )
+        plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+
+    total_entries = len(standalone_attacks) * sum(plugin_variants.values() or [1])
     bar_standalone = tqdm(
-        total=len(standalone_attacks) * (len(plugins) if plugins else 1),
+        total=total_entries,
         desc="Standalone Attacks",
         initial=1
     )
@@ -475,7 +497,13 @@ def process_standalone_attacks(
                         }
                         dataset.append(plugin_entry)
                         entry_id += 1
-                        bar_standalone.update(1)
+
+                    if len(plugin_result) < plugin_variants[plugin_name]:
+                        total_entries -= plugin_variants[plugin_name] - len(plugin_result)
+                        bar_standalone.total = total_entries
+                        bar_standalone.refresh()
+
+                    bar_standalone.update(len(plugin_result))
                 except Exception as e:
                     print(
                         f"Warning: Plugin '{plugin_name}' failed for standalone attack '{attack['id']}': {e}"
@@ -510,6 +538,15 @@ def generate_variations(
 
     suffixes = [None] + adv_suffixes if adv_suffixes else [None]
 
+    plugin_variants = {}
+    for plugin_name, plugin_module in plugins:
+        plugin_option = (
+            plugin_options_map.get(plugin_name)
+            if plugin_options_map
+            else None
+        )
+        plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+
     total_entries = (
         len(base_docs)
         * len(jailbreaks)
@@ -517,8 +554,8 @@ def generate_variations(
         * len(positions)
         * len(injection_delimiters)
         * len(spotlighting_data_markers_list)
-        * (len(suffixes))
-        * (len(plugins) if plugins else 1)
+        * len(suffixes)
+        * sum(plugin_variants.values() or [1])
     )
     bar_variations = tqdm(
         total=total_entries, desc="Variations", initial=0
@@ -559,8 +596,8 @@ def generate_variations(
                         len(positions)
                         * len(injection_delimiters)
                         * len(spotlighting_data_markers_list)
-                        * (len(suffixes))
-                        * (len(plugins) if plugins else 1)
+                        * len(suffixes)
+                        * sum(plugin_variants.values() or [1])
                     )
                     bar_variations.total = total_entries
                     bar_variations.refresh()
@@ -734,10 +771,6 @@ def generate_variations(
                                 plugin_option,
                             )
 
-                            total_entries += (len(plugin_result) - 1) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list)
-                            bar_variations.total = total_entries
-                            bar_variations.refresh()
-
                             # Ensure the plugin result is a list of variations.
                             if not isinstance(plugin_result, list):
                                 plugin_result = [plugin_result]
@@ -877,9 +910,12 @@ def generate_variations(
                                                     )
                                                     dataset.append(doc_entry)
                                                     entry_id += 1
+                            if len(plugin_result) < plugin_variants[plugin_name]:
+                                total_entries -= (plugin_variants[plugin_name] - len(plugin_result)) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list)
+                                bar_variations.total = total_entries
+                                bar_variations.refresh()
 
-                                        bar_variations.update(len(spotlighting_data_markers_list))
-
+                            bar_variations.update(len(plugin_result) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list))
     bar_variations.close()
     return dataset, entry_id
 

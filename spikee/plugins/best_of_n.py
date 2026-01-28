@@ -56,6 +56,10 @@ class BestOfN(Plugin):
                 pass
         return self.DEFAULT_SAMPLES
 
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        return self._parse_samples_option(plugin_option)
+
     def transform(
         self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None
     ) -> List[str]:

@@ -25,6 +25,11 @@ class LLMMultiLanguageJailbreaker(Plugin):
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         return [], True
 
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        opts = parse_options(plugin_option)
+        return int(opts.get("variants", self.VARIANTS))
+
     def _generate_multi_language_jailbreak_attack(
         self, llm, objective: str, previous_attempts: List[Dict]
     ) -> str:
