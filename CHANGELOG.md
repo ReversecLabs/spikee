@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.6.1] - 2026-01-28
+
+### Fixes
+
+- correctly handle guardrail target output (boolean) and add a corresponding functional test. (#71)
+
 ## [0.6.0] - 2026-01-26
 
 ### Features
