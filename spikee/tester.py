@@ -452,7 +452,8 @@ def _do_single_request(
         response, _ = target_module.process_input(
             input_text, system_message, False, entry_id, output_file
         )
-        response = str(response)
+        if isinstance(response, bool) is False:
+            response = str(response)
 
         end_time = time.time()
         response_time = end_time - start_time
