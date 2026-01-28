@@ -6,7 +6,7 @@ TO-DO.txt
 build
 dist/
 *.egg-info
-/workspace
+/workspace*
 demo
 llmwebmail-test
 .vscode
