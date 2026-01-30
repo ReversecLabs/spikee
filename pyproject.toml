@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spikee"
-version = "0.6.0"
+version = "0.6.1"
 description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitation"
 readme = "README.md"
 keywords = [ "prompt-injection", "LLM", "cyber-security", "pentesting",]

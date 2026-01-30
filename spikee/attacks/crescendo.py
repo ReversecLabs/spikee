@@ -310,8 +310,8 @@ class Crescendo(Attack):
             last_message_id = conversation.add_message(
                 last_message_id,
                 {"role": "user", "content": prompt, "spikee_session_id": session_id},
+                attempt=True
             )
-            conversation.add_attempt()
 
             # call target; each call consumes budget immediately
             resp = target_module.process_input(

@@ -142,26 +142,86 @@ def extract_json_or_fail(text: str) -> Dict[str, Any]:
     try:
         return json.loads(t)
     except Exception:
-        # 3) scan for first balanced {...}
-        start = -1
-        depth = 0
-        for i, ch in enumerate(t):
-            if ch == "{":
-                if depth == 0:
-                    start = i
-                depth += 1
-            elif ch == "}":
-                if depth > 0:
-                    depth -= 1
-                    if depth == 0 and start != -1:
-                        candidate = t[start: i + 1]
-                        try:
-                            return json.loads(candidate)
-                        except Exception:
-                            start = -1
+        pass
 
-    raise RuntimeError("LLM did not return valid JSON object")
+    # 3) fix unescaped quotes and try again
+    t_fixed = fix_unescaped_quotes(t)
+    try:
+        return json.loads(t_fixed)
+    except Exception:
+        pass
+
+    # 4) scan for first balanced {...}
+    start = -1
+    depth = 0
+    for i, ch in enumerate(t):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start != -1:
+                    candidate = t[start: i + 1]
+                    try:
+                        return json.loads(candidate)
+                    except Exception:
+                        start = -1
+
+    raise RuntimeError(f"LLM did not return valid JSON object: \n\n {text}")
 
 
-if __name__ == "__main__":
-    print(load_module_from_path("1337", "plugins"))
+def fix_unescaped_quotes(text: str) -> str:
+    """
+    Fix unescaped quotes within JSON string values by properly escaping them.
+
+    Args:
+        text (str): The input text with potentially unescaped quotes in JSON
+
+    Returns:
+        str: Text with properly escaped quotes for valid JSON
+    """
+    result = []
+    i = 0
+    STATE_NORMAL = 0     # Outside any string
+    STATE_IN_STRING = 1  # Inside a JSON string value
+
+    state = STATE_NORMAL
+
+    while i < len(text):
+        char = text[i]
+
+        if state == STATE_NORMAL:
+            result.append(char)
+            if char == '"':
+                state = STATE_IN_STRING
+
+        elif state == STATE_IN_STRING:
+            # If we have an escape character, add it and the next character
+            if char == '\\':
+                result.append(char)
+                i += 1
+                if i < len(text):
+                    result.append(text[i])
+            # If we have an unescaped quote, check if it's closing the string or internal
+            elif char == '"':
+                # Look ahead to determine if this is likely closing the string value
+                j = i + 1
+                while j < len(text) and text[j].isspace():
+                    j += 1
+
+                # If followed by these characters, it's likely closing the string
+                if j < len(text) and (text[j] == ',' or text[j] == '}' or text[j] == ':' or text[j] == ']'):
+                    result.append(char)  # Closing quote, don't escape
+                    state = STATE_NORMAL
+                else:
+                    # Internal quote, needs escaping
+                    result.append('\\')
+                    result.append(char)
+            else:
+                result.append(char)
+
+        i += 1
+
+    return ''.join(result)
