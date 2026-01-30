@@ -17,10 +17,8 @@ import random
 from dotenv import load_dotenv
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
-    get_example_llm_models,
-    get_supported_llm_models,
-    get_supported_prefixes,
     get_llm,
     validate_llm_option,
 )
@@ -31,23 +29,17 @@ class PromptDecompositionPlugin(Plugin):
     DEFAULT_VARIANTS = 10
     DEFAULT_MODE = "dumb"
 
-    # Supported modes
-    SUPPORTED_MODES = (
-        [DEFAULT_MODE]
-        + [model for model in get_example_llm_models()]
-        + [model for model in get_supported_llm_models() if model != "offline"]
-    )
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ATTACK_BASED], "Decomposes prompts into labeled components and generates shuffled variations."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported options; first option is default."""
-        return [
-            "mode=dumb,variants=10",
-            "available modes: " + ", ".join(self.SUPPORTED_MODES),
-        ]
+        return ["mode=dumb", "mode=<utility-llm-model>", "variants=10"]
 
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        num_variants, _ = self._parse_options(plugin_option)
+        return num_variants
 
     def _parse_options(self, plugin_option: str) -> tuple:
         """Parse plugin option and return (num_variants, mode)."""

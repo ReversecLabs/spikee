@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import json
 from typing import List, Dict, Any, Tuple
 
 from spikee.utilities.enums import Turn
@@ -19,7 +20,7 @@ class Attack(ABC):
         standardised_return = {"input": str(input)}
 
         if conversation:
-            standardised_return["conversation"] = str(conversation.conversation)
+            standardised_return["conversation"] = json.dumps(conversation.conversation)
 
         if objective:
             standardised_return["objective"] = str(objective)

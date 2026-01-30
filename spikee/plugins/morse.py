@@ -18,13 +18,17 @@ Returns:
     str: The transformed text in Morse code.
 """
 
-from typing import List
+from typing import List, Tuple
 import re
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
 
 
 class MorsePlugin(Plugin):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into Morse code."
+
     MORSE_CODE_DICT = {
         "A": ".-",
         "B": "-...",

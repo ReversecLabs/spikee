@@ -93,6 +93,26 @@ LLM applications against spotlighting vulnerabilities.
         `modes` (LLM model to apply, default: dumb),
         `variants` (number of variations to generate, default: 50).
 
+## LLM Driven Plugins
+These plugins are based on LLM-driven dynamic attack plugins, but have been adapted to work as static transformations during dataset generation.
+
+* `llm_jailbreaker` : Uses an LLM to iteratively generate jailbreak attacks against the target.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `llm_multi_language_jailbreaker` : Generates jailbreak attempts using different languages, focusing on low-resource languages.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `llm_poetry_jailbreaker` : Generates jailbreak attempts in the form of poetry or rhymes.
+    * Options:
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `rag_poisoner` : Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+
 ## Usage Example
 ```bash
 # base64 and best_of_n plugin

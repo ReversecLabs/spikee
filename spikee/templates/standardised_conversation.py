@@ -14,10 +14,6 @@ class StandardisedConversation:
         self.conversation = {int(k): v for k, v in loaded.items()}
         self._next_id = max(self.conversation.keys()) + 1
 
-    def add_attempt(self):
-        """Increment the attempt counter."""
-        self._attempts += 1
-
     # region root
     def get_root_id(self) -> int:
         """Get the root message ID."""
@@ -41,7 +37,7 @@ class StandardisedConversation:
             return message["parent"]
         return -1
 
-    def add_message(self, parent_id: int, data) -> int:
+    def add_message(self, parent_id: int, data, attempt=False) -> int:
         """Add a message to the conversation graph."""
         message_id = self._next_id
         self._next_id += 1
@@ -51,11 +47,13 @@ class StandardisedConversation:
                 f"Parent ID {parent_id} does not exist in the conversation."
             )
 
-        message = {"parent": parent_id, "children": [], "data": data}
+        message = {"parent": parent_id, "children": [], "data": data, "attempt": attempt}
         self.conversation[message_id] = message
 
         if parent_id in self.conversation:
             self.conversation[parent_id]["children"].append(message_id)
+
+        self._attempts += 1 if attempt else 0
 
         return message_id
 
@@ -103,6 +101,16 @@ class StandardisedConversation:
     def get_path_length(self, message_id: int, root: bool = False) -> int:
         """Get the length of the path from root to the specified message ID."""
         return len(self.get_path(message_id, root))
+
+    def get_path_attempts(self, message_id: int) -> int:
+        """Get the number of attempts in the path from root to the specified message ID."""
+        path = self.get_path(message_id, root=True)
+        attempts = 0
+        for msg_id in path:
+            message = self.get_message(msg_id)
+            if message and message.get("attempt", False):
+                attempts += 1
+        return attempts
 
     # endregion
 
