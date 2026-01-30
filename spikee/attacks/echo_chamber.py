@@ -13,7 +13,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.tester import GuardrailTrigger, RetryableError
+from spikee.tester import GuardrailTrigger
 
 from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import extract_json_or_fail, parse_options
