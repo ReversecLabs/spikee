@@ -163,6 +163,7 @@ def _create_summary_entry(
     plugin_name,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     summary_entry = {
         "id": entry_id,
@@ -191,6 +192,10 @@ def _create_summary_entry(
         summary_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         summary_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        summary_entry["steering_keywords"] = steering_keywords
+
     return summary_entry
 
 
@@ -216,6 +221,7 @@ def _create_qa_entry(
     plugin_name,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     qa_entry = {
         "id": entry_id,
@@ -243,6 +249,10 @@ def _create_qa_entry(
         qa_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         qa_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        qa_entry["steering_keywords"] = steering_keywords
+
     return qa_entry
 
 
@@ -267,6 +277,7 @@ def _create_document_entry(
     output_format,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     doc_entry = {
         "id": entry_id,
@@ -293,6 +304,10 @@ def _create_document_entry(
         doc_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         doc_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        doc_entry["steering_keywords"] = steering_keywords
+
     return doc_entry
 
 
@@ -438,6 +453,10 @@ def process_standalone_attacks(
                 "plugin": None,
                 "exclude_from_transformations_regex": exclude_patterns,
             }
+
+            if "steering_keywords" in attack:
+                entry["steering_keywords"] = attack["steering_keywords"]
+
             dataset.append(entry)
             entry_id += 1
             bar_standalone.update(1)
@@ -498,6 +517,10 @@ def process_standalone_attacks(
                             "plugin": plugin_name,
                             "exclude_from_transformations_regex": exclude_patterns,
                         }
+
+                        if "steering_keywords" in attack:
+                            plugin_entry["steering_keywords"] = attack["steering_keywords"]
+
                         dataset.append(plugin_entry)
                         entry_id += 1
 
@@ -590,6 +613,7 @@ def generate_variations(
                 instruction_text = instruction["instruction"]
                 instruction_type = instruction.get("instruction_type", "")
                 instruction_lang = instruction.get("lang", "en")
+                instruction_steering_keywords = instruction.get("steering_keywords", None)
                 judge_name = instruction.get("judge_name", "canary")
                 judge_args = instruction.get(
                     "judge_args", instruction.get("canary", "")
@@ -700,6 +724,7 @@ def generate_variations(
                                                 None,
                                                 suffix_combined_text,
                                                 local_exclude,
+                                                instruction_steering_keywords,
                                             )
                                             dataset.append(summary_entry)
                                             entry_id += 1
@@ -727,6 +752,7 @@ def generate_variations(
                                                 None,
                                                 suffix_combined_text,
                                                 local_exclude,
+                                                instruction_steering_keywords,
                                             )
                                             dataset.append(qa_entry)
                                             entry_id += 1
@@ -754,6 +780,7 @@ def generate_variations(
                                                 output_format,
                                                 suffix_combined_text,
                                                 local_exclude,
+                                                instruction_steering_keywords,
                                             )
                                             dataset.append(doc_entry)
                                             entry_id += 1
@@ -858,6 +885,7 @@ def generate_variations(
                                                             plugin_name,
                                                             plugin_variant,
                                                             local_exclude,
+                                                            instruction_steering_keywords,
                                                         )
                                                     )
                                                     dataset.append(summary_entry)
@@ -886,6 +914,7 @@ def generate_variations(
                                                         plugin_name,
                                                         plugin_variant,
                                                         local_exclude,
+                                                        instruction_steering_keywords,
                                                     )
                                                     dataset.append(qa_entry)
                                                     entry_id += 1
@@ -913,6 +942,7 @@ def generate_variations(
                                                         output_format,
                                                         plugin_variant,
                                                         local_exclude,
+                                                        instruction_steering_keywords,
                                                     )
                                                     dataset.append(doc_entry)
                                                     entry_id += 1
