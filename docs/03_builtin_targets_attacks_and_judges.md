@@ -63,7 +63,7 @@ You can customize the behavior of attacks using the following command-line optio
 
 The following list provides an overview of each attack, further information on each attack can be found within each attack's file.
 
-**Basic Attacks:**
+**Standard Attacks:**
 * `anti_spotlighting`: Assess spotlighting vulnerabilities by sequentially trying variations of delimiter-based attacks.
 * `best_of_n`: Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising.
 * `prompt_decomposition`: Decomposes a prompt into chunks and generates shuffled variations.
@@ -72,7 +72,7 @@ The following list provides an overview of each attack, further information on e
         `variants` (number of variations to generate, default: 50).
 * `random_suffix_attack`: Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters.
 
-**LLM-Driven Attacks:**
+**'LLM-Driven' Attacks:**
 * `llm_jailbreaker`: Uses an LLM to iteratively generate jailbreak attacks against the target.
     * Options: 
         `model` (The LLM model to use for generating attacks, e.g., `model=openai-gpt-4o`).
@@ -89,6 +89,7 @@ The following list provides an overview of each attack, further information on e
 **Multi-Turn:**
 * `multi_turn`: Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. 
 * `crescendo`: Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). This is a simple multi-turn jailbreak that leverages an LLM Agent to prompt the target application with seemingly benign prompts, but gradually escalates the conversation by referencing the model's replies progressively leading to a successful jailbreak.
+* `echo_chamber`: Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). This multi-turn attack uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks.
 
 (NB, See [Multi-Turn Datasets](./02_dataset_generation.md#multi-turn-datasets) for more information.)
 
@@ -117,6 +118,7 @@ For some test cases, success cannot be determined by a simple keyword or pattern
 LLM-based judges address this by using a separate LLM to evaluate the target's response against a natural language criterion.
 
 * `llm_judge_harmful`: LLM judge to evaluate whether the target LLMs response complied with a potentially harmful user prompt.
+* `llm_judge_objective`: LLM judge to evaluate whether the target LLMs response meets a specific input objective.
 * `llm_judge_output_criteria`: LLM judge to evaluate whether the target LLMs response meets specific success criteria defined in `judge_args`.
 
 You can specify the LLM model used with the `--judge-options` flag. It currently supports the following providers, replace `<model_name>` with the desired model from that provider. (Providers may require API keys to be configured within your `.env` file):
