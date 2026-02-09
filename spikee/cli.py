@@ -9,7 +9,7 @@ from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
 
-from .generator import generate_dataset
+from .generator import generate_dataset, generate_plugin
 from .tester import test_dataset
 from .results import (
     analyze_results,
@@ -111,6 +111,10 @@ def main():
 
     # === [GENERATE] Sub-command ===============================================
     parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
+    subparsers_generate = parser_generate.add_subparsers(
+        dest="generate_command", help="Generation sub-commands"
+    )
+
     parser_generate.add_argument(
         "--seed-folder",
         default="datasets/seeds-mini-test",
@@ -199,6 +203,39 @@ def main():
         "--tag",
         default=None,
         help="Include a tag at the end of the generated dataset filename",
+    )
+
+    parser_plugin = subparsers_generate.add_parser(
+        "plugin", help="Apply a plugin transformation to a string"
+    )
+    parser_plugin.add_argument(
+        "-i", "--input_string",
+        help="The string to transform using the specified plugin(s)",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--exclude-patterns",
+        action="append",
+        default=None,
+        help="regex patterns to exclude from plugin transformation",
+    )
+    parser_plugin.add_argument(
+        "--iterations",
+        type=int,
+        default=1,
+        help="Number of iterations to apply the plugin transformation (default: 1)",
+    )
+    parser_plugin.add_argument(
+        "--plugins",
+        nargs="*",
+        default=[],
+        help="List of plugin names to modify the jailbreak+instruction text",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--plugin-options",
+        default=None,
+        help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
 
     # === [TEST] Sub-command ===================================================
@@ -543,7 +580,10 @@ def main():
         )
 
     elif args.command == "generate":
-        generate_dataset(args)
+        if args.generate_command == "plugin":
+            generate_plugin(args)
+        else:
+            generate_dataset(args)
     elif args.command == "test":
         test_dataset(args)
     elif args.command == "results":

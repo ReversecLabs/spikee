@@ -1253,3 +1253,38 @@ def generate_dataset(args):
     print_stats("Task Type", stats["by_task_type"])
     print_stats("Suffix ID", stats["by_suffix_id"])
     print_stats("Plugin ID", stats["by_plugin_id"])
+
+
+def generate_plugin(args):
+    text = args.input_string
+    exclude_patterns = args.exclude_patterns
+    iterations = int(args.iterations)
+
+    plugin_options_map = parse_plugin_options(args.plugin_options)
+    plugins = load_plugins(args.plugins)
+
+    if len(plugins) == 0:
+        print("No valid plugins found. Please check the plugin names and ensure they are in the correct directory.")
+        return
+
+    else:
+        print(f"Applying plugins: {[name for name, _ in plugins]} to input string: '{text}' with exclude patterns: {exclude_patterns}")
+
+    counter = 0
+    print("----------------------------------------------")
+    for plugin_name, module in plugins:
+
+        for _ in range(iterations):
+            output = apply_plugin(plugin_name, module, text, exclude_patterns, plugin_options_map)
+
+            if len(output) == 1:
+                print(f"{plugin_name}|{counter}: {output[0]}")
+
+            else:
+                print(f"{plugin_name}|{counter}:")
+                for variant in output:
+                    print(f"  - {variant}")
+
+            counter += 1
+
+            print("----------------------------------------------")
