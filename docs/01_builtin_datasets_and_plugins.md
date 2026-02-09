@@ -76,6 +76,8 @@ The following list provides an overview of each build-in plugin, further informa
 * `google_translate`: Translates text to another language.
     * Options: `source-lang` (language code for source language, default: `en`), `target-lang` (language code for target language, default: `zh-cn`).
 * `hex`: Encodes text into its hexadecimal representation.
+* `mask`: Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words.
+    * Options: `advanced` (if true, creates multiple masks for longer words), `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6).
 * `morse`: Encodes text into Morse code.
 * `shortener`: Uses an LLM to shorten the text to a specified maximum length while retaining key details.
     * Options: `max_length` (the maximum length for the shortened text, default: 256).
