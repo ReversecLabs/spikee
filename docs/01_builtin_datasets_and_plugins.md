@@ -73,6 +73,8 @@ The following list provides an overview of each build-in plugin, further informa
 * `base64`: Encodes text using Base64 encoding.
 * `ceasar`: Applies a Caesar cipher to the text, shifting letters by a specified number of positions.
     * Options: `shift` (number of positions to shift, default: 3).
+* `google_translate`: Translates text to another language.
+    * Options: `source-lang` (language code for source language, default: `en`), `target-lang` (language code for target language, default: `zh-cn`).
 * `hex`: Encodes text into its hexadecimal representation.
 * `morse`: Encodes text into Morse code.
 * `splat`: Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters,
