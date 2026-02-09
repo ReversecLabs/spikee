@@ -74,8 +74,6 @@ class Shortener(Plugin):
                 "excess_characters": "What the hell! Why are there " + str(max(0, length - max_length)) + " excess characters?"  # The text is critical to getting the LLM to listen, and avoid loops
             }
 
-            print(payload)
-
             response = llm.invoke([
                 SystemMessage(content=SHORTENER_PROMPT),
                 HumanMessage(content=json.dumps(payload))
