@@ -120,3 +120,13 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin base64 best_of_n \
                 --plugin-options "best_of_n:variants=20"
 ```
+
+## Plugin Piping Example
+```bash
+# Pipe the output of splat into 1337 into best_of_n for a combined obfuscation effect
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin "splat|1337|best_of_n" \
+                --plugin-options "best_of_n:variants=1"
+
+# (NB, plugin options apply to all uses of a specific plugin. For example, "--plugin splat|best_of_n best_of_n ----plugin-options best_of_n:variants=1" would apply the "variants=1" option to both instances of best_of_n in the plugin pipe.)
+```
