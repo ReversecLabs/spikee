@@ -133,3 +133,14 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
 
 # (NB, plugin options apply to all uses of a specific plugin. For example, "--plugin splat|best_of_n best_of_n ----plugin-options best_of_n:variants=1" would apply the "variants=1" option to both instances of best_of_n in the plugin pipe.)
 ```
+
+## Applying plugins to arbitrary strings via CLI
+You can also apply plugins to arbitrary strings directly from the command line, without needing to generate a full dataset. This is useful for quick testing or for applying transformations to specific inputs.
+
+```bash
+spikee generate plugin -i "Your input string here" \
+                       --exclude-patterns "regex_pattern_to_exclude" \
+                       --iterations 3 \
+                       --plugins base64 best_of_n \
+                       --plugin-options "best_of_n:variants=5"
+```
