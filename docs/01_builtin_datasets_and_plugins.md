@@ -77,6 +77,8 @@ The following list provides an overview of each build-in plugin, further informa
     * Options: `source-lang` (language code for source language, default: `en`), `target-lang` (language code for target language, default: `zh-cn`).
 * `hex`: Encodes text into its hexadecimal representation.
 * `morse`: Encodes text into Morse code.
+* `shortener`: Uses an LLM to shorten the text to a specified maximum length while retaining key details.
+    * Options: `max_length` (the maximum length for the shortened text, default: 256).
 * `splat`: Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters,
 and spacing tricks), to bypass basic filters.
     * Options: `character` (the character to use for splatting, default: `*`), `insert_rand` (probability of inserting a splat within words, default: 0.6), `pad_rand` (probability of padding words with splats, default: 0.4).
