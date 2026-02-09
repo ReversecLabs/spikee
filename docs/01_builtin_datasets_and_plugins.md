@@ -79,6 +79,7 @@ The following list provides an overview of each build-in plugin, further informa
 * `morse`: Encodes text into Morse code.
 * `splat`: Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters,
 and spacing tricks), to bypass basic filters.
+    * Options: `character` (the character to use for splatting, default: `*`), `insert_rand` (probability of inserting a splat within words, default: 0.6), `pad_rand` (probability of padding words with splats, default: 0.4).
 
 
 ## Attack Plugins
