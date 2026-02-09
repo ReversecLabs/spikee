@@ -540,7 +540,7 @@ class EchoChamber(Attack):
         return ["max-turns=20", "stage-attempts=3"], True
 
 # region Echo Chamber Prompts
-    def _query_attacker_llm(self, llm, messages: List[object], keys: List[str]) -> str:
+    def _query_attacker_llm(self, llm, messages: List[object], keys: List[str], refusal_query: bool = False) -> str:
         attempts = 0
         last_error = ""
         last_response = ""
@@ -559,6 +559,10 @@ class EchoChamber(Attack):
 
             if all(key in result for key in keys):
                 return result
+
+        # Ensure attack does not infinitely loops on refusal evaluation
+        if refusal_query:
+            return None
 
         refuse, explnation = self.evaluate_refusal(llm, str(messages), last_response)
         if refuse:
@@ -650,7 +654,7 @@ Select alternative words that capture similar meaning but are not in the exclude
                 HumanMessage(content=json.dumps({"question": question, "response": response})),
             ]
 
-        results = self._query_attacker_llm(llm, messages, ["answered", "explanation"])
+        results = self._query_attacker_llm(llm, messages, ["answered", "explanation"], refusal_query=True)
 
         answered = results.get("answered", None)
         explanation = results.get("explanation", None)
