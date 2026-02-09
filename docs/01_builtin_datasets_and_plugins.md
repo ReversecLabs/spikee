@@ -73,10 +73,17 @@ The following list provides an overview of each build-in plugin, further informa
 * `base64`: Encodes text using Base64 encoding.
 * `ceasar`: Applies a Caesar cipher to the text, shifting letters by a specified number of positions.
     * Options: `shift` (number of positions to shift, default: 3).
+* `google_translate`: Translates text to another language.
+    * Options: `source-lang` (language code for source language, default: `en`), `target-lang` (language code for target language, default: `zh-cn`).
 * `hex`: Encodes text into its hexadecimal representation.
+* `mask`: Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words.
+    * Options: `advanced` (if true, creates multiple masks for longer words), `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6).
 * `morse`: Encodes text into Morse code.
+* `shortener`: Uses an LLM to shorten the text to a specified maximum length while retaining key details.
+    * Options: `max_length` (the maximum length for the shortened text, default: 256).
 * `splat`: Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters,
 and spacing tricks), to bypass basic filters.
+    * Options: `character` (the character to use for splatting, default: `*`), `insert_rand` (probability of inserting a splat within words, default: 0.6), `pad_rand` (probability of padding words with splats, default: 0.4).
 
 
 ## Attack Plugins
@@ -93,10 +100,51 @@ LLM applications against spotlighting vulnerabilities.
         `modes` (LLM model to apply, default: dumb),
         `variants` (number of variations to generate, default: 50).
 
+## LLM Driven Plugins
+These plugins are based on LLM-driven dynamic attack plugins, but have been adapted to work as static transformations during dataset generation.
+
+* `llm_jailbreaker` : Uses an LLM to iteratively generate jailbreak attacks against the target.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `llm_multi_language_jailbreaker` : Generates jailbreak attempts using different languages, focusing on low-resource languages.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `llm_poetry_jailbreaker` : Generates jailbreak attempts in the form of poetry or rhymes.
+    * Options:
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+* `rag_poisoner` : Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective.
+    * Options: 
+        `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`).
+        `variants` (number of variations to generate, default: 5).
+
 ## Usage Example
 ```bash
 # base64 and best_of_n plugin
 spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin base64 best_of_n \
                 --plugin-options "best_of_n:variants=20"
+```
+
+## Plugin Piping Example
+```bash
+# Pipe the output of splat into 1337 into best_of_n for a combined obfuscation effect
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin "splat|1337|best_of_n" \
+                --plugin-options "best_of_n:variants=1"
+
+# (NB, plugin options apply to all uses of a specific plugin. For example, "--plugin splat|best_of_n best_of_n ----plugin-options best_of_n:variants=1" would apply the "variants=1" option to both instances of best_of_n in the plugin pipe.)
+```
+
+## Applying plugins to arbitrary strings via CLI
+You can also apply plugins to arbitrary strings directly from the command line, without needing to generate a full dataset. This is useful for quick testing or for applying transformations to specific inputs.
+
+```bash
+spikee generate plugin -i "Your input string here" \
+                       --exclude-patterns "regex_pattern_to_exclude" \
+                       --iterations 3 \
+                       --plugins base64 best_of_n \
+                       --plugin-options "best_of_n:variants=5"
 ```

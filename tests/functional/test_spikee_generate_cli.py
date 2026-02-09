@@ -5,6 +5,7 @@ from collections import Counter
 import pytest
 
 from spikee.templates.plugin import Plugin as BasePlugin
+from spikee.templates.basic_plugin import BasicPlugin as BaseBasicPlugin
 
 from .utils import (
     base_long_id,
@@ -28,8 +29,9 @@ def _instantiate_plugin(module):
     for attr in vars(module).values():
         if (
             isinstance(attr, type)
-            and issubclass(attr, BasePlugin)
+            and (issubclass(attr, BasePlugin) or issubclass(attr, BaseBasicPlugin))
             and attr is not BasePlugin
+            and attr is not BaseBasicPlugin
         ):
             return attr()
     raise AssertionError(f"No Plugin subclass found in {module.__name__}")

@@ -1,31 +1,17 @@
 from typing import Tuple, List
 
 from .judge import Judge
-from spikee.utilities.llm import get_llm, get_example_llm_models, get_supported_prefixes
+from spikee.utilities.llm import get_llm
 
 
 class LLMJudge(Judge):
     DEFAULT_LLM_MODEL = "openai-gpt-4.1-mini"
 
-    def get_available_option_values(self):
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """
         Returns the list of supported judge_options; first option is default.
         """
-        options = [self.DEFAULT_LLM_MODEL]  # Default first
-        options.extend(
-            [
-                model
-                for model in get_example_llm_models()
-                if model != self.DEFAULT_LLM_MODEL
-            ]
-        )
-        return options
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """
-        Returns the list of supported LLM model prefixes.
-        """
-        return True, get_supported_prefixes()
+        return [], True
 
     def _get_llm(self, judge_options):
         """

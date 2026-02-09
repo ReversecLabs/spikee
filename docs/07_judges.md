@@ -70,9 +70,16 @@ Spikee implements two types of judge template:
 
 #### Basic Judge Template
 ```python
+from typing import List, Tuple
+
 from spikee.templates.judge import Judge
+from spikee.utilities.enums import ModuleTag
 
 class SampleJudge(Judge):
+    def get_description(self) -> Tuple[object, List[ModuleTag], str]:
+        """Returns the type and a short description of the judge."""
+        return None, [], "A brief description of what this judge does."
+
     def get_available_option_values(self):
         """Returns a list of supported option values, first is default. None if no options."""
         return None
@@ -99,10 +106,16 @@ class SampleJudge(Judge):
 
 #### LLM-Based Judge Template
 ```python
+from typing import List, Tuple
+
 from spikee.templates.llm_judge import LLMJudge
+from spikee.utilities.enums import ModuleTag
 
 class SampleLLMJudge(LLMJudge):
     # get_available_option_values is handled by LLMJudge to select an LLM model for judging, do not redefine.
+    def get_description(self) -> Tuple[object, List[ModuleTag], str]:
+        """Returns the type and a short description of the judge."""
+        return None, [ModuleTag.LLM], "A brief description of what this judge does."
 
     def judge(
         self,

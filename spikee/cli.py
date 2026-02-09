@@ -9,7 +9,7 @@ from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
 
-from .generator import generate_dataset
+from .generator import generate_dataset, generate_plugin
 from .tester import test_dataset
 from .results import (
     analyze_results,
@@ -111,6 +111,10 @@ def main():
 
     # === [GENERATE] Sub-command ===============================================
     parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
+    subparsers_generate = parser_generate.add_subparsers(
+        dest="generate_command", help="Generation sub-commands"
+    )
+
     parser_generate.add_argument(
         "--seed-folder",
         default="datasets/seeds-mini-test",
@@ -137,6 +141,11 @@ def main():
         "--plugin-options",
         default=None,
         help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
+    )
+    parser_generate.add_argument(
+        "--plugin-only",
+        action="store_true",
+        help="Only output plugin entries",
     )
     parser_generate.add_argument(
         "--include-standalone-inputs",
@@ -194,6 +203,39 @@ def main():
         "--tag",
         default=None,
         help="Include a tag at the end of the generated dataset filename",
+    )
+
+    parser_plugin = subparsers_generate.add_parser(
+        "plugin", help="Apply a plugin transformation to a string"
+    )
+    parser_plugin.add_argument(
+        "-i", "--input_string",
+        help="The string to transform using the specified plugin(s)",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--exclude-patterns",
+        action="append",
+        default=None,
+        help="regex patterns to exclude from plugin transformation",
+    )
+    parser_plugin.add_argument(
+        "--iterations",
+        type=int,
+        default=1,
+        help="Number of iterations to apply the plugin transformation (default: 1)",
+    )
+    parser_plugin.add_argument(
+        "--plugins",
+        nargs="*",
+        default=[],
+        help="List of plugin names to modify the jailbreak+instruction text",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--plugin-options",
+        default=None,
+        help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
 
     # === [TEST] Sub-command ===================================================
@@ -505,12 +547,21 @@ def main():
     list_subparsers = parser_list.add_subparsers(
         dest="list_command", help="What to list"
     )
-    list_subparsers.add_parser("seeds", help="List available seed folders")
-    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files")
-    list_subparsers.add_parser("judges", help="List available judges")
-    list_subparsers.add_parser("targets", help="List available targets")
-    list_subparsers.add_parser("plugins", help="List available plugins")
-    list_subparsers.add_parser("attacks", help="List available attack scripts")
+
+    list_subparsers.add_parser("seeds", help="List available seed folders"),
+    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files"),
+    list_subparsers.add_parser("targets", help="List available targets"),
+
+    for subparser in [
+        list_subparsers.add_parser("judges", help="List available judges"),
+        list_subparsers.add_parser("plugins", help="List available plugins"),
+        list_subparsers.add_parser("attacks", help="List available attack scripts"),
+    ]:
+        subparser.add_argument(
+            "-d", "--description",
+            action="store_true",
+            help="Include descriptions of modules where available",
+        )
 
     args = convert_to_new_args(parser.parse_args())
 
@@ -529,7 +580,10 @@ def main():
         )
 
     elif args.command == "generate":
-        generate_dataset(args)
+        if args.generate_command == "plugin":
+            generate_plugin(args)
+        else:
+            generate_dataset(args)
     elif args.command == "test":
         test_dataset(args)
     elif args.command == "results":

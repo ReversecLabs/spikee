@@ -18,13 +18,17 @@ Returns:
     str: The transformed text in Morse code.
 """
 
-from typing import List
+from typing import List, Tuple
 import re
 
-from spikee.templates.plugin import Plugin
+from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.enums import ModuleTag
 
 
-class MorsePlugin(Plugin):
+class MorsePlugin(BasicPlugin):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into Morse code."
+
     MORSE_CODE_DICT = {
         "A": ".-",
         "B": "-...",
@@ -86,7 +90,7 @@ class MorsePlugin(Plugin):
     def get_available_option_values(self) -> List[str]:
         return None
 
-    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+    def plugin_transform(self, text: str, plugin_option: str = None) -> str:
         """
         Transforms the input text into Morse code while preserving any substring that
         exactly matches one of the exclusion regex patterns.
@@ -98,28 +102,9 @@ class MorsePlugin(Plugin):
 
         Args:
             text (str): The input text.
-            exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+            plugin_option (str, optional): An optional plugin option.
 
         Returns:
             str: The transformed text in Morse code.
         """
-        if exclude_patterns:
-            compound = "(" + "|".join(exclude_patterns) + ")"
-            compound_re = re.compile(compound)
-            chunks = re.split(compound, text)
-        else:
-            chunks = [text]
-            compound_re = None
-
-        result_chunks = []
-        for chunk in chunks:
-            if compound_re and compound_re.fullmatch(chunk):
-                # Leave excluded substrings untouched.
-                result_chunks.append(chunk)
-            else:
-                transformed = " ".join(
-                    self.MORSE_CODE_DICT.get(c.upper(), c) for c in chunk
-                )
-                result_chunks.append(transformed)
-
-        return " ".join(result_chunks)
+        return " ".join(self.MORSE_CODE_DICT.get(c.upper(), c) for c in text)

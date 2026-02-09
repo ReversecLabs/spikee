@@ -18,54 +18,31 @@ Returns:
 """
 
 import re
-from typing import List
+from typing import List, Tuple
 
-from spikee.templates.plugin import Plugin
+from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.enums import ModuleTag
 
 
-class HexPlugin(Plugin):
+class HexPlugin(BasicPlugin):
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into hexadecimal encoding."
+
     def get_available_option_values(self) -> List[str]:
         return None
 
-    def hex_encode(self, text: str) -> str:
-        """
-        Encodes the input text into hexadecimal format.
-
-        Args:
-            text (str): The input text.
-
-        Returns:
-            str: The hex-encoded representation of the text.
-        """
-        return text.encode().hex()
-
-    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+    def plugin_transform(self, text: str, plugin_option: str = None) -> str:
         """
         Transforms the input text into hexadecimal encoding while preserving any substring
         that exactly matches one of the exclusion regex patterns.
 
         Args:
             text (str): The input text.
-            exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+            plugin_option (str, optional): An optional plugin option.
 
         Returns:
             str: The transformed text in hexadecimal encoding.
         """
-        if exclude_patterns:
-            compound = "(" + "|".join(exclude_patterns) + ")"
-            compound_re = re.compile(compound)
-            chunks = re.split(compound, text)
-        else:
-            chunks = [text]
-            compound_re = None
 
-        result_chunks = []
-        for chunk in chunks:
-            if compound_re and compound_re.fullmatch(chunk):
-                # Leave excluded substrings untouched.
-                result_chunks.append(chunk)
-            else:
-                transformed = self.hex_encode(chunk)
-                result_chunks.append(transformed)
-
-        return " ".join(result_chunks)
+        return text.encode().hex()

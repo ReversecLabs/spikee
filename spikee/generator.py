@@ -5,6 +5,8 @@ import time
 from collections import defaultdict
 from tabulate import tabulate
 from pathlib import Path
+from tqdm import tqdm
+from typing import Union, List
 
 from .utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
 from .utilities.modules import load_module_from_path
@@ -162,6 +164,7 @@ def _create_summary_entry(
     plugin_name,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     summary_entry = {
         "id": entry_id,
@@ -190,6 +193,10 @@ def _create_summary_entry(
         summary_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         summary_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        summary_entry["steering_keywords"] = steering_keywords
+
     return summary_entry
 
 
@@ -215,6 +222,7 @@ def _create_qa_entry(
     plugin_name,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     qa_entry = {
         "id": entry_id,
@@ -242,6 +250,10 @@ def _create_qa_entry(
         qa_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         qa_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        qa_entry["steering_keywords"] = steering_keywords
+
     return qa_entry
 
 
@@ -266,6 +278,7 @@ def _create_document_entry(
     output_format,
     payload,
     exclude_regex_list=None,
+    steering_keywords=None,
 ):
     doc_entry = {
         "id": entry_id,
@@ -292,6 +305,10 @@ def _create_document_entry(
         doc_entry["long_id"] += f"-{suffix_id}"
     if system_message:
         doc_entry["long_id"] += "-sys"
+
+    if steering_keywords is not None:
+        doc_entry["steering_keywords"] = steering_keywords
+
     return doc_entry
 
 
@@ -309,13 +326,45 @@ def load_plugins(plugin_names):
     plugins = []
 
     for name in plugin_names:
-        try:
-            plugins.append((name, load_module_from_path(name, "plugins")))
-        except (ImportError, ValueError) as e:
-            print(
-                f"Warning: Plugin '{name}' not found locally or in built-in plugins.: {e}"
-            )
+        name = parse_plugin_piping(name)  # Handle plugin piping syntax
+
+        if isinstance(name, str):
+            try:
+                plugins.append((name, load_module_from_path(name, "plugins")))
+            except (ImportError, ValueError) as e:
+                print(
+                    f"Warning: Plugin '{name}' not found locally or in built-in plugins.: {e}"
+                )
+
+        else:  # If it's a plugin pipe, load each sub-plugin and store as a list
+            plugin_pipe = []
+            for sub_name in name:
+                try:
+                    plugin_pipe.append((sub_name, load_module_from_path(sub_name, "plugins")))
+                except (ImportError, ValueError) as e:
+                    print(
+                        f"Warning: Plugin '{sub_name}' in '{'|'.join(name)}' not found locally or in built-in plugins.: {e}"
+                    )
+
+            plugins.append(('~'.join(name), plugin_pipe))
+
     return plugins
+
+
+def parse_plugin_piping(plugin: str) -> Union[str, List[str], None]:
+    """
+    Parses a plugin piping string like "plugin1|plugin2|plugin3" into a list of plugin modules.
+    Each plugin is loaded using the load_plugins function.
+    """
+    if not plugin:
+        return None
+
+    if "|" in plugin:
+        plugin_names = [name.strip() for name in plugin.split("|")]
+        return plugin_names
+
+    else:
+        return plugin.strip()
 
 
 def parse_plugin_options(plugin_options_str):
@@ -335,28 +384,61 @@ def parse_plugin_options(plugin_options_str):
     return options_map
 
 
+def get_plugin_variants(plugin_module, plugin_option):
+    """
+    Obtains the number of variants a plugin will produce based on its options.
+    """
+
+    if hasattr(plugin_module, "get_variants"):
+        return plugin_module.get_variants(plugin_option)
+
+    else:
+        return 1
+
+
 def apply_plugin(
-    plugin_name, plugin_module, text, exclude_patterns=None, plugin_option=None
+    plugin_name, plugin_module, text, exclude_patterns=None, plugin_option_map=None
 ):
     """
     Applies a plugin module's transform function to the given text if available.
     """
 
-    if hasattr(plugin_module, "transform"):
-        # Check if the plugin's transform function accepts plugin_option parameter
+    plugins = []
 
-        sig = inspect.signature(plugin_module.transform)
-        params = sig.parameters
+    if "~" in plugin_name:  # Handle plugin piping syntax
+        plugins.extend(plugin_module)
+    else:
+        plugins.append((plugin_name, plugin_module))
 
-        if "plugin_option" in params:
-            return plugin_module.transform(text, exclude_patterns, plugin_option)
+    text = [text]
+
+    for name, module in plugins:
+        new_text = []
+        if hasattr(module, "transform"):
+            # Check if the plugin's transform function accepts plugin_option parameter
+
+            sig = inspect.signature(module.transform)
+            params = sig.parameters
+
+            for t in text:
+
+                if "plugin_option" in params:
+                    res = module.transform(t, exclude_patterns, plugin_option_map.get(name) if plugin_option_map else None)
+                else:
+                    # Older plugin without plugin_option support
+                    res = module.transform(t, exclude_patterns)
+
+                if isinstance(res, str):
+                    new_text.append(res)
+                elif isinstance(res, list):
+                    new_text.extend(res)
+
+            text = new_text
+
         else:
-            # Older plugin without plugin_option support
-            return plugin_module.transform(text, exclude_patterns)
+            print(f"Plugin '{plugin_name}' does not have a 'transform' function.")
 
-    print(f"Plugin '{plugin_name}' does not have a 'transform' function.")
     return text
-
 
 # endregion
 
@@ -368,12 +450,44 @@ def process_standalone_attacks(
     plugins=None,
     output_format="full-prompt",
     plugin_options_map=None,
+    plugin_only=False,
 ):
     """
     Processes standalone attacks and appends them to the dataset.
     If plugins are provided, applies them to each standalone attack.
     Returns the updated dataset and the next entry_id.
     """
+    plugin_variants = {}
+    if plugins:
+        for plugin_name, plugin_module in plugins:
+            if "~" in plugin_name:  # Handle plugin pipes
+                sub_plugins = plugin_name.split("~")
+                total_variants = 1
+                for sub_plugin in sub_plugins:
+                    sub_plugin_option = (
+                        plugin_options_map.get(sub_plugin)
+                        if plugin_options_map
+                        else None
+                    )
+                    variants = get_plugin_variants(plugin_module[1], sub_plugin_option)
+                    total_variants *= variants
+                plugin_variants[plugin_name] = total_variants
+
+            else:
+                plugin_option = (
+                    plugin_options_map.get(plugin_name)
+                    if plugin_options_map
+                    else None
+                )
+                plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+
+    total_entries = len(standalone_attacks) * (sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0))
+    bar_standalone = tqdm(
+        total=total_entries,
+        desc="Standalone Attacks",
+        initial=1
+    )
+
     for attack in standalone_attacks:
         # If no judge_name, fallback
         if "judge_name" not in attack:
@@ -386,40 +500,39 @@ def process_standalone_attacks(
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
         # Process the base attack without plugins first
-        entry = {
-            "id": entry_id,
-            "long_id": attack["id"],
-            "text": attack_text,
-            "judge_name": attack["judge_name"],
-            "judge_args": attack["judge_args"],
-            "injected": "true",
-            "jailbreak_type": attack.get("jailbreak_type", ""),
-            "instruction_type": attack.get("instruction_type", ""),
-            "task_type": None,
-            "document_id": None,
-            "position": None,
-            "spotlighting_data_markers": None,
-            "injection_delimiters": None,
-            "lang": attack.get("lang", "en"),
-            "suffix_id": None,
-            "payload": attack_text,
-            "plugin": None,
-            "exclude_from_transformations_regex": exclude_patterns,
-        }
-        dataset.append(entry)
-        entry_id += 1
+        if not plugin_only:
+            entry = {
+                "id": entry_id,
+                "long_id": attack["id"],
+                "text": attack_text,
+                "judge_name": attack["judge_name"],
+                "judge_args": attack["judge_args"],
+                "injected": "true",
+                "jailbreak_type": attack.get("jailbreak_type", ""),
+                "instruction_type": attack.get("instruction_type", ""),
+                "task_type": None,
+                "document_id": None,
+                "position": None,
+                "spotlighting_data_markers": None,
+                "injection_delimiters": None,
+                "lang": attack.get("lang", "en"),
+                "suffix_id": None,
+                "payload": attack_text,
+                "plugin": None,
+                "exclude_from_transformations_regex": exclude_patterns,
+            }
+
+            if "steering_keywords" in attack:
+                entry["steering_keywords"] = attack["steering_keywords"]
+
+            dataset.append(entry)
+            entry_id += 1
+            bar_standalone.update(1)
 
         # Apply plugins if provided
         if plugins:
             for plugin_name, plugin_module in plugins:
                 try:
-                    # Get option for this specific plugin
-                    plugin_option = (
-                        plugin_options_map.get(plugin_name)
-                        if plugin_options_map
-                        else None
-                    )
-
                     # Convert exclude_patterns to a list if it's a string or None
                     exclude_list = []
                     if exclude_patterns:
@@ -434,7 +547,7 @@ def process_standalone_attacks(
                         plugin_module,
                         attack_text,
                         exclude_list,
-                        plugin_option,
+                        plugin_options_map,
                     )
 
                     # Ensure the result is a list of variations
@@ -465,14 +578,28 @@ def process_standalone_attacks(
                             "plugin": plugin_name,
                             "exclude_from_transformations_regex": exclude_patterns,
                         }
+
+                        if "steering_keywords" in attack:
+                            plugin_entry["steering_keywords"] = attack["steering_keywords"]
+
                         dataset.append(plugin_entry)
                         entry_id += 1
+
+                    if len(plugin_result) < plugin_variants[plugin_name]:
+                        total_entries -= plugin_variants[plugin_name] - len(plugin_result)
+                        bar_standalone.total = total_entries
+                        bar_standalone.refresh()
+
+                    bar_standalone.update(len(plugin_result))
                 except Exception as e:
                     print(
                         f"Warning: Plugin '{plugin_name}' failed for standalone attack '{attack['id']}': {e}"
                     )
+                    import traceback
+                    traceback.print_exc()
                     continue
 
+    bar_standalone.close()
     return dataset, entry_id
 
 
@@ -489,6 +616,7 @@ def generate_variations(
     match_languages=False,
     system_message_config=None,
     plugin_options_map=None,
+    plugin_only=False,
 ):
     """
     Generates dataset variations from the given base documents, jailbreaks,
@@ -499,6 +627,44 @@ def generate_variations(
     entry_id = 1
 
     suffixes = [None] + adv_suffixes if adv_suffixes else [None]
+
+    plugin_variants = {}
+    if plugins:
+        for plugin_name, plugin_module in plugins:
+            if "~" in plugin_name:  # Handle plugin pipes
+                sub_plugins = plugin_name.split("~")
+                total_variants = 1
+                for sub_plugin in sub_plugins:
+                    sub_plugin_option = (
+                        plugin_options_map.get(sub_plugin)
+                        if plugin_options_map
+                        else None
+                    )
+                    variants = get_plugin_variants(plugin_module[1], sub_plugin_option)
+                    total_variants *= variants
+                plugin_variants[plugin_name] = total_variants
+
+            else:
+                plugin_option = (
+                    plugin_options_map.get(plugin_name)
+                    if plugin_options_map
+                    else None
+                )
+                plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+
+    total_entries = (
+        len(base_docs)
+        * len(jailbreaks)
+        * len(instructions)
+        * len(positions)
+        * len(injection_delimiters)
+        * len(spotlighting_data_markers_list)
+        * len(suffixes)
+        * sum(plugin_variants.values() or [1]) + 1 if not plugin_only else 0
+    )
+    bar_variations = tqdm(
+        total=total_entries, desc="Variations", initial=0
+    )
 
     for base_doc in base_docs:
         base_id = base_doc["id"]
@@ -524,6 +690,7 @@ def generate_variations(
                 instruction_text = instruction["instruction"]
                 instruction_type = instruction.get("instruction_type", "")
                 instruction_lang = instruction.get("lang", "en")
+                instruction_steering_keywords = instruction.get("steering_keywords", None)
                 judge_name = instruction.get("judge_name", "canary")
                 judge_args = instruction.get(
                     "judge_args", instruction.get("canary", "")
@@ -531,6 +698,15 @@ def generate_variations(
 
                 # If match_languages is enabled, skip if jailbreak and instruction languages do not match
                 if match_languages and jailbreak_lang != instruction_lang:
+                    total_entries -= (
+                        len(positions)
+                        * len(injection_delimiters)
+                        * len(spotlighting_data_markers_list)
+                        * len(suffixes)
+                        * sum(plugin_variants.values() or [1])
+                    )
+                    bar_variations.total = total_entries
+                    bar_variations.refresh()
                     continue
 
                 # Creates combined jailbreak and instruction texts
@@ -566,129 +742,129 @@ def generate_variations(
                         suffix_combined_text += " " + suffix["suffix"]
                         suffix_id = suffix["id"]
 
-                    for position in (
-                        insert_positions
-                    ):  # Applied with --positions, by default ['end']
-                        for injection_pattern in injection_delimiters:  # Applied with --injection-delimiters, by default "\nINJECTION_PAYLOAD\n"
-                            # Combine document with suffix_combined_text (jailbreak + instruction + suffix)
-                            # suffix_combined_text is inserted into the injection_pattern at 'INJECTION_PAYLOAD' placeholder
-                            # Document Placeholder: Injection is placed into document placeholder
-                            # Otherwise: Injection is placed into document at position (start, middle, end)
-                            injected_doc = insert_jailbreak(
-                                document,
-                                suffix_combined_text,
-                                position,
-                                injection_pattern,
-                                placeholder,
-                            )
+                    if not plugin_only:
+                        for position in (
+                            insert_positions
+                        ):  # Applied with --positions, by default ['end']
+                            for injection_pattern in injection_delimiters:  # Applied with --injection-delimiters, by default "\nINJECTION_PAYLOAD\n"
+                                # Combine document with suffix_combined_text (jailbreak + instruction + suffix)
+                                # suffix_combined_text is inserted into the injection_pattern at 'INJECTION_PAYLOAD' placeholder
+                                # Document Placeholder: Injection is placed into document placeholder
+                                # Otherwise: Injection is placed into document at position (start, middle, end)
+                                injected_doc = insert_jailbreak(
+                                    document,
+                                    suffix_combined_text,
+                                    position,
+                                    injection_pattern,
+                                    placeholder,
+                                )
 
-                            if output_format == "burp":
-                                burp_payload_encoded = json.dumps(injected_doc)[1:-1]
-                                dataset.append(burp_payload_encoded)
-                            else:
-                                for spotlighting_data_marker in spotlighting_data_markers_list:  # Applied with --spotlighting-data-markers, by default "\nDOCUMENT\n"
-                                    # Applied with --include-system-message flag - gets system message associated with spotlighting data marker
-                                    system_message = get_system_message(
-                                        system_message_config, spotlighting_data_marker
-                                    )
+                                if output_format == "burp":
+                                    burp_payload_encoded = json.dumps(injected_doc)[1:-1]
+                                    dataset.append(burp_payload_encoded)
+                                else:
+                                    for spotlighting_data_marker in spotlighting_data_markers_list:  # Applied with --spotlighting-data-markers, by default "\nDOCUMENT\n"
+                                        # Applied with --include-system-message flag - gets system message associated with spotlighting data marker
+                                        system_message = get_system_message(
+                                            system_message_config, spotlighting_data_marker
+                                        )
 
-                                    if output_format == "full-prompt":
-                                        # Combines injected document with spotlighting data marker
-                                        wrapped_document = (
-                                            injected_doc
-                                            if spotlighting_data_marker == "none"
-                                            else spotlighting_data_marker.replace(
-                                                "DOCUMENT", injected_doc
+                                        if output_format == "full-prompt":
+                                            # Combines injected document with spotlighting data marker
+                                            wrapped_document = (
+                                                injected_doc
+                                                if spotlighting_data_marker == "none"
+                                                else spotlighting_data_marker.replace(
+                                                    "DOCUMENT", injected_doc
+                                                )
                                             )
-                                        )
 
-                                        # Create summary entry - "Summarize the following document: {wrapped_document}"
-                                        summary_entry = _create_summary_entry(
-                                            entry_id,
-                                            base_id,
-                                            jailbreak_id,
-                                            instruction_id,
-                                            position,
-                                            "",
-                                            wrapped_document,
-                                            judge_name,
-                                            judge_args,
-                                            ideal_summary,
-                                            jailbreak_type,
-                                            instruction_type,
-                                            injection_pattern,
-                                            spotlighting_data_marker,
-                                            lang,
-                                            suffix_id,
-                                            system_message,
-                                            None,
-                                            suffix_combined_text,
-                                            local_exclude,
-                                        )
-                                        dataset.append(summary_entry)
-                                        entry_id += 1
+                                            # Create summary entry - "Summarize the following document: {wrapped_document}"
+                                            summary_entry = _create_summary_entry(
+                                                entry_id,
+                                                base_id,
+                                                jailbreak_id,
+                                                instruction_id,
+                                                position,
+                                                "",
+                                                wrapped_document,
+                                                judge_name,
+                                                judge_args,
+                                                ideal_summary,
+                                                jailbreak_type,
+                                                instruction_type,
+                                                injection_pattern,
+                                                spotlighting_data_marker,
+                                                lang,
+                                                suffix_id,
+                                                system_message,
+                                                None,
+                                                suffix_combined_text,
+                                                local_exclude,
+                                                instruction_steering_keywords,
+                                            )
+                                            dataset.append(summary_entry)
+                                            entry_id += 1
 
-                                        # Create Q&A entry - "Given this document: {wrapped_document} Answer the following question: {question}"
-                                        qa_entry = _create_qa_entry(
-                                            entry_id,
-                                            base_id,
-                                            jailbreak_id,
-                                            instruction_id,
-                                            position,
-                                            "",
-                                            wrapped_document,
-                                            judge_name,
-                                            judge_args,
-                                            question,
-                                            ideal_answer,
-                                            jailbreak_type,
-                                            instruction_type,
-                                            injection_pattern,
-                                            spotlighting_data_marker,
-                                            lang,
-                                            suffix_id,
-                                            system_message,
-                                            None,
-                                            suffix_combined_text,
-                                            local_exclude,
-                                        )
-                                        dataset.append(qa_entry)
-                                        entry_id += 1
+                                            # Create Q&A entry - "Given this document: {wrapped_document} Answer the following question: {question}"
+                                            qa_entry = _create_qa_entry(
+                                                entry_id,
+                                                base_id,
+                                                jailbreak_id,
+                                                instruction_id,
+                                                position,
+                                                "",
+                                                wrapped_document,
+                                                judge_name,
+                                                judge_args,
+                                                question,
+                                                ideal_answer,
+                                                jailbreak_type,
+                                                instruction_type,
+                                                injection_pattern,
+                                                spotlighting_data_marker,
+                                                lang,
+                                                suffix_id,
+                                                system_message,
+                                                None,
+                                                suffix_combined_text,
+                                                local_exclude,
+                                                instruction_steering_keywords,
+                                            )
+                                            dataset.append(qa_entry)
+                                            entry_id += 1
 
-                                    elif output_format == "user-input":
-                                        # Create document entry
-                                        doc_entry = _create_document_entry(
-                                            entry_id,
-                                            base_id,
-                                            jailbreak_id,
-                                            instruction_id,
-                                            position,
-                                            "",
-                                            injected_doc,
-                                            judge_name,
-                                            judge_args,
-                                            jailbreak_type,
-                                            instruction_type,
-                                            injection_pattern,
-                                            spotlighting_data_marker,
-                                            lang,
-                                            suffix_id,
-                                            system_message,
-                                            None,
-                                            output_format,
-                                            suffix_combined_text,
-                                            local_exclude,
-                                        )
-                                        dataset.append(doc_entry)
-                                        entry_id += 1
+                                        elif output_format == "user-input":
+                                            # Create document entry
+                                            doc_entry = _create_document_entry(
+                                                entry_id,
+                                                base_id,
+                                                jailbreak_id,
+                                                instruction_id,
+                                                position,
+                                                "",
+                                                injected_doc,
+                                                judge_name,
+                                                judge_args,
+                                                jailbreak_type,
+                                                instruction_type,
+                                                injection_pattern,
+                                                spotlighting_data_marker,
+                                                lang,
+                                                suffix_id,
+                                                system_message,
+                                                None,
+                                                output_format,
+                                                suffix_combined_text,
+                                                local_exclude,
+                                                instruction_steering_keywords,
+                                            )
+                                            dataset.append(doc_entry)
+                                            entry_id += 1
 
+                                    bar_variations.update(len(spotlighting_data_markers_list))
                     # 2) Plugin entries
                     for plugin_name, plugin_module in plugins:
-                        plugin_option = (
-                            plugin_options_map.get(plugin_name)
-                            if plugin_options_map
-                            else None
-                        )
 
                         for suffix in suffixes:
                             # Get the transformed text(s) from the plugin.
@@ -697,7 +873,7 @@ def generate_variations(
                                 plugin_module,
                                 combined_text,
                                 local_exclude,
-                                plugin_option,
+                                plugin_options_map,
                             )
 
                             # Ensure the plugin result is a list of variations.
@@ -781,6 +957,7 @@ def generate_variations(
                                                             plugin_name,
                                                             plugin_variant,
                                                             local_exclude,
+                                                            instruction_steering_keywords,
                                                         )
                                                     )
                                                     dataset.append(summary_entry)
@@ -809,6 +986,7 @@ def generate_variations(
                                                         plugin_name,
                                                         plugin_variant,
                                                         local_exclude,
+                                                        instruction_steering_keywords,
                                                     )
                                                     dataset.append(qa_entry)
                                                     entry_id += 1
@@ -836,10 +1014,17 @@ def generate_variations(
                                                         output_format,
                                                         plugin_variant,
                                                         local_exclude,
+                                                        instruction_steering_keywords,
                                                     )
                                                     dataset.append(doc_entry)
                                                     entry_id += 1
+                            if len(plugin_result) < plugin_variants[plugin_name]:
+                                total_entries -= (plugin_variants[plugin_name] - len(plugin_result)) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list)
+                                bar_variations.total = total_entries
+                                bar_variations.refresh()
 
+                            bar_variations.update(len(plugin_result) * len(insert_positions) * len(injection_delimiters) * len(spotlighting_data_markers_list))
+    bar_variations.close()
     return dataset, entry_id
 
 
@@ -982,6 +1167,7 @@ def generate_dataset(args):
         match_languages=match_languages,
         system_message_config=system_message_config,
         plugin_options_map=plugin_options_map,
+        plugin_only=args.plugin_only,
     )
 
     # Generate Standalone Attacks
@@ -995,6 +1181,7 @@ def generate_dataset(args):
             plugins=plugins if args.plugins else None,
             output_format=output_format,
             plugin_options_map=plugin_options_map,
+            plugin_only=args.plugin_only,
         )
 
     timestamp = int(time.time())
@@ -1066,3 +1253,38 @@ def generate_dataset(args):
     print_stats("Task Type", stats["by_task_type"])
     print_stats("Suffix ID", stats["by_suffix_id"])
     print_stats("Plugin ID", stats["by_plugin_id"])
+
+
+def generate_plugin(args):
+    text = args.input_string
+    exclude_patterns = args.exclude_patterns
+    iterations = int(args.iterations)
+
+    plugin_options_map = parse_plugin_options(args.plugin_options)
+    plugins = load_plugins(args.plugins)
+
+    if len(plugins) == 0:
+        print("No valid plugins found. Please check the plugin names and ensure they are in the correct directory.")
+        return
+
+    else:
+        print(f"Applying plugins: {[name for name, _ in plugins]} to input string: '{text}' with exclude patterns: {exclude_patterns}")
+
+    counter = 0
+    print("----------------------------------------------")
+    for plugin_name, module in plugins:
+
+        for _ in range(iterations):
+            output = apply_plugin(plugin_name, module, text, exclude_patterns, plugin_options_map)
+
+            if len(output) == 1:
+                print(f"{plugin_name}|{counter}: {output[0]}")
+
+            else:
+                print(f"{plugin_name}|{counter}:")
+                for variant in output:
+                    print(f"  - {variant}")
+
+            counter += 1
+
+            print("----------------------------------------------")

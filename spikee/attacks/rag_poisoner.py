@@ -11,17 +11,13 @@ Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
 
-import json
-import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from spikee.templates.attack import Attack
-from spikee.utilities.llm import (
-    get_llm,
-    get_supported_llm_models,
-    get_example_llm_models,
-    get_supported_prefixes,
-)
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm import get_llm
+from spikee.utilities.modules import parse_options, extract_json_or_fail
+
 
 # RAG Poisoner prompt template
 SPIKEE_RAG_POISONER_PROMPT = """
@@ -91,69 +87,14 @@ Ensure the entire attack_prompt is less than 500 characters, this is a limitatio
 
 
 class RAGPoisoner(Attack):
-    @property
-    def __name__(self):
-        return "rag_poisoner"
-
     DEFAULT_MODEL = "openai-gpt-4o"
 
-    def get_available_option_values(self) -> List[str]:
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates RAG Poisoner attack prompts using an LLM."
+
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options."""
-        return [f"model={model}" for model in get_example_llm_models()] + [
-            f"model={model}" for model in get_supported_llm_models()
-        ]
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
-
-    def _parse_attack_option(self, option: Optional[str]) -> Dict[str, str]:
-        opts: Dict[str, str] = {}
-        if not option:
-            return opts
-        for p in (x.strip() for x in option.split(",") if x.strip()):
-            if "=" in p:
-                k, v = p.split("=", 1)
-                opts[k.strip()] = v.strip()
-        return opts
-
-    def _extract_json_or_fail(self, text: str) -> Dict[str, Any]:
-        """
-        Robust JSON extractor.
-        """
-        if not text:
-            raise RuntimeError("LLM returned empty response")
-
-        t = text.strip()
-
-        # 1) fenced code block
-        m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
-        if m:
-            t = m.group(1).strip()
-
-        # 2) try direct JSON parse
-        try:
-            return json.loads(t)
-        except Exception:
-            # 3) scan for first balanced {...}
-            start = -1
-            depth = 0
-            for i, ch in enumerate(t):
-                if ch == "{":
-                    if depth == 0:
-                        start = i
-                    depth += 1
-                elif ch == "}":
-                    if depth > 0:
-                        depth -= 1
-                        if depth == 0 and start != -1:
-                            candidate = t[start : i + 1]
-                            try:
-                                return json.loads(candidate)
-                            except Exception:
-                                start = -1
-
-        raise RuntimeError("LLM did not return valid JSON object")
+        return [], True
 
     def _generate_rag_attack(
         self, llm, objective: str, previous_attempts: List[Dict]
@@ -179,7 +120,7 @@ class RAGPoisoner(Attack):
         )
         res_text = llm.invoke(prompt).content.strip()
 
-        obj = self._extract_json_or_fail(res_text)
+        obj = extract_json_or_fail(res_text)
         attack_prompt = obj.get("attack_prompt", "")
         if not attack_prompt:
             raise RuntimeError("LLM failed to produce an attack prompt")
@@ -201,7 +142,7 @@ class RAGPoisoner(Attack):
         supporting the objective, then checks if the attack was successful.
         """
         # Parse attack option for model selection
-        opts = self._parse_attack_option(attack_option)
+        opts = parse_options(attack_option)
         model_name = opts.get("model", self.DEFAULT_MODEL)
 
         # Get the objective from the entry
