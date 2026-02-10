@@ -414,10 +414,13 @@ def process_standalone_attacks(
             plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
 
     total_entries = len(standalone_attacks) * (sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0))
+
+    print(f"\nStandalone Entry Breakdown: {total_entries} = ({len(standalone_attacks)} attacks * {sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)} plugin variations)\n")
+
     bar_standalone = tqdm(
         total=total_entries,
         desc="Standalone Attacks",
-        initial=1
+        initial=0
     )
 
     for attack in standalone_attacks:
@@ -583,8 +586,18 @@ def generate_variations(
         * len(injection_delimiters)
         * len(spotlighting_data_markers_list)
         * len(suffixes)
-        * sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)
+        * (sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0))
     )
+
+    # Print estimated total entries to be generated based on the lengths of the input lists and plugin variants
+    print(
+        f"Entry Breakdown: {total_entries} = {len(base_docs)} base docs * {len(jailbreaks)} jailbreaks " +
+        f"* {len(instructions)} instructions * {len(positions)} positions * {len(positions)} positions" +
+        f"* {len(injection_delimiters)} injection delimiters * {len(spotlighting_data_markers_list)} " +
+        f"spotlighting data markers * {len(suffixes)} suffixes * " +
+        f"{sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)} plugin variations\n"
+    )
+
     bar_variations = tqdm(
         total=total_entries, desc="Variations", initial=0
     )
