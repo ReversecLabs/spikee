@@ -583,7 +583,7 @@ def generate_variations(
         * len(injection_delimiters)
         * len(spotlighting_data_markers_list)
         * len(suffixes)
-        * sum(plugin_variants.values() or [1]) + 1 if not plugin_only else 0
+        * sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)
     )
     bar_variations = tqdm(
         total=total_entries, desc="Variations", initial=0
