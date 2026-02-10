@@ -1,6 +1,9 @@
 import importlib
 import inspect
 import os
+import re
+import json
+from typing import Any, Dict, Optional
 
 from spikee.templates.target import Target
 from spikee.templates.judge import Judge
@@ -85,22 +88,22 @@ def get_options_from_module(module, module_type=None):
     return None
 
 
-def get_prefix_from_module(module, module_type=None):
+def get_description_from_module(module, module_type=None):
     """
-    Return the prefix values advertised by the given module or instance.
+    Return the description advertised by the given module or instance.
 
     Args:
         module: Either an instantiated module (new OOP) or the imported module.
         module_type: Optional str specifying the module category. Required when
             `module` is a module rather than an instance.
     """
-    if module and hasattr(module, "get_available_prefixes"):
-        return module.get_available_prefixes()
+    if module and hasattr(module, "get_description"):
+        return module.get_description()
 
     if inspect.ismodule(module) and module_type:
         instance = _instantiate_impl(module, module_type)
-        if instance and hasattr(instance, "get_available_prefixes"):
-            return instance.get_available_prefixes()
+        if instance and hasattr(instance, "get_description"):
+            return instance.get_description()
 
     return None
 
@@ -110,5 +113,115 @@ def get_default_option(module, module_type=None):
     return available[0] if available else None
 
 
-if __name__ == "__main__":
-    print(load_module_from_path("1337", "plugins"))
+def parse_options(option: Optional[str]) -> Dict[str, str]:
+    opts: Dict[str, str] = {}
+    if not option:
+        return opts
+    for p in (x.strip() for x in option.split(",") if x.strip()):
+        if "=" in p:
+            k, v = p.split("=", 1)
+            opts[k.strip()] = v.strip()
+    return opts
+
+
+def extract_json_or_fail(text: str) -> Dict[str, Any]:
+    """
+    Robust JSON extractor.
+    """
+    if not text:
+        raise RuntimeError("LLM returned empty response")
+
+    t = text.strip()
+
+    # 1) fenced code block
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
+    if m:
+        t = m.group(1).strip()
+
+    # 2) try direct JSON parse
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+
+    # 3) fix unescaped quotes and try again
+    t_fixed = fix_unescaped_quotes(t)
+    try:
+        return json.loads(t_fixed)
+    except Exception:
+        pass
+
+    # 4) scan for first balanced {...}
+    start = -1
+    depth = 0
+    for i, ch in enumerate(t):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start != -1:
+                    candidate = t[start: i + 1]
+                    try:
+                        return json.loads(candidate)
+                    except Exception:
+                        start = -1
+
+    raise RuntimeError(f"LLM did not return valid JSON object: \n\n {text}")
+
+
+def fix_unescaped_quotes(text: str) -> str:
+    """
+    Fix unescaped quotes within JSON string values by properly escaping them.
+
+    Args:
+        text (str): The input text with potentially unescaped quotes in JSON
+
+    Returns:
+        str: Text with properly escaped quotes for valid JSON
+    """
+    result = []
+    i = 0
+    STATE_NORMAL = 0     # Outside any string
+    STATE_IN_STRING = 1  # Inside a JSON string value
+
+    state = STATE_NORMAL
+
+    while i < len(text):
+        char = text[i]
+
+        if state == STATE_NORMAL:
+            result.append(char)
+            if char == '"':
+                state = STATE_IN_STRING
+
+        elif state == STATE_IN_STRING:
+            # If we have an escape character, add it and the next character
+            if char == '\\':
+                result.append(char)
+                i += 1
+                if i < len(text):
+                    result.append(text[i])
+            # If we have an unescaped quote, check if it's closing the string or internal
+            elif char == '"':
+                # Look ahead to determine if this is likely closing the string value
+                j = i + 1
+                while j < len(text) and text[j].isspace():
+                    j += 1
+
+                # If followed by these characters, it's likely closing the string
+                if j < len(text) and (text[j] == ',' or text[j] == '}' or text[j] == ':' or text[j] == ']'):
+                    result.append(char)  # Closing quote, don't escape
+                    state = STATE_NORMAL
+                else:
+                    # Internal quote, needs escaping
+                    result.append('\\')
+                    result.append(char)
+            else:
+                result.append(char)
+
+        i += 1
+
+    return ''.join(result)

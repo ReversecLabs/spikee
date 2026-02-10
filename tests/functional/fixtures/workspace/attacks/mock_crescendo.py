@@ -4,6 +4,8 @@ from collections import defaultdict
 import spikee.attacks.crescendo
 from spikee.attacks.crescendo import Crescendo
 from spikee.templates.standardised_conversation import StandardisedConversation
+from spikee.utilities.modules import parse_options
+
 
 # 1. Mock the LLM object used by Crescendo
 
@@ -47,7 +49,7 @@ class MockCrescendoAttack(Crescendo):
         attack_option: str = None,
     ) -> Tuple[int, bool, str, str]:
         # Parse scenario
-        opts = self._parse_attack_option(attack_option)
+        opts = parse_options(attack_option)
         # Store scenario in thread-local because attack() sets it for the duration of the call
         if not hasattr(self._thread_local, "scenario"):
             self._thread_local.scenario = "success"

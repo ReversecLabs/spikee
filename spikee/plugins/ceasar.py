@@ -15,13 +15,17 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
-from typing import List
+from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
 
 
 class CeasarPlugin(Plugin):
     DEFAULT_SHIFT = 3
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text using a Caesar cipher encryption."
 
     def get_available_option_values(self) -> List[str]:
         return [
