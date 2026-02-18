@@ -181,6 +181,11 @@ def main():
         help="Comma-separated list of jailbreak types to include",
     )
     parser_generate.add_argument(
+        "--include-prefixes",
+        action="store_true",
+        help="Include advanced prefixes in the dataset generation",
+    )
+    parser_generate.add_argument(
         "--include-suffixes",
         action="store_true",
         help="Include advanced suffixes in the dataset generation",
