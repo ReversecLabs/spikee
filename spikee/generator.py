@@ -390,6 +390,11 @@ def process_standalone_attacks(
     If plugins are provided, applies them to each standalone attack.
     Returns the updated dataset and the next entry_id.
     """
+
+    plugins = [(None, None)] + plugins if plugins else [(None, None)]
+    prefixes = adv_prefixes
+    suffixes = adv_suffixes
+
     for attack in standalone_attacks:
         # If no judge_name, fallback
         if "judge_name" not in attack:
@@ -400,10 +405,6 @@ def process_standalone_attacks(
         # Get the base attack text and exclude patterns
         attack_text = attack["text"]
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
-
-        plugins = [(None, None)] + plugins if plugins else [(None, None)]
-        prefixes = [None] + adv_prefixes if adv_prefixes else [None]
-        suffixes = [None] + adv_suffixes if adv_suffixes else [None]
 
         combined_texts = []
         fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
@@ -493,8 +494,8 @@ def generate_variations(
 
     plugins = [(None, None)] + plugins if plugins else [(None, None)]
 
-    prefixes = [None] + adv_prefixes if adv_prefixes else [None]
-    suffixes = [None] + adv_suffixes if adv_suffixes else [None]
+    prefixes = adv_prefixes
+    suffixes = adv_suffixes
 
     # Define output format specific entry types
     match output_format:
@@ -556,8 +557,7 @@ def generate_variations(
                 # Combines jailbreak and instruction texts
                 # Instruction is placed into jailbreak at <INSTRUCTION> placeholder
                 combined_base = jailbreak_text.replace("<INSTRUCTION>", instruction_text)
-
-                lang = jailbreak_lang
+                lang = instruction_lang
 
                 # Create plugin / transformation regex exclusion lists
                 local_exclude = parse_exclude_patterns(jailbreak, instruction)
@@ -769,6 +769,10 @@ def generate_dataset(args):
     # Ingest prefixes and suffixes
     adv_prefixes = []
     adv_suffixes = []
+
+    prefix_none_flag = True
+    suffix_none_flag = True
+
     custom_fix = 1
     for fix in include_fixes:
         if fix == "adv_prefixes":
@@ -801,11 +805,17 @@ def generate_dataset(args):
             })
             custom_fix += 1
 
-    if adv_prefixes == []:
-        adv_prefixes = None
+        elif fix == "none_prefix":
+            prefix_none_flag = False
 
-    if adv_suffixes == []:
-        adv_suffixes = None
+        elif fix == "none_suffix":
+            suffix_none_flag = False
+
+    if prefix_none_flag:
+        adv_prefixes = [None] + adv_prefixes
+
+    if suffix_none_flag:
+        adv_suffixes = [None] + adv_suffixes
 
     # Process Jailbreaks
     processed_jailbreaks = []
