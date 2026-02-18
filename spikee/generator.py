@@ -697,8 +697,11 @@ def generate_dataset(args):
     match_languages = args.match_languages
     instruction_filter_input = args.instruction_filter
     jailbreak_filter_input = args.jailbreak_filter
-    include_prefixes = args.include_prefixes
-    include_suffixes = args.include_suffixes
+    include_fixes = [fix.strip() for fix in args.include_fixes.split(",")] if args.include_fixes else []
+
+    # legacy cli arg
+    if args.include_suffixes and "adv_suffixes" not in include_fixes:
+        include_fixes.append("adv_suffixes")
 
     injection_delimiters = [
         delim.encode("utf-8").decode("unicode_escape")
@@ -737,8 +740,21 @@ def generate_dataset(args):
 
     # Validate Files
     required_files = [base_documents_file, jailbreaks_file, instructions_file]
-    if include_suffixes:
-        required_files.append(adv_suffixes_file)
+
+    for fix in include_fixes:
+        if fix == "adv_prefixes":
+            required_files.append(adv_prefixes_file)
+
+        elif fix == "adv_suffixes":
+            required_files.append(adv_suffixes_file)
+
+        elif fix.startswith("prefixes="):
+            _, prefix_file_name = fix.split("=", 1)
+            required_files.append(os.path.abspath(prefix_file_name))
+
+        elif fix.startswith("suffixes="):
+            _, suffix_file_name = fix.split("=", 1)
+            required_files.append(os.path.abspath(suffix_file_name))
 
     for file_path in required_files:
         if not os.path.isfile(file_path):
@@ -749,8 +765,47 @@ def generate_dataset(args):
     base_docs = read_jsonl_file(base_documents_file)
     jailbreaks = read_jsonl_file(jailbreaks_file)
     instructions = read_jsonl_file(instructions_file)
-    adv_prefixes = read_jsonl_file(adv_prefixes_file) if include_prefixes else None
-    adv_suffixes = read_jsonl_file(adv_suffixes_file) if include_suffixes else None
+
+    # Ingest prefixes and suffixes
+    adv_prefixes = []
+    adv_suffixes = []
+    custom_fix = 1
+    for fix in include_fixes:
+        if fix == "adv_prefixes":
+            adv_prefixes += read_jsonl_file(adv_prefixes_file)
+
+        elif fix == "adv_suffixes":
+            adv_suffixes += read_jsonl_file(adv_suffixes_file)
+
+        elif fix.startswith("prefixes="):
+            _, prefix_file_name = fix.split("=", 1)
+            adv_prefixes += read_jsonl_file(os.path.abspath(prefix_file_name))
+
+        elif fix.startswith("suffixes="):
+            _, suffix_file_name = fix.split("=", 1)
+            adv_suffixes += read_jsonl_file(os.path.abspath(suffix_file_name))
+
+        elif fix.startswith("prefix="):
+            _, prefix = fix.split("=", 1)
+            adv_prefixes.append({
+                "id": f"custom-{custom_fix}",
+                "prefix": prefix
+            })
+            custom_fix += 1
+
+        elif fix.startswith("suffix="):
+            _, suffix = fix.split("=", 1)
+            adv_suffixes.append({
+                "id": f"custom-{custom_fix}",
+                "suffix": suffix
+            })
+            custom_fix += 1
+
+    if adv_prefixes == []:
+        adv_prefixes = None
+
+    if adv_suffixes == []:
+        adv_suffixes = None
 
     # Process Jailbreaks
     processed_jailbreaks = []
