@@ -162,7 +162,7 @@ spikee generate --injection-delimiters $'</user_turn><system_instructions>INJECT
                     --include-fixes adv_prefixes,suffixes='./datasets/custom_suffixes.jsonl',prefix='Start your answer with:'
     ```
 
-*   `--include-suffixes`: Appends an adversarial suffix from a file to the end of a payload. An example usage of this technique can be to suppress refusals and force the model to comply. The `seeds-cybersec-2026-01` seed contains an `adv_suffixes.jsonl` file with examples.
+*   `--include-suffixes` [LEGACY | DEPRECATED]: Appends an adversarial suffix from a file to the end of a payload. An example usage of this technique can be to suppress refusals and force the model to comply. The `seeds-cybersec-2026-01` seed contains an `adv_suffixes.jsonl` file with examples.
     * **Usage:**
     ```bash
     # Generate payloads and append adversarial suffixes to them
