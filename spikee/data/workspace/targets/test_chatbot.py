@@ -1,5 +1,5 @@
 """
-test_chatbot.py
+simple_test_chatbot.py
 
 This is an example Multi-Turn target for the Spikee Test Chatbot (https://github.com/ReversecLabs/spikee-test-chatbot).
 This uses HTTP(s) requests to communicate with the Chatbot API, and manages multi-turn conversations
@@ -14,15 +14,13 @@ Return values:
     - For typical LLM completion, return a string that represents the model's response.
 
 References:
-    - See `simple_test_chatbot.py` for a simplified version of this target using `SimpleMultiTarget`.
-    - This file demonstrates manual session and history management using the raw `MultiTarget` interface.
+    - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
+    - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
 
-from spikee.templates.multi_target import (
-    MultiTarget,
-)  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
-from spikee.utilities.enums import Turn
 import traceback
+from spikee.templates.simple_multi_target import SimpleMultiTarget
+from spikee.utilities.enums import Turn
 
 import json
 import uuid
@@ -32,7 +30,7 @@ from typing import Optional, List
 from dotenv import load_dotenv
 
 
-class TestChatbotTarget(MultiTarget):
+class SimpleTestChatbotTarget(SimpleMultiTarget):
     def __init__(self):
         super().__init__(
             turn_types=[
@@ -46,11 +44,7 @@ class TestChatbotTarget(MultiTarget):
         return ["http://localhost:8000"]
 
     def send_message(
-        self,
-        url: str,
-        session_id: str,
-        message: str,
-        model: str = "together-qwen-next-80b",
+        self, url: str, session_id: str, message: str, model: str = "gpt-4o-mini"
     ) -> str:
         """Used to send messages to the Chatbot target, and update conversation history.
 
@@ -112,13 +106,7 @@ class TestChatbotTarget(MultiTarget):
         while self.validate_conversation_id(url=url, conversation_id=session_id):
             session_id = str(uuid.uuid4())
 
-        session_state = self._get_target_data(spikee_session_id)
-        if session_state is None:
-            session_state = {"target_session_id": session_id, "history": []}
-        else:
-            session_state["target_session_id"] = session_id
-
-        self._update_target_data(spikee_session_id, session_state)
+        self._update_id_map(spikee_session_id, session_id)
         return session_id
 
     def validate_conversation_id(self, url: str, conversation_id: str) -> bool:
@@ -154,15 +142,6 @@ class TestChatbotTarget(MultiTarget):
         # ---- Determine the URL based on target options ----
         url = "http://localhost:8000"
 
-        # ---- Retrieve Session State ----
-        session_state = None
-        if spikee_session_id is not None:
-            session_state = self._get_target_data(spikee_session_id)
-            if session_state is None:
-                # Initialize new session state
-                session_state = {"target_session_id": None, "history": []}
-                self._update_target_data(spikee_session_id, session_state)
-
         # ---- Validate new conversation ID for multi-turn sessions ----
         target_session_id = None
         if spikee_session_id is None:
@@ -174,19 +153,15 @@ class TestChatbotTarget(MultiTarget):
             ):
                 target_session_id = str(uuid.uuid4())
         else:
-            target_session_id = session_state.get("target_session_id")
+            target_session_id = self._get_id_map(spikee_session_id)
             if target_session_id is None:  # New conversation
                 target_session_id = self.get_new_conversation_id(
                     url=url, spikee_session_id=spikee_session_id
                 )
-                # Note: get_new_conversation_id now updates session_state inside via _update_target_data,
-                # but we should refresh our local copy if we want to be safe, or just trust ret value.
-                # Actually, my previous edit to get_new_conversation_id updates the DB.
-                # Let's just use the returned value.
 
         # ---- Backtracking ----
         if backtrack and spikee_session_id is not None:
-            history = session_state.get("history", [])
+            history = self._get_conversation_data(spikee_session_id)
             if history is not None and len(history) >= 2:
                 # Remove last turn (user + assistant)
                 history = history[:-2]
@@ -206,11 +181,7 @@ class TestChatbotTarget(MultiTarget):
                         )
 
                 target_session_id = new_target_session_id
-
-                # Update state
-                session_state["target_session_id"] = target_session_id
-                session_state["history"] = history
-                self._update_target_data(spikee_session_id, session_state)
+                self._update_conversation_data(spikee_session_id, history)
 
         # ---- Send the new message ----
         response = self.send_message(
@@ -221,15 +192,12 @@ class TestChatbotTarget(MultiTarget):
 
         # ---- Update History ----
         if spikee_session_id is not None:
-            # Refresh state in case it changed (unlikely here but good practice)
-            # session_state = self._get_target_data(spikee_session_id)
-            history = session_state.get("history", [])
-
-            history.append({"role": "user", "content": input_text})
-            history.append({"role": "assistant", "content": response})
-
-            session_state["history"] = history
-            self._update_target_data(spikee_session_id, session_state)
+            self._append_conversation_data(
+                spikee_session_id, role="user", content=input_text
+            )
+            self._append_conversation_data(
+                spikee_session_id, role="assistant", content=response
+            )
 
         return response
 
@@ -237,9 +205,9 @@ class TestChatbotTarget(MultiTarget):
 if __name__ == "__main__":
     load_dotenv()
     try:
-        target = TestChatbotTarget()
+        target = SimpleTestChatbotTarget()
         # Initialize internal storage for standalone testing
-        target.add_managed_dicts({}, {})
+        target.add_managed_dicts({})
 
         # Define a mock session ID
         test_session_id = "manual-test-session"
