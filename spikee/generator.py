@@ -3,6 +3,7 @@ import inspect
 import json
 import time
 from collections import defaultdict
+from typing import Union, List
 from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
