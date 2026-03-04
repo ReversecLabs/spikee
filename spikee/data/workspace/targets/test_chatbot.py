@@ -1,5 +1,5 @@
 """
-test_chatbot.py
+simple_test_chatbot.py
 
 This is an example Multi-Turn target for the Spikee Test Chatbot (https://github.com/ReversecLabs/spikee-test-chatbot).
 This uses HTTP(s) requests to communicate with the Chatbot API, and manages multi-turn conversations
@@ -9,20 +9,25 @@ Usage:
     1. Place this file in your local `targets/` folder.
     2. Run the spikee test command, pointing to this target, e.g.:
         spikee test --dataset datasets/example.jsonl --target test_chatbot --attack <multi-turn capable attack>
+    
+    You can customize the target using `--target-options`:
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=gpt-4o-mini'
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=bedrock-claude-3-7-sonnet,guardrail=azure-prompt-shields'
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'guardrail=llm-judge-general-current-llm'
+
 
 Return values:
     - For typical LLM completion, return a string that represents the model's response.
 
 References:
-    - See `simple_test_chatbot.py` for a simplified version of this target using `SimpleMultiTarget`.
-    - This file demonstrates manual session and history management using the raw `MultiTarget` interface.
+    - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
+    - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
 
-from spikee.templates.multi_target import (
-    MultiTarget,
-)  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
-from spikee.utilities.enums import Turn
 import traceback
+from spikee.templates.simple_multi_target import SimpleMultiTarget
+from spikee.utilities.enums import Turn
+from spikee.utilities.modules import parse_options
 
 import json
 import uuid
@@ -32,7 +37,7 @@ from typing import Optional, List
 from dotenv import load_dotenv
 
 
-class TestChatbotTarget(MultiTarget):
+class SimpleTestChatbotTarget(SimpleMultiTarget):
     def __init__(self):
         super().__init__(
             turn_types=[
@@ -43,14 +48,16 @@ class TestChatbotTarget(MultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return ["http://localhost:8000"]
+        return ["url=http://localhost:8000", "model=gpt-4o-mini", "guardrail=off"]
 
     def send_message(
         self,
         url: str,
         session_id: str,
         message: str,
-        model: str = "together-qwen-next-80b",
+        model: str = "gpt-4o-mini",
+        guardrail: str = "off",
+        system_prompt: Optional[str] = None,
     ) -> str:
         """Used to send messages to the Chatbot target, and update conversation history.
 
@@ -59,6 +66,8 @@ class TestChatbotTarget(MultiTarget):
             session_id (str): Session ID for conversation tracking
             message (str): Message to send
             model (str): Model to use (default: gpt-4o)
+            guardrail (str): Guardrail configuration to apply (default: "off")
+            system_prompt (Optional[str]): System prompt to set conversation context
 
         Returns:
             str: Response from the Chatbot
@@ -67,6 +76,23 @@ class TestChatbotTarget(MultiTarget):
         # --------------------------------
         # Send request to the Chatbot API via POST /api/chat
         payload = {"message": message, "session_id": session_id, "model": model}
+        if system_prompt:
+            payload["system_prompt"] = system_prompt
+
+        if guardrail == "llm-judge-general-current-llm":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "current", "scope": "general-purpose"}
+        elif guardrail == "llm-judge-bank-current-llm":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "current", "scope": "my-llm-bank"}
+        elif guardrail == "llm-judge-general-gpt-oss-20b-safeguard":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "general-purpose"}
+        elif guardrail == "llm-judge-bank-gpt-oss-20b-safeguard":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "my-llm-bank"}
+        elif guardrail and guardrail != "off":
+            payload["guardrail"] = guardrail
 
         # Ensure URL ends with / if not present, but avoid double slashes if user provided it
         # However, simplistic joining:
@@ -112,13 +138,7 @@ class TestChatbotTarget(MultiTarget):
         while self.validate_conversation_id(url=url, conversation_id=session_id):
             session_id = str(uuid.uuid4())
 
-        session_state = self._get_target_data(spikee_session_id)
-        if session_state is None:
-            session_state = {"target_session_id": session_id, "history": []}
-        else:
-            session_state["target_session_id"] = session_id
-
-        self._update_target_data(spikee_session_id, session_state)
+        self._update_id_map(spikee_session_id, session_id)
         return session_id
 
     def validate_conversation_id(self, url: str, conversation_id: str) -> bool:
@@ -151,17 +171,22 @@ class TestChatbotTarget(MultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
-        # ---- Determine the URL based on target options ----
-        url = "http://localhost:8000"
+        # ---- Determine the URL, model, and guardrail based on target options ----
+        opts = parse_options(target_options)
+        if "url" in opts:
+            url = opts["url"]
+        else:
+            url = "http://localhost:8000"
 
-        # ---- Retrieve Session State ----
-        session_state = None
-        if spikee_session_id is not None:
-            session_state = self._get_target_data(spikee_session_id)
-            if session_state is None:
-                # Initialize new session state
-                session_state = {"target_session_id": None, "history": []}
-                self._update_target_data(spikee_session_id, session_state)
+        if "model" in opts:
+            model = opts["model"]
+        else:
+            model = "gpt-4o-mini"
+            
+        if "guardrail" in opts:
+            guardrail = opts["guardrail"]
+        else:
+            guardrail = "off"
 
         # ---- Validate new conversation ID for multi-turn sessions ----
         target_session_id = None
@@ -174,19 +199,15 @@ class TestChatbotTarget(MultiTarget):
             ):
                 target_session_id = str(uuid.uuid4())
         else:
-            target_session_id = session_state.get("target_session_id")
+            target_session_id = self._get_id_map(spikee_session_id)
             if target_session_id is None:  # New conversation
                 target_session_id = self.get_new_conversation_id(
                     url=url, spikee_session_id=spikee_session_id
                 )
-                # Note: get_new_conversation_id now updates session_state inside via _update_target_data,
-                # but we should refresh our local copy if we want to be safe, or just trust ret value.
-                # Actually, my previous edit to get_new_conversation_id updates the DB.
-                # Let's just use the returned value.
 
         # ---- Backtracking ----
         if backtrack and spikee_session_id is not None:
-            history = session_state.get("history", [])
+            history = self._get_conversation_data(spikee_session_id)
             if history is not None and len(history) >= 2:
                 # Remove last turn (user + assistant)
                 history = history[:-2]
@@ -203,33 +224,32 @@ class TestChatbotTarget(MultiTarget):
                             url=url,
                             session_id=new_target_session_id,
                             message=entry["content"],
+                            model=model,
+                            guardrail=guardrail,
+                            system_prompt=system_message,
                         )
 
                 target_session_id = new_target_session_id
-
-                # Update state
-                session_state["target_session_id"] = target_session_id
-                session_state["history"] = history
-                self._update_target_data(spikee_session_id, session_state)
+                self._update_conversation_data(spikee_session_id, history)
 
         # ---- Send the new message ----
         response = self.send_message(
             url=url,
             session_id=target_session_id,
             message=input_text,
+            model=model,
+            guardrail=guardrail,
+            system_prompt=system_message,
         )
 
         # ---- Update History ----
         if spikee_session_id is not None:
-            # Refresh state in case it changed (unlikely here but good practice)
-            # session_state = self._get_target_data(spikee_session_id)
-            history = session_state.get("history", [])
-
-            history.append({"role": "user", "content": input_text})
-            history.append({"role": "assistant", "content": response})
-
-            session_state["history"] = history
-            self._update_target_data(spikee_session_id, session_state)
+            self._append_conversation_data(
+                spikee_session_id, role="user", content=input_text
+            )
+            self._append_conversation_data(
+                spikee_session_id, role="assistant", content=response
+            )
 
         return response
 
@@ -237,20 +257,20 @@ class TestChatbotTarget(MultiTarget):
 if __name__ == "__main__":
     load_dotenv()
     try:
-        target = TestChatbotTarget()
+        target = SimpleTestChatbotTarget()
         # Initialize internal storage for standalone testing
-        target.add_managed_dicts({}, {})
+        target.add_managed_dicts({})
 
         # Define a mock session ID
         test_session_id = "manual-test-session"
 
         print(f"Sending message to target with session_id: {test_session_id}")
         response = target.process_input(
-            "Hello, my name is Spikee", spikee_session_id=test_session_id
+            "Hello, my name is Spikee", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
         )
         print("Response:", response)
         response = target.process_input(
-            "What was my name?", spikee_session_id=test_session_id
+            "What was my name?", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
         )
         print("Response:", response)
 

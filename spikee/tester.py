@@ -215,7 +215,10 @@ def _build_target_name(target, target_options):
     If no target_options provided, attempts to get default option from target module.
     """
 
-    regex_pattern = '(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'  # Matches Invalid Windows Characters,
+    # Matches Invalid Windows Characters
+    regex_pattern = (
+        r'(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'
+    )
 
     def replacer(match):
         if match.group(1) or match.group(2):  # If at start/end of string, just remove

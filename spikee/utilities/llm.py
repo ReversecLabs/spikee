@@ -193,13 +193,16 @@ def get_llm(options=None, max_tokens=8, temperature=0):
         )
 
     elif options.startswith("together"):
-        from langchain_together import ChatTogether
+        from langchain_openai import ChatOpenAI
+        import os
 
         model_name_key = options.replace("together-", "")
         key = model_name_key if options is not None else DEFAULT_TOGETHER_AI_KEY
         model_name = _resolve_togetherai_model(key)
 
-        return ChatTogether(
+        return ChatOpenAI(
+            base_url="https://api.together.xyz/v1",
+            api_key=os.environ.get("TOGETHER_API_KEY"),
             model=model_name,
             max_tokens=max_tokens,
             temperature=temperature,

@@ -25,6 +25,9 @@ from typing import List, Tuple
 import re
 
 
+from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
+
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.enums import ModuleTag
 
@@ -51,6 +54,10 @@ class LeetspeekPlugin(BasicPlugin):
         "z": "2",
     }
 
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Transforms text into 1337 speak."
+
+class LeetspeekPlugin(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text into 1337 speak."
 

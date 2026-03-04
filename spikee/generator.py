@@ -6,7 +6,6 @@ from collections import defaultdict
 from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
-from typing import Union, List
 
 from .utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
 from .utilities.modules import load_module_from_path
