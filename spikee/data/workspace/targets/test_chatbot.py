@@ -9,6 +9,12 @@ Usage:
     1. Place this file in your local `targets/` folder.
     2. Run the spikee test command, pointing to this target, e.g.:
         spikee test --dataset datasets/example.jsonl --target test_chatbot --attack <multi-turn capable attack>
+    
+    You can customize the target using `--target-options`:
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=gpt-4o-mini'
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=bedrock-claude-3-7-sonnet,guardrail=azure-prompt-shields'
+        spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'guardrail=llm-judge-general-current-llm'
+
 
 Return values:
     - For typical LLM completion, return a string that represents the model's response.
@@ -21,6 +27,7 @@ References:
 import traceback
 from spikee.templates.simple_multi_target import SimpleMultiTarget
 from spikee.utilities.enums import Turn
+from spikee.utilities.modules import parse_options
 
 import json
 import uuid
@@ -41,10 +48,16 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return ["http://localhost:8000"]
+        return ["url=http://localhost:8000", "model=gpt-4o-mini", "guardrail=off"]
 
     def send_message(
-        self, url: str, session_id: str, message: str, model: str = "gpt-4o-mini"
+        self,
+        url: str,
+        session_id: str,
+        message: str,
+        model: str = "gpt-4o-mini",
+        guardrail: str = "off",
+        system_prompt: Optional[str] = None,
     ) -> str:
         """Used to send messages to the Chatbot target, and update conversation history.
 
@@ -53,6 +66,8 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
             session_id (str): Session ID for conversation tracking
             message (str): Message to send
             model (str): Model to use (default: gpt-4o)
+            guardrail (str): Guardrail configuration to apply (default: "off")
+            system_prompt (Optional[str]): System prompt to set conversation context
 
         Returns:
             str: Response from the Chatbot
@@ -61,6 +76,23 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         # --------------------------------
         # Send request to the Chatbot API via POST /api/chat
         payload = {"message": message, "session_id": session_id, "model": model}
+        if system_prompt:
+            payload["system_prompt"] = system_prompt
+
+        if guardrail == "llm-judge-general-current-llm":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "current", "scope": "general-purpose"}
+        elif guardrail == "llm-judge-bank-current-llm":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "current", "scope": "my-llm-bank"}
+        elif guardrail == "llm-judge-general-gpt-oss-20b-safeguard":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "general-purpose"}
+        elif guardrail == "llm-judge-bank-gpt-oss-20b-safeguard":
+            payload["guardrail"] = "llm-judge"
+            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "my-llm-bank"}
+        elif guardrail and guardrail != "off":
+            payload["guardrail"] = guardrail
 
         # Ensure URL ends with / if not present, but avoid double slashes if user provided it
         # However, simplistic joining:
@@ -139,8 +171,22 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
-        # ---- Determine the URL based on target options ----
-        url = "http://localhost:8000"
+        # ---- Determine the URL, model, and guardrail based on target options ----
+        opts = parse_options(target_options)
+        if "url" in opts:
+            url = opts["url"]
+        else:
+            url = "http://localhost:8000"
+
+        if "model" in opts:
+            model = opts["model"]
+        else:
+            model = "gpt-4o-mini"
+            
+        if "guardrail" in opts:
+            guardrail = opts["guardrail"]
+        else:
+            guardrail = "off"
 
         # ---- Validate new conversation ID for multi-turn sessions ----
         target_session_id = None
@@ -178,6 +224,9 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
                             url=url,
                             session_id=new_target_session_id,
                             message=entry["content"],
+                            model=model,
+                            guardrail=guardrail,
+                            system_prompt=system_message,
                         )
 
                 target_session_id = new_target_session_id
@@ -188,6 +237,9 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
             url=url,
             session_id=target_session_id,
             message=input_text,
+            model=model,
+            guardrail=guardrail,
+            system_prompt=system_message,
         )
 
         # ---- Update History ----
@@ -214,11 +266,11 @@ if __name__ == "__main__":
 
         print(f"Sending message to target with session_id: {test_session_id}")
         response = target.process_input(
-            "Hello, my name is Spikee", spikee_session_id=test_session_id
+            "Hello, my name is Spikee", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
         )
         print("Response:", response)
         response = target.process_input(
-            "What was my name?", spikee_session_id=test_session_id
+            "What was my name?", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
         )
         print("Response:", response)
 
