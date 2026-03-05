@@ -163,8 +163,12 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
         def process_conversation(
             conversation_data: str, truncated: bool = False
         ) -> str:
-            standardised_conversation = StandardisedConversation()
-            standardised_conversation.add_conversation(conversation_data)
+
+            try:
+                standardised_conversation = StandardisedConversation()
+                standardised_conversation.add_conversation(conversation_data)
+            except json.JSONDecodeError as e:
+                return conversation_data
 
             def render_message(node, message) -> str:
                 # node_entry = f'<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str("node"))};">node:</strong> {html.escape(str(node))}</div>'
@@ -201,8 +205,6 @@ def create_viewer(viewer_folder, results_files, host, port, allow_ast=False) -> 
                     return f"""{render_message(message_id, message)}<ol class="ps-3 mt-2">{"".join(children)}</ol>"""
 
             conversation_html = f"""<ol class="ps-3 mt-2">{render_node(0)}</ol>"""
-
-            print("FINAL CONVERSATION HTML", conversation_html)
             return conversation_html
 
         def string_to_colour(string: str) -> str:

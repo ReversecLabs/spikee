@@ -7,13 +7,9 @@ import json
 
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.enums import Turn
-from spikee.utilities.llm import (
-    get_example_llm_models,
-    get_supported_llm_models,
-    get_supported_prefixes,
-    get_llm,
-)
+from spikee.utilities.enums import Turn, ModuleTag
+from spikee.utilities.llm import get_llm
+from spikee.utilities.modules import parse_options
 
 
 # Source: https://github.com/Azure/PyRIT/blob/bbed39cf249fca9ce20770550912b7254ae672fe/pyrit/datasets/orchestrators/crescendo/crescendo_variant_1.yaml
@@ -109,33 +105,18 @@ class Crescendo(Attack):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_available_option_values(self) -> List[str]:
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.MULTI, ModuleTag.LLM], "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak."
+
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Returns supported option values.
 
         Returns:
-            List[str]: List of supported options; first is default.
+            Tuple[List[str], bool]: List of supported options; first is default, and a boolean Utility_LLM.
         """
-        return (
-            ["max-turns=5"]
-            + [f"model={model}" for model in get_example_llm_models()]
-            + [f"model={model}" for model in get_supported_llm_models()]
-        )
-
-    def get_available_prefixes(self) -> Tuple[bool, List[str]]:
-        """Return supported prefixes."""
-        return False, get_supported_prefixes()
+        return ["max-turns=5"], True
 
     # Options Parsing
-
-    def _parse_attack_option(self, option: Optional[str]) -> Dict[str, str]:
-        opts: Dict[str, str] = {}
-        if not option:
-            return opts
-        for p in (x.strip() for x in option.split(",") if x.strip()):
-            if "=" in p:
-                k, v = p.split("=", 1)
-                opts[k.strip()] = v.strip()
-        return opts
 
     def _parse_max_turns(self, opts: Dict[str, str]) -> int:
         return max(1, int(opts.get("max-turns", "5")))
@@ -182,7 +163,7 @@ class Crescendo(Attack):
                     if depth > 0:
                         depth -= 1
                         if depth == 0 and start != -1:
-                            candidate = quoted[start : i + 1]
+                            candidate = quoted[start: i + 1]
                             try:
                                 return json.loads(candidate)
                             except Exception:
@@ -209,7 +190,7 @@ class Crescendo(Attack):
                 if depth > 0:
                     depth -= 1
                     if depth == 0 and start != -1:
-                        candidate = t[start : i + 1]
+                        candidate = t[start: i + 1]
                         try:
                             return json.loads(candidate)
                         except Exception:
@@ -329,8 +310,8 @@ class Crescendo(Attack):
             last_message_id = conversation.add_message(
                 last_message_id,
                 {"role": "user", "content": prompt, "spikee_session_id": session_id},
+                attempt=True
             )
-            conversation.add_attempt()
 
             # call target; each call consumes budget immediately
             resp = target_module.process_input(
@@ -414,7 +395,7 @@ class Crescendo(Attack):
             raise ValueError("entry must contain 'text' (the jailbreak objective)")
 
         # Parse options
-        opts = self._parse_attack_option(attack_option)
+        opts = parse_options(attack_option)
         max_turns = self._parse_max_turns(opts)
         try:
             llm = get_llm(opts.get("model", None), max_tokens=None)

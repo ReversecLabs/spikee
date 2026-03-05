@@ -27,9 +27,15 @@ Every plugin is a Python module located in the `plugins/` directory of your work
 ### Plugin Template
 ```python
 from spikee.templates.plugin import Plugin
-from typing import List, Union
+from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.enums import ModuleTag
+from typing import List, Union, Tuple
 
 class SamplePlugin(Plugin):
+    def get_description(self) -> Tuple[ModuleTag, str]:
+        """Returns the type and a short description of the plugin."""
+        return [], "A brief description of what this plugin does."
+
     def get_available_option_values(self) -> List[str]:
         """Returns a list of supported option values, first is default. None if no options."""
         return None
@@ -44,6 +50,31 @@ class SamplePlugin(Plugin):
         Args:
             text (str): The input prompt to transform.
             exclude_patterns (List[str], optional): Regex patterns for substrings to preserve.
+
+        Returns:
+            str: The transformed text in uppercase.
+        """
+        # Your implementation here...
+
+class SampleBasicPlugin(BasicPlugin):
+    def get_description(self) -> Tuple[ModuleTag, str]:
+        """Returns the type and a short description of the plugin."""
+        return [], "A brief description of what this plugin does."
+
+    def get_available_option_values(self) -> List[str]:
+        """Returns a list of supported option values, first is default. None if no options."""
+        return None
+
+    def plugin_transform(
+        self, 
+        text: str, 
+        plugin_option: str = None,
+    ) -> str:
+        """Transforms the input text according to the user-defined logic, returning a single variation.
+
+        Args:
+            text (str): The input prompt to transform.
+            plugin_option (str, optional): A string option passed from the command line for custom behavior.
 
         Returns:
             str: The transformed text in uppercase.

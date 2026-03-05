@@ -14,7 +14,6 @@ Exposed:
 
 from typing import List, Dict
 from dotenv import load_dotenv
-from langchain_together import ChatTogether
 
 # Load environment variables
 load_dotenv()
@@ -72,13 +71,17 @@ def process_input(
     Raises:
         ValueError if target_options is provided but invalid.
     """
+    from langchain_openai import ChatOpenAI
+    import os
 
     # Choose the model key
     key = target_options if target_options is not None else DEFAULT_KEY
     # Resolve to full model name or raise
     model_name = _resolve_model(key)
-    # Initialize the TogetherAI client
-    llm = ChatTogether(
+    # Initialize the OpenAI client pointing to Together API
+    llm = ChatOpenAI(
+        base_url="https://api.together.xyz/v1",
+        api_key=os.environ.get("TOGETHER_API_KEY"),
         model=model_name,
         temperature=0,
         max_tokens=None,

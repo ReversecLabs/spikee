@@ -21,9 +21,10 @@ This plugin supports configurable number of samples via options.
 
 import re
 import random
-from typing import List
+from typing import List, Tuple
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
 
 
 class BestOfN(Plugin):
@@ -33,6 +34,9 @@ class BestOfN(Plugin):
 
     # Default number of samples
     DEFAULT_SAMPLES = 50
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ATTACK_BASED], "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported sample format; first option is default."""
@@ -51,6 +55,10 @@ class BestOfN(Plugin):
             except (ValueError, IndexError):
                 pass
         return self.DEFAULT_SAMPLES
+
+    def get_variants(self, plugin_option: str = None) -> int:
+        """Get the number of variants to generate based on plugin options."""
+        return self._parse_samples_option(plugin_option)
 
     def transform(
         self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None

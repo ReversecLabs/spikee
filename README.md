@@ -221,6 +221,12 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin-options "best_of_n:variants=50"
 ```
 
+```bash
+# Plugin Piping, pipe the output of splat into base64 for a combined obfuscation effect
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin "splat|base64"
+```
+
 ### Step 4: Test a Target
 
 `spikee test` runs your dataset against a target. First, rename `.env-example` to `.env` and add any necessary API keys.

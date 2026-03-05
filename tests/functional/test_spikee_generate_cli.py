@@ -5,6 +5,7 @@ from collections import Counter
 import pytest
 
 from spikee.templates.plugin import Plugin as BasePlugin
+from spikee.templates.basic_plugin import BasicPlugin as BaseBasicPlugin
 
 from .utils import (
     base_long_id,
@@ -28,8 +29,9 @@ def _instantiate_plugin(module):
     for attr in vars(module).values():
         if (
             isinstance(attr, type)
-            and issubclass(attr, BasePlugin)
+            and (issubclass(attr, BasePlugin) or issubclass(attr, BaseBasicPlugin))
             and attr is not BasePlugin
+            and attr is not BaseBasicPlugin
         ):
             return attr()
     raise AssertionError(f"No Plugin subclass found in {module.__name__}")
@@ -581,3 +583,60 @@ def test_generate_full_prompt_with_system_message(
     if not match_languages:
         english_entries = [entry for entry in entries if entry["lang"] == "en"]
         assert any("AVVISO" in entry["payload"] for entry in english_entries)
+
+
+def test_generate_with_piped_plugins(run_spikee, workspace_dir):
+    """Verify that plugin piping (pluginA|pluginB) chains transforms sequentially."""
+    piped_plugin = "test_upper|test_repeat"
+    # Internal representation uses ~ as separator
+    piped_plugin_name = "test_upper~test_repeat"
+
+    dataset_path, _ = _run_generate(
+        run_spikee,
+        workspace_dir,
+        ["--plugins", piped_plugin],
+    )
+    entries = _read_jsonl(dataset_path)
+
+    base_entries, plugin_entries, base_by_long_id = _split_base_and_plugin_entries(
+        entries, piped_plugin_name
+    )
+
+    # With match_languages=True (the default), we get 6 base entries.
+    # test_repeat produces 2 variants per input, so expect 6 * 2 = 12 piped entries.
+    expected_base = 6
+    expected_piped = expected_base * 2
+
+    assert len(base_entries) == expected_base
+    assert len(plugin_entries) == expected_piped
+
+    # All piped entries must have the correct plugin name with ~ separator
+    assert all(entry["plugin"] == piped_plugin_name for entry in plugin_entries)
+
+    # Verify transform composition: test_upper uppercases first, then test_repeat
+    # produces the original (uppercased) text and one with "-repeat" suffix.
+    # The "-repeat" suffix is added AFTER uppercasing, so it stays lowercase.
+    for entry in plugin_entries:
+        payload = entry["payload"]
+        # Strip the suffix added by test_repeat before checking uppercasing
+        core = payload.removesuffix("-repeat")
+        assert core == core.upper(), (
+            f"Expected uppercased core payload, got: {core}"
+        )
+
+    # Check that we get both variants: one without suffix and one with "-repeat"
+    with_suffix = [
+        entry for entry in plugin_entries if entry["payload"].endswith("-repeat")
+    ]
+    without_suffix = [
+        entry for entry in plugin_entries if not entry["payload"].endswith("-repeat")
+    ]
+    assert len(with_suffix) == expected_base
+    assert len(without_suffix) == expected_base
+
+    # Cross-reference: the uppercased payload (without suffix) should equal
+    # UPPER(base_payload)
+    for entry in without_suffix:
+        base_lid = _base_long_id(entry["long_id"], piped_plugin_name)
+        base_entry = base_by_long_id[base_lid]
+        assert entry["payload"] == base_entry["payload"].upper()
