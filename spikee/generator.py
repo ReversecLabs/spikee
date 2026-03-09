@@ -533,7 +533,7 @@ def process_standalone_attacks(
                 plugin_module,
                 attack_text,
                 exclude_patterns,
-                plugin_options_map.get(plugin_name) if plugin_options_map else None
+                plugin_options_map
             ) if plugin_name else attack_text
 
             # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
@@ -747,7 +747,7 @@ def generate_variations(
                         plugin_module,
                         combined_base,
                         local_exclude,
-                        plugin_options_map.get(plugin_name) if plugin_options_map else None
+                        plugin_options_map
                     ) if plugin_name else combined_base
 
                     # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
