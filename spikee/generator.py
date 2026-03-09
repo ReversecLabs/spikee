@@ -16,8 +16,8 @@ from .utilities.tags import validate_tag
 
 class EntryType(Enum):
     DOCUMENT = "document"
-    SUMMARY = "summary"
-    QA = "qa"
+    SUMMARY = "summarization"
+    QA = "qna"
     ATTACK = "attack"
 
 
