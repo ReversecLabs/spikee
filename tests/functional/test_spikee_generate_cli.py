@@ -504,10 +504,10 @@ def test_generate_full_prompt_without_system_message(
     )
     entries = _read_jsonl(dataset_path)
 
-    # With two exfil instructions per document we expect summary + QA entries.
+    # With two exfil instructions per document we expect summarization + qna entries.
     expected_entries = 8 if match_languages else 16
     assert len(entries) == expected_entries
-    assert {entry["task_type"] for entry in entries} == {"summary", "qa"}
+    assert {entry["task_type"] for entry in entries} == {"summarization", "qna"}
 
     assert all(entry.get("system_message") is None for entry in entries)
 
@@ -516,10 +516,10 @@ def test_generate_full_prompt_without_system_message(
     )
     expected_per_doc = 2 if match_languages else 4
     assert per_doc_task_counts == {
-        ("doc-en", "summary"): expected_per_doc,
-        ("doc-en", "qa"): expected_per_doc,
-        ("doc-it", "summary"): expected_per_doc,
-        ("doc-it", "qa"): expected_per_doc,
+        ("doc-en", "summarization"): expected_per_doc,
+        ("doc-en", "qna"): expected_per_doc,
+        ("doc-it", "summarization"): expected_per_doc,
+        ("doc-it", "qna"): expected_per_doc,
     }
 
     if not match_languages:
@@ -549,20 +549,20 @@ def test_generate_full_prompt_with_system_message(
     )
     entries = _read_jsonl(dataset_path)
 
-    # For two matching exfil instructions per document, full-prompt produces summary + QA entries.
+    # For two matching exfil instructions per document, full-prompt produces summarization + qna entries.
     expected_entries = 8 if match_languages else 16
     assert len(entries) == expected_entries
-    assert {entry["task_type"] for entry in entries} == {"summary", "qa"}
+    assert {entry["task_type"] for entry in entries} == {"summarization", "qna"}
 
     per_doc_task_counts = Counter(
         (entry["document_id"], entry["task_type"]) for entry in entries
     )
     expected_per_doc = 2 if match_languages else 4
     assert per_doc_task_counts == {
-        ("doc-en", "summary"): expected_per_doc,
-        ("doc-en", "qa"): expected_per_doc,
-        ("doc-it", "summary"): expected_per_doc,
-        ("doc-it", "qa"): expected_per_doc,
+        ("doc-en", "summarization"): expected_per_doc,
+        ("doc-en", "qna"): expected_per_doc,
+        ("doc-it", "summarization"): expected_per_doc,
+        ("doc-it", "qna"): expected_per_doc,
     }
 
     system_messages = {entry.get("system_message") for entry in entries}
