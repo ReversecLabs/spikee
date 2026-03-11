@@ -90,6 +90,7 @@ The following list provides an overview of each attack, further information on e
 * `multi_turn`: Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. 
 * `crescendo`: Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). This is a simple multi-turn jailbreak that leverages an LLM Agent to prompt the target application with seemingly benign prompts, but gradually escalates the conversation by referencing the model's replies progressively leading to a successful jailbreak.
 * `echo_chamber`: Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). This multi-turn attack uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks.
+* `goat`: Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). This multi-turn attack uses an LLM, acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective.
 
 (NB, See [Multi-Turn Datasets](./02_dataset_generation.md#multi-turn-datasets) for more information.)
 
