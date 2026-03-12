@@ -285,9 +285,9 @@ def _apply_sampling(dataset, sample_percent, sample_seed):
 
 
 def _calculate_total_attempts(
-    n_entries, attempts, attack_iters, already_done, has_attack
+    n_entries, attempts, attack_iters, attack_only, already_done, has_attack
 ):
-    per_item = attempts + (attack_iters if has_attack else 0)
+    per_item = attempts * ((attack_iters if has_attack else 0) + (0 if attack_only else 1))
     return n_entries * per_item + already_done
 
 
@@ -533,6 +533,7 @@ def process_entry(
     attack_module=None,
     attack_iterations=0,
     attack_options=None,
+    attack_only=False,
     output_file=None,
     attempts_bar=None,
     global_lock=None,
@@ -556,30 +557,39 @@ def process_entry(
     std_success = False
 
     # Attempt Logic
-    for attempt_num in range(1, attempts + 1):
-        std_result, success_now = _do_single_request(
-            entry,
-            original_input,
-            target_module,
-            output_file,
-            attempt_num,
-            attempts_bar,
-            global_lock,
-        )
-        if success_now:
-            std_success = True
-            break
+    if not attack_only:
+        request_attempts = 0
+        for attempt_num in range(1, attempts + 1):
+            request_attempts += 1
+            std_result, success_now = _do_single_request(
+                entry,
+                original_input,
+                target_module,
+                output_file,
+                attempt_num,
+                attempts_bar,
+                global_lock,
+            )
+            if success_now:
+                std_success = True
+                break
 
-    results_list = [std_result]
+        results_list = [std_result]
+        
+        if std_success:
+            # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
+            with global_lock:
+                attempts_bar.total = attempts_bar.total - (attempts - request_attempts) - ( attack_iterations * attempts if attack_module else 0)
+    
+    else: 
+        std_success = False
+        results_list = []
 
-    if std_success and attack_module:
-        # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
-        with global_lock:
-            attempts_bar.total = attempts_bar.total - attack_iterations
-
+    
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
     if (not std_success) and attack_module:
         attack_input = None  # Ensure attack_input is always defined
+        
         try:
             start_time = time.time()
             effective_attack_options = (
@@ -589,31 +599,44 @@ def process_entry(
             # Check if attack function accepts attack_options parameter
             sig = inspect.signature(attack_module.attack)
             params = sig.parameters
+            
+            attack_success = False
+            request_attempts = 0
 
-            if "attack_option" in params:
-                attack_attempts, attack_success, attack_input, attack_response = (
-                    attack_module.attack(
-                        entry,
-                        target_module,
-                        call_judge,
-                        attack_iterations,
-                        attempts_bar,
-                        global_lock,
-                        attack_options,
+            for attempt_num in range(1, attempts + 1):
+                if "attack_option" in params:
+                    attack_attempts, attack_success, attack_input, attack_response = (
+                        attack_module.attack(
+                            entry,
+                            target_module,
+                            call_judge,
+                            attack_iterations,
+                            attempts_bar,
+                            global_lock,
+                            attack_options,
+                        )
                     )
-                )
-            else:
-                # Backward compatibility for attacks without attack_option support
-                attack_attempts, attack_success, attack_input, attack_response = (
-                    attack_module.attack(
-                        entry,
-                        target_module,
-                        call_judge,
-                        attack_iterations,
-                        attempts_bar,
-                        global_lock,
+                else:
+                    # Backward compatibility for attacks without attack_option support
+                    attack_attempts, attack_success, attack_input, attack_response = (
+                        attack_module.attack(
+                            entry,
+                            target_module,
+                            call_judge,
+                            attack_iterations,
+                            attempts_bar,
+                            global_lock,
+                        )
                     )
-                )
+                    
+                request_attempts += attack_attempts
+                    
+                if attack_success:
+                    break
+
+            if attack_success:
+                with global_lock:
+                    attempts_bar.total = attempts_bar.total - (attempts * attack_iterations - attack_attempts)
 
             end_time = time.time()
             response_time = end_time - start_time
@@ -720,6 +743,7 @@ def _run_threaded(
     attack_module,
     attack_iters,
     attack_options,
+    attack_only,
     num_threads,
     total_attempts,
     initial_attempts,
@@ -755,6 +779,7 @@ def _run_threaded(
             attack_module,
             attack_iters,
             attack_options,
+            attack_only,
             output_file,
             bar_all,
             lock,
@@ -927,6 +952,7 @@ def test_dataset(args):
             len(to_process),
             args.attempts,
             args.attack_iterations,
+            args.attack_only,
             already_done,
             bool(attack_module),
         )
@@ -944,6 +970,7 @@ def test_dataset(args):
             attack_module,
             args.attack_iterations,
             args.attack_options,
+            args.attack_only,
             args.threads,
             total_attempts,
             already_done,

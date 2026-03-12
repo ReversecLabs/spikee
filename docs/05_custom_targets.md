@@ -8,7 +8,7 @@ You need a custom target when you want to:
 *   Connect to a new or unsupported LLM provider.
 *   Evaluate a specific guardrail system in isolation.
 
-This guide covers how to build a custom target for any of these scenarios. Sample targets can be found within the `workspace/targets/` directory, created by running `spikee init`. Further information about built-in targets and usage examples can be found in **[Built-in targets, attacks and judges](04_builtin_targets_attacks_and_judges.md)**.
+This guide covers how to build a custom target for any of these scenarios. Sample targets can be found within the `workspace/targets/` directory, created by running `spikee init`. Further information about built-in targets and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**.
 
 ## Target Structure
 Every target is a Python module located in the `targets/` directory of your workspace. Spikee identifies targets by their filename.

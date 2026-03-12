@@ -2,7 +2,7 @@
 
 The `spikee results` command includes several tools to aid in the analysis of test results.
 * `spikee results analyze`: Processes results files to provide a detailed breakdown of performance statistics.
-* `spikee results rejudge`: See [re-judging](<./07_judges.md#Re-judging>), revaluate results using a different judge or options.
+* `spikee results rejudge`: See [re-judging](<./08_judges.md#Re-judging>), revaluate results using a different judge or options.
 * `spikee results extract`: Extracts user-defined categories of results from results files for further analysis.
 * `spikee results dataset-comparison`: Compares the results of a single dataset across multiple targets to identify trends or differences in performance.
 * `spikee results web-viewer`: Processes results files and displays them in a Flask web application for interactive exploration.

@@ -2,15 +2,7 @@ tqdm
 tomli>=2.0.1; python_version < "3.11"
 openai
 huggingface_hub
-langchain
-langchain_openai
-langchain-google_genai
-langchain-anthropic
-langchain-together
-langchain-groq
-langchain-aws
-langchain-huggingface
-langchain-ollama
+litellm
 tabulate
 flask
 jinja2
@@ -19,3 +11,4 @@ openpyxl
 boto3
 azure-ai-inference
 fpdf
+filelock

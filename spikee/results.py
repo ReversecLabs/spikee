@@ -252,6 +252,7 @@ def extract_results(args):
 
             if extract_entries(entry, category, custom_query):
                 id_count += 1
+                entry["original_id"] = entry["id"]
                 entry["id"] = id_count
                 entry["long_id"] = f"{entry['long_id']}_extracted_{source}"
                 matching_entries.append(entry)
@@ -259,9 +260,8 @@ def extract_results(args):
     # Output File
     tag = validate_and_get_tag(args.tag)
     output_file = prepare_output_file("results", "extract", category, None, tag)
-
-    # Output matching results
     write_jsonl_file(output_file, matching_entries)
+    
     print(
         f"[Overview] Extracted {id_count} / {total_count} results to {output_file}. Extraction Rate: {round(id_count / total_count if total_count > 0 else 0, 2)}"
     )

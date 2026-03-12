@@ -14,7 +14,7 @@ from rich.rule import Rule
 
 from spikee.utilities.enums import ModuleTag, module_tag_to_colour
 from spikee.utilities.modules import get_options_from_module, get_description_from_module
-from spikee.utilities.llm import get_example_llm_models, get_supported_llm_models, get_supported_prefixes
+from spikee.utilities.llm import get_supported_llm_models, get_supported_prefixes
 
 console = Console()
 
@@ -176,7 +176,6 @@ def _render_section(title: str, local_entries, builtin_entries, util_llm: bool =
         console.print(Panel(
             f"""[yellow]Note:[/yellow] Modules with a [yellow][LLM][/yellow] tag, use the built-in LLM service.
 The LLM options are available, using 'model=<option>':
-Example Models: {", ".join(get_example_llm_models())}
 Supported Prefixes: {", ".join(get_supported_prefixes())}
 """, style="yellow"
         ))

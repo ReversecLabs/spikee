@@ -11,7 +11,7 @@ import random
 from spikee.templates.plugin import Plugin
 from typing import List, Tuple, Union
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm
+from spikee.utilities.llm import get_llm, HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT = """
@@ -94,19 +94,18 @@ class LLMMultiLanguageJailbreaker(Plugin):
         self, llm, objective: str, lang: str, attempted_langs: List[str] = []
     ) -> str:
         """Generate a multi language jailbreak attack using the LLM."""
-        prompt = SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace(
+        prompt = HumanMessage(SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace(
             "{{objective}}", objective
         ).replace(
             "{{lang}}", lang
         ).replace(
             "{{attempted_langs}}", ", ".join(attempted_langs) if attempted_langs else "None"
-        )
+        ))
 
         # call the model via .invoke
-        response = llm.invoke(prompt)
-        res_text = response.content.strip()
+        response = llm.invoke([prompt], content_only=True).strip()
 
-        obj = extract_json_or_fail(res_text)
+        obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "")
         if not attack_prompt:
             raise RuntimeError("LLM failed to produce an attack prompt")

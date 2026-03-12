@@ -11,7 +11,7 @@ Usage:
 from spikee.templates.plugin import Plugin
 from typing import Dict, List, Tuple, Union
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm
+from spikee.utilities.llm import get_llm, HumanMessage
 from spikee.attacks.llm_poetry_jailbreaker import SPIKEE_LLM_POETRY_JAILBREAKER_PROMPT
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
@@ -47,20 +47,19 @@ class LLMPoetryJailbreaker(Plugin):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = SPIKEE_LLM_POETRY_JAILBREAKER_PROMPT.replace(
+        prompt = HumanMessage(SPIKEE_LLM_POETRY_JAILBREAKER_PROMPT.replace(
             "{{objective}}", objective
         ).replace(
             "{{previous_attempts}}",
             prev_attempts_str
             if prev_attempts_formatted
             else "No previous attempts yet.",
-        )
+        ))
 
         # Call the model via .invoke and get content
-        response = llm.invoke(prompt)
-        res_text = response.content.strip()
+        response = llm.invoke([prompt], content_only=True).strip()
 
-        obj = extract_json_or_fail(res_text)
+        obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "")
         if not attack_prompt:
             raise RuntimeError("LLM failed to produce an attack prompt")

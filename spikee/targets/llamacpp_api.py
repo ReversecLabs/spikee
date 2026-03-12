@@ -13,11 +13,12 @@ Exposed:
         - Otherwise: returns content only
 """
 
-from spikee.templates.target import Target
 
-from typing import Optional, List
+from spikee.templates.target import Target
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
+
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from typing import Optional, List
 
 
 class LlamacppAPITarget(Target):
@@ -39,22 +40,16 @@ class LlamacppAPITarget(Target):
         """
         base_url = self.DEFAULT_BASE_URL if target_options is None else target_options
 
-        llm = ChatOpenAI(
-            base_url=base_url,
-            api_key="abc",
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-        )
+        llm = get_llm(f"llamacpp-{base_url}", max_tokens=None, temperature=0)
 
         messages = []
         if system_message:
-            messages.append(("system", system_message))
-        messages.append(("user", input_text))
+            messages.append(SystemMessage(system_message))
+        messages.append(HumanMessage(input_text))
 
         try:
-            ai_msg = llm.invoke(messages)
-            return ai_msg.content
+            return llm.invoke(messages, content_only=True)
+        
         except Exception as e:
             print(f"Error during OpenAI completion: {e}")
             raise

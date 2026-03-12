@@ -85,17 +85,16 @@ This README provides a practical guide to the core workflow. For advanced topics
 1.  **[Built-in Seeds, Datasets and Plugins](./docs/01_builtin_datasets_and_plugins.md)**: An overview of all built-in datasets and plugins.
 2.  **[Dataset Generation](./docs/02_dataset_generation.md)**: A reference for `spikee generate`.
 3.  **[Built-in Targets, Attacks and Judges](./docs/03_builtin_targets_attacks_and_judges.md)**: An overview of all built-in targets, attacks and judges.
-4.  **[Creating Custom Targets](./docs/04_custom_targets.md)**: Interact with any LLM, API, or guardrail.
-5.  **[Creating Custom Plugins](./docs/05_custom_plugins.md)**: Statically transform and obfuscate payloads.
-6.  **[Creating Dynamic Attack Scripts](./docs/06_dynamic_attacks.md)**: Create iterative, adaptive attack logic.
-7.  **[Judges: Evaluating Attack Success](./docs/07_judges.md)**: Define custom success criteria for tests.
-
-8.  **[Testing Guardrails Using Spikee](./docs/08_guardrail_testing.md)**: Evaluate guardrail effectiveness and false positive rates.
-
-9.  **[Spikee Results](./docs/09_results.md)**: A reference for `spikee analyze` and an explanation of test reports and performance metrics.
-10.  **[Generating Custom Datasets with an LLM](./docs/10_llm_dataset_generation.md)**: Create tailored datasets for specific use cases.
-11.  **[Installing Spikee in an Isolated Environment](./docs/11_installing_spikee_in_isolated_enviroments.md)**: Guide to setting up Spikee in a secure, isolated environment.
-12. **[Functional Testing Guide](./docs/12_functional_testing.md)**: Run the end-to-end CLI regression suite locally.
+4.  **[LLM Providers](./docs/04_llm_providers.md)**: Configuring supported LLM APIs for built-in modules.
+5.  **[Creating Custom Targets](./docs/05_custom_targets.md)**: Interact with any LLM, API, or guardrail.
+6.  **[Creating Custom Plugins](./docs/06_custom_plugins.md)**: Statically transform and obfuscate payloads.
+7.  **[Creating Dynamic Attack Scripts](./docs/07_dynamic_attacks.md)**: Create iterative, adaptive attack logic.
+8.  **[Judges: Evaluating Attack Success](./docs/08_judges.md)**: Define custom success criteria for tests.
+9.  **[Testing Guardrails Using Spikee](./docs/09_guardrail_testing.md)**: Evaluate guardrail effectiveness and false positive rates.
+10. **[Spikee Results](./docs/10_results.md)**: A reference for `spikee analyze` and an explanation of test reports and performance metrics.
+11. **[Generating Custom Datasets with an LLM](./docs/11_llm_dataset_generation.md)**: Create tailored datasets for specific use cases.
+12. **[Installing Spikee in an Isolated Environment](./docs/12_installing_spikee_in_isolated_environments.md)**: Guide to setting up Spikee in a secure, isolated environment.
+13. **[Functional Testing Guide](./docs/13_functional_testing.md)**: Run the end-to-end CLI regression suite locally.
 ---
 
 ## 1. Installation
@@ -231,7 +230,7 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
 
 `spikee test` runs your dataset against a target. First, rename `.env-example` to `.env` and add any necessary API keys.
 
-> A list of built-in targets is available within the **[Built-in Targets, Plugins, Attacks and Judges](./docs/04_builtin_targets_plugins_attacks_and_judges.md)** documentation.
+> A list of built-in targets is available within the **[Built-in Targets, Plugins, Attacks and Judges](./docs/03_builtin_targets_attacks_and_judges.md)** documentation.
 
 #### A. Basic LLM Test
 This command tests gpt-4o-mini via the OpenAI API using the dataset generated in Scenario A (require `OPENAI_API_KEY` in `.env`).
@@ -246,11 +245,11 @@ spikee test --dataset datasets/cybersec-2026-01-full-prompt-dataset-*.jsonl \
 >
 > The `cybersec-2026-01` dataset contains attacks whose success can be verified automatically by searching for specific "canary" words or matching regular expressions in the response (such as the presence of a *Markdown image*).
 >
-> For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./docs/07_judges.md)** to learn more.
+> For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./docs/08_judges.md)** to learn more.
 
 
 #### B. Testing a Custom LLM Application
-To test an LLM application, you must create a custom **Target script**. This Python script, placed in the `targets/` directory in your workspace, tells Spikee how to send data to the application and receive its response. For details, see the **[Creating Custom Targets](./docs/04_custom_targets.md)** guide.
+To test an LLM application, you must create a custom **Target script**. This Python script, placed in the `targets/` directory in your workspace, tells Spikee how to send data to the application and receive its response. For details, see the **[Creating Custom Targets](./docs/05_custom_targets.md)** guide.
 
 ```bash
 # Test a custom email application using malicious documents and your custom target
@@ -337,7 +336,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
             --attack llm_multi_language_jailbreaker --attack-iterations 10
 ```
 
-> See **[Built-in Targets, Plugins, Attacks and Judges](./docs/03_builtin_targets_attacks_and_judges.md)** for a list of built-in attacks and their alternate plugin versions, and **[Creating Dynamic Attack Scripts](./docs/06_dynamic_attacks.md)** for information on writing attacks.
+> See **[Built-in Targets, Plugins, Attacks and Judges](./docs/03_builtin_targets_attacks_and_judges.md)** for a list of built-in attacks and their alternate plugin versions, and **[Creating Dynamic Attack Scripts](./docs/07_dynamic_attacks.md)** for information on writing attacks.
 
 
 #### F. Testing a Sample of a Large Dataset
@@ -372,7 +371,7 @@ spikee test --dataset datasets/large-dataset.jsonl \
 #### G. Evaluating Guardrails
 When you're testing an LLM application, you're automatically testing any guardrail that the developers of the application have applied. However, sometimes you might want to test individual guardrails in isolation. 
 
-Further information on evaluating guardrails can be found in the **[Guardrail Testing](./docs/08_guardrail_testing.md)** documentation.
+Further information on evaluating guardrails can be found in the **[Guardrail Testing](./docs/09_guardrail_testing.md)** documentation.
 
 **1. Testing a Prompt Injection Guardrail:**
 To test a guardrail's ability to block general jailbreaks, you could use a broad dataset like `in-the-wild-jailbreak-prompts`, or a more high-quality, focussed one like `seeds-simsonsun-high-quality-jailbreaks`.
@@ -407,7 +406,7 @@ spikee test --dataset datasets/investment-advice-document-sys-dataset-TIMESTAMP.
 #### H. Multi-Turn Attacks
 Spikee allows for multi-turn attacks, when an compatible target, attack script and dataset is used. This enabled Spikee to assess multi-turn applications, such as chatbots, against multi-turn prompt injection attacks. 
 
-See the following documentation to implement custom [targets](./docs/04_custom_targets.md#multi-turn-dynamic-targets) and [attacks](./docs/06_dynamic_attacks.md#multi-turn-dynamic-attacks) and the following on generating multi-turn [datasets](./docs/02_dataset_generation.md#multi-turn-datasets).
+See the following documentation to implement custom [targets](./docs/05_custom_targets.md#multi-turn-dynamic-targets) and [attacks](./docs/07_dynamic_attacks.md#multi-turn-dynamic-attacks) and the following on generating multi-turn [datasets](./docs/02_dataset_generation.md#multi-turn-datasets).
 
 The following command will perform a `crescendo` multi-turn attack using an instructional multi-turn dataset, against an `LLMBank` target:
 
@@ -428,7 +427,7 @@ spikee results analyze --result-file results/results_openai_api-gpt-4o-mini_*.js
 ```
 This command provides an overview of the success rate and detailed breakdowns by attack type, helping you identify specific weaknesses.
 
-Further information on analyzing results can be found in the **[Spikee Results](./docs/09_results.md)** documentation.
+Further information on analyzing results can be found in the **[Spikee Results](./docs/10_results.md)** documentation.
 
 ---
 

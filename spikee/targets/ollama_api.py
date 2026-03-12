@@ -13,12 +13,10 @@ Exposed:
 """
 
 from spikee.templates.target import Target
+from spikee.utilities.llm import get_llm, HumanMessage
 
 from typing import List, Optional
 from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
-
-import os
 import requests  # needed to progromatically list available Ollama models
 
 
@@ -29,11 +27,12 @@ class OllamaTarget(Target):
     def get_available_ollama_models(
         self, baseurl="http://localhost:11434"
     ) -> List[str]:
-        """Progromatically gather the list of local models see: ollama list"""
+        """Programmatically gather the list of local models see: ollama list"""
         try:
             response = requests.get(f"{baseurl}/api/tags")
             data = response.json()
             return [model["model"] for model in data["models"]]
+        
         except Exception as e:
             # Something went wrong, we should fallback to the priority list already defined
             print(
@@ -75,45 +74,27 @@ class OllamaTarget(Target):
         model_name = key
 
         # Initialize the Ollama client
-        llm = ChatOllama(
-            model=model_name,
-            num_predict=None,  # maximum number of tokens to predict
-            # timeout in seconds (None = not configured)
-            client_kwargs={
-                "timeout": float(os.environ["OLLAMA_TIMEOUT"])
-                if os.environ.get("OLLAMA_TIMEOUT") not in (None, "")
-                else None
-            },
-        ).with_retry(
-            # total attempts (1 initial + retries)
-            stop_after_attempt=int(os.environ["OLLAMA_MAX_ATTEMPTS"])
-            if os.environ.get("OLLAMA_MAX_ATTEMPTS") not in (None, "")
-            else 1,
-            wait_exponential_jitter=True,  # backoff with jitter
-        )
+        llm = get_llm(f"ollama-{model_name}", max_tokens=None, temperature=0)
 
-        # Build messages (no separate system role)
+        # Build messages
         prompt = input_text
         if system_message:
             prompt = f"{system_message}\n{input_text}"
-        messages = [("user", prompt)]
+        messages = [HumanMessage(prompt)]
 
         # Invoke model
         try:
-            ai_msg = llm.invoke(messages)
-            return ai_msg.content
+            return llm.invoke(messages, content_only=True)
+        
         except Exception as e:
             print(f"Error during Ollama completion ({model_name}): {e}")
             raise
-
-
+        
 if __name__ == "__main__":
     load_dotenv()
     target = OllamaTarget()
-    print("Supported Ollama keys:", target.get_available_option_values())
+    print("Supported Ollama models:", target.get_available_option_values())
     try:
-        # Test request, using the default model.
-        out = target.process_input("Hello!", target_options=None)
-        print(out)
+        print(target.process_input("Hello!", target_options=None))
     except Exception as err:
         print("Error:", err)

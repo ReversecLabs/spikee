@@ -122,13 +122,13 @@ LLM-based judges address this by using a separate LLM to evaluate the target's r
 * `llm_judge_objective`: LLM judge to evaluate whether the target LLMs response meets a specific input objective.
 * `llm_judge_output_criteria`: LLM judge to evaluate whether the target LLMs response meets specific success criteria defined in `judge_args`.
 
-You can specify the LLM model used with the `--judge-options` flag. It currently supports the following providers, replace `<model_name>` with the desired model from that provider. (Providers may require API keys to be configured within your `.env` file):
-* `offline`: Mock judge, for restrictive environments. See [re-judging](<./07_judges.md#Re-judging>) and [isolated environments](./11_installing_spikee_in_isolated_environments.md) documentation for more information.
+You can specify the LLM model used with the `--judge-options` flag. See **[LLM Providers](04_llm_providers.md)** for a complete list of supported models, prefixes, and examples.
+
+Some common examples include (Providers may require API keys to be configured within your `.env` file):
+* `offline`: Mock judge, for restrictive environments. See [re-judging](<./08_judges.md#Re-judging>) and [isolated environments](./12_installing_spikee_in_isolated_environments.md) documentation for more information.
 * `openai-<model_name>`: OpenAI API (e.g., `openai-gpt-4o-mini`)
 * `ollama-<model_name>`: Ollama API (e.g., `ollama-gemma3`)
-* `bedrock-<model_name>`: AWS Bedrock API (e.g., `bedrock-us.anthropic.claude-3-7-sonnet-20250219-v1:0`)
-* `together-<model_name>`: TogetherAI API (e.g., `together-gemma2-8b`)
-* `llamacpp-server` or `llamacpp-server-<port>`: Local LLaMA CPP Server (e.g., `llamcpp-server` defaults to port 8080, or `llamacpp-server-9090` for port 9090)
+* `bedrock-<model_name>`: AWS Bedrock API (e.g., `bedrock-eu.anthropic.claude-3-5-sonnet-20240620-v1:0`)
 
 ## Usage Example
 ```bash

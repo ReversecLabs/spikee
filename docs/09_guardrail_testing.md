@@ -90,4 +90,4 @@ spikee results analyze \
     --false-positive-checks results/results_my_guardrail_target...benign_results.jsonl
 ```
 
-The output will include the standard analysis of the attack run, plus a **Confusion Matrix** and key performance metrics (Precision, Recall, F1 Score). This provides a complete picture of your guardrail's performance. For detailed explanations of these metrics, refer to the **[Interpreting Spikee Results](./04_interpreting_results.md)** guide.
+The output will include the standard analysis of the attack run, plus a **Confusion Matrix** and key performance metrics (Precision, Recall, F1 Score). This provides a complete picture of your guardrail's performance. For detailed explanations of these metrics, refer to the **[Interpreting Spikee Results](./10_results.md)** guide.

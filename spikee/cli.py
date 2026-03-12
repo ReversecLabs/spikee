@@ -108,6 +108,11 @@ def main():
         action="store_true",
         help="Include the built-in web viewer in the local workspace",
     )
+    parser_init.add_argument(
+        "--include-billing",
+        action="store_true",
+        help="Include billing tracker in the local workspace",
+    )
 
     # === [GENERATE] Sub-command ===============================================
     parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
@@ -324,6 +329,11 @@ def main():
         help='Options to pass to the attack module (e.g., "mode-X")',
     )
     parser_test.add_argument(
+        "--attack-only",
+        action="store_true",
+        help="Only run the attack module without standard attempts",
+    )
+    parser_test.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
     parser_test.add_argument(
@@ -421,7 +431,7 @@ def main():
 
     # --- extract
     parser_extract = subparsers_results.add_parser(
-        "extract", help="Extract categories of prompts from results JSONL files"
+        "extract", help="Extract categories of prompts from results JSONL files."
     )
     parser_extract.add_argument(
         "--result-file",
@@ -582,6 +592,7 @@ def main():
             force=args.force,
             include_builtin=args.include_builtin,
             include_viewer=args.include_viewer,
+            include_billing=args.include_billing,
         )
 
     elif args.command == "generate":
@@ -626,7 +637,7 @@ def main():
         sys.exit(1)
 
 
-def init_workspace(force=False, include_builtin="none", include_viewer=False):
+def init_workspace(force=False, include_builtin="none", include_viewer=False, include_billing=False):
     """
     Copy the entire 'data/workspace' directory from the installed package
     into the user's current working directory. This sets up the local spikee workspace
@@ -646,6 +657,9 @@ def init_workspace(force=False, include_builtin="none", include_viewer=False):
         destination = workspace_dest / item.name
 
         if item.name == "viewer" and not include_viewer:
+            continue
+
+        if item.name == "billing.json" and not include_billing:
             continue
 
         if destination.exists() and not force:

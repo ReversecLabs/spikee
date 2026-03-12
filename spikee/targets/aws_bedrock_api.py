@@ -3,7 +3,7 @@ spikee/targets/aws_bedrock_api.py
 
 Unified AWS Bedrock target that invokes Anthropic Claude models based on a simple key.
 
-Keys:
+Example Keys:
   - "claude35-haiku" → "us.anthropic.claude-3-5-haiku-20241022-v1:0"
   - "claude35-sonnet" → "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
   - "claude37-sonnet" → "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
@@ -17,27 +17,20 @@ Exposed:
 """
 
 from spikee.templates.target import Target
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage, BEDROCK_MODEL_MAP
 
 from dotenv import load_dotenv
-from langchain_aws import ChatBedrock
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 
 class AWSBedrockTarget(Target):
-    # Map shorthand keys to AWS Bedrock model identifiers
-    _OPTION_MAP: Dict[str, str] = {
-        "claude35-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
-        "claude35-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "claude37-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    }
-
     # Default key
     _DEFAULT_KEY = "claude35-haiku"
 
     def get_available_option_values(self) -> List[str]:
         """Return supported keys; first option is default."""
         options = [self._DEFAULT_KEY]  # Default first
-        options.extend([key for key in self._OPTION_MAP if key != self._DEFAULT_KEY])
+        options.extend([key for key in BEDROCK_MODEL_MAP if key != self._DEFAULT_KEY])
         return options
 
     def process_input(
@@ -52,41 +45,34 @@ class AWSBedrockTarget(Target):
         Raises:
             ValueError if target_options is provided but invalid.
         """
-        # Determine key or default
-        key = target_options if target_options is not None else self._DEFAULT_KEY
-        if key not in self._OPTION_MAP:
-            valid = ", ".join(self.get_available_option_values())
-            raise ValueError(f"Unknown AWS Bedrock key '{key}'. Valid keys: {valid}")
-
-        model_id = self._OPTION_MAP[key]
-
+        model_id = target_options if target_options is not None else self._DEFAULT_KEY
+        
+        if model_id.startswith("bedrock-"):
+            model_id = model_id.replace("bedrock-", "")
+            
         # Initialize Bedrock client
-        llm = ChatBedrock(
-            model_id=model_id,
-            model_kwargs={"temperature": 0},
-        )
+        llm = get_llm(f"bedrock-{model_id}", max_tokens=None, temperature=0.7)
 
         # Build messages
-        messages: List[tuple] = []
+        messages = []
         if system_message:
-            messages.append(("system", system_message))
-        messages.append(("user", input_text))
+            messages.append(SystemMessage(system_message))
+        messages.append(HumanMessage(input_text))
 
         # Invoke model
         try:
-            ai_msg = llm.invoke(messages)
-            return ai_msg.content
+            return llm.invoke(messages, content_only=True)
 
         except Exception as e:
             print(f"Error during AWS Bedrock completion ({model_id}): {e}")
             raise
 
-
 if __name__ == "__main__":
+    load_dotenv()
     target = AWSBedrockTarget()
     print("Supported Bedrock keys:", target.get_available_option_values())
     try:
-        load_dotenv()
+
         print(target.process_input("Hello!", target_options="claude35-sonnet"))
     except Exception as err:
         print("Error:", err)

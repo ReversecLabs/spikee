@@ -13,31 +13,20 @@ Exposed:
 """
 
 from spikee.templates.target import Target
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage, GOOGLE_MODEL_LIST
 
-from typing import List, Optional
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
-
+from typing import List, Optional
 
 class GoogleAPITarget(Target):
-    # Supported model names
-    _SUPPORTED_MODELS: List[str] = [
-        "gemini-2.5-pro",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro",
-        "gemini-exp-1206",
-    ]
-
     # Default model name
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    DEFAULT_MODEL = "gemini-2.5-flash"
 
     def get_available_option_values(self) -> List[str]:
         """Return supported model names; first option is default."""
         options = [self.DEFAULT_MODEL]  # Default first
         options.extend(
-            [model for model in self._SUPPORTED_MODELS if model != self.DEFAULT_MODEL]
+            [model for model in GOOGLE_MODEL_LIST if model != self.DEFAULT_MODEL]
         )
         return options
 
@@ -53,36 +42,26 @@ class GoogleAPITarget(Target):
         Raises:
             ValueError if target_options is provided but invalid.
         """
-        # Determine model to use
-        model_name = (
-            target_options if target_options is not None else self.DEFAULT_MODEL
-        )
-        if model_name not in self._SUPPORTED_MODELS:
-            valid = ", ".join(self._SUPPORTED_MODELS)
-            raise ValueError(f"Unknown model '{model_name}'. Valid models: {valid}")
+        model_id = target_options if target_options is not None else self.DEFAULT_MODEL
+        
+        if model_id.startswith("google-"):
+            model_id = model_id.replace("google-", "")
 
         # Initialize the client
-        llm = ChatGoogleGenerativeAI(
-            model=model_name,
-            temperature=0,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-        )
+        llm = get_llm(f"google-{model_id}", max_tokens=None, temperature=0)
 
         # Build messages
         messages = []
         if system_message:
-            messages.append(("system", system_message))
-        messages.append(("user", input_text))
+            messages.append(SystemMessage(system_message))
+        messages.append(HumanMessage(input_text))
 
         # Invoke model
         try:
-            ai_msg = llm.invoke(messages)
-            print(ai_msg)
-            return ai_msg.content
+            return llm.invoke(messages, content_only=True)
+        
         except Exception as e:
-            print(f"Error during Google completion ({model_name}): {e}")
+            print(f"Error during Google completion ({model_id}): {e}")
             raise
 
 
@@ -91,7 +70,6 @@ if __name__ == "__main__":
     target = GoogleAPITarget()
     print("Supported Google models:", target.get_available_option_values())
     try:
-        response = target.process_input("What is 5=5 elevated to the power of 6?")
-        print(response)
+        print(target.process_input("What is 5=5 elevated to the power of 6?"))
     except Exception as err:
         print("Error:", err)

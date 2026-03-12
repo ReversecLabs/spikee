@@ -2,7 +2,7 @@
 
 Dynamic Attacks are Python scripts that apply **iterative, real-time transformations** to a payload during `spikee test`. They are the ideal tool for discovering novel bypasses when your initial, pre-defined prompts fail.
 
-Sample dynamic attacks can be found within the `workspace/attacks/` directory, created by running `spikee init`. Further information about built-in dynamic attacks and usage examples can be found in **[Built-in targets, attacks and judges](04_builtin_targets_attacks_and_judges.md)**.
+Sample dynamic attacks can be found within the `workspace/attacks/` directory, created by running `spikee init`. Further information about built-in dynamic attacks and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**.
 
 ### Dynamic Attacks vs. Plugins: What's the Difference?
 

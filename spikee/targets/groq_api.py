@@ -22,24 +22,13 @@ Exposed:
 """
 
 from spikee.templates.target import Target
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage, GROK_MODEL_LIST
 
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
 from typing import List, Optional
 
 
 class GroqApiTarget(Target):
-    # Supported Groq model IDs
-    _SUPPORTED_MODELS: List[str] = [
-        "distil-whisper-large-v3-en",
-        "gemma2-9b-it",
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "meta-llama/llama-guard-4-12b",
-        "whisper-large-v3",
-        "whisper-large-v3-turbo",
-    ]
-
     # Default model ID
     DEFAULT_MODEL = "gemma2-9b-it"
 
@@ -47,7 +36,7 @@ class GroqApiTarget(Target):
         """Return supported model names; first option is default."""
         options = [self.DEFAULT_MODEL]  # Default first
         options.extend(
-            [model for model in self._SUPPORTED_MODELS if model != self.DEFAULT_MODEL]
+            [model for model in GROK_MODEL_LIST if model != self.DEFAULT_MODEL]
         )
         return options
 
@@ -65,29 +54,23 @@ class GroqApiTarget(Target):
         """
         # Determine which model to use
         model_id = target_options if target_options is not None else self.DEFAULT_MODEL
-        if model_id not in self._SUPPORTED_MODELS:
-            valid = ", ".join(self._SUPPORTED_MODELS)
-            raise ValueError(f"Unknown Groq model '{model_id}'. Valid models: {valid}")
+        
+        if model_id.startswith("groq-"):
+            model_id = model_id.replace("groq-", "")
 
         # Initialize the ChatGroq client
-        llm = ChatGroq(
-            model=model_id,
-            temperature=0,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-        )
+        llm = get_llm(f"groq-{model_id}", max_tokens=None, temperature=0)
 
         # Build messages
         messages = []
         if system_message:
-            messages.append(("system", system_message))
-        messages.append(("user", input_text))
+            messages.append(SystemMessage(system_message))
+        messages.append(HumanMessage(input_text))
 
         # Invoke model
         try:
-            ai_msg = llm.invoke(messages)
-            return ai_msg.content
+            return llm.invoke(messages, content_only=True)
+        
         except Exception as e:
             print(f"Error during Groq completion ({model_id}): {e}")
             raise
@@ -98,7 +81,6 @@ if __name__ == "__main__":
     target = GroqApiTarget()
     print("Supported Groq models:", target.get_available_option_values())
     try:
-        output = target.process_input("Hello!", target_options="gemma2-9b-it")
-        print(output)
+        print(target.process_input("Hello!", target_options="gemma2-9b-it"))
     except Exception as err:
         print("Error:", err)

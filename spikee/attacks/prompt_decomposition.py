@@ -21,6 +21,8 @@ from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
     get_llm,
     validate_llm_option,
+    HumanMessage,
+    SystemMessage
 )
 
 
@@ -151,15 +153,14 @@ class PromptDecompositionAttack(Attack):
     """
 
         messages = [
-            ("system", system_message),
-            ("user", user_prompt),
+            (SystemMessage(system_message)),
+            (HumanMessage(user_prompt)),
         ]
 
         try:
-            response = llm.invoke(messages)
-            raw_output = response.content.strip()
+            response = llm.invoke(messages, content_only=True).strip()
 
-            lines = raw_output.splitlines()
+            lines = response.splitlines()
             variations = []
 
             for line in lines:
@@ -186,13 +187,12 @@ class PromptDecompositionAttack(Attack):
 
                 try:
                     additional_messages = [
-                        ("system", system_message),
-                        ("user", additional_prompt),
+                        SystemMessage(system_message),
+                        HumanMessage(additional_prompt),
                     ]
-                    additional_response = llm.invoke(additional_messages)
-                    additional_output = additional_response.content.strip()
+                    additional_response = llm.invoke(additional_messages, content_only=True).strip()
 
-                    for line in additional_output.splitlines():
+                    for line in additional_response.splitlines():
                         try:
                             data = json.loads(line)
                             if "variation" in data:

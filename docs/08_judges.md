@@ -21,7 +21,7 @@ These are basic judges that evaluate responses based on simple criteria.
 * **Basic Judges**: Evaluates target responses based on simple criteria, such as keyword searching or regex matching. (e.g., `canary`, `regex`).
 * **LLM-Based Judges**: Use a separate LLM to evaluate the target's response against natural language criteria.(e.g., `llm_judge_harmful`, `llm_judge_output_criteria`).
 
-Further information about built-in basic and LLM judges, supported LLM models and usage examples can be found in **[Built-in targets, attacks and judges](04_builtin_targets_attacks_and_judges.md)**.
+Further information about built-in basic and LLM judges, supported LLM judges and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**. For details on configuring specific models, see **[LLM Providers](04_llm_providers.md)**.
 
 
 ### Cloud vs. Local Judge Models
@@ -155,7 +155,7 @@ This allows you to re-perform judging on existing results datasets.
 
 For example, if a scan was performed within a restrictive environment without access to an LLM for judging, it would allow you to perform judging in a less restrictive environment or would allow you to rejudge an existing results file with a different judge. 
 
-See **[Installing Spikee in Isolated Environments](./11_installing_spikee_in_isolated_environments.md)** for more information about restricted environments.
+See **[Installing Spikee in Isolated Environments](./12_installing_spikee_in_isolated_environments.md)** for more information about restricted environments.
 
 ### 1. Scan Using Offline Judge
 Specify the offline judge model, with the `--judge-options offline` flag during your test.

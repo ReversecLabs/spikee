@@ -21,6 +21,8 @@ from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import (
     get_llm,
     validate_llm_option,
+    SystemMessage, 
+    HumanMessage
 )
 
 
@@ -153,15 +155,14 @@ class PromptDecompositionPlugin(Plugin):
     """
 
         messages = [
-            ("system", system_message),
-            ("user", user_prompt),
+            SystemMessage(system_message),
+            HumanMessage(user_prompt),
         ]
 
         try:
-            response = llm.invoke(messages)
-            raw_output = response.content.strip()
+            response = llm.invoke(messages, content_only=True).strip()
 
-            lines = raw_output.splitlines()
+            lines = response.splitlines()
             variations = []
 
             for line in lines:

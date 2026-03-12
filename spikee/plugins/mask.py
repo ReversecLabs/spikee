@@ -19,12 +19,11 @@ Options:
 """
 
 from typing import List, Tuple, Union
-from langchain.messages import SystemMessage, HumanMessage
 import json
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 import random
 import string
@@ -86,13 +85,13 @@ class Shortener(Plugin):
         response = llm.invoke([
             SystemMessage(content=MASK_PROMPT),
             HumanMessage(content=json.dumps(payload))
-        ])
+        ], content_only=True)
 
         risk_words = {}
         suffix = ""
 
         try:
-            response = extract_json_or_fail(response.content)
+            response = extract_json_or_fail(response)
 
             for word in response.get("risk_words", []):
                 if word in text:
