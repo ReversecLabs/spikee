@@ -1,8 +1,7 @@
 # Creating Custom Plugins
+Plugins are Python script that transforms a payload during dataset generation. This is typically used to assess transformation based jailbreaking techniques, or to modify prompts into a target friendly format.
 
-Plugins are Python scripts that transform payloads during dataset generation (`spikee generate`). They are used to create variations of your test cases *before* testing begins.
-
-Sample plugins can be found within the `workspace/plugins/` directory, created by running `spikee init`. Further information about built-in plugins and usage examples can be found in **[Built-in datasets and plugins](01_builtin_datasets_and_plugins.md)**.
+Sample plugins can be found within the `workspace/plugins/` directory, created by running `spikee init`. Further information about built-in plugins and usage examples can be found in **[Built-in Plugins](./02_builtin.md#built-in-plugins)**.
 
 ### Plugins vs. Dynamic Attacks: What's the Difference?
 
@@ -44,6 +43,7 @@ class SamplePlugin(Plugin):
         self, 
         text: str, 
         exclude_patterns: List[str] = None,
+        plugin_option: str = None
     ) -> Union[str, List[str]]:
         """Transforms the input text according to the user-defined logic, returning one or more variations.
 
@@ -136,7 +136,7 @@ class SamplePlugin(Plugin):
 ```
 
 ## Handling Exclude Patterns
-Correctly handling `exclude_patterns` is the most important part of writing a robust plugin. You must leave the excluded parts of the string completely untouched. The recommended way to do this is with `re.split`.
+Correctly handling `exclude_patterns` is the most important part of writing a robust plugin. You must leave the excluded parts of the string completely untouched. The recommended way to do this is with `re.split` as implemnted within the `BasicPlugin`.
 
 ```python
 # Example transformation function converting all text to uppercase with exclude_patterns support

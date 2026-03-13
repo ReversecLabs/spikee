@@ -557,7 +557,7 @@ def main():
 
     # === [LIST] Sub-command ================================================
     parser_list = subparsers.add_parser(
-        "list", help="List seeds, datasets, targets, or plugins"
+        "list", help="List seeds, datasets, judges, targets, plugins, or attacks"
     )
     list_subparsers = parser_list.add_subparsers(
         dest="list_command", help="What to list"

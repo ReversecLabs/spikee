@@ -13,7 +13,7 @@ The `spikee generate` command offers several flags to control precisely how test
 
     **The tool combines a jailbreak and an instruction into a `payload`, then injects this payload into a document.**
 
-2.  **Standalone Attacks:** For simpler datasets, you can provide a list of complete, ready-to-use prompts. This is useful when you want to test a prompt directly without any composition.
+2.  **Standalone Attacks:** For simpler, typically publicly sourced, datasets you can provide a list of complete ready-to-use prompts. This is useful when you want to test a prompt directly without any composition.
 
 ---
 
@@ -34,20 +34,29 @@ spikee generate --seed-folder datasets/seeds-in-the-wild-jailbreak-prompts \
 ```
 
 ## Enhancing Static Datasets with Plugins: `--plugins`
-This flag allows you to create multiple variations of each entry, by applying transformations, with the aim of bypassing filters and guardrails.
+A Plugin is a Python script that transforms a payload during dataset generation. This is typically used to assess transformation based jailbreaking techniques, or to modify prompts into a target friendly format.
+
+A list of available plugins can be found in the [Built-In Plugins Documentation](./02_builtin.md#built-in-plugins).
 
 **Usage Examples:**
 ```bash
-# 1337 (leetspeak) and base64 plugin
-spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
-                --plugin 1337 base64
+# Applying the base64 plugin to the cybersec dataset.
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --plugins base64
+
+# Applying the best_of_n plugin, with 5 variations per input.
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --plugins best_of_n --plugin-options "best_of_n:variants=5"
+
+# Applying multiple plugins.
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --plugins 1337 base64 splat
+
 ```
 
+**Plugin Piping**
+Spikee includes support for plugin piping, allowing you to apply multiple sequential plugins, which can aid more complex jailbreaking techniques.
+
 ```bash
-# Best of N plugin, with 50 variants per entry
-spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
-                --plugin best_of_n \
-                --plugin-options "best_of_n:variants=50"
+# Applying the splat plugin, then the base64 plugin.
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --plugins splat|base64
 ```
 
 ## Multi-Turn Datasets
@@ -175,9 +184,9 @@ spikee generate --injection-delimiters $'</user_turn><system_instructions>INJECT
 These flags allow you to create smaller, more targeted datasets by filtering the source files based on their metadata.
 
 *   `--languages <lang1>,<lang2>`: Includes only items with the specified language codes.
+*   `--match-languages`: Ensures that only jailbreaks and instructions with the same `lang` code are combined.
 *   `--instruction-filter <type1>,<type2>`: Includes only instructions of the specified `instruction_type`.
 *   `--jailbreak-filter <type1>,<type2>`: Includes only jailbreaks of the specified `jailbreak_type`.
-*   `--match-languages`: Ensures that only jailbreaks and instructions with the same `lang` code are combined.
 
 **Usage Example:**
 ```bash
