@@ -5,9 +5,9 @@
 - **[How to Spikee](./how-to-spikee/README.md)** - A step-by-step tutorial, converting using Spikee for testing, and developing custom modules.
 
 ## Reference Pages
-- **[Cheatsheet](./docs/01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
-- **[Built-in Seeds and Modules](./docs/02_builtin.md)** - A reference for all built-in seeds, targets, plugins, attacks, and judges.
-- **[LLM Providers](./docs/03_llm_providers.md)** - An overview of the built-in LLM service, and a list of supported providers and models. Includes Billing Tracker.
+- **[Cheatsheet](./01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
+- **[Built-in Seeds and Modules](./02_builtin.md)** - A reference for all built-in seeds, targets, plugins, attacks, and judges.
+- **[LLM Providers](./03_llm_providers.md)** - An overview of the built-in LLM service, and a list of supported providers and models. Includes Billing Tracker.
   
 ## Generation and Testing Workflows
 - **[Dataset Generation](./04_dataset_generation.md)** - A reference for `spikee generate`, explaining how to generate datasets and utilise arguments to modify datasets.
