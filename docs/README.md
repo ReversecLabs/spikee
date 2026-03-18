@@ -2,7 +2,7 @@
 
 ## Guides
 - **[Quick Start Guide](../README.md#a-quick-start-guide-to-using-spikee)** - A concise walkthrough of the core Spikee workflow, from installation to results analysis.
-- **[How to Spikee](./docs/how-to-spikee/README.md)** - A step-by-step tutorial, converting using Spikee for testing, and developing custom modules.
+- **[How to Spikee](./how-to-spikee/README.md)** - A step-by-step tutorial, converting using Spikee for testing, and developing custom modules.
 
 ## Reference Pages
 - **[Cheatsheet](./docs/01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
