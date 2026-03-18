@@ -1,5 +1,5 @@
 
-# Spikee Guide
+# How to Spikee
 This is a step-by-step guide on how to use Spikee and develop modules for testing.
 
 > Warning, this is not a comprehensive guide for GenAI security testing.

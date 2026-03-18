@@ -34,53 +34,25 @@ Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience o
 
 > **0.5.0 MAJOR CHANGE WARNING:** Module interfaces for targets, plugins, attacks, and judges now use an OOP pattern. The legacy function-based hooks still run for now but will be deprecated in v1.0.0 - review the `CHANGELOG.md` entry for 0.5.0 and the sample implementations in the workspace/docs to understand the updated APIs.
 
-
----
-
-This README contains a [quick-start guide](#a-quick-start-guide-to-using-spikee) to the core Spikee workflow:
-- For a step-by-step tutorial on using and developing with Spikee, see the **[How to Spikee Guide](./docs/how-to-spikee/README.md)**.
-- For detailed reference documentation, see the **[Documentation](#documentation)** section below.
-
 ## Table of Contents
-
-- [Documentation](#documentation)
 - [Spikee Use Cases](#spikee-use-cases)
 - [The Spikee Architecture](#the-spikee-architecture)
 - [A Quick-Start Guide to Using Spikee](#a-quick-start-guide-to-using-spikee)
   - [1. Installation](#1-installation)
   - [2. Your Workspace](#2-your-workspace)
-  - [3. `spikee list` - Available Modules](#3-spikee-list---available-modules)
+  - [3. Available Modules: `spikee list`](#3-available-modules-spikee-list)
   - [4. Generating a Dataset: `spikee generate`](#4-generating-a-dataset-spikee-generate)
-    - [4.1. Choosing a Dataset Generation Format](#41-choosing-a-dataset-generation-format)
-    - [4.2. Generating Standalone Attacks](#42-generating-standalone-attacks)
-    - [4.3 Transformations using Plugins](#43-transformations-using-plugins)
   - [5. Testing a Target: `spikee test`](#5-testing-a-target-spikee-test)
-    - [5.1. Running `spikee test`](#51-running-spikee-test)
-    - [5.2. Target Modules](#52-target-modules)
-    - [5.3. Judging Attack Success](#53-judging-attack-success)
-    - [5.4. Dynamic Attacks](#54-dynamic-attacks)
-    - [5.5 Multi-Turn Testing](#55-multi-turn-testing)
-    - [5.6 Useful Arguments](#56-useful-arguments)
   - [6. Analysing the Results: `spikee results`](#6-analysing-the-results-spikee-results)
 - [Contributing](#contributing)
 - [Questions or Feedback?](#questions-or-feedback)
 
 ## Documentation
-
-1.  **[Cheatsheet](./docs/01_cheatsheet.md)**: Quick reference for all CLI commands, flags, and arguments.
-2.  **[Built-in Seeds and Modules](./docs/02_builtin.md)**: Overview of built-in seeds, targets, plugins, attacks, and judges.
-3.  **[LLM Providers](./docs/03_llm_providers.md)**: Supported LLM providers, prefixes, and configuration.
-4.  **[Dataset Generation](./docs/04_dataset_generation.md)**: Reference for `spikee generate` and dataset options.
-5.  **[Testing Targets](./docs/05_testing.md)**: Reference for `spikee test` and all its arguments.
-6.  **[Creating Custom Targets](./docs/06_custom_targets.md)**: Guide to implementing custom target scripts.
-7.  **[Creating Custom Plugins](./docs/07_custom_plugins.md)**: Guide to writing plugins for dataset generation.
-8.  **[Creating Dynamic Attack Scripts](./docs/08_dynamic_attacks.md)**: Guide to building dynamic attack scripts.
-9. **[Judges: Evaluating Attack Success](./docs/09_judges.md)**: Explanation of the judge system and custom logic.
-10. **[Testing Guardrails Using Spikee](./docs/10_guardrail_testing.md)**: Step-by-step workflow for guardrail evaluation.
-11. **[Spikee Results](./docs/11_results.md)**: Guide to analyzing and understanding test results.
-12. **[Installing Spikee in an Isolated Environment](./docs/12_installing_spikee_in_isolated_environments.md)**: Guide for air-gapped/test environments.
-13. **[Generating Custom Datasets with an LLM](./docs/13_llm_dataset_generation.md)**: Methods for LLM-driven dataset generation.
-14. **[Functional Testing Guide](./docs/14_functional_testing.md)**: How to run the end-to-end CLI regression suite.
+- [Guides](./docs/README.md#guides)
+- [Reference Pages](./docs/README.md#reference-pages)
+- [Generation and Testing Workflows](./docs/README.md#generation-and-testing-workflows)
+- [Custom Modules and Development](./docs/README.md#custom-modules-and-development)
+- [Additional Resources](./docs/README.md#additional-resources)
 
 ---
 
@@ -149,7 +121,7 @@ spikee init
 
 See [`spikee init` documentation](./docs/01_cheatsheet.md#spikee-init) for information on `--include` flags (e.g., Spikee UI, billing tracking). 
 
-## 3. `spikee list` - Available Modules
+## 3. Available Modules: `spikee list`
 
 Use `spikee list` to see what seeds, datasets, judges, targets, plugins and attacks are available in your workspace (both local and built-in).
 
@@ -203,7 +175,7 @@ spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
                 --include-standalone-inputs \
 ```
 
-### 4.3 Transformations using Plugins
+### 4.3. Transformations using Plugins
 Dataset generation can be enhanced using Plugins, to apply static transformations to payloads. This allows you to assess transformation based jailbreak techniques. 
 
 See **[Built-in Plugins](./docs/02_builtin.md#built-in-plugins)** for a list of available plugins and **[Creating Custom Plugins](./docs/07_custom_plugins.md)** for guidance on writing your own.
@@ -304,7 +276,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
 
 See [Built-in Attacks](./docs/02_builtin.md#built-in-attacks) for a list of built-in attacks and their options, and **[Creating Dynamic Attack Scripts](./docs/07_dynamic_attacks.md)** for information on writing your own attacks.
 
-### 5.5 Multi-Turn Testing
+### 5.5. Multi-Turn Testing
 Spikee includes support for multi-turn testing, through the following extended components:
 - **[Multi-turn Datasets](./docs/04_dataset_generation.md#multi-turn-datasets)**: Static and instructional multi-turn datasets.
 - **[Multi-turn Targets](./docs/06_custom_targets.md#multi-turn-dynamic-targets)**: Added support for conversational memory.
@@ -329,7 +301,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
             --attack-only
 ```
 
-### 5.6 Useful Arguments
+### 5.6. Useful Arguments
 - `--threads`: Number of concurrent threads assessing prompts (Default, 4)
 - `--attempts`: Number of retries per prompt until a successful response is received (Default, 1)
 - `--throttle`: Time (in seconds) to wait between requests, useful for managing rate limits (Default, 0)
