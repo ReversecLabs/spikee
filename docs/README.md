@@ -1,17 +1,15 @@
 # Spikee Documentation
 
-For a step-by-step tutorial on using and developing with Spikee, see the 
-
-## **Guides**
+## Guides
 - **[Quick Start Guide](../README.md#a-quick-start-guide-to-using-spikee)** - A concise walkthrough of the core Spikee workflow, from installation to results analysis.
 - **[How to Spikee](./docs/how-to-spikee/README.md)** - A step-by-step tutorial, converting using Spikee for testing, and developing custom modules.
 
-## **Reference Pages**
+## Reference Pages
 - **[Cheatsheet](./docs/01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
 - **[Built-in Seeds and Modules](./docs/02_builtin.md)** - A reference for all built-in seeds, targets, plugins, attacks, and judges.
 - **[LLM Providers](./docs/03_llm_providers.md)** - An overview of the built-in LLM service, and a list of supported providers and models. Includes Billing Tracker.
   
-## **Generation and Testing Workflows**
+## Generation and Testing Workflows
 - **[Dataset Generation](./04_dataset_generation.md)** - A reference for `spikee generate`, explaining how to generate datasets and utilise arguments to modify datasets.
   
 - **[Testing](./05_testing.md)** - A reference for `spikee test`, explaining how to test an LLM, application or guardrail and utilise arguments to modify testing behavior.
@@ -20,7 +18,7 @@ For a step-by-step tutorial on using and developing with Spikee, see the
 
 - **[Spikee Results](./11_results.md)** - A guide to understanding the results analysis tools available in Spikee including `analyze` and `extract`. Explains core metrics, multi-file analysis, and various result commands.
   
-## **Custom Modules and Development**
+## Custom Modules and Development
 - **[Creating Custom Targets](./06_custom_targets.md)** - A guide to implementing target modules for interacting with any LLM, application or guardrail.
   
 - **[Creating Custom Plugins](./07_custom_plugins.md)** - A guide to implementing plugin modules for transforming payloads during dataset generation.
@@ -30,7 +28,7 @@ For a step-by-step tutorial on using and developing with Spikee, see the
 - **[Judges](./09_judges.md)** - An introduction to judge modules, used to evaluate target responses. Covers basic and LLM judges, their implementation and usage.
   
 
-## **Additional Resources**
+## Additional Resources
 - **[Installing Spikee in an Isolated Environment](./12_installing_spikee_in_isolated_environments.md)** - A step-by-step guide on how to install Spikee in a test environment that has limited / no internet access.
   
 - **[Generating Custom Datasets with an LLM](./13_llm_dataset_generation.md)** - Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_user_inputs.jsonl` and custom `instructions.jsonl` files.
