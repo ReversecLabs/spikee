@@ -15,8 +15,7 @@ SUPPORTED_LLM_MODELS = [
 SUPPORTED_PREFIXES = [
     "openai-",
     "google-",
-    "bedrock-",     # BedrockChat for Anthropic Models
-    "bedrockcv-",   # BedrockChatConverse for other model compatibility
+    "bedrock-",
     "ollama-",
     "llamaccp-server-",
     "together-",
@@ -69,30 +68,30 @@ GOOGLE_MODEL_LIST: List[str] = [
 ]
 
 GROK_MODEL_LIST: List[str] = [
-        "distil-whisper-large-v3-en",
-        "gemma2-9b-it",
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "meta-llama/llama-guard-4-12b",
-        "whisper-large-v3",
-        "whisper-large-v3-turbo",
+    "distil-whisper-large-v3-en",
+    "gemma2-9b-it",
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+    "meta-llama/llama-guard-4-12b",
+    "whisper-large-v3",
+    "whisper-large-v3-turbo",
 ]
 
 DEEPSEEK_MODEL_LIST: List[str] = [
-    "deepseek-chat", # deepseek-v3.2 non-thinking
-    "deepseek-reasoner", # deepseek-v3.2 thinking
+    "deepseek-chat",  # deepseek-v3.2 non-thinking
+    "deepseek-reasoner",  # deepseek-v3.2 thinking
 ]
 
 OPENAI_MODEL_LIST: List[str] = [
-        "gpt-4o",
-        "gpt-4o-mini",
-        "gpt-4.1",
-        "gpt-4.1-mini",
-        "o1-mini",
-        "o1",
-        "o3-mini",
-        "o3",
-        "o4-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "o1-mini",
+    "o1",
+    "o3-mini",
+    "o3",
+    "o4-mini",
 ]
 
 OPENROUTER_MODEL_LIST: List[str] = [
@@ -116,6 +115,7 @@ TOGETHER_AI_MODEL_MAP: Dict[str, str] = {
     "qwen3-235b-fp8": "Qwen/Qwen3-235B-A22B-fp8-tput",
 }
 
+
 def _resolve_model_map(key: str, model_map: Dict[str, str]) -> str:
     """
     Convert a shorthand key to the full model identifier.
@@ -128,60 +128,61 @@ def _resolve_model_map(key: str, model_map: Dict[str, str]) -> str:
 
 # region Wrappers
 
+
 class LLMWrapper():
     """
     A wrapper class for LLM instances that provides a consistent interface and can be extended with additional functionality.
     """
-    
+
     RETRY_ATTEMPTS = 2
 
     def __init__(self, model_name, llm_lite_kwargs):
         self.model_name = model_name
         self.llm_lite_kwargs = llm_lite_kwargs
-    
+
         if self.llm_lite_kwargs is None:
             raise ValueError("LLMWrapper requires llm_lite_kwargs cannot be None.")
-        
+
         litellm.success_callback = [self.__billing_callback]
-        litellm.suppress_debug_info = True # Prevent litellm from printing request/response info to console; we handle logging in the callback.
-        #litellm._turn_on_debug()
-        
+        litellm.suppress_debug_info = True  # Prevent litellm from printing request/response info to console; we handle logging in the callback.
+        # litellm._turn_on_debug()
+
         self.__billing_path = os.path.join(os.getcwd(), "billing.json")
-        
+
         if os.path.exists(self.__billing_path):
             self.__billing = True
         else:
             self.__billing = None
-                
+
     def __billing_callback(self, kwargs, completion_response, start_time, end_time):
         if self.__billing is not None:
             model = self.model_name
             cost = float(kwargs["response_cost"])
             input_tokens = completion_response.usage.get("prompt_tokens")
             output_tokens = completion_response.usage.get("completion_tokens")
-            
+
             lock = FileLock(self.__billing_path + ".lock")
             with lock:
                 with open(self.__billing_path, "r+") as f:
                     self.__billing = json.load(f)
-                    
+
                     self.__billing['total_cost'] = cost + self.__billing.get('total_cost', 0.0)
-                    
+
                     if model not in self.__billing['models']:
                         self.__billing['models'][model] = {
                             'cost': 0.0,
                             'input_tokens': 0,
                             'output_tokens': 0,
                         }
-                        
+
                     self.__billing['models'][model]['cost'] = cost + self.__billing['models'][model].get('cost', 0.0)
                     self.__billing['models'][model]['input_tokens'] = input_tokens + self.__billing['models'][model].get('input_tokens', 0)
                     self.__billing['models'][model]['output_tokens'] = output_tokens + self.__billing['models'][model].get('output_tokens', 0)
-                    
+
                     f.seek(0)
                     f.truncate()
                     f.write(json.dumps(self.__billing, indent=2))
-                    
+
     def __correct_messages(self, messages):
         corrected_messages = []
         for msg in messages:
@@ -194,15 +195,15 @@ class LLMWrapper():
             elif isinstance(msg, tuple) and len(msg) == 2:
                 role, content = msg
                 corrected_messages.append({"role": role, "content": content})
-            
+
             elif isinstance(msg, Message) or isinstance(msg, SystemMessage) or isinstance(msg, HumanMessage) or isinstance(msg, AIMessage):
                 corrected_messages.append(msg.to_dict())
-            
+
             else:
                 raise ValueError(f"Unsupported message format type: {type(msg)}.")
-        
+
         return corrected_messages
-    
+
     def __standard_invoke(self, messages):
         attempts = 0
         while attempts < self.RETRY_ATTEMPTS:
@@ -219,60 +220,65 @@ class LLMWrapper():
             except Exception as e:
                 if attempts >= self.RETRY_ATTEMPTS:
                     raise e
-                
+
     def invoke(self, messages, content_only: bool = False):
         corrected_messages = self.__correct_messages(messages)
-                
+
         response = self.__standard_invoke(corrected_messages)
-                
+
         if content_only:
             return response.choices[0].message.content
         else:
             return response
+
 
 class MockWrapper():
     def __init__(self, model_name: str, max_tokens: Union[int, None], temperature: float):
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.temperature = temperature
-        
+
         if self.model_name != "mock":
             self._llm = get_llm(model_name, max_tokens=max_tokens, temperature=temperature)
-        
+
     def invoke(self, messages, content_only: bool = False):
         if self.model_name == "mock":
             response = "This is a mock response from the LLM."
-            
+
             if self.max_tokens is not None:
                 response = response[:self.max_tokens]
         else:
             response = self._llm.invoke(messages, content_only=content_only)
-            
+
         print("[Mock LLM] Message:", messages)
         print("[Mock LLM] Response:", response)
         print("--------------------------------")
-        
+
         return response
 
 # endregion
 
 # region Messages
 
+
 class Message:
     def __init__(self, role: str, content: str):
         self.role = role
         self.content = content
-        
+
     def to_dict(self) -> Dict[str, str]:
         return {"role": self.role, "content": self.content}
-        
+
+
 class SystemMessage(Message):
     def __init__(self, content: str):
         super().__init__("system", content)
 
+
 class HumanMessage(Message):
     def __init__(self, content: str):
         super().__init__("user", content)
+
 
 class AIMessage(Message):
     def __init__(self, content: str):
@@ -289,7 +295,8 @@ def validate_llm_option(option: str) -> bool:
         option.startswith(prefix) for prefix in SUPPORTED_PREFIXES
     )
 
-def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: float = 0, additional_kwargs = None) -> Union[LLMWrapper, MockWrapper]:
+
+def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: float = 0, additional_kwargs=None) -> Union[LLMWrapper, MockWrapper]:
     """
     Returns an LLMWrapper.
 
@@ -311,7 +318,7 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
 
     if max_tokens is not None:
         kwargs["max_tokens"] = max_tokens
-        
+
     if additional_kwargs:
         kwargs.update(additional_kwargs)
 
@@ -381,13 +388,13 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
         model_name = options.replace("openrouter-", "")
         kwargs["model"] = f"openrouter/{model_name}"
         kwargs["num_retries"] = 2
-        
+
         if max_tokens is None:
             kwargs["max_tokens"] = 2048  # OpenRouter models often require explicit max_tokens
 
     elif options.startswith("azure-"):
         model_name = options.replace("azure-", "")
-        
+
         kwargs["model"] = f"azure/{model_name}"
         kwargs["api_version"] = os.environ.get("API_VERSION", "2024-05-01-preview")
         kwargs["num_retries"] = 2

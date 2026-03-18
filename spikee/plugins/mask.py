@@ -47,7 +47,7 @@ to be associated with prompt injection attacks or high-risk topics (e.g., violen
 
 
 class Shortener(Plugin):
-    DEFAULT_MODEL = "bedrockcv-qwen.qwen3-coder-30b-a3b-v1:0"
+    DEFAULT_MODEL = "bedrock-qwen.qwen3-coder-30b-a3b-v1:0"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "Masks high-risk words in prompts."
