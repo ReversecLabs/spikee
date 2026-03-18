@@ -471,7 +471,12 @@ def process_standalone_attacks(
     Returns the updated dataset and the next entry_id.
     """
 
-    plugins = [(None, None)] + plugins if plugins else [(None, None)]  # [(plugin name, plugin module)] with a dummy entry for no plugin
+    if plugin_only:
+        plugins = [] + plugins if plugins else []  # Only include plugin variations, no base attack
+
+    else:
+        plugins = [(None, None)] + plugins if plugins else [(None, None)]  # [(plugin name, plugin module)] with a dummy entry for no plugin
+
     prefixes = adv_prefixes
     suffixes = adv_suffixes
 
@@ -585,6 +590,7 @@ def process_standalone_attacks(
 
             dataset.append(entry)
             entry_id += 1
+            bar_standalone.update(1)
 
     bar_standalone.close()
     return dataset, entry_id
@@ -614,7 +620,11 @@ def generate_variations(
     dataset = []
     entry_id = 1
 
-    plugins = [(None, None)] + plugins if plugins else [(None, None)]
+    if plugin_only:
+        plugins = [] + plugins if plugins else []  # Only include plugin variations, no base attack
+
+    else:
+        plugins = [(None, None)] + plugins if plugins else [(None, None)]  # [(plugin name, plugin module)] with a dummy entry for no plugin
 
     prefixes = adv_prefixes
     suffixes = adv_suffixes
@@ -842,6 +852,7 @@ def generate_variations(
                                         ).to_entry()
                                         dataset.append(entry)
                                         entry_id += 1
+                                        bar_variations.update(1)
 
     return dataset, entry_id
 

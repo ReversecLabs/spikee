@@ -178,6 +178,10 @@ class AdvancedTargetWrapper:
 
                 return response, meta
 
+            except GuardrailTrigger as gt:
+                last_error = gt
+                retries += 1
+
             except RetryableError as e:
                 last_error = e
                 if retries < self.max_retries - 1:
@@ -450,9 +454,12 @@ def _do_single_request(
     guardrail = False
     guardrail_categories = {}
 
+    # Meta
+    meta = None
+
     try:
         start_time = time.time()
-        response, _ = target_module.process_input(
+        response, meta = target_module.process_input(
             input_text, system_message, False, entry_id, output_file
         )
         if isinstance(response, bool) is False:
@@ -522,6 +529,9 @@ def _do_single_request(
         result_dict["guardrail"] = True
         result_dict["guardrail_categories"] = guardrail_categories
 
+    if meta:
+        result_dict["meta"] = meta
+
     return result_dict, success
 
 
@@ -575,21 +585,20 @@ def process_entry(
                 break
 
         results_list = [std_result]
-        
+
         if std_success:
             # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
             with global_lock:
-                attempts_bar.total = attempts_bar.total - (attempts - request_attempts) - ( attack_iterations * attempts if attack_module else 0)
-    
-    else: 
+                attempts_bar.total = attempts_bar.total - (attempts - request_attempts) - (attack_iterations * attempts if attack_module else 0)
+
+    else:
         std_success = False
         results_list = []
 
-    
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
     if (not std_success) and attack_module:
         attack_input = None  # Ensure attack_input is always defined
-        
+
         try:
             start_time = time.time()
             effective_attack_options = (
@@ -599,7 +608,7 @@ def process_entry(
             # Check if attack function accepts attack_options parameter
             sig = inspect.signature(attack_module.attack)
             params = sig.parameters
-            
+
             attack_success = False
             request_attempts = 0
 
@@ -628,9 +637,9 @@ def process_entry(
                             global_lock,
                         )
                     )
-                    
+
                 request_attempts += attack_attempts
-                    
+
                 if attack_success:
                     break
 
