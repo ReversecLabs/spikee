@@ -21,8 +21,8 @@ from typing import Optional, Dict, List
 
 class ExampleTarget(Target):
     def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default. None if no options."""
-        return None
+        """Returns a list of supported option values, first is default."""
+        return []
 
     def process_input(
         self,
@@ -167,7 +167,7 @@ try:
 
 except requests.exceptions.RequestException as e
     if response.status_code == 400:  # Guardrail Triggered - HTTP Status code will vary by provider/application
-        raise GuardrailTrigger(f"Guardrail was triggered by the target: {e}", categories={"jailbreak": True})
+        raise GuardrailTrigger(f"Jailbreak Guardrail Detection", categories={"jailbreak": True})
 
     else:
         print(f"Error during HTTP request: {e}")
@@ -265,9 +265,9 @@ class SampleMultiTurnTarget(MultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return None
+        return []
 
-        def process_input(
+    def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
@@ -323,7 +323,7 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return None
+        return []
 
     def process_input(
         self,

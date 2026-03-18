@@ -2,6 +2,14 @@
 
 This is a quick CLI reference guide for using Spikee, containing commands, arguments and links to more detailed documentation.
 
+Jump to Links:
+- [`spikee init`](#spikee-init)
+- [`spikee list`](#spikee-list)
+- [`spikee generate`](#spikee-generate)
+- [`spikee test`](#spikee-test)
+- [`spikee results`](#spikee-results)
+- [`spikee viewer`](#spikee-viewer)
+
 ## `spikee init`
 Initializes a new Spikee project in the current directory.
 

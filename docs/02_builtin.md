@@ -1,6 +1,13 @@
 # Built-In Seeds and Modules
 Spikee comes with a variety of built-in seeds and modules (e.g., targets, judges, plugins, attacks). 
 
+Jump to Links:
+- [Built-in Seeds](#built-in-seeds)
+- [Built-in Targets](#built-in-targets)
+- [Built-in Judges](#built-in-judges)
+- [Built-in Plugins](#built-in-plugins)
+- [Built-in Attacks](#built-in-attacks)
+
 ## Built-in Seeds
 Spikee comes with a variety of built-in seeds, each designed for a specific testing purpose. These seeds are located in the `datasets/` directory after you run `spikee init`. You can list them at any time with `spikee list seeds`.
 

@@ -2,6 +2,15 @@
 
 The `spikee test` command is used to evaluate the security of an LLM, application or guardrail against a dataset of entries. The command offers several flags and arguments to control how entries are executed, and to configure the target, judge and attack modules used for testing.
 
+Jump to Links:
+- [Testing a Target](#testing-a-target)
+- [Dataset Selection](#dataset-selection)
+- [Targets](#targets)
+- [Judges](#judges)
+- [Attacks](#attacks)
+- [Multi-Processing and Attempts Configuration](#multi-processing-and-attempts-configuration)
+- [Sampling](#sampling)
+
 ## Testing a Target
 Once you've generated a dataset, you can test it against a target using the `spikee test` command. The most basic usage:
 
@@ -15,7 +24,7 @@ spikee test
 - `--dataset` - specify a single dataset file (e.g. `./datasets/my_dataset.jsonl`)
 - `--dataset-folder` - specify a folder containing multiple JSONL dataset files (e.g. `./datasets/`)
 
-These args can be used multiple time to specify multiple datasets, which `spikee test` will assess sequentially against the target. However, at least one of `--dataset` or `--dataset-folder` is **required** to run a test.
+These args can be used multiple times to specify multiple datasets, which `spikee test` will assess sequentially against the target. However, at least one of `--dataset` or `--dataset-folder` is **required** to run a test.
 
 ```bash
 spikee test 
