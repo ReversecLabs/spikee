@@ -2,6 +2,8 @@
 goat.py
 
 Implements the GOAT (Generative Offensive Agent Tester) attack, based on: https://arxiv.org/pdf/2410.01606
+
+See `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS` for optional configuration to help tailor attacks to specific applications or known guardrails.
 """
 
 import uuid
