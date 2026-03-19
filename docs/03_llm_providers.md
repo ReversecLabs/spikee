@@ -21,6 +21,7 @@ To use a specific LLM, you must prepend the provider's designated prefix to the 
 | **OpenRouter** | `openrouter-` | `openrouter-meta-llama/llama-3.1-8b-instruct`<br/>`openrouter-google/gemini-2.5-flash` | `OPENROUTER_API_KEY` | [Models List](https://openrouter.ai/models) |
 | **Azure OpenAI** | `azure-` | `azure-gpt-4o`<br/>`azure-gpt-4o-mini` | `AZURE_OPENAI_API_KEY`<br/>`AZURE_OPENAI_ENDPOINT`<br/>`API_VERSION` | [Models List](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) |
 | **Local** | `ollama-`<br/>`llamaccp-server-` | `ollama-llama3.1`<br/>`llamaccp-server-8080` (requires port info) | *None* | |
+| **Custom** | `custom-` | `custom-mymodel` | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
 | **Offline** | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
 
 ## Configuring Models in Spikee Components
