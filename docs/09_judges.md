@@ -21,8 +21,7 @@ These are basic judges that evaluate responses based on simple criteria.
 * **Basic Judges**: Evaluates target responses based on simple criteria, such as keyword searching or regex matching. (e.g., `canary`, `regex`).
 * **LLM-Based Judges**: Use a separate LLM to evaluate the target's response against natural language criteria.(e.g., `llm_judge_harmful`, `llm_judge_output_criteria`).
 
-Further information about built-in basic and LLM judges, supported LLM judges and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**. For details on configuring specific models, see **[LLM Providers](04_llm_providers.md)**.
-
+Further information about built-in basic and LLM judges, supported LLM judges and usage examples can be found in **[Built-in targets, attacks and judges](./02_builtin.md#built-in-judges)**. For details on configuring specific models, see **[LLM Providers](./04_llm_providers.md)**.
 
 ### Cloud vs. Local Judge Models
 You can configure LLM judges to use either cloud APIs or local models, depending on your needs.

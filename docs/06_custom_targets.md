@@ -8,7 +8,7 @@ You need a custom target when you want to:
 *   Connect to a new or unsupported LLM provider.
 *   Evaluate a specific guardrail system in isolation.
 
-This guide covers how to build a custom target for any of these scenarios. Sample targets can be found within the `workspace/targets/` directory, created by running `spikee init`. Further information about built-in targets and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**.
+This guide covers how to build a custom target for any of these scenarios. Sample targets can be found within the `workspace/targets/` directory, created by running `spikee init`. Further information about built-in targets and usage examples can be found in **[Built-in Targets](./02_builtin.md#built-in-targets)**.
 
 ## Target Structure
 Every target is a Python module located in the `targets/` directory of your workspace. Spikee identifies targets by their filename.
@@ -16,12 +16,13 @@ Every target is a Python module located in the `targets/` directory of your work
 ### Target Template
 ```python
 from spikee.templates.target import Target
+from spikee.tester.guardrail_trigger import GuardrailTrigger
 from typing import Optional, Dict, List
 
-class SampleTarget(Target):
+class ExampleTarget(Target):
     def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default. None if no options."""
-        return None
+        """Returns a list of supported option values, first is default."""
+        return []
 
     def process_input(
         self,
@@ -38,10 +39,33 @@ class SampleTarget(Target):
 
         Returns:
             str | bool: Response from the target (text response | guardrail result)
+
             throws tester.GuardrailTrigger: Indicates guardrail was triggered
             throws Exception: Raises exception on failure
         """
-        # Your implementation here...
+        # ... Define your target implementation here ...
+
+        # Example that creates a get request to an API, and raises a GuardrailTrigger if a 400 status code is returned (indicating the guardrail was triggered)
+        try:
+            response = requests.get(
+                "https://reversec.com/api/example",
+                data=input_text
+            )
+            response.raise_for_status()
+            return response.text
+
+        except requests.exceptions.RequestException as e
+            if response.status_code == 400:  # Guardrail Triggered
+                raise GuardrailTrigger(f"Guardrail was triggered by the target: {e}")
+
+            else:
+                print(f"Error during HTTP request: {e}")
+                raise
+
+# Try using `python ./targets/example_target.py` to test your target implementation
+if __name__ == "__main__":
+    target = ExampleTarget()
+    print(target.process_input("Hi i'm Spikee, nice to meet you!"))
 ```
 
 ### The `process_input` Function
@@ -57,7 +81,6 @@ This is the core function that Spikee calls for every test case - it receives a 
 *   `target_options: Optional[str]`: 
     A string passed from the command line via `--target-options`.
 
-
 #### Return Values
 The `process_input` function's return type depends on what you are testing.
 
@@ -72,52 +95,61 @@ To make your target more flexible, you can advertise its supported `target_optio
 ```python
 # Basic Implementation
 from typing import List
+from spikee.utilities.modules import parse_options # Utility function to parse target_options string into a dictionary
 
 def get_available_option_values(self) -> List[str]:
-    return ["default_option", "additional_option1", "additional_option2"]
-```
+    return ["mode=default_option", "additional_option1", "additional_option2"]
 
-```python
-# Mapped Implementation
-from typing import Optional, Dict, List
-
-class ExampleMappedImplementation(Target):
-    _OPTIONS_MAP: Dict[str, str] = {
-        "example1": "https://reversec.com/api/example1",
-        "example2": "https://reversec.com/api/example2",
-    }
-    _DEFAULT_KEY = "example1"
-
-    def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default. None if no options."""
-        options = [self._DEFAULT_KEY]
-        options.extend([key for key in self._OPTIONS_MAP if key != self._DEFAULT_KEY])
-        return options
-
-    def process_input(
+def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
     ) -> str:
-        # Option Validation
-        key = target_options if target_options is not None else self._DEFAULT_KEY
-
-        if key not in self._OPTIONS_MAP:
-            valid = ", ".join(self.get_available_option_values())
-            raise ValueError(f"Unknown option value '{key}'. Valid options: {valid}")
-
-        option = self._OPTIONS_MAP[key]
-
-        # Your implementation here...
+    options = parse_options(target_options)
+    mode = options.get("mode", "default_option")
 ```
+
+```python
+# Basic Implementation
+from typing import List
+from spikee.utilities.modules import parse_options # Utility function to parse target_options string into a dictionary
+
+_OPTIONS_MAP: Dict[str, str] = {
+    "example1": "https://reversec.com/api/example1",
+    "example2": "https://reversec.com/api/example2",
+}
+_DEFAULT_KEY = "example1"
+
+def get_available_option_values(self) -> List[str]:
+    options = ["mode=" + self._DEFAULT_KEY]
+    options.extend([key for key in self._OPTIONS_MAP if key != self._DEFAULT_KEY])
+    return options
+
+def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = None,
+    ) -> str:
+    options = parse_options(target_options)
+    mode = options.get("mode", "default_option")
+
+    if mode in self._OPTIONS_MAP:
+        mode = self._OPTIONS_MAP[mode]
+    else:
+        valid = ", ".join(self.get_available_option_values())
+        raise ValueError(f"Unknown option value '{mode}'. Valid options: {valid}")
+```
+
 When this function is present, `spikee list targets` will display the available options, making your target easier to use.
 
 ## Error Handling
 
 *   **Invalid Options:** If your target uses `target_options`, validate the input and **raise a `ValueError`** on invalid values to prevent misconfigured tests.
 *   **API Calls:** Wrap all external API calls in a `try...except` block. If an exception occurs, log it and **re-raise the exception**. This allows Spikee's main testing loop to catch the error and apply its retry logic (`--max-retries`).
-*  **Guardrail Triggers:** If testing a guardrail system and the guardrail is triggered, **raise a `GuardrailTrigger` exception**. This informs Spikee that the payload was blocked, allowing it to log the result correctly.
+*   **Custom Errors:** Use built-in Spikee exceptions from `spikee.tester` for the following cases:
+    * **Guardrail Triggers:** Guardrail is triggered, **raise a `GuardrailTrigger(msg, categories: Dict[str, Any])` exception**. This informs Spikee that the payload was blocked, allowing it to log the result correctly.
 
 ```python
 # Guardrail Trigger Example
@@ -135,7 +167,7 @@ try:
 
 except requests.exceptions.RequestException as e
     if response.status_code == 400:  # Guardrail Triggered - HTTP Status code will vary by provider/application
-        raise GuardrailTrigger(f"Guardrail was triggered by the target: {e}")
+        raise GuardrailTrigger(f"Jailbreak Guardrail Detection", categories={"jailbreak": True})
 
     else:
         print(f"Error during HTTP request: {e}")
@@ -233,7 +265,7 @@ class SampleMultiTurnTarget(MultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return None
+        return []
 
     def process_input(
         self,
@@ -243,24 +275,36 @@ class SampleMultiTurnTarget(MultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
-        """
-        Sends prompts to the defined target
+        # Handle single-turn interactions, assign a random UUIDv4
+        if spikee_session_id is None:
+            spikee_session_id = "single_turn_" + str(uuid.uuid4()) 
 
-        Args:
-            input_text (str): User Prompt
-            system_message (Optional[str], optional): System Prompt. Defaults to None.
-            target_options (Optional[str], optional): Target options. Defaults to None.
-            spikee_session_id (Optional[str], optional): Unique Spikee session ID for multi-turn context. Defaults to None.
-            backtrack (Optional[bool], optional): Indicates if backtracking is enabled for this interaction. Defaults to False.
+        # Get stored data. `None` will be returned for new IDs.
+        target_data = self._get_target_data(spikee_session_id)
 
-        Returns:
-            str: Response from the target application
-        """
+        # Create new conversation history
+        if target_data is None:
+            target_data = {'history': []}
 
-        # Your implementation here...
+        # Backtracking Logic
+        if backtrack and len(target_data['history']) > 2:
+            # Remove last turn
+            target_data['history'] = target_data['history'][:-2]
 
+            # INCLUDE BACKTRACKING LOGIC
+        
+        # Query target application
+        response = "... SEND PROMPT TO TARGET APPLICATION ..."
+
+        # Add new messages to conversation history
+        target_data['history'].append({"role": "user", "content": input_text})
+        target_data['history'].append({"role": "assistant", "content": response})
+
+        # Update stored data
+        # Please ensure that you call `_update_target_data` after modifying any retrieved data to ensure changes are saved.
         self._update_target_data(spikee_session_id, target_data)
-        return response_text # Use json.dumps({"role": "app", "content": "Hi!"}) when using non string responses
+
+        return response
 ```
 
 ### Simplified Multi-Turn Target Template
@@ -279,7 +323,7 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
         )
 
     def get_available_option_values(self) -> List[str]:
-        return None
+        return []
 
     def process_input(
         self,
@@ -289,11 +333,39 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
-        conversation_data = self._get_conversation_data(spikee_session_id)
+        target_session_id = None
+        if spikee_session_id is None:
+            # Handle single-turn interactions, assign a random UUIDv4
+            target_session_id = "single_turn_" + str(uuid.uuid4()) 
+        
+        else:
+            # Get mapped target session ID, for multi-turn interactions.
+            target_session_id = self._get_id_map(spikee_session_id)
 
-        # Your implementation here...
+            # If no mapping exists, obtain new ID.
+            # Implementation will vary for target application.
+            if target_session_id is None:
+                target_session_id = " ... IMPLEMENTATION-SPECIFIC SESSION ID ... "
+        
+        # Backtracking Logic
+        if backtrack and spikee_session_id is not None:
+            history = self._get_conversation_data(spikee_session_id)
 
-        self._append_conversation_data(spikee_session_id, role="user", content=input_text)
-        self._append_conversation_data(spikee_session_id, role="assistant", content=response_text)
-        return response_text # Use json.dumps({"role": "app", "content": "Hi!"}) when using non string responses
+            if history is not None and len(history) > 2:
+                # Remove last turn
+                history = history[:-2]
+
+                # INCLUDE BACKTRACKING LOGIC
+
+                self._update_conversation_data(spikee_session_id, history)
+
+        # Query target application
+        response = "... SEND PROMPT TO TARGET APPLICATION ..."
+
+        if spikee_session_id is not None:
+            self._append_conversation_data(spikee_session_id, role="user", content=input_text)
+            self._append_conversation_data(spikee_session_id, role="assistant", content=response)
+
+        return response
+
 ```

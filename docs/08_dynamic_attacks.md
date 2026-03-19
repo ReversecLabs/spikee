@@ -2,7 +2,7 @@
 
 Dynamic Attacks are Python scripts that apply **iterative, real-time transformations** to a payload during `spikee test`. They are the ideal tool for discovering novel bypasses when your initial, pre-defined prompts fail.
 
-Sample dynamic attacks can be found within the `workspace/attacks/` directory, created by running `spikee init`. Further information about built-in dynamic attacks and usage examples can be found in **[Built-in targets, attacks and judges](03_builtin_targets_attacks_and_judges.md)**.
+Sample dynamic attacks can be found within the `workspace/attacks/` directory, created by running `spikee init`. Further information about built-in dynamic attacks and usage examples can be found in **[Built-in Attacks](./02_builtin.md#built-in-attacks)**.
 
 ### Dynamic Attacks vs. Plugins: What's the Difference?
 
@@ -29,6 +29,7 @@ Every attack is a Python module located in the `attacks/` directory of your work
 ```python
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.modules import parse_options
 from typing import List
 
 class SampleAttack(Attack):
@@ -36,7 +37,7 @@ class SampleAttack(Attack):
         "strategy": ["random", "aggressive", "stealth"],
     }
 
-    DEFAULT_OPTIONS = {
+    DEFAULT_KEY = {
         "strategy": "random",
     }
 
@@ -46,13 +47,13 @@ class SampleAttack(Attack):
 
     def get_available_option_values(self) -> List[str]:
         """Returns a list of supported option values, first is default. None if no options."""
-        options = [f"{key}={entry}" for key, entry in self.DEFAULT_OPTIONS]
+        options = ["strategy=" + self.OPTIONS_MAP[DEFAULT_KEY]]
         options.extend(
             [
-                f"{key}={value}"
+                value
                 for key, values in self.OPTIONS_MAP.items()
                 for value in values
-                if value != self.DEFAULT_OPTIONS[key]
+                if key != DEFAULT_KEY
             ]
         )
         return options
@@ -82,20 +83,14 @@ class SampleAttack(Attack):
             tuple: (iterations_attempted, success_flag, modified_input (str, dict), last_response)
         """
         # Parse attack option
-        attack_option = attack_option.split(";") if attack_option else []
-        options = {}
+        options = parse_options(attack_option)
+        strategy = options.get("strategy", self.DEFAULT_KEY)
 
-        for option in attack_option:
-            key, value = option.split("=", 1)
-            
-            if key in self.OPTIONS_MAP:
-                if value not in self.OPTIONS_MAP[key]:
-                    valid = ", ".join(self.OPTIONS_MAP[key])
-                    raise ValueError(f"Unknown value '{value}' for option '{key}'. Valid values: {valid}")
-            else:
-                raise ValueError(f"Unknown attack option '{key}'.")
-
-            options[key] = value
+        if strategy in self.OPTIONS_MAP:
+            strategy = self.OPTIONS_MAP[strategy]
+        else:
+            valid = ", ".join(self.get_available_option_values())
+            raise ValueError(f"Unknown option value '{strategy}'. Valid options: {valid}")
 
         # Your implementation here...
 
@@ -116,7 +111,7 @@ This is the core of every dynamic attack script. It contains the logic for gener
     A function that lets you evaluate if a response is successful. Call it with `call_judge(entry, response)` to get a `True` or `False` result.
 
 *   `max_iterations: int`: 
-    The maximum number of iterations your attack loop can run, as specified by `--attack-iterations`. Your loop **must** respect this limit.
+    The maximum number of iterations / turns your attack loop can run, as specified by `--attack-iterations`. Your loop **must** respect this limit.
 
 *   `attempts_bar` and `bar_lock`: 
     `tqdm` progress bar objects for updating the UI. For each attempt inside your loop, call `with bar_lock: attempts_bar.update(1)`.
@@ -222,8 +217,6 @@ class SampleMultiTurnAttack(Attack):
             success = call_judge(entry, response)
             if success:
                 break
-
-            # More implementation here...
 
             if backtrack:
                 last_message_id = prompt_message_id

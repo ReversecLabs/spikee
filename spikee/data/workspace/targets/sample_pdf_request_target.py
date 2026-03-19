@@ -23,7 +23,7 @@ from typing import Optional, List
 
 class SamplePDFRequestTarget(Target):
     def get_available_option_values(self) -> List[str]:
-        return None
+        return []
 
     def process_input(
         self,
