@@ -19,6 +19,7 @@ Return values:
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
+from spikee.utilities.modules import parse_options
 
 from dotenv import load_dotenv
 import json
@@ -27,35 +28,21 @@ from typing import Optional, Dict, List
 
 
 class SampleRequestTarget(Target):
-    _OPTIONS_MAP: Dict[str, str] = {
-        "example1": "https://reversec.com/api/example1",
-        "example2": "https://reversec.com/api/example2",
-    }
-    _DEFAULT_KEY = "example1"
+    _DEFAULT_URL = "https://reversec.com/api/example1"
 
     def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default. None if no options."""
-        options = [self._DEFAULT_KEY]
-        options.extend([key for key in self._OPTIONS_MAP if key != self._DEFAULT_KEY])
-        return options
+        """Returns a list of supported option values, first is default."""
+        return ["url=" + self._DEFAULT_URL]
 
     def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
-        target_options: Optional[str] = None,
+        target_options: Optional[str] = "",
     ) -> str:
-        # Option Validation
-        key = target_options if target_options is not None else self._DEFAULT_KEY
-
-        if key not in self._OPTIONS_MAP:
-            valid = ", ".join(self.get_available_option_values())
-            raise ValueError(f"Unknown option value '{key}'. Valid options: {valid}")
-
-        option = self._OPTIONS_MAP[key]
-
-        # Example Request Logic
-        url = option
+        # Option Validation `--target-options 'url=https://myapi.com/endpoint'` to override default URL
+        options = parse_options(target_options)
+        url = options.get("url", self._DEFAULT_URL)
 
         headers = {
             "Content-Type": "application/json",

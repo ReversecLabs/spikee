@@ -15,8 +15,7 @@ SUPPORTED_LLM_MODELS = [
 SUPPORTED_PREFIXES = [
     "openai-",
     "google-",
-    "bedrock-",     # BedrockChat for Anthropic Models
-    "bedrockcv-",   # BedrockChatConverse for other model compatibility
+    "bedrock-",
     "ollama-",
     "llamaccp-server-",
     "together-",

@@ -29,8 +29,7 @@ def get_available_option_values() -> List[str]:
     Optional method to return a list of available options that the module supports
     First option is the default.
     """
-    # options: List[str] = []
-    return None
+    return []
 
 
 def process_input(
