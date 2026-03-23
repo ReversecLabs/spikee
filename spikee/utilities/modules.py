@@ -110,6 +110,10 @@ def get_description_from_module(module, module_type=None):
 
 def get_default_option(module, module_type=None):
     available = get_options_from_module(module, module_type)
+
+    if isinstance(available, tuple):
+        available = available[0]
+
     return available[0] if available else None
 
 
