@@ -168,9 +168,7 @@ You can customize the behavior of attacks using the following command-line optio
 | `multi_turn` | Simple Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
 | `crescendo` | Instructional Multi-Turn | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). This is a simple multi-turn jailbreak that leverages an LLM Agent to prompt the target application with seemingly benign prompts, but gradually escalates the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
 | `echo_chamber` | Instructional Multi-Turn | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). This multi-turn attack uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
-| `goat` | Instructional Multi-Turn | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). This multi-turn attack uses an LLM, acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | N/A |
-
-(NB, See [Multi-Turn Datasets](./02_dataset_generation.md#multi-turn-datasets) for more information.)
+| `goat` | Instructional Multi-Turn | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). This multi-turn attack uses an LLM, acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
 
 **Usage Example**
 ```bash
