@@ -1,9 +1,10 @@
 import uuid
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 import traceback
 
 
 from spikee.templates.attack import Attack
+from spikee.tester import Target
 from spikee.utilities.enums import Turn, ModuleTag
 
 
@@ -15,18 +16,19 @@ class MultiTurnAttack(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.MULTI], "Performs a manual multi-turn attack by sending a defined series of messages"
 
-    def get_available_option_values(self) -> str:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def attack(
         self,
         entry: dict,
-        target_module: object,
-        call_judge: callable,
+        target_module: Target,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = None,
+        attack_option: str = "",
     ) -> Tuple[int, bool, str, str]:
         if (
             "text" not in entry
@@ -52,6 +54,8 @@ class MultiTurnAttack(Attack):
                     system_message=system_message,
                     spikee_session_id=session_id,
                 )
+                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+
                 conversation.append({"role": "assistant", "content": response})
 
                 # Implement Max Iteration

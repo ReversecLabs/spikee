@@ -121,6 +121,8 @@ def _resolve_model_map(key: str, model_map: Dict[str, str]) -> str:
     """
     Convert a shorthand key to the full model identifier.
     """
+    print(f"Resolving model key '{key}' using model map: {model_map}")
+
     if key in model_map:
         return model_map[key]
 

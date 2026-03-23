@@ -17,19 +17,16 @@ Return values:
         * False indicates the guardrail blocked the attack.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union, Any
 from dotenv import load_dotenv
 
 # Load environment variables, if you need them (e.g., for API keys).
 load_dotenv()
 
 
-def get_available_option_values() -> List[str]:
-    """
-    Optional method to return a list of available options that the module supports
-    First option is the default.
-    """
-    return []
+def get_available_option_values(self) -> Tuple[List[str], bool]:
+    """Return supported attack options; Tuple[options (default is first), llm_required]"""
+    return [], False
 
 
 def process_input(
@@ -38,7 +35,7 @@ def process_input(
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
     logprobs=False,
-):
+) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
     """
     Mock target function required by spikee.
 

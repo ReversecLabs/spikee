@@ -45,8 +45,8 @@ class SampleAttack(Attack):
         """Returns the type and a short description of the attack."""
         return [], "A brief description of what this attack does."
 
-    def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default. None if no options."""
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         options = ["strategy=" + self.OPTIONS_MAP[DEFAULT_KEY]]
         options.extend(
             [
@@ -56,17 +56,17 @@ class SampleAttack(Attack):
                 if key != DEFAULT_KEY
             ]
         )
-        return options
+        return options, False
 
     def attack(
         self,
-        entry,
-        target_module,
-        call_judge,
-        max_iterations,
+        entry: Dict[str, Any],
+        target_module: Any,
+        call_judge: Callable,
+        max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option=None,
+        attack_option="",
     ) -> Tuple[int, bool, object, str]:
         """
         Executes a dynamic attack on the given entry.
@@ -89,7 +89,7 @@ class SampleAttack(Attack):
         if strategy in self.OPTIONS_MAP:
             strategy = self.OPTIONS_MAP[strategy]
         else:
-            valid = ", ".join(self.get_available_option_values())
+            valid = ", ".join(self.get_available_option_values()[0])
             raise ValueError(f"Unknown option value '{strategy}'. Valid options: {valid}")
 
         # Your implementation here...
@@ -143,6 +143,7 @@ See `multi_turn` and `crescendo` attack scripts for examples of multi-turn dynam
 ### Multi-Turn Attack Template
 ```python
 import uuid
+from typing import Callable, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag, Turn
@@ -158,18 +159,19 @@ class SampleMultiTurnAttack(Attack):
         """Returns the type and a short description of the attack."""
         return [ModuleTag.MULTI], "A brief description of what this attack does."
     
-    def get_available_option_values(self) -> str:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def attack(
         self,
         entry: dict,
         target_module: object,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = None,
+        attack_option: str = "",
     ) -> Tuple[int, bool, object, str]:
         """
         Executes a dynamic multi-turn attack on a given entry.

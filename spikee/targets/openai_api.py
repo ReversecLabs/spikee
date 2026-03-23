@@ -19,7 +19,7 @@ from spikee.templates.target import Target
 from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage, OPENAI_MODEL_LIST
 
 from dotenv import load_dotenv
-from typing import Optional, List, Tuple, Union
+from typing import Any, Optional, List, Tuple, Union
 
 
 class OpenAITarget(Target):
@@ -43,7 +43,7 @@ class OpenAITarget(Target):
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Union[str, Tuple[str, any]]:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """
         Send messages to an OpenAI model based on a simple key.
 
@@ -52,10 +52,10 @@ class OpenAITarget(Target):
             - content otherwise
         """
         model_id = target_options if target_options is not None else self.DEFAULT_KEY
-        
+
         if model_id.startswith("openai-"):
             model_id = model_id.replace("openai-", "")
-        
+
         if model_id in self._LOGPROBS_MODELS and logprobs:
             llm = get_llm(f"openai-{model_id}", max_tokens=None, temperature=0, additional_kwargs={"logprobs": True, "top_logprobs": 5})
         else:
@@ -67,7 +67,7 @@ class OpenAITarget(Target):
             if system_message:
                 prompt = f"{system_message}\n{input_text}"
             messages = [HumanMessage(prompt)]
-            
+
         else:
             messages = []
             if system_message:
@@ -76,10 +76,10 @@ class OpenAITarget(Target):
 
         try:
             ai_msg = llm.invoke(messages)
-            
+
             if model_id in self._LOGPROBS_MODELS and logprobs:
                 return ai_msg.choices[0].message.content, ai_msg.choices[0].logprobs
-            
+
             return ai_msg.choices[0].message.content
         except Exception as e:
             print(f"Error during OpenAI completion ({model_id}): {e}")
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     load_dotenv()
     target = OpenAITarget()
     print("Supported OpenAI keys:", target.get_available_option_values())
-    
+
     # example without logprobs
     print(target.process_input("Hello!", target_options="gpt-4o"))
     # example with logprobs

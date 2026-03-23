@@ -30,10 +30,11 @@ class SplatPlugin(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text using splat-based obfuscation techniques."
 
-    def get_available_option_values(self) -> List[str]:
-        return ["character=*", "insert_rand=0.6", "pad_rand=0.4"]
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["character=*", "insert_rand=0.6", "pad_rand=0.4"], False
 
-    def plugin_transform(self, text: str, plugin_option: str = None) -> str:
+    def plugin_transform(self, text: str, plugin_option: str = "") -> str:
         """
         Obfuscates the input text using splat-based techniques such as inserting asterisks,
         breaking words with special characters, and spacing tricks while maintaining readability.

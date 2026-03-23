@@ -12,6 +12,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from datetime import datetime
 from InquirerPy import inquirer
+from typing import Any, Tuple, Union
+
+from spikee.templates.target import Target
 
 from .judge import annotate_judge_options, call_judge
 from .utilities.enums import Turn
@@ -76,11 +79,11 @@ class AdvancedTargetWrapper:
       backtrack (bool): Whether to backtrack the last turn - Multi-Turn.
     """
 
-    def __init__(self, target_module, target_options=None, max_retries=3, throttle=0):
-        self.target_module = target_module
-        self.target_options = target_options
-        self.max_retries = max_retries
-        self.throttle = throttle
+    def __init__(self, target_module: Target, target_options="", max_retries=3, throttle=0):
+        self.target_module: Target = target_module
+        self.target_options: str = target_options
+        self.max_retries: int = max_retries
+        self.throttle: float = throttle
 
         if not hasattr(self.target_module, "config"):
             self.config = {
@@ -129,8 +132,8 @@ class AdvancedTargetWrapper:
         output_file=None,
         spikee_session_id=None,
         backtrack=False,
-    ):
-        last_error = None
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+        last_error: Union[Exception, None] = None
         retries = 0
 
         while retries < self.max_retries:
@@ -160,19 +163,25 @@ class AdvancedTargetWrapper:
 
                     # Delegate to the wrapped process_input
                 if kwargs:
-                    result = self.target_module.process_input(
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = self.target_module.process_input(
                         input_text, system_message, **kwargs
                     )
                 else:
-                    result = self.target_module.process_input(
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = self.target_module.process_input(
                         input_text, system_message
                     )
 
                 # Unpack (response, meta) if tuple returned
+                response: Union[str, bool]
+                meta: Any = None
                 if isinstance(result, tuple) and len(result) == 2:
                     response, meta = result
+                elif isinstance(result, str) or isinstance(result, bool):
+                    response = result
                 else:
-                    response, meta = result, None
+                    raise ValueError(
+                        "Invalid return type from target's process_input. Expected str, (str, meta), or bool."
+                    )
                 if self.throttle > 0:
                     time.sleep(self.throttle)
 
@@ -209,6 +218,9 @@ class AdvancedTargetWrapper:
                     break
 
         # All retries exhausted
+
+        if last_error is None:
+            last_error = Exception("Unknown error in AdvancedTargetWrapper.")
         raise last_error
 
 

@@ -109,11 +109,7 @@ class Crescendo(Attack):
         return [ModuleTag.MULTI, ModuleTag.LLM], "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
-        """Returns supported option values.
-
-        Returns:
-            Tuple[List[str], bool]: List of supported options; first is default, and a boolean Utility_LLM.
-        """
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["max-turns=5"], True
 
     # Options Parsing
@@ -321,6 +317,7 @@ class Crescendo(Attack):
                 backtrack=is_refuse,
             )
             response_text = str(resp[0] if isinstance(resp, (tuple, list)) else resp)
+
             last_message_id = conversation.add_message(
                 last_message_id,
                 {

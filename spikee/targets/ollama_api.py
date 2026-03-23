@@ -15,7 +15,7 @@ Exposed:
 from spikee.templates.target import Target
 from spikee.utilities.llm import get_llm, HumanMessage
 
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, Union
 from dotenv import load_dotenv
 import requests  # needed to progromatically list available Ollama models
 
@@ -32,7 +32,7 @@ class OllamaTarget(Target):
             response = requests.get(f"{baseurl}/api/tags")
             data = response.json()
             return [model["model"] for model in data["models"]]
-        
+
         except Exception as e:
             # Something went wrong, we should fallback to the priority list already defined
             print(
@@ -55,7 +55,7 @@ class OllamaTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """
         Send messages to an Ollama model by key.
 
@@ -85,11 +85,12 @@ class OllamaTarget(Target):
         # Invoke model
         try:
             return llm.invoke(messages, content_only=True)
-        
+
         except Exception as e:
             print(f"Error during Ollama completion ({model_name}): {e}")
             raise
-        
+
+
 if __name__ == "__main__":
     load_dotenv()
     target = OllamaTarget()

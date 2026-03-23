@@ -38,12 +38,12 @@ class BestOfN(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.ATTACK_BASED], "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising."
 
-    def get_available_option_values(self) -> List[str]:
-        """Return supported sample format; first option is default."""
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "variants=50",
             "variants=N (1-500)",
-        ]
+        ], False
 
     def _parse_samples_option(self, option: str) -> int:
         """Parse samples option string like 'variants=50' and return the number."""
@@ -56,12 +56,12 @@ class BestOfN(Plugin):
                 pass
         return self.DEFAULT_SAMPLES
 
-    def get_variants(self, plugin_option: str = None) -> int:
+    def get_variants(self, plugin_option: str = "") -> int:
         """Get the number of variants to generate based on plugin options."""
         return self._parse_samples_option(plugin_option)
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> List[str]:
         """
         Generates a configurable number of augmented samples from the input text.
@@ -81,7 +81,7 @@ class BestOfN(Plugin):
             samples.append(self._scramble_text(text, exclude_patterns))
         return samples
 
-    def _scramble_text(self, text: str, exclude_patterns: List[str] = None) -> str:
+    def _scramble_text(self, text: str, exclude_patterns: List[str] = []) -> str:
         """
         Processes the input text by splitting it into chunks based on the user‐supplied
         exclusion patterns. Any chunk that exactly matches the compound exclusion regex

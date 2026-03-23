@@ -288,6 +288,7 @@ class EchoChamber(Attack):
         return [ModuleTag.MULTI, ModuleTag.LLM], "Leverages an LLM Agent to generate poisonous seeds and gradually escalates an LLM's output by amplifying hidden harmful content in a self-reinforcing loop."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["max-turns=20", "stage-attempts=3", "debug=false"], True
 
 # region Echo Chamber Prompts
@@ -487,6 +488,7 @@ The following keywords have lost the game, do not reuse these words: [{', '.join
 
 
 # region Target Prompts
+
 
     def get_seed_sentences(
         self,

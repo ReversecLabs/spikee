@@ -3,7 +3,7 @@ sample_plugin.py
 
 This file shows a simple example plugin for Spikee.
 
-Plugins must define a `transform(text: str, exclude_patterns: List[str] = None) -> Union[str, List[str]]` function.
+Plugins must define a `transform(text: str, exclude_patterns: List[str] = []) -> Union[str, List[str]]` function.
 Spikee will call this function for each input prompt, passing in the original text and, optionally, a list of regex
 patterns that should be excluded from transformation.
 
@@ -25,11 +25,12 @@ from spikee.templates.plugin import Plugin
 
 
 class SamplePlugin(Plugin):
-    def get_available_option_values(self) -> List[str]:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = None
+        self, text: str, exclude_patterns: List[str] = []
     ) -> Union[str, List[str]]:
         """
         Transforms the input text to uppercase, preserving any substrings that match the given exclusion patterns.

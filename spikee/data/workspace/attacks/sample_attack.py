@@ -54,9 +54,9 @@ from spikee.templates.attack import Attack
 
 
 class SampleAttack(Attack):
-    def get_available_option_values(self) -> List[str]:
-        """Return supported attack options; first option is default."""
-        return ["strategy=random", "strategy=aggressive", "strategy=stealth"]
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["strategy=random", "strategy=aggressive", "strategy=stealth"], False
 
     def attack(
         self,
@@ -121,9 +121,12 @@ class SampleAttack(Attack):
                 candidate_text = candidate_base
 
             try:
-                response, logprobs = target_module.process_input(
+                response = target_module.process_input(
                     candidate_text, entry.get("system_message", None)
                 )
+                # Handle different return types from process_input
+                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+
                 last_response = response
                 # Determine if this candidate is successful using the provided call_judge() function.
                 if call_judge(entry, response):

@@ -24,22 +24,22 @@ from spikee.utilities.modules import parse_options
 from dotenv import load_dotenv
 import json
 import requests
-from typing import Optional, Dict, List
+from typing import Optional, List, Tuple, Union, Any
 
 
 class SampleRequestTarget(Target):
     _DEFAULT_URL = "https://reversec.com/api/example1"
 
-    def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default."""
-        return ["url=" + self._DEFAULT_URL]
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["url=" + self._DEFAULT_URL], False
 
     def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = "",
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         # Option Validation `--target-options 'url=https://myapi.com/endpoint'` to override default URL
         options = parse_options(target_options)
         url = options.get("url", self._DEFAULT_URL)

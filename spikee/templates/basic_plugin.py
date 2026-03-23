@@ -7,17 +7,12 @@ from spikee.templates.plugin import Plugin
 
 class BasicPlugin(Plugin, ABC):
     @abstractmethod
-    def get_available_option_values(self) -> List[str]:
-        """Return supported plugin options; first option is default."""
-        return None
-
-    @abstractmethod
-    def plugin_transform(self, text: str, plugin_option: str = None) -> str:
+    def plugin_transform(self, text: str, plugin_option: str = "") -> str:
         """Transform the input text according to the plugin's functionality."""
         pass
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
 
         if exclude_patterns:

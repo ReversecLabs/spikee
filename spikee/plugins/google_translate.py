@@ -19,10 +19,11 @@ class GoogleTranslator(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text using Google Translate (requires: googletrans)."
 
-    def get_available_option_values(self) -> List[str]:
-        return ["source-lang=<language_code>", "target-lang=<language_code>", "en", "es", "fr", "de", "zh-cn", "ja", "ru", "ar", "hi", "pt"]
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["source-lang=<language_code>", "target-lang=<language_code>", "en", "es", "fr", "de", "zh-cn", "ja", "ru", "ar", "hi", "pt"], False
 
-    def transform(self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None) -> str:
+    def transform(self, text: str, exclude_patterns: List[str] = [], plugin_option: str = "") -> str:
         """
         Transforms the input text into another language using google translate.
 

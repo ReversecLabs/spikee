@@ -14,7 +14,7 @@ from rich.rule import Rule
 
 from spikee.utilities.enums import ModuleTag, module_tag_to_colour
 from spikee.utilities.modules import get_options_from_module, get_description_from_module
-from spikee.utilities.llm import get_supported_llm_models, get_supported_prefixes
+from spikee.utilities.llm import get_supported_prefixes
 
 console = Console()
 

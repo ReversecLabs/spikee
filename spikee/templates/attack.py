@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 import json
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Union, Callable
 
 from spikee.utilities.enums import Turn
+from spikee.templates.module import Module
 from spikee.templates.standardised_conversation import StandardisedConversation
 
 
-class Attack(ABC):
+class Attack(Module, ABC):
     def __init__(self, turn_type: Turn = Turn.SINGLE):
         super().__init__()
 
@@ -14,7 +15,9 @@ class Attack(ABC):
 
     @staticmethod
     def standardised_input_return(
-        input: str, conversation: StandardisedConversation = None, objective: str = None
+        input: str,
+        conversation: StandardisedConversation = None,
+        objective: Union[str, None] = None
     ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
         standardised_return = {"input": str(input)}
@@ -28,16 +31,11 @@ class Attack(ABC):
         return standardised_return
 
     @abstractmethod
-    def get_available_option_values(self) -> List[str]:
-        """Return supported attack options; first option is default."""
-        return None
-
-    @abstractmethod
     def attack(
         self,
         entry: Dict[str, Any],
         target_module: Any,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,

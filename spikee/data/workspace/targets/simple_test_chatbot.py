@@ -34,7 +34,7 @@ import traceback
 import json
 import uuid
 import requests
-from typing import Optional, List
+from typing import Optional, List, Tuple, Union, Any
 
 from dotenv import load_dotenv
 
@@ -49,8 +49,9 @@ class TestChatbotTarget(SimpleMultiTarget):
             backtrack=True,  # Does the target + target application support backtracking
         )
 
-    def get_available_option_values(self) -> List[str]:
-        return ["url=http://localhost:8000", "model=bedrock-claude-3-7-sonnet", "guardrail=off"]
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["url=http://localhost:8000", "model=bedrock-claude-3-7-sonnet", "guardrail=off"], False
 
     def send_message(
         self,
@@ -171,7 +172,7 @@ class TestChatbotTarget(SimpleMultiTarget):
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         # ---- Determine the URL based on target options ----
         opts = parse_options(target_options)
         if "url" in opts:

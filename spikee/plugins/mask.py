@@ -53,6 +53,7 @@ class Shortener(Plugin):
         return [ModuleTag.LLM], "Masks high-risk words in prompts."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["advanced=false", "advanced-split=6"], True
 
     def generate_mask(self) -> str:
@@ -61,8 +62,8 @@ class Shortener(Plugin):
     def transform(
         self,
         text: str,
-        exclude_patterns: List[str] = None,
-        plugin_option: str = None
+        exclude_patterns: List[str] = [],
+        plugin_option: str = ""
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)

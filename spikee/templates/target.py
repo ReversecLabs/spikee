@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, Union
 
 from spikee.utilities.enums import Turn
+from spikee.templates.module import Module
 
 
-class Target(ABC):
+class Target(Module, ABC):
     def __init__(self, turn_types: List[Turn] = [Turn.SINGLE], backtrack: bool = False):
         super().__init__()
 
@@ -15,21 +16,12 @@ class Target(ABC):
         }
 
     @abstractmethod
-    def get_available_option_values(self) -> List[str]:
-        """Returns supported option values.
-
-        Returns:
-            List[str]: List of supported options; first is default.
-        """
-        return None
-
-    @abstractmethod
     def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> object:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """Sends prompts to the defined target
 
         Args:

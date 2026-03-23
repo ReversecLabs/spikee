@@ -26,7 +26,7 @@ Returns:
 
 import re
 import random
-from typing import List, Dict, Any, Tuple
+from typing import Callable, List, Dict, Any, Tuple
 
 
 from spikee.templates.attack import Attack
@@ -42,14 +42,15 @@ class BestOfNAttack(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.SINGLE], "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising."
 
-    def get_available_option_values(self) -> List[str]:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def attack(
         self,
         entry: Dict[str, Any],
         target_module: Any,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
@@ -76,6 +77,8 @@ class BestOfNAttack(Attack):
                 response, _ = target_module.process_input(
                     candidate_text, system_message
                 )
+                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+
                 last_response = response
                 success = call_judge(entry, response)
             except Exception as e:

@@ -40,7 +40,7 @@ Returns:
 import random
 import numpy as np
 import tiktoken
-from typing import List, Dict, Any, Tuple
+from typing import Callable, List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
@@ -54,8 +54,9 @@ class RandomSuffixSearch(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.SINGLE], "Performs a random suffix search attack by modifying token sequences appended to the input."
 
-    def get_available_option_values(self) -> List[str]:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def insert_adv_string(self, document, adv_string, payload=None):
         """
@@ -79,7 +80,7 @@ class RandomSuffixSearch(Attack):
         self,
         entry: Dict[str, Any],
         target_module: Any,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
@@ -129,9 +130,11 @@ class RandomSuffixSearch(Attack):
 
             try:
                 # Call process_input. The wrapper guarantees a tuple is returned.
-                response, _ = target_module.process_input(
+                response = target_module.process_input(
                     candidate, system_message, logprobs=False
                 )
+                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+
                 success = call_judge(entry, response)
             except Exception as e:
                 success = False

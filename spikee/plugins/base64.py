@@ -24,10 +24,11 @@ class Base64(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text into Base64 encoding."
 
-    def get_available_option_values(self) -> List[str]:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
-    def transform(self, text: str, exclude_patterns: List[str] = None) -> str:
+    def transform(self, text: str, exclude_patterns: List[str] = []) -> str:
         """
         Transforms the input text into Base64 encoding.
 

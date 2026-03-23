@@ -18,8 +18,9 @@ class RegexJudge(Judge):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Checks if a specified regex pattern matches the model's output."
 
-    def get_available_option_values(self):
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def judge(self, llm_input, llm_output, judge_args, judge_options=None) -> bool:
         """

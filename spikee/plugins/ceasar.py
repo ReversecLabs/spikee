@@ -27,11 +27,12 @@ class CeasarPlugin(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text using a Caesar cipher encryption."
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "shift=3",
             "shift=N (1-26)",
-        ]
+        ], False
 
     def _parse_shift_option(self, option: str) -> int:
         """Parse shift option string like 'shift=3' and return the number."""
@@ -65,7 +66,7 @@ class CeasarPlugin(Plugin):
         return "".join(result)
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = None, plugin_option: str = None
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> str:
         """
         Transforms the input text using the Caesar cipher.

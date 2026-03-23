@@ -17,19 +17,20 @@ Every target is a Python module located in the `targets/` directory of your work
 ```python
 from spikee.templates.target import Target
 from spikee.tester.guardrail_trigger import GuardrailTrigger
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple, Union, Any
+import requests
 
 class ExampleTarget(Target):
-    def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default."""
-        return []
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """Sends prompts to the defined target
 
         Args:
@@ -38,7 +39,7 @@ class ExampleTarget(Target):
             target_options (Optional[str], optional): Target options. Defaults to None.
 
         Returns:
-            str | bool: Response from the target (text response | guardrail result)
+            str | Tuple[str, Any] | bool: Response from the target (text response | guardrail result | boolean for guardrail)
 
             throws tester.GuardrailTrigger: Indicates guardrail was triggered
             throws Exception: Raises exception on failure
@@ -54,7 +55,7 @@ class ExampleTarget(Target):
             response.raise_for_status()
             return response.text
 
-        except requests.exceptions.RequestException as e
+        except requests.exceptions.RequestException as e:
             if response.status_code == 400:  # Guardrail Triggered
                 raise GuardrailTrigger(f"Guardrail was triggered by the target: {e}")
 
@@ -94,25 +95,26 @@ To make your target more flexible, you can advertise its supported `target_optio
 
 ```python
 # Basic Implementation
-from typing import List
+from typing import List, Tuple, Union, Any
 from spikee.utilities.modules import parse_options # Utility function to parse target_options string into a dictionary
 
-def get_available_option_values(self) -> List[str]:
-    return ["mode=default_option", "additional_option1", "additional_option2"]
+def get_available_option_values(self) -> Tuple[List[str], bool]:
+    """Return supported attack options; Tuple[options (default is first), llm_required]"""
+    return ["mode=default_option", "additional_option1", "additional_option2"], False
 
 def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
     options = parse_options(target_options)
     mode = options.get("mode", "default_option")
 ```
 
 ```python
 # Basic Implementation
-from typing import List
+from typing import List, Tuple, Union, Any, Dict
 from spikee.utilities.modules import parse_options # Utility function to parse target_options string into a dictionary
 
 _OPTIONS_MAP: Dict[str, str] = {
@@ -121,24 +123,25 @@ _OPTIONS_MAP: Dict[str, str] = {
 }
 _DEFAULT_KEY = "example1"
 
-def get_available_option_values(self) -> List[str]:
+def get_available_option_values(self) -> Tuple[List[str], bool]:
+    """Return supported attack options; Tuple[options (default is first), llm_required]"""
     options = ["mode=" + self._DEFAULT_KEY]
     options.extend([key for key in self._OPTIONS_MAP if key != self._DEFAULT_KEY])
-    return options
+    return options, False
 
 def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
     options = parse_options(target_options)
     mode = options.get("mode", "default_option")
 
     if mode in self._OPTIONS_MAP:
         mode = self._OPTIONS_MAP[mode]
     else:
-        valid = ", ".join(self.get_available_option_values())
+        valid = ", ".join(self.get_available_option_values()[0])
         raise ValueError(f"Unknown option value '{mode}'. Valid options: {valid}")
 ```
 
@@ -249,6 +252,7 @@ See `workspace/targets/simple_test_chatbot.py` for an example implementation of 
 ### Multi-Turn Target Template
 ```python
 import uuid
+from typing import List, Tuple, Union, Any, Optional
 
 from spikee.templates.multi_target import MultiTarget
 from spikee.utilities.enums import Turn
@@ -264,8 +268,9 @@ class SampleMultiTurnTarget(MultiTarget):
             backtrack=True 
         )
 
-    def get_available_option_values(self) -> List[str]:
-        return []
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def process_input(
         self,
@@ -274,7 +279,7 @@ class SampleMultiTurnTarget(MultiTarget):
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         # Handle single-turn interactions, assign a random UUIDv4
         if spikee_session_id is None:
             spikee_session_id = "single_turn_" + str(uuid.uuid4()) 
@@ -310,6 +315,7 @@ class SampleMultiTurnTarget(MultiTarget):
 ### Simplified Multi-Turn Target Template
 ```python
 import uuid
+from typing import List, Tuple, Union, Any, Optional
 
 from spikee.templates.simple_multi_target import SimpleMultiTarget
 from spikee.utilities.enums import Turn
@@ -322,8 +328,9 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
             backtrack=True 
         )
 
-    def get_available_option_values(self) -> List[str]:
-        return []
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def process_input(
         self,
@@ -332,7 +339,7 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         target_session_id = None
         if spikee_session_id is None:
             # Handle single-turn interactions, assign a random UUIDv4

@@ -2,20 +2,20 @@ from spikee.templates.target import Target
 
 import requests
 import json
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, Union
 
 
 class LLMMailboxTarget(Target):
-    def get_available_option_values(self) -> List[str]:
-        """Returns a list of supported option values, first is default."""
-        return []
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
     def process_input(
         self,
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         url = "http://llmwebmail:5000/api/summarize"
         headers = {
             "Content-Type": "application/json",

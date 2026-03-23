@@ -37,10 +37,11 @@ class AsciiSmuggler(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique."
 
-    def get_available_option_values(self) -> List[str]:
-        return None
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
-    def plugin_transform(self, text: str, plugin_option: str = None) -> str:
+    def plugin_transform(self, text: str, plugin_option: str = "") -> str:
         """
         Converts ASCII text to Unicode tags using the ASCII Smuggler technique.
 

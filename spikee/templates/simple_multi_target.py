@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any, Union
 
 from .multi_target import MultiTarget
 from spikee.utilities.enums import Turn
@@ -13,27 +13,24 @@ class SimpleMultiTarget(MultiTarget, ABC):
         """Define target capabilities and initialize shared dictionary for multi-turn data."""
         super().__init__(turn_types=turn_types, backtrack=backtrack)
 
-    def add_managed_dicts(self, target_data):
+    def add_managed_dicts(self, target_data, add_dicts: List[str] = []):
         """Adds managed dictionaries for multi-turn session data.
 
         Args:
             target_data: A multiprocessing managed dictionary to store generic data.
+            add_dicts (List[str], optional): List of dictionary keys to add. Defaults to {}.
         """
-        super().add_managed_dicts(
-            target_data,
-            [self.__SIMPLIFIED_CONVERSATION_KEY, self.__SIMPLIFIED_ID_MAP_KEY],
-        )
+        dicts = [self.__SIMPLIFIED_CONVERSATION_KEY, self.__SIMPLIFIED_ID_MAP_KEY] + add_dicts
 
-    def _get_conversation_data(self, session_id: str) -> object:
+        super().add_managed_dicts(target_data, dicts)
+
+    def _get_conversation_data(self, session_id: str) -> Any:
         """Retrieves or initializes conversation data for a given session ID. (Simplified Implementation - Conversation)
            Abstraction layer over the generic implementation, that stores conversation data within a nested dictionary.
 
         Args:
             session_id (str): The unique identifier for the conversation session.
         """
-        if session_id is None:
-            raise ValueError("session_id cannot be None")
-
         # Get all conversation data for a specific key
         conversation_data = self._get_target_data(self.__SIMPLIFIED_CONVERSATION_KEY)
 
@@ -46,7 +43,7 @@ class SimpleMultiTarget(MultiTarget, ABC):
 
         return conversation_data[session_id]
 
-    def _update_conversation_data(self, session_id: str, conversation_data: object):
+    def _update_conversation_data(self, session_id: str, conversation_data: Any):
         """Updates a conversation for a given session ID. (Simplified Implementation - Conversation)
            Abstraction layer over the generic implementation, that stores conversation data within a nested dictionary.
 
@@ -54,9 +51,6 @@ class SimpleMultiTarget(MultiTarget, ABC):
             session_id (str): The unique identifier for the conversation session.
             message (object): The message to append to the conversation data.
         """
-        if session_id is None:
-            raise ValueError("session_id cannot be None")
-
         # Update all conversation data for a specific key
         conversations = self._get_target_data(self.__SIMPLIFIED_CONVERSATION_KEY)
         conversations[session_id] = conversation_data
@@ -70,8 +64,6 @@ class SimpleMultiTarget(MultiTarget, ABC):
             session_id (str): The unique identifier for the conversation session.
             message (object): The message to append to the conversation data.
         """
-        if session_id is None:
-            raise ValueError("session_id cannot be None")
 
         # Append message to conversation data for a specific key
         conversation = self._get_conversation_data(session_id=session_id)
@@ -87,9 +79,6 @@ class SimpleMultiTarget(MultiTarget, ABC):
         Args:
             spikee_session_id (str): The unique identifier for the parent session.
         """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
-
         # Get existing ID map or initialize a new one
         id_map = self._get_target_data(self.__SIMPLIFIED_ID_MAP_KEY)
 
@@ -98,7 +87,7 @@ class SimpleMultiTarget(MultiTarget, ABC):
             self._update_target_data(self.__SIMPLIFIED_ID_MAP_KEY, id_map)
         return id_map[spikee_session_id]
 
-    def _update_id_map(self, spikee_session_id: str, associated_ids: object):
+    def _update_id_map(self, spikee_session_id: str, associated_ids: Any):
         """Updates the ID mapping for a given parent ID (Simplified Implementation - ID Map)
            Abstraction layer over the generic implementation, that stores ID mappings within a nested dictionary.
 
@@ -106,8 +95,7 @@ class SimpleMultiTarget(MultiTarget, ABC):
             spikee_session_id (str): The unique identifier for the parent session.
             associated_ids (object): A list of associated child session IDs.
         """
-        if spikee_session_id is None:
-            raise ValueError("spikee_session_id cannot be None")
+
         if associated_ids is None:
             raise ValueError("associated_ids cannot be None")
 
@@ -117,15 +105,6 @@ class SimpleMultiTarget(MultiTarget, ABC):
         self._update_target_data(self.__SIMPLIFIED_ID_MAP_KEY, id_map)
 
     @abstractmethod
-    def get_available_option_values(self) -> List[str]:
-        """Returns supported option values.
-
-        Returns:
-            List[str]: List of supported options; first is default.
-        """
-        return None
-
-    @abstractmethod
     def process_input(
         self,
         input_text: str,
@@ -133,7 +112,7 @@ class SimpleMultiTarget(MultiTarget, ABC):
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> object:
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """Sends prompts to the defined target
 
         Args:

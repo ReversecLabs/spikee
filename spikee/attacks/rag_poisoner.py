@@ -11,7 +11,7 @@ Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
@@ -93,7 +93,7 @@ class RAGPoisoner(Attack):
         return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates RAG Poisoner attack prompts using an LLM."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
-        """Return supported attack options."""
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], True
 
     def _generate_rag_attack(
@@ -130,11 +130,11 @@ class RAGPoisoner(Attack):
         self,
         entry: Dict[str, Any],
         target_module: Any,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = None,
+        attack_option: str = "",
     ) -> Tuple[int, bool, str, str]:
         """
         Executes a RAG Poisoner attack.
