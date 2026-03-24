@@ -3,7 +3,8 @@ import json
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 SHORTENER_PROMPT = """

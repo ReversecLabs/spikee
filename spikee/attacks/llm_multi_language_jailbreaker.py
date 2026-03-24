@@ -13,7 +13,8 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm, HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 

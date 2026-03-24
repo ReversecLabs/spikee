@@ -18,12 +18,8 @@ from typing import Callable, List, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import (
-    get_llm,
-    validate_llm_option,
-    HumanMessage,
-    SystemMessage
-)
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage, SystemMessage
 
 
 class PromptDecompositionAttack(Attack):
@@ -44,8 +40,7 @@ class PromptDecompositionAttack(Attack):
 
         if attack_option.startswith("mode="):
             mode_value = attack_option.replace("mode=", "")
-            if validate_llm_option(mode_value):
-                return mode_value
+            return mode_value
 
         return self.DEFAULT_MODE
 

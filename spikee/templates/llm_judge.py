@@ -1,7 +1,8 @@
 from typing import Tuple, List, Union
 
 from .judge import Judge
-from spikee.utilities.llm import get_llm, LLMWrapper, MockWrapper
+from spikee.utilities.llm import get_llm
+from spikee.templates.provider import Provider
 
 
 class LLMJudge(Judge):
@@ -17,7 +18,7 @@ class LLMJudge(Judge):
         """
         return [], True
 
-    def _get_llm(self, judge_options="") -> Union[LLMWrapper, MockWrapper, None]:
+    def _get_llm(self, judge_options="") -> Union[Provider, None]:
         """
         Initialize and return the appropriate LLM based on judge_options.
         """

@@ -25,6 +25,7 @@ from .list import (
     list_targets,
     list_plugins,
     list_attacks,
+    list_providers,
 )
 from .viewer import run_viewer
 
@@ -557,7 +558,7 @@ def main():
 
     # === [LIST] Sub-command ================================================
     parser_list = subparsers.add_parser(
-        "list", help="List seeds, datasets, judges, targets, plugins, or attacks"
+        "list", help="List seeds, datasets, judges, targets, plugins, attacks, or providers"
     )
     list_subparsers = parser_list.add_subparsers(
         dest="list_command", help="What to list"
@@ -571,6 +572,7 @@ def main():
         list_subparsers.add_parser("judges", help="List available judges"),
         list_subparsers.add_parser("plugins", help="List available plugins"),
         list_subparsers.add_parser("attacks", help="List available attack scripts"),
+        list_subparsers.add_parser("providers", help="List available providers"),
     ]:
         subparser.add_argument(
             "-d", "--description",
@@ -630,6 +632,8 @@ def main():
             list_plugins(args)
         elif args.list_command == "attacks":
             list_attacks(args)
+        elif args.list_command == "providers":
+            list_providers(args)
         else:
             parser_list.print_help()
     else:

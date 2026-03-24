@@ -85,19 +85,18 @@ Spikee's built-in LLM utility, is implemented within `spikee/utilities/llm.py`, 
 
 The following example demonstrates how to obtain and invoke an LLM:
 ```python
-from spikee.utilities.llm import validate_llm_option, get_llm, SystemMessage, HumanMessage
+from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
 
 model = "bedrock-claude37-sonnet"
 
-if validate_llm_option(model):
-    llm = get_llm(model, max_tokens=2048, temperature=0.7)
+llm = get_llm(model, max_tokens=2048, temperature=0.7)
 
-    response = llm.invoke([
-        SystemMessage(content="You are a helpful assistant."),
-        HumanMessage(content="What is the capital of France?")
-    ], content_only=True)
+response = llm.invoke([
+    SystemMessage(content="You are a helpful assistant."),
+    HumanMessage(content="What is the capital of France?")
+], content_only=True)
 
-    print(response)  # Should print "Paris"
+print(response)  # Should print "Paris"
 ```
 
 ## Billing Tracking

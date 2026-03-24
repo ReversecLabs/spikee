@@ -5,24 +5,35 @@ import re
 import json
 from typing import Any, Dict, Optional
 
-from spikee.templates.target import Target
-from spikee.templates.judge import Judge
-from spikee.templates.llm_judge import LLMJudge
-from spikee.templates.plugin import Plugin
-from spikee.templates.attack import Attack
-
-
-BASE_CLASS_MAP = {
-    "targets": (Target,),
-    "judges": (Judge, LLMJudge),
-    "plugins": (Plugin,),
-    "attacks": (Attack,),
-}
-
 
 def _resolve_impl_class(module, module_type):
     """Return the first concrete implementation class for the given module."""
-    base_classes = BASE_CLASS_MAP.get(module_type)
+
+    match module_type:
+        case "targets":
+            from spikee.templates.target import Target
+            base_classes = (Target,)
+
+        case "judges":
+            from spikee.templates.judge import Judge
+            from spikee.templates.llm_judge import LLMJudge
+            base_classes = (Judge, LLMJudge)
+
+        case "plugins":
+            from spikee.templates.plugin import Plugin
+            base_classes = (Plugin,)
+
+        case "attacks":
+            from spikee.templates.attack import Attack
+            base_classes = (Attack,)
+
+        case "providers":
+            from spikee.templates.provider import Provider
+            base_classes = (Provider,)
+
+        case _:
+            raise ValueError(f"Unknown module type '{module_type}' for implementation resolution")
+
     if not base_classes or not inspect.ismodule(module):
         return None
 

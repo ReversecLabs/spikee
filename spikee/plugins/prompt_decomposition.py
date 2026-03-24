@@ -18,12 +18,8 @@ from dotenv import load_dotenv
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import (
-    get_llm,
-    validate_llm_option,
-    SystemMessage,
-    HumanMessage
-)
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage, SystemMessage
 
 
 class PromptDecompositionPlugin(Plugin):
@@ -64,8 +60,7 @@ class PromptDecompositionPlugin(Plugin):
                     pass
             elif option.startswith("mode="):
                 mode_value = option.replace("mode=", "")
-                if validate_llm_option(mode_value):
-                    mode = mode_value
+                mode = mode_value
 
         return num_variants, mode
 

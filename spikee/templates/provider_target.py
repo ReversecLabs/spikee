@@ -1,5 +1,6 @@
 from spikee.templates.target import Target
-from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options
 
 from typing import List, Optional, Tuple, Union

@@ -10,14 +10,13 @@ Example Keys:
 """
 
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import BEDROCK_MODEL_MAP
 
 from dotenv import load_dotenv
 
 
 class AWSBedrockTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="bedrock", default_model="claude45-haiku", models=BEDROCK_MODEL_MAP)
+        super().__init__(provider="bedrock", default_model="claude45-haiku")
 
 
 if __name__ == "__main__":

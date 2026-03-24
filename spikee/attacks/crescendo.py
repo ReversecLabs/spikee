@@ -8,7 +8,8 @@ import json
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn, ModuleTag
-from spikee.utilities.llm import HumanMessage, get_llm, HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.providers import HumanMessage
 from spikee.utilities.modules import parse_options
 
 

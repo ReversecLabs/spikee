@@ -24,7 +24,7 @@ from typing import Tuple, List
 
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import HumanMessage, SystemMessage
+from spikee.utilities.providers import HumanMessage, SystemMessage
 
 
 class LLMJudgeOutputCriteria(LLMJudge):
