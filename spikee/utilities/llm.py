@@ -30,7 +30,10 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
         temperature (float): Sampling temperature for the LLM (Default: 0).
     """
 
-    if "/" in options:
+    if options == "offline":
+        return None
+
+    elif "/" in options:
         provider_name, model_name = options.split("/", 1)
 
     else:
@@ -45,4 +48,6 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
         raise ImportError(f"Error loading provider '{provider_name}': {str(e)}")
 
     # TODO: support additional kwargs for providers that require them (e.g. API keys, etc.)
-    return provider(model=model_name, max_tokens=max_tokens, temperature=temperature)
+
+    provider.setup(model=model_name, max_tokens=max_tokens, temperature=temperature)
+    return provider

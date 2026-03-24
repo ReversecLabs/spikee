@@ -64,11 +64,9 @@ class ProviderTarget(Target):
                 )
 
         # If a provider is set for this target and the model_id doesn't already include it, prepend it
-        if self._provider is not None and not model_id.startswith(self._provider):
-            model_id = f"{self._provider}-{model_id}"
 
-        if self._provider == "deepseek" and not model_id.startswith("deepseek-deepseek-"):
-            model_id = f"deepseek-{model_id}"
+        if self._provider is not None and '/' not in model_id:
+            model_id = f"{self._provider}/{model_id}"
 
         # Initialize provider client
         llm = get_llm(model_id, max_tokens=max_tokens, temperature=temperature)

@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 class AWSBedrockTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="bedrock", default_model="claude45-haiku")
+        super().__init__(provider="lite-bedrock", default_model="claude45-haiku")
 
 
 if __name__ == "__main__":
