@@ -63,8 +63,8 @@ class ProviderTarget(Target):
             options["model"] = target_options
 
         model_id = options.get("model", None)
-        max_tokens = options.get("max_tokens", None)
-        temperature = options.get("temperature", 0.7)
+        max_tokens = int(options.get("max_tokens", None))
+        temperature = float(options.get("temperature", 0.7))
 
         if self._provider_name is None:
 
