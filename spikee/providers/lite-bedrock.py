@@ -1,6 +1,6 @@
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import standardise_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 import litellm
 from typing import List, Tuple, Dict, Union, Any
@@ -46,7 +46,7 @@ class LiteLLMBedrockProvider(Provider):
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke LiteLLM Bedrock LLM with the provided messages."""
 
-        messages = standardise_messages(messages)
+        messages = format_messages(messages)
 
         response = litellm.completion(messages=messages, drop_params=True, **self._kwargs)
 

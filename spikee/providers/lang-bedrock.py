@@ -1,6 +1,6 @@
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import standardise_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from langchain_aws import BedrockLLM, ChatBedrock
 from typing import List, Tuple, Dict, Union, Any
@@ -56,7 +56,7 @@ class LangChainBedrockProvider(Provider):
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke LangChain Bedrock LLM with the provided messages."""
 
-        messages = standardise_messages(messages)
+        messages = format_messages(messages)
 
         response = self.llm.invoke(messages)
 

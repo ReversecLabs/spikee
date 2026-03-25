@@ -1,6 +1,6 @@
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import standardise_messages, Message, AIMessage
+from spikee.utilities.llm_message import upgrade_messages, agent_framework_message_translation, Message, AIMessage
 
 from agent_framework.amazon import BedrockChatClient, BedrockChatOptions
 from typing import List, Tuple, Dict, Union, Any
@@ -29,11 +29,18 @@ class AgentFrameworkBedrockProvider(Provider):
         self.model = self.BEDROCK_MODEL_MAP.get(self.model, self.model)
 
         self.llm = BedrockChatClient()
-        self.options: BedrockChatOptions = BedrockChatOptions(
-            model_id=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-        )
+
+        options_kwargs: Dict[str, Any] = {
+            "model_id": self.model,
+        }
+
+        if self.max_tokens is not None:
+            options_kwargs["max_tokens"] = self.max_tokens
+
+        if self.temperature is not None:
+            options_kwargs["temperature"] = self.temperature
+
+        self.options: BedrockChatOptions = BedrockChatOptions(**options_kwargs)
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via Agent Framework."
@@ -45,8 +52,8 @@ class AgentFrameworkBedrockProvider(Provider):
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke Agent Framework Bedrock LLM with the provided messages."""
 
-        messages = standardise_messages(messages)
+        upgraded_messages = agent_framework_message_translation(upgrade_messages(messages))
 
-        response = asyncio.run(self.llm.run(messages=messages, options=self.options))
+        response = asyncio.run(self.llm.get_response(messages=upgraded_messages, options=self.options))
 
-        return AIMessage(content=response.content.strip(), original_response=response)
+        return AIMessage(content=response.messages[0].text, original_response=response)
