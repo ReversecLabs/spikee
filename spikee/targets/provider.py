@@ -1,10 +1,13 @@
 from spikee.templates.provider_target import ProviderTarget
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class ProviderTargetModule(ProviderTarget):
-    pass
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "Generic LLM target for supporting LLM providers."
 
 
 if __name__ == "__main__":

@@ -10,13 +10,18 @@ Example Keys:
 """
 
 from spikee.templates.provider_target import ProviderTarget
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class AWSBedrockTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="lite-bedrock", default_model="claude45-haiku")
+        super().__init__(provider="bedrock", default_model="claude45-haiku")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'bedrock' provider."
 
 
 if __name__ == "__main__":

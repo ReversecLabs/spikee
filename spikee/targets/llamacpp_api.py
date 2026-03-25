@@ -6,8 +6,10 @@ Unified OpenAI target, extending ProviderTarget, that can invoke any supported O
 
 
 from spikee.templates.provider_target import ProviderTarget
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class LlamacppAPITarget(ProviderTarget):
@@ -15,6 +17,9 @@ class LlamacppAPITarget(ProviderTarget):
 
     def __init__(self):
         super().__init__(provider="llamacpp_api", default_model=self.DEFAULT_BASE_URL, models=[self.DEFAULT_BASE_URL, "http://hostname:port"])
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'llamacpp_api' provider."
 
 
 if __name__ == "__main__":

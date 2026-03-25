@@ -5,14 +5,18 @@ Unified Google Generative AI target, extending ProviderTarget, that invokes mode
 """
 
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import GOOGLE_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class GoogleAPITarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="google", default_model="gemini-2.5-flash", models=GOOGLE_MODEL_LIST)
+        super().__init__(provider="google", default_model="gemini-2.5-flash")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'google' provider."
 
 
 if __name__ == "__main__":

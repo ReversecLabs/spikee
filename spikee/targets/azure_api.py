@@ -7,14 +7,18 @@ Note: `target_options` here is the **deployment name**, not the underlying model
 """
 
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import AZURE_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class AzureAPITarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="azure", default_model="gpt-4o-mini", models=AZURE_MODEL_LIST)
+        super().__init__(provider="azure", default_model="gpt-4o-mini")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'azure' provider."
 
 
 if __name__ == "__main__":

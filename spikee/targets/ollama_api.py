@@ -13,7 +13,9 @@ Exposed:
 """
 
 from spikee.templates.target import Target
-from spikee.utilities.llm import get_llm, HumanMessage
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm import get_llm
+from spikee.utllities.llm_message import HumanMessage
 
 from typing import Any, List, Optional, Tuple, Union
 from dotenv import load_dotenv
@@ -39,6 +41,9 @@ class OllamaTarget(Target):
                 f"Error fetching Ollama models: {e}"
             )  # More informative error message
             return []
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'ollama' provider."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported keys; first option is default."""

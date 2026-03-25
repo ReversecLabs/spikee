@@ -16,7 +16,9 @@ Exposed:
 
 
 from spikee.templates.target import Target
-from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage, OPENAI_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm import get_llm
+from spikee.utilities.llm_message import SystemMessage, HumanMessage, OPENAI_MODEL_LIST
 
 from dotenv import load_dotenv
 from typing import Any, Optional, List, Tuple, Union
@@ -30,6 +32,9 @@ class OpenAITarget(Target):
     _LOGPROBS_MODELS = {"gpt-4o", "gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"}
     # which models do NOT support system messages
     _NO_SYSTEM_MODELS = {"o1-mini", "o1", "o3-mini", "o3", "o4-mini"}
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'openai' provider."
 
     def get_available_option_values(self) -> List[str]:
         """Return supported keys; first option is default."""

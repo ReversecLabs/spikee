@@ -12,14 +12,18 @@ Exposed:
     process_input(input_text, system_message=None, target_options=None) -> response content
 """
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import OPENROUTER_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class OpenRouterTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="openrouter", default_model="google/gemini-2.5-flash", models=OPENROUTER_MODEL_LIST)
+        super().__init__(provider="openrouter", default_model="google/gemini-2.5-flash")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'openrouter' provider."
 
 
 if __name__ == "__main__":

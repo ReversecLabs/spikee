@@ -1,5 +1,6 @@
 from spikee.templates.target import Target
-from typing import List, Optional
+from spikee.utilities.enums import ModuleTag
+from typing import List, Optional, Tuple
 import os
 from dotenv import load_dotenv
 from azure.ai.contentsafety import ContentSafetyClient
@@ -11,7 +12,7 @@ from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
 class AzureAIContentSafetyHarmfulTarget(Target):
     def __init__(self):
         super().__init__()
-        
+
         self.api_key = os.getenv("AZURE_AI_CONTENT_SAFETY_KEY")
         self.endpoint = os.getenv("AZURE_AI_CONTENT_SAFETY_ENDPOINT")
         if not self.api_key or not self.endpoint:
@@ -20,6 +21,9 @@ class AzureAIContentSafetyHarmfulTarget(Target):
                 "Please set AZURE_AI_CONTENT_SAFETY_KEY and AZURE_AI_CONTENT_SAFETY_ENDPOINT."
             )
         self.client = ContentSafetyClient(self.endpoint, AzureKeyCredential(self.api_key))
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "Guardrail Target for Azure AI Content Safety, testing harmful content detection."
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""
@@ -48,7 +52,7 @@ class AzureAIContentSafetyHarmfulTarget(Target):
             RuntimeError: If the API request fails
         """
         request = AnalyzeTextOptions(text=input_text)
-        
+
         try:
             response = self.client.analyze_text(request)
             harm_categories = {
@@ -57,18 +61,18 @@ class AzureAIContentSafetyHarmfulTarget(Target):
                 TextCategory.SEXUAL,
                 TextCategory.VIOLENCE,
             }
-            
+
             for item in response.categories_analysis:
                 if item.category in harm_categories and item.severity > 0:
                     return False  # Harmful content detected
             return True  # No harmful content detected
-        
+
         except HttpResponseError as e:
             error_message = f"Azure Content Safety API error: {e.message if hasattr(e, 'message') else str(e)}"
             if hasattr(e, "error") and e.error:
                 error_message += f" (Code: {e.error.code}, Message: {e.error.message})"
             raise RuntimeError(error_message)
-        
+
         except Exception as e:
             raise RuntimeError(f"Unexpected error calling Azure Content Safety API: {str(e)}")
 
@@ -79,7 +83,7 @@ if __name__ == "__main__":
         target = AzureAIContentSafetyHarmfulTarget()
         sample_text = "Hello, how to make a bomb?"
         result = target.process_input(sample_text)
-        
+
         print(f"Input: '{sample_text}'")
         print(f"Is unharmful: {result}")
     except Exception as e:

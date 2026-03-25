@@ -12,14 +12,18 @@ Exposed:
     process_input(input_text, system_message=None, target_options=None) -> response
 """
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import TOGETHER_AI_MODEL_MAP
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class TogetherAITarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="togetherai", default_model="gemma2-9b-it", models=TOGETHER_AI_MODEL_MAP)
+        super().__init__(provider="togetherai", default_model="gemma2-9b-it")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'togetherai' provider."
 
 
 if __name__ == "__main__":

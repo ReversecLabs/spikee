@@ -14,14 +14,18 @@ Supported production models:
 """
 
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import GROK_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class GroqApiTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="groq", default_model="gemma2-9b-it", models=GROK_MODEL_LIST)
+        super().__init__(provider="groq", default_model="gemma2-9b-it")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'groq' provider."
 
 
 if __name__ == "__main__":

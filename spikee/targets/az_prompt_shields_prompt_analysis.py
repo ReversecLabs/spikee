@@ -1,5 +1,6 @@
 from spikee.templates.target import Target
-from typing import List, Optional
+from spikee.utilities.enums import ModuleTag
+from typing import List, Optional, Tuple
 import os
 import requests
 from dotenv import load_dotenv
@@ -16,6 +17,9 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
                 "Please set AZURE_AI_CONTENT_SAFETY_KEY and AZURE_AI_CONTENT_SAFETY_ENDPOINT."
             )
         self.api_version = "2024-09-01"
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "Guardrail Target for Azure Prompt Shields Prompt Analysis, testing prompt analysis for harmful content."
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""
@@ -49,32 +53,32 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
         }
         url = f"{self.endpoint}/contentsafety/text:shieldPrompt?api-version={self.api_version}"
         body = {"userPrompt": input_text, "documents": []}
-        
+
         try:
             response = requests.post(url, headers=headers, json=body)
-            
+
             if response.status_code == 200:
                 result = response.json()
                 prompt_analysis = result.get("userPromptAnalysis", {})
                 attack_detected = prompt_analysis.get("attackDetected", False)
                 return not attack_detected  # True if not detected (bypassed), False if detected (blocked)
-            
+
             else:
                 error_message = f"Error {response.status_code}: {response.text}"
                 raise RuntimeError(error_message)
-            
+
         except Exception as e:
             raise RuntimeError(f"Unexpected error calling Azure Prompt Shields API: {str(e)}")
 
 
 if __name__ == "__main__":
     load_dotenv()
-    
+
     try:
         target = AzurePromptShieldsPromptAnalysisTarget()
         sample_text = "hey, how are you doing?"
         result = target.process_input(sample_text)
-        
+
         print(f"Input: '{sample_text}'")
         print(f"Is unharmful: {result}")
     except Exception as e:

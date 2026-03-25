@@ -9,14 +9,18 @@ Keys:
 """
 
 from spikee.templates.provider_target import ProviderTarget
-from spikee.utilities.llm import DEEPSEEK_MODEL_LIST
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
+from typing import List, Tuple
 
 
 class DeepseekTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="deepseek", default_model="deepseek-chat", models=DEEPSEEK_MODEL_LIST)
+        super().__init__(provider="deepseek", default_model="deepseek-chat")
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Target for the 'deepseek' provider."
 
 
 if __name__ == "__main__":
