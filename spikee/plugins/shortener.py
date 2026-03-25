@@ -4,7 +4,7 @@ import json
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage, SystemMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 SHORTENER_PROMPT = """
@@ -78,7 +78,7 @@ class Shortener(Plugin):
             response = llm.invoke([
                 SystemMessage(content=SHORTENER_PROMPT),
                 HumanMessage(content=json.dumps(payload))
-            ], content_only=True)
+            ]).content
 
             try:
                 response = extract_json_or_fail(response)

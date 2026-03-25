@@ -1,44 +1,4 @@
-from typing import Dict, List, Any, Union
-import os
-import json
-import litellm
-from litellm import NotFoundError
-from filelock import FileLock
-
-# region LLM Models/Prefixes
-SUPPORTED_LLM_MODELS = [
-    "llamaccp-server",
-    "offline",
-    "mock",
-]
-
-SUPPORTED_PREFIXES = [
-    "openai-",
-    "google-",
-    "bedrock-",
-    "ollama-",
-    "llamaccp-server-",
-    "together-",
-    "groq-",
-    "deepseek-",
-    "openrouter-",
-    "azure-",
-    "custom-",
-    "mock-",
-]
-
-
-def get_supported_llm_models() -> List[str]:
-    """Return the list of supported LLM models."""
-    return SUPPORTED_LLM_MODELS
-
-
-def get_supported_prefixes() -> List[str]:
-    """Return the list of supported LLM model prefixes."""
-    return SUPPORTED_PREFIXES
-
-# endregion
-
+from typing import Dict, List, Any
 
 # region LLM Model Maps - TEMPORARY - will be moved to respective provider modules
 AZURE_MODEL_LIST: List[str] = [
@@ -118,19 +78,6 @@ TOGETHER_AI_MODEL_MAP: Dict[str, str] = {
 
 # endregion
 
-# region provider helpers
-
-
-def resolve_model_map(key: str, model_map: Dict[str, str]) -> str:
-    """
-    Convert a shorthand key to the full model identifier.
-    """
-
-    if key in model_map:
-        return model_map[key]
-
-    return key
-
 
 def standardise_messages(messages):
     corrected_messages = []
@@ -165,15 +112,13 @@ def standardise_messages(messages):
         raise ValueError(f"Unsupported messages format type: {type(messages)}.")
 
     return corrected_messages
-# endregion
-
-# region Messages
 
 
 class Message:
     def __init__(self, role: str, content: str):
         self.role = role
         self.content = content
+        self.metadata = {}
 
     def to_dict(self) -> Dict[str, str]:
         return {"role": self.role, "content": self.content}
@@ -190,7 +135,11 @@ class HumanMessage(Message):
 
 
 class AIMessage(Message):
-    def __init__(self, content: str):
+    def __init__(self, content: str, original_response: Any = None):
         super().__init__("assistant", content)
 
-# endregion
+        self.metadata["original_response"] = original_response
+
+    @property
+    def original_response(self) -> Any:
+        return self.metadata.get("original_response", None)

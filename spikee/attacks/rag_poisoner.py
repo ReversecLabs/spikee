@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage
+from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 
@@ -119,7 +119,7 @@ class RAGPoisoner(Attack):
             if prev_attempts_formatted
             else "No previous attempts yet.",
         ))
-        res_text = llm.invoke([prompt], content_only=True).strip()
+        res_text = llm.invoke([prompt]).content.strip()
 
         obj = extract_json_or_fail(res_text)
         attack_prompt = obj.get("attack_prompt", "")

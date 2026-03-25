@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage, SystemMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 
 class PromptDecompositionPlugin(Plugin):
@@ -155,7 +155,7 @@ class PromptDecompositionPlugin(Plugin):
         ]
 
         try:
-            response = llm.invoke(messages, content_only=True).strip()
+            response = llm.invoke(messages).content.strip()
 
             lines = response.splitlines()
             variations = []

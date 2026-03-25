@@ -1,6 +1,6 @@
 from spikee.templates.target import Target
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage, SystemMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options
 
 from typing import List, Optional, Tuple, Union
@@ -79,7 +79,7 @@ class ProviderTarget(Target):
 
         # Invoke model
         try:
-            return llm.invoke(messages, content_only=True)
+            return llm.invoke(messages).content
 
         except Exception as e:
             print(f"Error during provider model completion ({model_id}): {e}")

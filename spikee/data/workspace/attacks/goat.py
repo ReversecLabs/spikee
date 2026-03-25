@@ -267,7 +267,7 @@ class GOAT(Attack):
         last_response = ""
         while attempts < LLM_AGENT_RETRY:
             attempts += 1
-            response = llm.invoke(messages, content_only=True)
+            response = llm.invoke(messages).content
             if isinstance(response, str):
                 response = response.strip()
 
@@ -294,7 +294,7 @@ class GOAT(Attack):
             {"role": "user", "content": json.dumps({"question": question, "response": response})},
         ]
 
-        res = llm.invoke(messages, content_only=True)
+        res = llm.invoke(messages).content
         if isinstance(res, str):
             res = res.strip()
 

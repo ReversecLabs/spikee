@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple, Union
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage
+from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 from spikee.attacks.llm_jailbreaker import SPIKEE_LLM_JAILBREAKER_PROMPT
@@ -63,7 +63,7 @@ class LLMJailbreaker(Plugin):
         ))
 
         # Call the model via .invoke and get content
-        response = llm.invoke([prompt], content_only=True).strip()
+        response = llm.invoke([prompt]).content.strip()
 
         obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "")

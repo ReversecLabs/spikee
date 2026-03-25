@@ -15,7 +15,7 @@ from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import GuardrailTrigger, AdvancedTargetWrapper
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage
+from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.modules import extract_json_or_fail, parse_options
 import re
 
@@ -298,7 +298,7 @@ class EchoChamber(Attack):
         last_response = ""
         while attempts < self.stage_attempts:
             attempts += 1
-            response = llm.invoke(messages, content_only=True)
+            response = llm.invoke(messages).content
             if isinstance(response, str):
                 response = response.strip()
 

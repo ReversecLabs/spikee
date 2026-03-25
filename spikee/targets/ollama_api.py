@@ -84,7 +84,7 @@ class OllamaTarget(Target):
 
         # Invoke model
         try:
-            return llm.invoke(messages, content_only=True)
+            return llm.invoke(messages).content
 
         except Exception as e:
             print(f"Error during Ollama completion ({model_name}): {e}")

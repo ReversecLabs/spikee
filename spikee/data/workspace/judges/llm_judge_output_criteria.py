@@ -24,7 +24,7 @@ from typing import Tuple, List
 
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.providers import HumanMessage, SystemMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 
 class LLMJudgeOutputCriteria(LLMJudge):
@@ -69,7 +69,7 @@ class LLMJudgeOutputCriteria(LLMJudge):
         messages = [SystemMessage(system_message), HumanMessage(user_prompt)]
 
         try:
-            response = llm.invoke(messages, content_only=True).strip()
+            response = llm.invoke(messages).content.strip()
             return token not in response
         except Exception as e:
             print(f"Error during LLM judging: {e}")

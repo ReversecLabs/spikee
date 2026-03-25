@@ -19,7 +19,7 @@ from typing import Callable, List, Dict, Any, Tuple
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utilities.providers import HumanMessage, SystemMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 
 class PromptDecompositionAttack(Attack):
@@ -153,7 +153,7 @@ class PromptDecompositionAttack(Attack):
         ]
 
         try:
-            response = llm.invoke(messages, content_only=True).strip()
+            response = llm.invoke(messages).content.strip()
 
             lines = response.splitlines()
             variations = []
@@ -185,7 +185,7 @@ class PromptDecompositionAttack(Attack):
                         SystemMessage(system_message),
                         HumanMessage(additional_prompt),
                     ]
-                    additional_response = llm.invoke(additional_messages, content_only=True).strip()
+                    additional_response = llm.invoke(additional_messages).content.strip()
 
                     for line in additional_response.splitlines():
                         try:

@@ -78,9 +78,9 @@ class OpenAITarget(Target):
             ai_msg = llm.invoke(messages)
 
             if model_id in self._LOGPROBS_MODELS and logprobs:
-                return ai_msg.choices[0].message.content, ai_msg.choices[0].logprobs
+                return ai_msg.content, ai_msg.original_response.choices[0].logprobs
 
-            return ai_msg.choices[0].message.content
+            return ai_msg.content
         except Exception as e:
             print(f"Error during OpenAI completion ({model_id}): {e}")
             raise
