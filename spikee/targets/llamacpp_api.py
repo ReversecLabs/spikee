@@ -13,10 +13,10 @@ from typing import List, Tuple
 
 
 class LlamacppAPITarget(ProviderTarget):
-    DEFAULT_BASE_URL = "http://localhost:8080/"
+    # LLAMACPP URL defined in .env as LLAMACPP_URL
 
     def __init__(self):
-        super().__init__(provider="llamacpp_api", default_model=self.DEFAULT_BASE_URL, models=[self.DEFAULT_BASE_URL, "http://hostname:port"])
+        super().__init__(provider="llamacpp_api")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'llamacpp_api' provider."
@@ -25,4 +25,4 @@ class LlamacppAPITarget(ProviderTarget):
 if __name__ == "__main__":
     load_dotenv()
     target = LlamacppAPITarget()
-    print(target.process_input("Hello!", target_options=""))
+    print(target.process_input("Hello!"))

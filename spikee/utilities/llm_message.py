@@ -1,59 +1,6 @@
 from typing import Dict, List, Any, Union
 from agent_framework import Message as AFMessage
 
-# region LLM Model Maps - TEMPORARY - will be moved to respective provider modules
-
-
-GOOGLE_MODEL_LIST: List[str] = [
-    "gemini-3.0-pro",
-    "gemini-3.0-flash",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro",
-    "gemini-exp-1206",
-]
-
-GROK_MODEL_LIST: List[str] = [
-    "distil-whisper-large-v3-en",
-    "gemma2-9b-it",
-    "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile",
-    "meta-llama/llama-guard-4-12b",
-    "whisper-large-v3",
-    "whisper-large-v3-turbo",
-]
-
-DEEPSEEK_MODEL_LIST: List[str] = [
-    "deepseek-chat",  # deepseek-v3.2 non-thinking
-    "deepseek-reasoner",  # deepseek-v3.2 thinking
-]
-
-
-OPENROUTER_MODEL_LIST: List[str] = [
-    "google/gemini-2.5-flash",
-    "anthropic/claude-3.5-haiku",
-    "meta-llama/llama-3.1-8b-instruct",
-    "openai/gpt-4o-mini",
-]
-
-TOGETHER_AI_MODEL_MAP: Dict[str, str] = {
-    "gemma2-8b": "google/gemma-2-9b-it",
-    "gemma2-27b": "google/gemma-2-27b-it",
-    "llama4-maverick-fp8": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    "llama4-scout": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-    "llama31-8b": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-    "llama31-70b": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
-    "llama31-405b": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    "llama33-70b": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    "mixtral-8x7b": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "mixtral-8x22b": "mistralai/Mixtral-8x22B-Instruct-v0.1",
-    "qwen3-235b-fp8": "Qwen/Qwen3-235B-A22B-fp8-tput",
-}
-
-# endregion
-
 
 class Message:
     def __init__(self, role: str, content: str):

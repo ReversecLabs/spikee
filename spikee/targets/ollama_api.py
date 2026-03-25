@@ -20,8 +20,7 @@ from dotenv import load_dotenv
 
 
 class OllamaTarget(ProviderTarget):
-    # Default key
-    _DEFAULT_KEY = "phi4-mini"
+    # OLLAMA URL defined in .env as OLLAMA_URL
 
     def __init__(self):
         super().__init__(provider="ollama")
@@ -35,6 +34,6 @@ if __name__ == "__main__":
     target = OllamaTarget()
     print("Supported Ollama models:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options=None))
+        print(target.process_input("Hello!"))
     except Exception as err:
         print("Error:", err)

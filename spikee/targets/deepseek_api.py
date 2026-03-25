@@ -17,7 +17,7 @@ from typing import List, Tuple
 
 class DeepseekTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="deepseek", default_model="deepseek-chat")
+        super().__init__(provider="deepseek")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'deepseek' provider."
@@ -28,6 +28,6 @@ if __name__ == "__main__":
     target = DeepseekTarget()
     print("Supported Deepseek keys:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=deepseek-chat"))
+        print(target.process_input("Hello!", target_options="model=deepseek/deepseek-chat"))
     except Exception as err:
         print("Error:", err)

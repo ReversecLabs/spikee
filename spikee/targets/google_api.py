@@ -24,6 +24,6 @@ if __name__ == "__main__":
     target = GoogleAPITarget()
     print("Supported Google models:", target.get_available_option_values())
     try:
-        print(target.process_input("What is 5=5 elevated to the power of 6?"))
+        print(target.process_input("What is 5=5 elevated to the power of 6?", target_options="model=google/gemini-2.5-flash"))
     except Exception as err:
         print("Error:", err)

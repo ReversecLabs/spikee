@@ -18,11 +18,15 @@ class ProviderTarget(Target):
         self._default_model = default_model
         self._models = models
 
-        if self._default_model is None or self._models is None:
+        if self._provider_name is not None and (self._default_model is None or self._models is None):
+            self.set_defaults()
+
+    def set_defaults(self):
+        if self._provider_name is not None:
             provider = get_llm(f"{self._provider_name}/")
 
             if self._default_model is None:
-                self._default_model = provider.default_model
+                self._default_model = f"{self._provider_name}/{provider.default_model}"
 
             if self._models is None:
                 self._models = provider.models
@@ -62,26 +66,36 @@ class ProviderTarget(Target):
         max_tokens = options.get("max_tokens", None)
         temperature = options.get("temperature", 0.7)
 
-        # If models are defined for this provider and no model_id is given, use the first/default model
+        if self._provider_name is None:
+
+            if model_id is not None and '/' in model_id:
+                self._provider_name, model = model_id.split('/', 1)
+
+                if model is None or model == "":
+                    self.set_defaults()
+
+            else:
+                raise ValueError(
+                    "ProviderTarget requires a provider name to be specified in the model option (e.g. 'model=bedrock/claude45-sonnet') or as a default provider with model mappings."
+                )
+
         if model_id is None:
             if self._default_model is not None:
                 model_id = self._default_model
 
             elif self._models is not None:
                 if isinstance(self._models, dict):
-                    model_id = list(self._models.keys())[0]
+                    model_id = f"{self._provider_name}/{list(self._models.keys())[0]}"
 
                 elif isinstance(self._models, list):
-                    model_id = self._models[0]
+                    model_id = f"{self._provider_name}/{self._models[0]}"
 
             else:
                 raise ValueError(
                     "ProviderTarget requires a 'model' option to specify which provider/model to use."
                 )
 
-        # If a provider is set for this target and the model_id doesn't already include it, prepend it
-
-        if self._provider_name is not None and '/' not in model_id:
+        if '/' not in model_id:
             model_id = f"{self._provider_name}/{model_id}"
 
         # Initialize provider client

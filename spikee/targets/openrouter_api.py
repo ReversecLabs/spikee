@@ -20,7 +20,7 @@ from typing import List, Tuple
 
 class OpenRouterTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="openrouter", default_model="google/gemini-2.5-flash")
+        super().__init__(provider="openrouter")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'openrouter' provider."
@@ -30,6 +30,6 @@ if __name__ == "__main__":
     target = OpenRouterTarget()
     print("Supported models:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=google/gemini-2.5-flash"))
+        print(target.process_input("Hello!", target_options="model=openrouter/google/gemini-2.5-flash"))
     except Exception as err:
         print("Error:", err)

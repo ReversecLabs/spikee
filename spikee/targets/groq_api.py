@@ -22,7 +22,7 @@ from typing import List, Tuple
 
 class GroqApiTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="groq", default_model="gemma2-9b-it")
+        super().__init__(provider="groq")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'groq' provider."
@@ -33,6 +33,6 @@ if __name__ == "__main__":
     target = GroqApiTarget()
     print("Supported Groq models:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=gemma2-9b-it"))
+        print(target.process_input("Hello!", target_options="model=groq/gemma2-9b-it"))
     except Exception as err:
         print("Error:", err)

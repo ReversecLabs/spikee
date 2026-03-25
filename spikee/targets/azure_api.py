@@ -26,6 +26,6 @@ if __name__ == "__main__":
     target = AzureAPITarget()
     print("Supported Azure deployments:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=gpt-4o"))
+        print(target.process_input("Hello!", target_options="model=azure/gpt-4o"))
     except Exception as err:
         print("Error:", err)
