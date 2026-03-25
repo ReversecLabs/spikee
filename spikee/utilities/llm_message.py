@@ -8,16 +8,6 @@ AZURE_MODEL_LIST: List[str] = [
     "gpt-4-turbo",
 ]
 
-BEDROCK_MODEL_MAP: Dict[str, str] = {
-    "claude35-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
-    "claude45-haiku": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-    "claude35-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "claude37-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    "claude45-opus": "global.anthropic.claude-opus-4-5-20251101-v1:0",
-    "deepseek-v3": "deepseek.v3-v1:0",
-    "qwen3-coder-30b-a3b-v1": "qwen.qwen3-coder-30b-a3b-v1:0",
-}
-
 GOOGLE_MODEL_LIST: List[str] = [
     "gemini-3.0-pro",
     "gemini-3.0-flash",
@@ -44,17 +34,6 @@ DEEPSEEK_MODEL_LIST: List[str] = [
     "deepseek-reasoner",  # deepseek-v3.2 thinking
 ]
 
-OPENAI_MODEL_LIST: List[str] = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-4.1",
-    "gpt-4.1-mini",
-    "o1-mini",
-    "o1",
-    "o3-mini",
-    "o3",
-    "o4-mini",
-]
 
 OPENROUTER_MODEL_LIST: List[str] = [
     "google/gemini-2.5-flash",
@@ -106,10 +85,11 @@ class HumanMessage(Message):
 
 
 class AIMessage(Message):
-    def __init__(self, content: str, original_response: Any = None):
+    def __init__(self, content: str, **kwargs):
         super().__init__("assistant", content)
 
-        self.metadata["original_response"] = original_response
+        for key, value in kwargs.items():
+            self.metadata[key] = value
 
     @property
     def original_response(self) -> Any:

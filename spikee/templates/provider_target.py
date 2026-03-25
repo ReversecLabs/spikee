@@ -3,20 +3,35 @@ from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Any
 
 
 class ProviderTarget(Target):
-    def __init__(self, provider=None, default_model: Union[str, None] = None, models: Union[dict, list, None] = None):
-        self._provider = provider
+    def __init__(
+        self,
+        provider=None,
+        default_model: Union[str, None] = None,
+        models: Union[dict, list, None] = None
+    ):
+        self._provider_name = provider
+
         self._default_model = default_model
         self._models = models
+
+        if self._default_model is None or self._models is None:
+            provider = get_llm(f"{self._provider_name}/")
+
+            if self._default_model is None:
+                self._default_model = provider.default_model
+
+            if self._models is None:
+                self._models = provider.models
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
 
         if isinstance(self._models, dict):
-            options = [key for key in self._models]
+            options = [key for key, value in self._models.items()]
             return options, True
 
         elif isinstance(self._models, list):
@@ -29,7 +44,8 @@ class ProviderTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> str:
+        logprobs: bool = False,
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
         """
         Send messages to a provider model by key.
 
@@ -65,8 +81,8 @@ class ProviderTarget(Target):
 
         # If a provider is set for this target and the model_id doesn't already include it, prepend it
 
-        if self._provider is not None and '/' not in model_id:
-            model_id = f"{self._provider}/{model_id}"
+        if self._provider_name is not None and '/' not in model_id:
+            model_id = f"{self._provider_name}/{model_id}"
 
         # Initialize provider client
         llm = get_llm(model_id, max_tokens=max_tokens, temperature=temperature)
@@ -79,8 +95,14 @@ class ProviderTarget(Target):
 
         # Invoke model
         try:
-            return llm.invoke(messages).content
+            response = llm.invoke(messages)
 
         except Exception as e:
             print(f"Error during provider model completion ({model_id}): {e}")
             raise
+
+        if 'logprobs' in response.metadata and logprobs:
+            return response.content, response.metadata['logprobs']
+
+        else:
+            return response.content

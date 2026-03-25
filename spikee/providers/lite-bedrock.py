@@ -9,15 +9,38 @@ from typing import List, Tuple, Dict, Union, Any
 class LiteLLMBedrockProvider(Provider):
     """LiteLLM provider for Bedrock models"""
 
-    BEDROCK_MODEL_MAP: Dict[str, str] = {
-        "claude35-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
-        "claude45-haiku": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "claude35-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "claude37-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        "claude45-opus": "global.anthropic.claude-opus-4-5-20251101-v1:0",
-        "deepseek-v3": "deepseek.v3-v1:0",
-        "qwen3-coder-30b-a3b-v1": "qwen.qwen3-coder-30b-a3b-v1:0",
-    }
+    @property
+    def default_model(self) -> str:
+        return "claude45-sonnet"
+
+    @property
+    def models(self) -> Dict[str, str]:
+        return {
+            # Claude 3.5
+            "claude35-us-haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+            "claude35-us-sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+
+            # Claude 3.7
+            "claude37-us-sonnet": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+
+            # Claude 4.5 -- Global
+            "claude45-haiku": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "claude45-sonnet": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "claude45-opus": "global.anthropic.claude-opus-4-5-20251101-v1:0",
+
+            # Claude 4.5 -- US
+            "claude45-us-haiku": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+            "claude45-us-sonnet": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "claude45-us-opus": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+
+            # Deepseek
+            "deepseek-v3": "deepseek.v3-v1:0",
+            "deepseek-v3.2": "deepseek.v3.2",
+
+            # Qwen
+            "qwen3-coder-30b": "qwen.qwen3-coder-30b-a3b-v1:0",
+            "qwen3-next-80b": "qwen.qwen3-next-80b-a3b",
+        }
 
     def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
         self.model = model
@@ -25,7 +48,7 @@ class LiteLLMBedrockProvider(Provider):
         self.temperature = temperature
 
         # Map user-friendly model names to actual Bedrock model identifiers
-        self.model = self.BEDROCK_MODEL_MAP.get(self.model, self.model)
+        self.model = self.models.get(self.model, self.model)
 
         # Initialize the LiteLLM kwargs with the appropriate model and parameters
         self._kwargs = {
@@ -41,7 +64,7 @@ class LiteLLMBedrockProvider(Provider):
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]."""
-        return [model for model in self.BEDROCK_MODEL_MAP.keys()], True
+        return [model for model in self.models.keys()], True
 
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke LiteLLM Bedrock LLM with the provided messages."""

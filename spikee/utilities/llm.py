@@ -49,5 +49,8 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
 
     # TODO: support additional kwargs for providers that require them (e.g. API keys, etc.)
 
+    if model_name == "":
+        model_name = provider.default_model
+
     provider.setup(model=model_name, max_tokens=max_tokens, temperature=temperature)
     return provider

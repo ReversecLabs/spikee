@@ -15,80 +15,19 @@ Exposed:
 """
 
 
-from spikee.templates.target import Target
+from spikee.templates.provider_target import ProviderTarget
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm
-from spikee.utilities.llm_message import SystemMessage, HumanMessage, OPENAI_MODEL_LIST
 
 from dotenv import load_dotenv
-from typing import Any, Optional, List, Tuple, Union
+from typing import List, Tuple
 
 
-class OpenAITarget(Target):
-    # default key
-    DEFAULT_KEY = "gpt-4o"
-
-    # which full models support logprobs
-    _LOGPROBS_MODELS = {"gpt-4o", "gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"}
-    # which models do NOT support system messages
-    _NO_SYSTEM_MODELS = {"o1-mini", "o1", "o3-mini", "o3", "o4-mini"}
+class OpenAITarget(ProviderTarget):
+    def __init__(self):
+        super().__init__(provider="openai")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'openai' provider."
-
-    def get_available_option_values(self) -> List[str]:
-        """Return supported keys; first option is default."""
-        options = [self.DEFAULT_KEY]  # Default first
-        options.extend([key for key in OPENAI_MODEL_LIST if key != self.DEFAULT_KEY])
-        return options
-
-    def process_input(
-        self,
-        input_text: str,
-        system_message: Optional[str] = None,
-        target_options: Optional[str] = None,
-        logprobs: bool = False,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
-        """
-        Send messages to an OpenAI model based on a simple key.
-
-        Returns:
-            - (content, logprobs) if model supports logprobs
-            - content otherwise
-        """
-        model_id = target_options if target_options is not None else self.DEFAULT_KEY
-
-        if model_id.startswith("openai-"):
-            model_id = model_id.replace("openai-", "")
-
-        if model_id in self._LOGPROBS_MODELS and logprobs:
-            llm = get_llm(f"openai-{model_id}", max_tokens=None, temperature=0, additional_kwargs={"logprobs": True, "top_logprobs": 5})
-        else:
-            llm = get_llm(f"openai-{model_id}", max_tokens=None, temperature=0)
-
-        # build messages
-        if model_id in self._NO_SYSTEM_MODELS:
-            prompt = input_text
-            if system_message:
-                prompt = f"{system_message}\n{input_text}"
-            messages = [HumanMessage(prompt)]
-
-        else:
-            messages = []
-            if system_message:
-                messages.append(SystemMessage(system_message))
-            messages.append(HumanMessage(input_text))
-
-        try:
-            ai_msg = llm.invoke(messages)
-
-            if model_id in self._LOGPROBS_MODELS and logprobs:
-                return ai_msg.content, ai_msg.original_response.choices[0].logprobs
-
-            return ai_msg.content
-        except Exception as e:
-            print(f"Error during OpenAI completion ({model_id}): {e}")
-            raise
 
 
 if __name__ == "__main__":
