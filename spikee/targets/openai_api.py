@@ -19,7 +19,7 @@ from spikee.templates.provider_target import ProviderTarget
 from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
-from typing import List, Tuple
+from typing import Any, Optional, List, Tuple
 
 
 class OpenAITarget(ProviderTarget):

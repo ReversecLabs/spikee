@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 class GoogleAPITarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="google", default_model="gemini-2.5-flash")
+        super().__init__(provider="google")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'google' provider."
