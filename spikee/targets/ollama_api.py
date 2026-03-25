@@ -15,7 +15,7 @@ Exposed:
 from spikee.templates.target import Target
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
-from spikee.utllities.llm_message import HumanMessage
+from spikee.utilities.llm_message import HumanMessage
 
 from typing import Any, List, Optional, Tuple, Union
 from dotenv import load_dotenv

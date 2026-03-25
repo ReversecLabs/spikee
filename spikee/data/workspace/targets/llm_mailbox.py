@@ -1,4 +1,5 @@
 from spikee.templates.target import Target
+from spikee.utilities.enums import ModuleTag
 
 import requests
 import json
@@ -6,6 +7,9 @@ from typing import Any, List, Optional, Tuple, Union
 
 
 class LLMMailboxTarget(Target):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "LLM Mailbox Target"
+
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False

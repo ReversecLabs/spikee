@@ -28,6 +28,7 @@ import traceback
 from spikee.templates.simple_multi_target import SimpleMultiTarget
 from spikee.utilities.enums import Turn
 from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
 
 import json
 import uuid
@@ -46,6 +47,9 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
             ],  # Specify that this target supports both single-turn and multi-turn interactions
             backtrack=True,  # Does the target + target application support backtracking
         )
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Sample Chatbot Target"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

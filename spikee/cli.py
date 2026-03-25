@@ -564,11 +564,11 @@ def main():
         dest="list_command", help="What to list"
     )
 
-    list_subparsers.add_parser("seeds", help="List available seed folders"),
-    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files"),
-    list_subparsers.add_parser("targets", help="List available targets"),
+    list_subparsers.add_parser("seeds", help="List available seed folders")
+    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files")
 
     for subparser in [
+        list_subparsers.add_parser("targets", help="List available targets"),
         list_subparsers.add_parser("judges", help="List available judges"),
         list_subparsers.add_parser("plugins", help="List available plugins"),
         list_subparsers.add_parser("attacks", help="List available attack scripts"),

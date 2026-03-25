@@ -20,6 +20,7 @@ Return values:
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
 from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
 
 from dotenv import load_dotenv
 import json
@@ -29,6 +30,9 @@ from typing import Optional, List, Tuple, Union, Any
 
 class SampleRequestTarget(Target):
     _DEFAULT_URL = "https://reversec.com/api/example1"
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Sample Request Target - sends HTTP request to URL"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

@@ -29,6 +29,7 @@ from spikee.templates.simple_multi_target import (
 )  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
 from spikee.utilities.enums import Turn
 from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
 import traceback
 
 import json
@@ -48,6 +49,9 @@ class TestChatbotTarget(SimpleMultiTarget):
             ],  # Specify that this target supports both single-turn and multi-turn interactions
             backtrack=True,  # Does the target + target application support backtracking
         )
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Sample Simple Chatbot Target"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
