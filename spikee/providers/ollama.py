@@ -13,8 +13,6 @@ class AgentFrameworkOllamaProvider(Provider):
     """Agent Framework provider for Ollama models"""
 
     BASE_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    TIMEOUT = os.getenv("OLLAMA_TIMEOUT", None)
-    MAX_ATTEMPTS = os.getenv("OLLAMA_MAX_ATTEMPTS", None)
 
     stored_models: Union[Dict[str, str], None] = None
 
