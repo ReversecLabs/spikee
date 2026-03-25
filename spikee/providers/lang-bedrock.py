@@ -1,4 +1,5 @@
 from spikee.templates.provider import Provider
+from spikee.utilities.enums import ModuleTag
 from spikee.utilities.providers import resolve_model_map, standardise_messages, Message
 
 from langchain_aws import BedrockLLM, ChatBedrock
@@ -18,7 +19,7 @@ class LangChainBedrockProvider(Provider):
         "qwen3-coder-30b-a3b-v1": "qwen.qwen3-coder-30b-a3b-v1:0",
     }
 
-    def setup(self, model: str, max_tokens: int = None, temperature: float = None):
+    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -44,6 +45,9 @@ class LangChainBedrockProvider(Provider):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via LangChain."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]."""
