@@ -18,7 +18,7 @@ from typing import List, Tuple
 
 class AWSBedrockTarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="bedrock", default_model="claude45-haiku")
+        super().__init__(provider="bedrock")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'bedrock' provider."
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     target = AWSBedrockTarget()
     print("Supported Bedrock keys:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=claude45-haiku"))
+        print(target.process_input("Hello!", target_options="model=bedrock/claude45-haiku"))
 
     except Exception as err:
         print("Error:", err)

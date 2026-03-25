@@ -46,7 +46,7 @@ class AgentFrameworkBedrockProvider(Provider):
     def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
         self.model = model
         self.max_tokens = max_tokens
-        self.temperature = 0.5
+        self.temperature = temperature
 
         # Map user-friendly model names to actual Bedrock model identifiers
         self.model = self.models.get(self.model, self.model)
@@ -64,10 +64,6 @@ class AgentFrameworkBedrockProvider(Provider):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via Agent Framework."
-
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
-        """Return supported attack options; Tuple[options (default is first), llm_required]."""
-        return [model for model in self.models.keys()], True
 
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke Agent Framework Bedrock LLM with the provided messages."""

@@ -36,6 +36,6 @@ if __name__ == "__main__":
     print("Supported OpenAI keys:", target.get_available_option_values())
 
     # example without logprobs
-    print(target.process_input("Hello!", target_options="gpt-4o"))
+    print(target.process_input("Hello!", target_options="openai/gpt-4o"))
     # example with logprobs
-    print(target.process_input("Hello!", target_options="gpt-4o", logprobs=True))
+    print(target.process_input("Hello!", target_options="openai/gpt-4o", logprobs=True))

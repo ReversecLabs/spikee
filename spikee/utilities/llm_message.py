@@ -2,11 +2,7 @@ from typing import Dict, List, Any, Union
 from agent_framework import Message as AFMessage
 
 # region LLM Model Maps - TEMPORARY - will be moved to respective provider modules
-AZURE_MODEL_LIST: List[str] = [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-4-turbo",
-]
+
 
 GOOGLE_MODEL_LIST: List[str] = [
     "gemini-3.0-pro",

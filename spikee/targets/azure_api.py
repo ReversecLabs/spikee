@@ -15,7 +15,7 @@ from typing import List, Tuple
 
 class AzureAPITarget(ProviderTarget):
     def __init__(self):
-        super().__init__(provider="azure", default_model="gpt-4o-mini")
+        super().__init__(provider="azure")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Target for the 'azure' provider."
@@ -26,6 +26,6 @@ if __name__ == "__main__":
     target = AzureAPITarget()
     print("Supported Azure deployments:", target.get_available_option_values())
     try:
-        print(target.process_input("Hello!", target_options="model=gpt-4o-mini"))
+        print(target.process_input("Hello!", target_options="model=gpt-4o"))
     except Exception as err:
         print("Error:", err)

@@ -62,10 +62,6 @@ class LiteLLMBedrockProvider(Provider):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via LiteLLM."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
-        """Return supported attack options; Tuple[options (default is first), llm_required]."""
-        return [model for model in self.models.keys()], True
-
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
         """Invoke LiteLLM Bedrock LLM with the provided messages."""
 
