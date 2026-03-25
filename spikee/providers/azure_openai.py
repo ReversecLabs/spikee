@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Union, Any
 import asyncio
 
 
-class AgentFrameworkAzureOpenAI(Provider):
+class AgentFrameworkAzureOpenAIProvider(Provider):
     """Agent Framework provider for Azure OpenAI models"""
 
     @property
