@@ -31,7 +31,7 @@ from spikee.utilities.enums import ModuleTag
 from typing import List, Union, Tuple
 
 class SamplePlugin(Plugin):
-    def get_description(self) -> Tuple[ModuleTag, str]:
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
         """Returns the type and a short description of the plugin."""
         return [], "A brief description of what this plugin does."
 
@@ -57,7 +57,7 @@ class SamplePlugin(Plugin):
         # Your implementation here...
 
 class SampleBasicPlugin(BasicPlugin):
-    def get_description(self) -> Tuple[ModuleTag, str]:
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
         """Returns the type and a short description of the plugin."""
         return [], "A brief description of what this plugin does."
 
@@ -114,7 +114,7 @@ def transform(text: str, exclude_patterns: List[str] = [], plugin_option: str = 
     # Your transformation logic here...
 ```
 
-## Supporting Target Options
+## Supporting Plugin Options
 For more advanced plugins, you can support `plugin_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
 
 ```python

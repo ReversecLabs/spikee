@@ -17,10 +17,14 @@ Every target is a Python module located in the `targets/` directory of your work
 ```python
 from spikee.templates.target import Target
 from spikee.tester.guardrail_trigger import GuardrailTrigger
+from spikee.utilities.enums import ModuleTag
 from typing import Optional, Dict, List, Tuple, Union, Any
 import requests
 
 class ExampleTarget(Target):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.SINGLE], "Example Target Template"
+
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
@@ -255,7 +259,7 @@ import uuid
 from typing import List, Tuple, Union, Any, Optional
 
 from spikee.templates.multi_target import MultiTarget
-from spikee.utilities.enums import Turn
+from spikee.utilities.enums import Turn, ModuleTag
 
 
 class SampleMultiTurnTarget(MultiTarget):
@@ -267,6 +271,9 @@ class SampleMultiTurnTarget(MultiTarget):
             # Does the target + target application support backtracking (e.g., editing previous messages in the conversation)
             backtrack=True 
         )
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.MULTI], "Example Multi-Turn Target Template"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -318,7 +325,7 @@ import uuid
 from typing import List, Tuple, Union, Any, Optional
 
 from spikee.templates.simple_multi_target import SimpleMultiTarget
-from spikee.utilities.enums import Turn
+from spikee.utilities.enums import Turn, ModuleTag
 
 
 class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
@@ -327,6 +334,9 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
             turn_types=[Turn.SINGLE, Turn.MULTI],  
             backtrack=True 
         )
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.MULTI], "Example Simple Multi-Turn Target Template"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
