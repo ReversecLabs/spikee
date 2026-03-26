@@ -7,7 +7,7 @@
 ## Reference Pages
 - **[Cheatsheet](./01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
 - **[Built-in Seeds and Modules](./02_builtin.md)** - A reference for all built-in seeds, targets, plugins, attacks, and judges.
-- **[LLM Providers](./03_llm_providers.md)** - An overview of the built-in LLM service, and a list of supported providers and models. Includes Billing Tracker.
+- **[LLM Providers](./03_llm_providers.md)** - An overview of the built-in LLM utility, and provider modules.
   
 ## Generation and Testing Workflows
 - **[Dataset Generation](./04_dataset_generation.md)** - A reference for `spikee generate`, explaining how to generate datasets and utilise arguments to modify datasets.
@@ -26,6 +26,8 @@
 - **[Creating Dynamic Attack Scripts](./08_dynamic_attacks.md)** - A guide to implementing dynamic attack modules, for real-time generation of attack payloads.
   
 - **[Judges](./09_judges.md)** - An introduction to judge modules, used to evaluate target responses. Covers basic and LLM judges, their implementation and usage.
+
+- **[Creating Provider Modules](./03_llm_providers.md#creating-custom-provider-modules)** - A guide to implementing provider modules for integrating any LLM with Spikee's.
   
 
 ## Additional Resources

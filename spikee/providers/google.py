@@ -18,8 +18,8 @@ class AgentFrameworkGoogleProvider(AgentFrameworkCustomProvider):
             # Gemini 3 (Latest)
             "gemini-3.1-pro": "gemini-3.1-pro",
             "gemini-3.1-flash": "gemini-3.1-flash",
-            "gemini-3.0-pro": "gemini-3.0-pro",
-            "gemini-3.0-flash": "gemini-3.0-flash",
+            "gemini-3-pro": "gemini-3-pro",
+            "gemini-3-flash": "gemini-3-flash",
 
             # Gemini 2.5
             "gemini-2.5-pro": "gemini-2.5-pro",

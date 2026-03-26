@@ -31,7 +31,8 @@ spikee test
     --dataset ./dataset/cybersec-2026-01.jsonl \
     --dataset ./dataset/simsonsun-high-quality-jailbreaks.jsonl \
     --dataset-folder ./dataset/cyber_datasets/ \
-    --target aws_bedrock_api
+    --target llm_provider \
+    --target-options "bedrock/claude45-haiku"
 ```
 
 ### Targets
@@ -43,8 +44,8 @@ Run `spikee list targets` to validate the target is in a loadable location, and 
 ```bash
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
-    --target-options "bedrock-claude45-haiku"
+    --target llm_provider \
+    --target-options "bedrock/claude45-haiku"
 ```
 
 ### Judges
@@ -55,8 +56,9 @@ Run `spikee list judges` to view supported options. A list of built-in judges is
 ```bash
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
-    --judge-options "model=bedrock-claude45-haiku"
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
+    --judge-options "model=bedrock/claude45-haiku"
 ```
 
 ### Attacks
@@ -72,9 +74,10 @@ Run `spikee list attacks` to view supported options. A list of built-in attacks 
 ```bash
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
     --attack goat \
-    --attack-options 'model=bedrockcv-deepseek.v3-v1:0' \
+    --attack-options 'model=bedrock/deepseek-v3' \
     --attack-iterations 10 \
     --attack-only
 ```
@@ -93,7 +96,8 @@ spikee test
 # This will test 10% of randomly sampled entries from the dataset
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
     --sample 0.1 \ 
     --sample-seed 123
 ```
@@ -108,19 +112,22 @@ By default, Spikee will analyse the workspace results folder to identify an prev
 # This will resume from a specific results file
 spikee test
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
     --resume-file ./results/cybersec_test_results_2024-07-01.jsonl
 
 # This will attempt to automatically resume from the latest results file for this test, if it exists
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
     --auto-resume
 
 # This will create a new results file, even if a previous results file exists
 spikee test
     --dataset ./dataset/cybersec-2026-01.jsonl \
-    --target aws_bedrock_api \
+    --target llm_provider \
+    --target-options "bedrock/claude45-sonnet" \
     --no-auto-resume
 
 ```

@@ -7,6 +7,10 @@ class AgentFrameworkGroqProvider(AgentFrameworkCustomProvider):
     """Agent Framework provider for Groq models (via Custom provider with OpenAI compatibility)"""
 
     @property
+    def default_model(self) -> str:
+        return "llama-3.1-8b-instant"
+
+    @property
     def models(self) -> Dict[str, str]:
         return {
             "distil-whisper-large-v3-en": "groq/distil-whisper-large-v3-en",

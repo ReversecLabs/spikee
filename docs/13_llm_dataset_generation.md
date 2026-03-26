@@ -81,4 +81,3 @@ This method generates new *instructions* that can be combined with existing jail
     spikee generate --seed-folder datasets/seeds-cybersec-medical-instr
     ```
     This will combine the original jailbreaks and documents from `seeds-cybersec-2026-01` with your new custom instructions, creating a new set of test cases.
-```

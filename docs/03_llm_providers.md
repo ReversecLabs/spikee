@@ -1,28 +1,44 @@
 # LLM Providers in Spikee
 
-Spikee's built-in LLM utility, leverages LiteLLM to standardise and centralise LLM interactions with a wide range of providers. This allows developers to build modules that leverage LLMs without needing to implement their own provider-specific logic and provides a unified and consistent interface for users. All **built-in modules** (Targets, Plugins, Attacks, and Judges) that leverage LLM technologies use this utility, while users writing custom modules are free to use whatever methods they want.
+A Provider Module is a Python script that abstracts interactions (e.g., authentication, invocation, formatting) with a specific LLM provider. While Spikee contains several built-in modules, leveraging the `agent-framework` library for popular LLM providers, users can create their own custom provider modules to interface with any LLM service they choose. These providers can be accessed by a wide range of other modules (e.g., Targets, Attacks, Plugins, Judges) to utlise LLM technologies.
 
-> Updated in Spikee 0.7.0 - Warning this change breaks legacy langchain-based modules, since LiteLLM uses a different response format. Replace the `invoke()` call with the following 'LLMWrapper.invoke()' call to match behaviour:
->
-> `llm.invoke(messages).content` -> `llm.invoke(messages, content_only=True)` 
+## Identifying Providers and Models
 
-## Supported Providers & Model Selection
+All providers and models can be specified using the following format:
 
-To use a specific LLM, you must prepend the provider's designated prefix to the model's identifier. Below is a list detailing each supported provider prefix, how to pass the model name, the required environment variables, and where to find available models.
+- Full Identifier: `<provider-prefix>/<model-name>`
+    - Examples:
+        - `openai/gpt-4o`,
+        - `bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0`,
+        - `bedrock/claude45-sonnet`, (some providers support shorthand model names)
+        - `google/gemini-3.0-pro`
 
-| Provider | Prefix(es) | Examples / Built-in Shorthands | Required Environment Variables | External Docs |
+
+- Provider Identifier (uses provider's default model): `<provider-prefix>/`
+    - Examples:
+        - `openai/` (defaults to `openai/gpt-4o`),
+        - `bedrock/` (defaults to `bedrock/claude45-sonnet`),
+        - `google/` (defaults to `google/gemini-2.5-flash`)
+
+Use `spikee list providers` to get a list of providers and known supported models / shorthands.
+
+## Built-In Providers
+
+| LLM Provider | Provider ID | Default / Example Models | Environment Variables | External Docs |
 | :--- | :--- | :--- | :--- | :--- |
-| **OpenAI** | `openai-` | `openai-gpt-4o`<br/>`openai-gpt-4o-mini`<br/>`openai-o3-mini` | `OPENAI_API_KEY` | [Models List](https://platform.openai.com/docs/models) |
-| **AWS Bedrock** | `bedrock-` | `bedrock-claude37-sonnet`<br/>`bedrock-deepseek-v3`<br/>`bedrock-qwen3-coder-30b-a3b-v1`<br/><small>*(Allows internal shorthands)*</small> | `AWS_ACCESS_KEY_ID`<br/>`AWS_SECRET_ACCESS_KEY`<br/>`AWS_DEFAULT_REGION` | [Models List](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) |
-| **Google Gemini** | `google-` | `google-gemini-3.0-pro`<br/>`google-gemini-2.5-flash`<br/>`google-gemini-1.5-pro` | `GEMINI_API_KEY` | [Models List](https://ai.google.dev/gemini-api/docs/models/gemini) |
-| **TogetherAI** | `together-` | `together-llama33-70b`<br/>`together-mixtral-8x22b`<br/><small>*(Allows internal shorthands)*</small> | `TOGETHER_API_KEY` | [Models List](https://docs.together.ai/docs/inference-models) |
-| **Groq** | `groq-` | `groq-llama-3.1-8b-instant`<br/>`groq-llama-3.3-70b-versatile` | `GROQ_API_KEY` | [Models List](https://console.groq.com/docs/models) |
-| **Deepseek** | `deepseek-` | `deepseek-deepseek-chat`<br/>`deepseek-deepseek-reasoner` | `DEEPSEEK_API_KEY` | [Models List](https://platform.deepseek.com/api-docs/) |
-| **OpenRouter** | `openrouter-` | `openrouter-meta-llama/llama-3.1-8b-instruct`<br/>`openrouter-google/gemini-2.5-flash` | `OPENROUTER_API_KEY` | [Models List](https://openrouter.ai/models) |
-| **Azure OpenAI** | `azure-` | `azure-gpt-4o`<br/>`azure-gpt-4o-mini` | `AZURE_OPENAI_API_KEY`<br/>`AZURE_OPENAI_ENDPOINT`<br/>`API_VERSION` | [Models List](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) |
-| **Local** | `ollama-`<br/>`llamaccp-server-` | `ollama-llama3.1`<br/>`llamaccp-server-8080` (requires port info) | *None* | |
-| **Custom** | `custom-` | `custom-mymodel` | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
-| **Offline** | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
+| OpenAI | `openai` | `gpt-4o` (default)<br/>`gpt-4.1` | `OPENAI_API_KEY` | [Models List](https://platform.openai.com/docs/models) |
+| Azure OpenAI | `azure` | `gpt-4o` (default)<br/>`gpt-4o-mini` | `AZURE_OPENAI_API_KEY`<br/>`AZURE_OPENAI_ENDPOINT` | [Models List](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) |
+| AWS Bedrock | `bedrock` | `claude45-sonnet` (default)<br/>`claude45-haiku`<br/>`deepseek-v3`<br/><small>*(Allows internal shorthands)*</small> | `AWS_ACCESS_KEY_ID`<br/>`AWS_SECRET_ACCESS_KEY`<br/>`AWS_DEFAULT_REGION` | [Models List](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) |
+| Google Gemini | `google` | `gemini-2.5-flash` (default)<br/>`gemini-2.5-pro`<br/>`gemini-3-pro` | `GEMINI_API_KEY` | [Models List](https://ai.google.dev/gemini-api/docs/models/gemini) |
+| Deepseek | `deepseek` | `deepseek-chat` (default)<br/>`deepseek-reasoner` | `DEEPSEEK_API_KEY` | [Models List](https://platform.deepseek.com/api-docs/) |
+| Groq | `groq` | `llama-3.1-8b-instant` (default)<br/>`llama-3.3-70b-versatile` | `GROQ_API_KEY` | [Models List](https://console.groq.com/docs/models) |
+| TogetherAI | `together` | `gemma2-8b` (default)<br/>`mixtral-8x22b`<br/><small>*(Allows internal shorthands)*</small> | `TOGETHER_API_KEY` | [Models List](https://docs.together.ai/docs/inference-models) |
+| OpenRouter | `openrouter` | `google/gemini-2.5-flash` (default)<br/>`anthropic/claude-3.5-haiku` | `OPENROUTER_API_KEY` | [Models List](https://openrouter.ai/models) |
+| Local (Ollama) | `ollama` | *None* | `OLLAMA_URL` | |
+| Local (LLaMA CCP Server) | `llamaccp-server` | *None* | `LLAMACPP_URL` | |
+| Custom | `custom` | *None* | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
+| Offline | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
+
 
 ## Configuring Models in Spikee Components
 
@@ -41,9 +57,18 @@ After initializing a workspace, all the built-in LLM judges live under the `judg
 ```
 
 ```bash
+# Full Identifier
 spikee test --dataset my_data.jsonl \
-            --target always_refuse \
-            --judge-options "groq-llama-3.1-8b-instant"
+            --target llm_provider \
+            --target-options "bedrock/claude45-haiku" \
+            --judge-options "openai/gpt-4o-mini"
+
+# Provider Identifier (defaults to the provider's default model)
+# Full Identifier
+spikee test --dataset my_data.jsonl \
+            --target llm_provider \
+            --target-options "bedrock/claude45-haiku" \
+            --judge-options "openai/" # Defaults to "openai/gpt-4o"
 ```
 
 ### Attacks (via CLI `--attack-options`) and Plugins (via CLI `--plugin-options`)
@@ -51,9 +76,10 @@ Attacks and plugins that leverage LLMs dynamically to generate payloads (like `c
 
 ```bash
 spikee test --dataset my_data.jsonl \
-            --target always_refuse \
+            --target llm_provider \
+            --target-options "deepseek/deepseek-chat" \
             --attack crescendo \
-            --attack-options "model=openrouter-anthropic/claude-3.5-sonnet"
+            --attack-options "model=bedrock/claude45-sonnet"
 ```
 
 ### Targets (via CLI `--target-options`)
@@ -61,8 +87,8 @@ Similarly, built-in API routing targets use `--target-options` to define the bac
 
 ```bash
 spikee test --dataset my_data.jsonl \
-            --target togetherai_api \
-            --target-options "llama33-70b" \
+            --target llm_provider \
+            --target-options "google/gemini-2.5-flash" \
             --attack llm_jailbreaker
 ```
 
@@ -73,35 +99,118 @@ Combine everything into a robust command that uses Groq for judging, OpenRouter 
 
 ```bash
 spikee test --dataset evaluations.jsonl \
-            --target togetherai_api \
-            --target-options "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" \
+            --target llm_provider \
+            --target-options "google/gemini-2.5-flash" \
             --attack crescendo \
-            --attack-options "model=openrouter-google/gemini-2.5-flash" \
-            --judge-options "groq-llama-3.1-8b-instant"
+            --attack-options "model=openrouter/google/gemini-2.5-flash" \
+            --judge-options "groq/llama-3.1-8b-instant"
 ```
 
 ## Implementing Built-In LLM Utilities
-Spikee's built-in LLM utility, is implemented within `spikee/utilities/llm.py`, primarly thougth the function `get_llm()` which provides a `LLMWrapper` class.
+Spikee's built-in LLM utility is implemented within `Provider` modules, and can be obtained using the `get_llm()` function from `spikee/utilities/llm.py`.
+
 
 The following example demonstrates how to obtain and invoke an LLM:
 ```python
-from spikee.utilities.llm import get_llm, SystemMessage, HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.llm_message import SystemMessage, HumanMessage
 
-model = "bedrock-claude37-sonnet"
+model = "bedrock/claude37-sonnet"
 
 llm = get_llm(model, max_tokens=2048, temperature=0.7)
 
 response = llm.invoke([
     SystemMessage(content="You are a helpful assistant."),
     HumanMessage(content="What is the capital of France?")
-], content_only=True)
+]).content
 
 print(response)  # Should print "Paris"
 ```
 
-## Billing Tracking
-Spikee includes a billing and cost tracking system to help users monitor their LLM usage and associated costs.
+## Creating Custom Provider Modules
+Custom provider modules are located within the `providers/` directory of your Spikee workspace, and identify themselves by their filename (e.g., `bedrock.py` has the provider prefix `bedrock/`).
 
-Run the `spikee init --include-billing` command, to create a `billing.json` file within your workspace. 
+The following template demonstrates how to create a custom provider module by inheriting from the `Provider` base class:
 
-This file will contain the cost and token usage of supported models, and will be updated when Spikee is used (only applies to LLM usage through the built-in LLM utility).
+```python
+from spikee.templates.provider import Provider
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm_message import format_messages, Message, AIMessage
+
+from typing import List, Tuple, Dict, Union, Any
+
+
+class ExampleProvider(Provider):
+
+    
+    @property
+    def default_model(self) -> str:
+        # If default_mode is not defined, the first model in the models dict will be used as the default
+        return "mock"
+
+    @property
+    def models(self) -> Dict[str, str]:
+        return {
+            "mock": "mock",
+        }
+
+    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
+        self.model = model
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+
+        # Map user-friendly model names to model identifiers
+        self.model = self.models.get(self.model, self.model)
+
+        self.llm = ...
+
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.LLM], "Sample LLM Provider, always returns 'Hello, world!'"
+
+    def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+        """Return 'Hello, world!' regardless of the input."""
+
+        # Convert messages into a standard dict format
+        messages = format_messages(messages)
+
+        response = ...  # Your logic to call the LLM API with the formatted messages
+
+        return AIMessage(content="Hello, world!", original_response=...)
+```
+
+LLM Providers utilising an OpenAI-compatible API can also inherit from `AgentFrameworkCustomProvider` - this is an example for Google Gemini: 
+```python
+from spikee.providers.custom import AgentFrameworkCustomProvider
+from typing import Dict, Union
+import os
+
+class AgentFrameworkGoogleProvider(AgentFrameworkCustomProvider):
+    """Agent Framework provider for Google models (via Custom provider with OpenAI compatibility)"""
+
+    @property
+    def default_model(self) -> str:
+        return "gemini-2.5-flash"
+
+    @property
+    def models(self) -> Dict[str, str]:
+        return {
+            # Gemini 3 (Latest)
+            "gemini-3.1-pro": "gemini-3.1-pro",
+            "gemini-3.1-flash": "gemini-3.1-flash",
+
+            # Gemini 2.5
+            "gemini-2.5-pro": "gemini-2.5-pro",
+            "gemini-2.5-flash": "gemini-2.5-flash",
+        }
+
+    @property
+    def name(self) -> str:
+        return "Google"
+
+    @property
+    def base_url(self) -> str:
+        return "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    @property
+    def api_key(self) -> Union[str, None]:
+        return os.getenv("GOOGLE_API_KEY", None)

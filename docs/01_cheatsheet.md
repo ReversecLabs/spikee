@@ -26,7 +26,7 @@ spikee init
 | `--include-billing` | Include billing tracker in the local workspace         | [Link](./03_llm_providers.md#billing-tracking) |
 
 ## `spikee list`
-Lists all local and built-in modules available.
+Lists all local and built-in modules available. Use `--description` to include module descriptions.
 
 ```bash
 spikee list seeds
@@ -35,6 +35,7 @@ spikee list targets
 spikee list plugins
 spikee list attacks
 spikee list judges
+spikee list providers --description
 ```
 
 ## `spikee generate`

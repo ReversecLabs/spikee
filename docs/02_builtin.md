@@ -44,15 +44,7 @@ Spikee includes a variety of built-in and sample targets, which can be listed at
 
 | Target | Type | Description |
 |--------|------|-------------|
-| `aws_bedrock_api` | Provider | AWS Bedrock API (Requires `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_DEFAULT_REGION`) |
-| `azure_api` | Provider | Azure OpenAI Service API (Requires `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`) |
-| `deepseek_api` | Provider | Deepseek API (Requires `DEEPSEEK_API_KEY`) |
-| `google_api` | Provider | Google Gen AI API (Requires `GOOGLE_API_KEY`) |
-| `groq_api` | Provider | Groq API (Requires `GROQ_API_KEY`) |
-| `openai_api` | Provider | OpenAI API (Requires `OPENAI_API_KEY`) |
-| `togetherai_api` | Provider | TogetherAI API (Requires `TOGETHERAI_API_KEY`) |
-| `llamacpp_api` | Local Model | Modified adaptation of the OpenAI API for LLaMA CCP Servers. Default: `http://localhost:8080/`. Custom: `--target-options http://your-llamacpp-server:port/` |
-| `ollama_api` | Local Model | Ollama API (Requires Ollama running locally: `http://localhost:11434/`) |
+| `llm_provider` | Provider | Generic LLM target for supported LLM providers (e.g., openai, bedrock, google, ollama, e.t.c.) ([See Docs](./03_llm_providers.md)) |
 | `aws_bedrock_guardrail` | Guardrails | Assess AWS Bedrock Guardrails |
 | `az_ai_content_safety_harmful` | Guardrails | Assess Azure AI Content Safety Harm Categories |
 | `az_prompt_shields_document_analysis` | Guardrails | Assess Azure Prompt Shields Document Analysis  |
@@ -73,7 +65,8 @@ Spikee includes a variety of built-in and sample targets, which can be listed at
 **Usage Example**
 ```bash
 spikee test --dataset datasets/cybersec-2026-01.jsonl \
-            --target aws_bedrock_api
+            --target llm_provider \
+            --target-options "bedrock/claude45-haiku"
 ```
 
 
@@ -96,17 +89,18 @@ LLM-based judges address this by using a separate LLM to evaluate the target's r
 * `llm_judge_objective`: LLM judge to evaluate whether the target LLMs response meets a specific input objective.
 * `llm_judge_output_criteria`: LLM judge to evaluate whether the target LLMs response meets specific success criteria defined in `judge_args`.
 
-The LLM Agent model can be specificed using the `--judge-options` flag. See **[LLM Providers](./03_llm_providers.md)** for a complete list of supported models, prefixes, and examples. Some common examples include 
+The LLM Agent model can be specified using the `--judge-options` flag. See **[LLM Providers](./03_llm_providers.md)** for a complete list of supported models, prefixes, and examples. Some common examples include 
 * `offline`: Mock judge, for restrictive environments. See [re-judging](<./08_judges.md#Re-judging>) and [isolated environments](./12_installing_spikee_in_isolated_environments.md) documentation for more information.
-* `bedrock-<model_name>`: AWS Bedrock API (e.g., `bedrock-eu.anthropic.claude-3-5-sonnet-20240620-v1:0`)
-* `openai-<model_name>`: OpenAI API (e.g., `openai-gpt-4o-mini`)
-* `ollama-<model_name>`: Ollama API (e.g., `ollama-gemma3`)
+* `bedrock/<model_name>`: AWS Bedrock API (e.g., `bedrock/claude45-haiku`)
+* `openai/<model_name>`: OpenAI API (e.g., `openai/gpt-4o-mini`)
+* `google/<model_name>`: Google Gen AI API (e.g., `google/gemini-2.5-flash`)
 
 **Usage Example**
 ```bash
 # Use an offline judge, allowing for later re-judging
 spikee test --dataset datasets/cybersec-2026-01.jsonl \
-            --target aws_bedrock_api \
+            --target llm_provider \
+            --target-options "bedrock/claude45-haiku" \
             --judge-options offline
 ```
 
@@ -175,7 +169,7 @@ You can customize the behavior of attacks using the following command-line optio
 spikee test --dataset datasets/dataset-name.jsonl \
             --target demo_llm_application \
             --attack crescendo \
-            --attack-options 'max-turns=5,model=bedrockcv-deepseek.v3-v1:0' \
+            --attack-options 'max-turns=5,model=bedrock/deepseek-v3' \
             --attack-only
 
 ```

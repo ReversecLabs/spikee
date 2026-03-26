@@ -173,14 +173,14 @@ Specify your results files to be rejudged, using `--result-file` flag. (NB, You 
 ```bash
 spikee results rejudge --result-file .\results\results_openai-api_my-harmful-content-test.jsonl \
                        --result-file .\results\results_openai-api_my-first_jailbreaks.jsonl \
-                       --judge-options ollama-llama3.2
+                       --judge-options ollama/llama3.2
 ```
 ### 3. Resuming a Halted Rejudging
 If a rejudging halts early due to a error or early termination using 'Ctrl+C', it can be resumed using the `--resume`. 
 
 ```bash
 spikee results rejudge --result-file .\results\results_openai-api_my-harmful-content-test.jsonl \
-                       --judge-options ollama-llama3.2 \
+                       --judge-options ollama/llama3.2 \
                        --resume
 ```
 
