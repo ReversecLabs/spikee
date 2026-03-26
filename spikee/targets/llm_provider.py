@@ -5,14 +5,14 @@ from dotenv import load_dotenv
 from typing import List, Tuple
 
 
-class ProviderTargetModule(ProviderTarget):
+class LLMProviderTargetModule(ProviderTarget):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Generic LLM target for supporting LLM providers."
+        return [ModuleTag.LLM], "Generic LLM target for supported LLM providers - see 'spikee list providers' => '--target-options \"model=<provider>/<model>\"'."
 
 
 if __name__ == "__main__":
     load_dotenv()
-    target = ProviderTargetModule()
+    target = LLMProviderTargetModule()
     print("Supported provider keys:", target.get_available_option_values())
     try:
 

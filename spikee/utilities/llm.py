@@ -30,10 +30,14 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
         temperature (float): Sampling temperature for the LLM (Default: 0).
     """
 
-    if options == "offline":
+    # Strip "model=" prefix if present
+    if options.startswith("model="):
+        options = options[len("model="):]
+
+    if options == "offline":  # Offline mode, no LLM provider
         return None
 
-    elif "/" in options:
+    elif "/" in options:  # Expected format: "provider/model"
         provider_name, model_name = options.split("/", 1)
 
     else:
@@ -41,7 +45,7 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
             f"Invalid options format: '{options}' - expected format 'provider/model', for example 'lang-bedrock/claude35-haiku'."
         )
 
-    try:
+    try:  # Load the provider module
         provider = load_module_from_path(provider_name, "providers")
 
     except (ImportError, ValueError) as e:
