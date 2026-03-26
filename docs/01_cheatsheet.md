@@ -23,7 +23,6 @@ spikee init
 | `--force`           | Overwrite existing directories                         |          |
 | `--include-builtin` | Copy built-in modules to local workspace               |          |
 | `--include-viewer`  | Include the built-in web viewer in the local workspace | [Link](./11_results.md#the-web-viewer-command) |
-| `--include-billing` | Include billing tracker in the local workspace         | [Link](./03_llm_providers.md#billing-tracking) |
 
 ## `spikee list`
 Lists all local and built-in modules available. Use `--description` to include module descriptions.

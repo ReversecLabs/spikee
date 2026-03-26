@@ -120,7 +120,7 @@ cd workspace
 spikee init
 ```
 
-See [`spikee init` documentation](./docs/01_cheatsheet.md#spikee-init) for information on `--include` flags (e.g., Spikee UI, billing tracking). 
+See [`spikee init` documentation](./docs/01_cheatsheet.md#spikee-init) for information on `--include` flags (e.g., Spikee Viewer). 
 
 ## 3. Available Modules: `spikee list`
 
