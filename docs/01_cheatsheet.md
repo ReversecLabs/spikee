@@ -160,7 +160,7 @@ spikee results extract --results-file results.jsonl --category "success"
 | ------------------- | ------------------------------------------------------ |
 | `--results-file`    | Path to a results JSONL file |
 | `--results-folder`  | Path to a folder containing multiple results JSONL files |
-| `--category`        | Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom |
+| `--category`        | Extracts prompts by category: success (default), failure, error, guardrail, no-guardrail, custom |
 | `--custom-search`   | Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match |
 | `--tag`             | Include a tag at the end of the results filename          |
 
