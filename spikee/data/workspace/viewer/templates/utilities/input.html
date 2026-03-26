@@ -1,7 +1,7 @@
 {% if entry.system_message and entry.system_message is not none and entry.system_message != '' %}
     <div class="border-start px-3 mb-3">
         <strong class="small me-2">System Message:</strong>
-        <div class="code-block h-100 result-input">{{ process_output(entry.system_message, truncated=truncated)|e }}</div>
+        <div class="code-block h-100 result-input">{{ process_text(entry.system_message, truncated=truncated)|e }}</div>
     </div>
 {% endif %}
 
@@ -28,7 +28,7 @@
                     <div class="code-block h-100 result-input">
                         <strong style="color: {{ string_to_colour(message.role) }};">
                             {{ message.role|upper }}:
-                        </strong>{{ process_output(message.content, truncated=truncated)|e }}
+                        </strong>{{ process_text(message.content, truncated=truncated)|e }}
                     </div>
                 </li>
             {% endfor %}
@@ -39,7 +39,7 @@
             {% for message in entry.input %}
                 <li class="mb-2">
                     <div class="code-block h-100 result-input">
-                        {{ process_output(message, truncated=truncated)|e }}
+                        {{ process_text(message, truncated=truncated)|e }}
                     </div>
                 </li>
             {% endfor %}
@@ -47,7 +47,7 @@
     
     {% else %}
         <div class="code-block h-100 result-input">
-            {{ process_output(entry.input, truncated=truncated)|e }}
+            {{ process_text(entry.input, truncated=truncated)|e }}
         </div>
     {% endif %}
 </div>

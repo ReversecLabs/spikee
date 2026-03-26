@@ -26,8 +26,7 @@ from .list import (
     list_plugins,
     list_attacks,
 )
-from .viewer import run_viewer
-
+from .viewers.results import ResultsViewer
 
 banner = r"""
    _____ _____ _____ _  ________ ______
@@ -512,39 +511,56 @@ def main():
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
 
-    # --- web-viewer
-    parser_web_viewer = subparsers_results.add_parser(
-        "web-viewer", help="Launch a local web viewer, for results JSONL files"
+    # === [Viewer] Sub-command ================================================
+    parser_viewer = subparsers.add_parser(
+        "viewer", help="Launch local web viewers"
     )
-    parser_web_viewer.add_argument(
+    subparsers_viewer = parser_viewer.add_subparsers(dest="viewer_command", help="Viewer sub-commands")
+    parser_viewer.add_argument(
         "--host",
         type=str,
         default="127.0.0.1",
-        help="Host address for the web viewer (default: 127.0.0.1)",
+        help="Host address for the prompt viewer (default: 127.0.0.1)",
     )
-    parser_web_viewer.add_argument(
+    parser_viewer.add_argument(
         "-p",
         "--port",
         type=int,
         default=8080,
-        help="Port number for the web viewer (default: 8080)",
+        help="Port number for the prompt viewer (default: 8080)",
     )
-    parser_web_viewer.add_argument(
+    parser_viewer.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Run the viewer in debug mode with hot-reloading (default: False)",
+    )
+    parser_viewer.add_argument(
+        "--truncate",
+        type=int,
+        default=500,
+        help="Truncate long prompt entries in the viewer for better performance (default: 500 characters, set to 0 to disable truncation)",
+    )
+
+    parser_result_viewer = subparsers_viewer.add_parser(
+        "results", help="Launch a local result viewer, for results JSONL files"
+    )
+    parser_result_viewer.add_argument(
         "--result-file",
         type=str,
         action="append",
         help="Path to an results JSONL file, generated using the dataset",
     )
-    parser_web_viewer.add_argument(
+    parser_result_viewer.add_argument(
         "--result-folder",
         type=str,
         action="append",
         help="Path to a results folder containing multiple JSONL files, generated using the dataset",
     )
-    parser_web_viewer.add_argument(
+    parser_result_viewer.add_argument(
         "--allow-ast",
         action="store_true",
-        help="Allow AST parsing in the web viewer (use with caution)",
+        help="Allow AST parsing in the result viewer (use with caution)",
     )
 
     # --- convert-to-excel
@@ -611,12 +627,18 @@ def main():
             extract_results(args)
         elif args.results_command == "dataset-comparison":
             dataset_comparison(args)
-        elif args.results_command == "web-viewer":
-            run_viewer(args)
         elif args.results_command == "convert-to-excel":
             convert_results_to_excel(args)
         else:
             parser_results.print_help()
+
+    elif args.command == "viewer":
+        if args.viewer_command == "results":
+            viewer = ResultsViewer(args)
+            viewer.run_viewer(args)
+        else:
+            parser_viewer.print_help()
+
     elif args.command == "list":
         if args.list_command == "seeds":
             list_seeds(args)

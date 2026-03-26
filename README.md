@@ -320,17 +320,18 @@ spikee test --dataset datasets/dataset-name.jsonl \
   spikee results analyze --result-folder ./results/ --overview --combine
   ```
 
-- `spikee results web-viewer` launches an interactive UI to explore results on a granular level, with filtering and search capabilities.
-  ``` bash
-  spikee results web-viewer --result-file ./results/results_openai_api-gpt-4o-mini.jsonl
-  ```
-
 - `spikee results extract` Extracts user-defined categories of results from results files for further analysis.
   ```bash
   # Extract all successful attacks to a new dataset file for further analysis
   spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
                         --category success
   ```
+
+`spikee viewer results` launches a web viewer for interactively exploring results files, with filtering and searching capabilities.
+  ``` bash
+  spikee viewer results --result-folder .\results\
+  ```
+
 
 Further information on analyzing results can be found in the **[Spikee Results](./docs/11_results.md)** documentation.
 

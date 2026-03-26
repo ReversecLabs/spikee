@@ -486,7 +486,10 @@ class ResultProcessor:
 
     def generate_output(self, overview=False, combined=False):
         """Generates the full results analysis output."""
-        output = self.generate_overview()
+        try:
+            output = self.generate_overview()
+        except ZeroDivisionError:
+            return "Error: No entries found in the results file."
 
         if combined:
             output += self.generate_combined()
