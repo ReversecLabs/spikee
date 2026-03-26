@@ -2,6 +2,7 @@ from enum import Enum
 import os
 import inspect
 import json
+from re import I
 import time
 from collections import defaultdict
 from typing import Union, List
@@ -326,20 +327,18 @@ def load_plugins(plugin_names):
         if isinstance(name, str):
             try:
                 plugins.append((name, load_module_from_path(name, "plugins")))
-            except (ImportError, ValueError) as e:
-                print(
-                    f"Warning: Plugin '{name}' not found locally or in built-in plugins.: {e}"
-                )
+            except (ImportError) as e:
+                print(e)
+                exit(1)
 
         else:  # If it's a plugin pipe, load each sub-plugin and store as a list
             plugin_pipe = []
             for sub_name in name:
                 try:
                     plugin_pipe.append((sub_name, load_module_from_path(sub_name, "plugins")))
-                except (ImportError, ValueError) as e:
-                    print(
-                        f"Warning: Plugin '{sub_name}' in '{'|'.join(name)}' not found locally or in built-in plugins.: {e}"
-                    )
+                except (ImportError) as e:
+                    print(e)
+                    exit(1)
 
             plugins.append(('~'.join(name), plugin_pipe))
 
@@ -1050,38 +1049,42 @@ def generate_dataset(args):
         read_toml_file(system_messages) if include_system_message else None
     )
 
-    # Generate Dataset
-    dataset, entry_id = generate_variations(
-        base_docs,
-        jailbreaks,
-        instructions,
-        args.positions,
-        injection_delimiters,
-        spotlighting_data_markers_list,
-        plugins,
-        adv_prefixes=adv_prefixes,
-        adv_suffixes=adv_suffixes,
-        output_format=output_format,
-        match_languages=match_languages,
-        system_message_config=system_message_config,
-        plugin_options_map=plugin_options_map,
-        plugin_only=args.plugin_only,
-    )
-
-    # Generate Standalone Attacks
-    if getattr(args, "include_standalone_inputs", False):
-        standalone_file = resolve_standalone_inputs_path(seed_folder)
-        standalone_inputs = read_jsonl_file(str(standalone_file))
-        dataset, entry_id = process_standalone_attacks(
-            standalone_inputs,
-            dataset,
-            entry_id,
+    try:
+        # Generate Dataset
+        dataset, entry_id = generate_variations(
+            base_docs,
+            jailbreaks,
+            instructions,
+            args.positions,
+            injection_delimiters,
+            spotlighting_data_markers_list,
+            plugins,
             adv_prefixes=adv_prefixes,
             adv_suffixes=adv_suffixes,
-            plugins=plugins if args.plugins else None,
+            output_format=output_format,
+            match_languages=match_languages,
+            system_message_config=system_message_config,
             plugin_options_map=plugin_options_map,
             plugin_only=args.plugin_only,
         )
+
+        # Generate Standalone Attacks
+        if getattr(args, "include_standalone_inputs", False):
+            standalone_file = resolve_standalone_inputs_path(seed_folder)
+            standalone_inputs = read_jsonl_file(str(standalone_file))
+            dataset, entry_id = process_standalone_attacks(
+                standalone_inputs,
+                dataset,
+                entry_id,
+                adv_prefixes=adv_prefixes,
+                adv_suffixes=adv_suffixes,
+                plugins=plugins if args.plugins else None,
+                plugin_options_map=plugin_options_map,
+                plugin_only=args.plugin_only,
+            )
+    except ImportError as e:
+        print(f"Missing dependency: {e}")
+        exit(1)
 
     timestamp = int(time.time())
     seed_folder_name = os.path.basename(os.path.normpath(seed_folder))

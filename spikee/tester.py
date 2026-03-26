@@ -850,17 +850,21 @@ def test_dataset(args):
 
     # Load Attack module if specified
     attack_name = args.attack if args.attack else ""
-    attack_module = (
-        load_module_from_path(args.attack, "attacks") if args.attack else None
-    )
+    try:
+        attack_module = (
+            load_module_from_path(args.attack, "attacks") if args.attack else None
+        )
 
-    # Load Target module, with AdvancedTargetWrapper
-    target_module = AdvancedTargetWrapper.create_target_wrapper(
-        args.target,
-        args.target_options,
-        args.max_retries,
-        args.throttle,
-    )
+        # Load Target module, with AdvancedTargetWrapper
+        target_module = AdvancedTargetWrapper.create_target_wrapper(
+            args.target,
+            args.target_options,
+            args.max_retries,
+            args.throttle,
+        )
+    except ImportError as e:
+        print(e)
+        exit(1)
 
     # Validate multi-turn capability
     if (

@@ -20,7 +20,7 @@ def validate_llm_provider(option: str) -> bool:
         return False
 
 
-def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: float = 0, additional_kwargs=None) -> Union[Provider, None]:
+def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: float = 0, **additional_kwargs) -> Union[Provider, None]:
     """
     Returns an Provider.
 
@@ -51,10 +51,8 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
     except (ImportError, ValueError) as e:
         raise ImportError(f"Error loading provider '{provider_name}': {str(e)}")
 
-    # TODO: support additional kwargs for providers that require them (e.g. API keys, etc.)
-
     if model_name == "":
         model_name = provider.default_model
 
-    provider.setup(model=model_name, max_tokens=max_tokens, temperature=temperature)
+    provider.setup(model=model_name, max_tokens=max_tokens, temperature=temperature, **additional_kwargs)
     return provider

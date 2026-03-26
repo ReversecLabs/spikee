@@ -31,9 +31,11 @@ class Provider(Module, ABC):
             return [], True
 
     @abstractmethod
-    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
+    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None, **additional_kwargs) -> None:
+        """Sets up the provider with the specified model and parameters."""
         pass
 
     @abstractmethod
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+        """Invoke the provider with the given messages and return an AIMessage response."""
         pass

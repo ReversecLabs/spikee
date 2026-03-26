@@ -55,22 +55,27 @@ def _instantiate_impl(module, module_type):
 # ==== Loading Modules ====
 def load_module_from_path(name, module_type):
     """Loads a module either from a local path or from the spikee package."""
-    local_path = os.path.join(os.getcwd(), module_type, f"{name}.py")
-    if os.path.isfile(local_path):
-        spec = importlib.util.spec_from_file_location(name, local_path)
-        if spec and spec.loader:
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+    try:
+
+        local_path = os.path.join(os.getcwd(), module_type, f"{name}.py")
+        if os.path.isfile(local_path):
+            spec = importlib.util.spec_from_file_location(name, local_path)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+            else:
+                raise ImportError(f"Could not load module {name} from {local_path}")
         else:
-            raise ImportError(f"Could not load module {name} from {local_path}")
-    else:
-        try:
             mod = importlib.import_module(f"spikee.{module_type}.{name}")
 
-        except ModuleNotFoundError:
-            raise ValueError(
-                f"Module '{name}' not found locally or in spikee.{module_type}"
-            )
+    except ModuleNotFoundError as e:
+        trimmed = str(e).split("No module named ")[-1].strip("'\"")
+
+        if trimmed == name or trimmed.endswith(f".{name}"):
+            raise ImportError(f"[Loading Module {name}] Module '{name}' not found locally or built-in - ensure it exists with 'spikee list <module_type>'")
+
+        else:
+            raise ImportError(f"[Loading Module {name}] Dependency '{trimmed}' not found - ensure it is installed and accessible.")
 
     instance = _instantiate_impl(mod, module_type)
     if instance is not None:

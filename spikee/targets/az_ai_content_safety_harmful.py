@@ -23,7 +23,7 @@ class AzureAIContentSafetyHarmfulTarget(Target):
         self.client = ContentSafetyClient(self.endpoint, AzureKeyCredential(self.api_key))
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Guardrail Target for Azure AI Content Safety, testing harmful content detection."
+        return [ModuleTag.LLM], "Guardrail Target for Azure AI Content Safety, testing harmful content detection. (Requires library 'azure-ai-content-safety')"
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""

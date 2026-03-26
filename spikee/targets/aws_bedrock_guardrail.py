@@ -16,7 +16,7 @@ class AWSBedrockGuardrailTarget(Target):
         self.guardrail_id = os.getenv("AWS_GUARDRAIL_ID")
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Guardrail Target for AWS Bedrock, testing prompt injection detection and blocking."
+        return [ModuleTag.LLM], "Guardrail Target for AWS Bedrock, testing prompt injection detection and blocking. (Requires library 'boto3')"
 
     def get_available_option_values(self) -> List[str]:
         """Guardrail targets typically don't have configurable options."""
