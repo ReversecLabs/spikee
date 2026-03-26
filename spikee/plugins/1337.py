@@ -22,7 +22,6 @@ Returns:
 """
 
 from typing import List, Tuple
-import re
 
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.enums import ModuleTag

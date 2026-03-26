@@ -17,7 +17,7 @@ DEFAULT_TARGET_LANGUAGE = "zh-cn"  # Default target language for translation
 
 class GoogleTranslator(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms text using Google Translate (requires: googletrans)."
+        return [], "Transforms text using Google Translate (Requires dependency: 'googletrans')."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

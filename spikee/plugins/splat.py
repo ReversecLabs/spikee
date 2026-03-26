@@ -18,7 +18,6 @@ Returns:
 """
 
 import random
-import re
 from typing import List, Tuple
 
 from spikee.templates.basic_plugin import BasicPlugin

@@ -17,7 +17,6 @@ Returns:
     str: The transformed text in hexadecimal encoding.
 """
 
-import re
 from typing import List, Tuple
 
 from spikee.templates.basic_plugin import BasicPlugin
