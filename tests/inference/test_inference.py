@@ -13,13 +13,13 @@ TARGET_MODEL_COMBINATIONS = [
     # (Target Name, Target Option (Model Name))
     ("llm_provider", "openai/gpt-4o-mini"),
     ("llm_provider", "openai/gpt-4o"),
-    ("llm_provider", "azure/gpt-4o-mini"),
+    ("llm_provider", "azure_openai/gpt-4o-mini"),
     ("llm_provider", "google/gemini-2.5-flash"),
     ("llm_provider", "openrouter/meta-llama/llama-3.1-8b-instruct"),
     ("llm_provider", "groq/llama-3.1-8b-instant"),
     ("llm_provider", "deepseek/deepseek-chat"),
-    ("llm_provider", "togetherai/llama31-8b"),
-    ("llm_provider", "aws/claude45-opus"),
+    ("llm_provider", "togetherai/Qwen/Qwen3.5-9B"),
+    ("llm_provider", "bedrock/claude45-opus"),
     ("llm_provider", "openai/invalid-model-name-123"),
     # Add localized or other targets if needed (like ollama_api / llamacpp)
 ]
@@ -29,7 +29,7 @@ JUDGE_MODEL_COMBINATIONS = [
     ("llm_judge_harmful", "", "openai/gpt-4o-mini"),
     ("llm_judge_objective", "The capital is France.", "groq/llama-3.1-8b-instant"),
     ("llm_judge_output_criteria", '{"schema": {"type": "string", "maxLength": 10}}', "openrouter/meta-llama/llama-3.1-8b-instruct"),
-    ("llm_judge_objective", "The capital is France.", "aws/claude35-haiku"),
+    ("llm_judge_objective", "The capital is France.", "bedrock/claude35-us-haiku"),
     ("llm_judge_objective", "The capital is France.", "openai/invalid-model-name-123"),
 ]
 
@@ -89,6 +89,7 @@ def test_inference_targets(run_spikee, workspace_dir, target_name, model_name):
         "--target-options",
         model_name,
     ]
+    spikee_cmd = "spikee " + " ".join(args)
 
     import re
     result = run_spikee(args, cwd=workspace_dir)
@@ -115,13 +116,13 @@ def test_inference_targets(run_spikee, workspace_dir, target_name, model_name):
 
     # If the LLM call errored out (e.g., missing API key), the response will typically be missing or flag an error
     response = data.get("response", "")
-    assert response, f"Empty or missing response from {target_name}. LLM call likely failed. Result data: {data}"
+    assert response, f"Empty or missing response from {target_name}. LLM call likely failed.\nCommand: {spikee_cmd}\nResult data: {data}"
 
 
 ATTACK_MODEL_COMBINATIONS = [
     # (Attack Module, Attack Option (Model))
     ("llm_jailbreaker", "model=openai/gpt-4o-mini"),
-    ("llm_jailbreaker", "model=azure/gpt-4o-mini"),
+    ("llm_jailbreaker", "model=azure_openai/gpt-4o-mini"),
 
     ("llm_poetry_jailbreaker", "model=google/gemini-2.5-flash"),
     ("llm_poetry_jailbreaker", "model=deepseek/deepseek-chat"),
@@ -130,16 +131,16 @@ ATTACK_MODEL_COMBINATIONS = [
     ("llm_multi_language_jailbreaker", "model=bedrock/claude35-haiku"),
 
     ("rag_poisoner", "model=deepseek/deepseek-chat"),
-    ("rag_poisoner", "model=together/llama31-8b"),
+    ("rag_poisoner", "model=togetherai/Qwen/Qwen3.5-9B"),
 
-    ("crescendo", "model=together/llama31-8b"),
+    ("crescendo", "model=togetherai/Qwen/Qwen3.5-9B"),
     ("crescendo", "model=openrouter/meta-llama/llama-3.1-8b-instruct"),
 
     ("echo_chamber", "model=openrouter/meta-llama/llama-3.1-8b-instruct"),
-    ("echo_chamber", "model=bedrock/claude35-haiku"),
+    ("echo_chamber", "model=bedrock/claude35-us-haiku"),
     ("echo_chamber", "model=openai/gpt-4o-mini"),
 
-    ("prompt_decomposition", "modes=azure/gpt-4o-mini;variants=2"),
+    ("prompt_decomposition", "modes=azure_openai/gpt-4o-mini;variants=2"),
     ("prompt_decomposition", "modes=google/gemini-2.5-flash;variants=2"),
 
     ("crescendo", "model=openai/invalid-model-name-123"),
@@ -168,6 +169,7 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
         "--attack-iterations",
         "2",  # Just run 2 iterations to test connectivity
     ]
+    spikee_cmd = "spikee " + " ".join(args)
 
     import re
     result = run_spikee(args, cwd=workspace_dir)
@@ -210,7 +212,7 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     error_str = str(error_val).lower() if error_val else ""
     is_refusal = "valid json object" in error_str or "refused to answer" in error_str
 
-    assert is_success or is_refusal, f"Attack LLM call failed. Error: {error_val}. Result data: {attack_data}"
+    assert is_success or is_refusal, f"Attack LLM call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {attack_data}"
 
 
 @pytest.mark.parametrize("judge_name, judge_args, judge_options", JUDGE_MODEL_COMBINATIONS)
@@ -230,6 +232,7 @@ def test_inference_llm_judges(run_spikee, workspace_dir, judge_name, judge_args,
         "--judge-options",
         judge_options
     ]
+    spikee_cmd = "spikee " + " ".join(args)
 
     import re
     result = run_spikee(args, cwd=workspace_dir)
@@ -254,4 +257,4 @@ def test_inference_llm_judges(run_spikee, workspace_dir, judge_name, judge_args,
 
     # For a judge inference test, we just want to ensure the LLM successfully connected
     # and evaluated without crashing or returning an error string in the results.
-    assert error_val is None, f"LLM Judge call failed. Error: {error_val}. Result data: {result_data}"
+    assert error_val is None, f"LLM Judge call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {result_data}"

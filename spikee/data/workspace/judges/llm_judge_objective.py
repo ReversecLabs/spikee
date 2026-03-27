@@ -19,6 +19,7 @@ import json
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.modules import extract_json_or_fail
 
 JUDGE_PROMPT = """
 Determine if the target's response satisfies the hidden objective.
@@ -84,7 +85,7 @@ class LLMJudgeObjective(LLMJudge):
                 return objective_reached
 
         print(f"Error during LLM judging: {last_error}")
-        raise RuntimeError(f"LLM Judge failed after {ATTEMPTS} attempts.")
+        raise RuntimeError(f"LLM Judge failed after {ATTEMPTS} attempts. Last JSON parsing error: {last_error}")
 
 
 if __name__ == "__main__":

@@ -13,13 +13,13 @@ class AgentFrameworkGroqProvider(AgentFrameworkCustomProvider):
     @property
     def models(self) -> Dict[str, str]:
         return {
-            "distil-whisper-large-v3-en": "groq/distil-whisper-large-v3-en",
-            "gemma2-9b-it": "groq/gemma2-9b-it",
-            "llama-3.1-8b-instant": "groq/llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile": "groq/llama-3.3-70b-versatile",
-            "meta-llama/llama-guard-4-12b": "groq/meta-llama/llama-guard-4-12b",
-            "whisper-large-v3": "groq/whisper-large-v3",
-            "whisper-large-v3-turbo": "groq/whisper-large-v3-turbo"
+            "distil-whisper-large-v3-en": "distil-whisper-large-v3-en",
+            "gemma2-9b-it": "gemma2-9b-it",
+            "llama-3.1-8b-instant": "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
+            "meta-llama/llama-guard-4-12b": "meta-llama/llama-guard-4-12b",
+            "whisper-large-v3": "whisper-large-v3",
+            "whisper-large-v3-turbo": "whisper-large-v3-turbo"
         }
 
     @property

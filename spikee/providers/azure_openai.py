@@ -19,7 +19,6 @@ class AgentFrameworkAzureOpenAIProvider(Provider):
         return {
             "gpt-4o": "gpt-4o",
             "gpt-4o-mini": "gpt-4o-mini",
-            "gpt-4-turbo": "gpt-4-turbo",
         }
 
     def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
@@ -27,7 +26,7 @@ class AgentFrameworkAzureOpenAIProvider(Provider):
         self.max_tokens = max_tokens
         self.temperature = temperature
 
-        self.llm = AzureOpenAIChatClient(model_id=self.model)
+        self.llm = AzureOpenAIChatClient(deployment_name=self.model)
 
         options_kwargs: Dict[str, Any] = {}
         if self.max_tokens is not None:

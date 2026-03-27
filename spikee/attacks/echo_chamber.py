@@ -15,7 +15,7 @@ from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import GuardrailTrigger, AdvancedTargetWrapper
 from spikee.utilities.llm import get_llm
-from spikee.utilities.llm_message import HumanMessage
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
 from spikee.utilities.modules import extract_json_or_fail, parse_options
 import re
 

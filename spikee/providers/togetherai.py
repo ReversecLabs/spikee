@@ -32,4 +32,4 @@ class AgentFrameworkTogetherAIProvider(AgentFrameworkCustomProvider):
 
     @property
     def api_key(self) -> Union[str, None]:
-        return os.getenv("TOGETHERAI_API_KEY", None)
+        return os.getenv("TOGETHER_API_KEY")
