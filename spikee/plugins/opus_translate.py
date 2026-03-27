@@ -73,7 +73,7 @@ class OpusTranslator(Plugin):
             self.device = "cpu"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Translates text to any language(s) using local OPUS-MT models (500+ pairs, no API)."
+        return [ModuleTag.ML], "Translates text to any language(s) using local OPUS-MT models."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported options; Tuple[options (default is first), llm_required]"""

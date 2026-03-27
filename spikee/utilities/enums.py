@@ -10,6 +10,7 @@ class ModuleTag(enum.Enum):
     """Enumeration for module tags used to categorize modules."""
     ATTACK_BASED = "Attack-Based"
     LLM = "LLM"
+    ML = "ML"
     MULTI = "Multi-Turn"
     SINGLE = "Single-Turn"
 
@@ -20,5 +21,6 @@ def module_tag_to_colour(tag: ModuleTag) -> str:
         ModuleTag.MULTI: "magenta",
         ModuleTag.LLM: "yellow",
         ModuleTag.ATTACK_BASED: "red",
+        ModuleTag.ML: "green",
     }
     return tag_colour_map.get(tag, "white")
