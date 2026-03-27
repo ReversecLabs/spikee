@@ -296,7 +296,7 @@ Built-in multi-turn datasets and attacks can be found in the [Built-in Datasets]
 spikee test --dataset datasets/dataset-name.jsonl \
             --target demo_llm_application \
             --attack crescendo \
-            --attack-options 'max-turns=5,model=bedrockcv-deepseek.v3-v1:0' \
+            --attack-options 'max-turns=5,model=bedrock/deepseek-v3' \
             --attack-only
 ```
 
@@ -304,7 +304,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
 spikee test --dataset datasets/dataset-name.jsonl \
             --target demo_llm_application \
             --attack goat \
-            --attack-options 'model=bedrockcv-deepseek.v3-v1:0' \
+            --attack-options 'model=bedrock/deepseek-v3' \
             --attack-only
 ```
 
@@ -319,7 +319,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
 `spikee results` includes several tools to aid in the analysis of test results. 
 - `spikee results analyze` provides an overview of an attack's success and detailed breakdowns by for several categories (e.g., attacks, plugins, dataset-specific metadata)
   ```bash
-  spikee results analyze --result-file ./results/results_openai_api-gpt-4o-mini.jsonl
+  spikee results analyze --result-file ./results/results_llm_provider-openai_gpt-4o-mini.jsonl
 
   # --overview: only output the general statistics of an analysis.
   # --combine: combine multiple results files into a single analysis.
@@ -329,7 +329,7 @@ spikee test --dataset datasets/dataset-name.jsonl \
 - `spikee results extract` Extracts user-defined categories of results from results files for further analysis.
   ```bash
   # Extract all successful attacks to a new dataset file for further analysis
-  spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
+  spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
                         --category success
   ```
 

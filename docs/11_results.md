@@ -12,7 +12,7 @@ The `spikee results` command includes several tools to aid in the analysis of te
 ## Usage Examples
 ```bash
 # Analyze a single results file, providing all standard metrics and breakdowns
-spikee results analyze --result-file results/results_openai_api-gpt-4o-mini_*.jsonl
+spikee results analyze --result-file results/results_llm_provider-openai_gpt-4o-mini_*.jsonl
 ```
 
 ### Multi-file Options
@@ -24,8 +24,8 @@ Spikee allows for multiple results files to be provided in a single analysis run
 
 ```bash
 # Analyze multiple results files together.
-spikee results analyze --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
-                       --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
+spikee results analyze --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
+                       --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl
 ```
 
 ```bash
@@ -109,15 +109,15 @@ This command is used to extract specific categories of results from one or more 
 ## Usage Examples
 ```bash
 # Extract all successful attacks to a new dataset file for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
-                       --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl
+spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
+                       --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl
                        --category success
 ```
 
 ```bash
 # Extract custom search query for further analysis
-spikee results extract --result-file results/results_openai-api_cybersec-2026-01-*.jsonl \
-                       --result-file results/results_openai-api_simsonsun-high-quality-jailbreaks-*.jsonl \
+spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
+                       --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl \
                        --category custom \
                        --custom-search "error:Guardrail was triggered by the target"
 ```

@@ -92,7 +92,6 @@ spikee test --dataset my_data.jsonl \
             --attack llm_jailbreaker
 ```
 
-*Note: For some built-in targets like `togetherai_api.py`, the code automatically prepends the prefix (`together-`) so the user only provides the raw litellm model string or internal shorthand.*
 
 ### End-to-End Example
 Combine everything into a robust command that uses Groq for judging, OpenRouter for generating attacks, and TogetherAI as the application target:
