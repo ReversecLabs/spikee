@@ -73,7 +73,7 @@ class OpusTranslator(Plugin):
             self.device = "cpu"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.ML], "Translates text to any language(s) using local OPUS-MT models."
+        return [ModuleTag.ML], "Translates text to any language(s) using local OPUS-MT models. (Requires dependencies [see docs]: transformers, torch, sentencepiece) and 'HF_TOKEN')"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported options; Tuple[options (default is first), llm_required]"""
@@ -209,9 +209,9 @@ if __name__ == "__main__":
     load_dotenv()
     plugin = OpusTranslator()
 
-    for i in range(100):
-        plugin.transform(
+    for i in range(25):
+        text = plugin.transform(
             "Hi my name is Spikee, I'm a helpful prompt injection assistant.",
-            plugin_option="source=en,targets=zh,cache_dir=./opus_cache"
+            plugin_option="source=en,targets=zh+ny,cache_dir=./opus_cache"
         )
-        print(f"{i+1}/100")
+        print(f"{i+1}/100 - {text}")

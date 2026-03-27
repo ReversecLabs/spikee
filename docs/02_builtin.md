@@ -121,7 +121,8 @@ The following list provides an overview of each build-in plugin, further informa
 | `base64` | Basic | Encodes text using Base64 encoding. | N/A |
 | `ceasar` | Basic | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
 | `flip` | Basic | Applies a flip attack to obfuscate text:<br> - FWO: Flip Word Order<br> - FCW: Flip Chars in Word<br> - FCS: Flip Chars in Sentence | `mode` (the flip mode to apply, default: `FWO`) |
-| `google_translate` | Basic | Translates text to another language. | `source-lang` (language code for source language, default: `en`)<br> `target-lang` (language code for target language, default: `zh-cn`) |
+| `google_translate` | Basic | Translates text to another language using google translate. | `source-lang` (language code for source language, default: `en`)<br> `target-lang` (language code for target language, default: `zh-cn`) |
+| `opus_translator` | Basic | Translates text to another language using local OPUS-MT models. | `source` (source language code, default: `en`)<br> `targets` (target language(s), default: `zh`)<br> `quality` (translation quality, default: 1)<br> `device` (cpu or gpu, default: auto-detect)<br> `cache_dir` (directory to cache ML models, optional) |
 | `hex` | Basic | Encodes text into its hexadecimal representation. | N/A |
 | `mask` | Basic | Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words. | `advanced` (if true, creates multiple masks for longer words)<br> `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6) | |
 | `morse` | Basic | Encodes text into Morse code. | N/A |
