@@ -74,20 +74,31 @@ jobs:
               print("pyproject.toml missing [project].version", file=sys.stderr)
               sys.exit(1)
 
-          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current)
+          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(dev))?", current)
           if not m:
-              print(f"Current version not simple x.y.z: {current}", file=sys.stderr)
+              print(f"Current version not simple x.y.z or x.y.z-dev: {current}", file=sys.stderr)
               sys.exit(1)
 
-          major, minor, patch = map(int, m.groups())
-          if release_type == "major":
-              major, minor, patch = major + 1, 0, 0
-          elif release_type == "minor":
-              minor, patch = minor + 1, 0
-          else:  # patch
-              patch += 1
+          major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
+          is_dev = bool(m.group(4))
+
+          if is_dev:
+              if release_type == "major":
+                  major, minor, patch = major + 1, 0, 0
+              elif release_type == "minor":
+                  minor, patch = minor + 1, 0
+              else:  # patch
+                  pass # drop -dev
+          else:
+              if release_type == "major":
+                  major, minor, patch = major + 1, 0, 0
+              elif release_type == "minor":
+                  minor, patch = minor + 1, 0
+              else:  # patch
+                  patch += 1
 
           new_version = f"{major}.{minor}.{patch}"
+          next_dev_version = f"{major}.{minor}.{patch + 1}-dev"
 
           # --- Write back pyproject.toml
           data["project"]["version"] = new_version
@@ -101,7 +112,7 @@ jobs:
           readme = root / "README.md"
           if readme.exists():
               txt = readme.read_text()
-              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+)(\s*_)",
+              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
                                    rf"\g<1>{new_version}\3", txt, count=1)
               if n:
                   readme.write_text(new_txt)
@@ -114,10 +125,13 @@ jobs:
           # Output for later steps
           print(f"current={current}")
           print(f"new={new_version}")
+          print(f"next_dev={next_dev_version}")
           (root / "NEW_VERSION.txt").write_text(new_version)
+          (root / "NEXT_DEV_VERSION.txt").write_text(next_dev_version)
           PY
 
           echo "new_version=$(cat NEW_VERSION.txt)" >> $GITHUB_OUTPUT
+          echo "next_dev_version=$(cat NEXT_DEV_VERSION.txt)" >> $GITHUB_OUTPUT
 
       - name: Prepend release section to CHANGELOG.md
         shell: bash
@@ -217,3 +231,28 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Bump to next dev version
+        shell: bash
+        run: |
+          NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
+          python - <<EOF
+          import toml, pathlib
+          root = pathlib.Path(".")
+          
+          # pyproject.toml
+          pp = root / "pyproject.toml"
+          data = toml.load(pp.open())
+          data["project"]["version"] = "${NEXT_DEV}"
+          pp.write_text(toml.dumps(data))
+          
+          # __init__.py
+          initp = root / "spikee" / "__init__.py"
+          initp.write_text('__version__ = "${NEXT_DEV}"\n')
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml spikee/__init__.py
+          git commit -m "chore: bump version to ${NEXT_DEV}"
+          git push origin HEAD

@@ -167,20 +167,34 @@ spikee results extract --results-file results.jsonl --category "success"
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
 
 ## `spikee viewer`
-Launches the Spikee web viewer for visualizing Spikee - [Link](./11_results.md#the-web-viewer-command)
+Launches the Spikee web viewer.
 
-> Viewer is a WIP, currently only the results viewer is available as part of `spikee results`
+> Viewer is a WIP, currently only the results viewer is available.
 
-```bash
-spikee results web-viewer --port 8080 --results-file results.jsonl
-```
-
+### Common Arguments
 | Argument            | Description                                            |
 | ------------------- | ------------------------------------------------------ |
-| `--host`             | Host address for the web viewer (default: 127.0.0.1) |
-| `--port`             | Port number for the web viewer (default: 8080)       |
+| `-h`, `--host`      | Host address for the web viewer (default: 127.0.0.1)   |
+| `-p`, `--port`      | Port number for the web viewer (default: 8080)         |
+| `-d`, `--debug`     | Enable debug mode for the web viewer (default: False)  |
+| `--truncate`        | Truncate long fields in the web viewer for better readability (default: 500 characters, disable with 0) |
+
+**Usage**
+```bash
+spikee viewer <common args> results <results-specific args>
+```
+
+### `results` Specific Arguments - [Link](./11_results.md#the-web-viewer-command)
+| Argument            | Description                                            |
+| ------------------- | ------------------------------------------------------ |
 | `--result-file`      | Path to a results JSONL file, generated using the dataset |
 | `--result-folder`    | Path to a results folder containing multiple JSONL files, generated using the dataset |
 | `--allow-ast`        | Allow AST parsing in the web viewer (use with caution) |
 
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
+
+
+```bash
+spikee viewer -p 8081 results --result-folder .\results\
+```
+
