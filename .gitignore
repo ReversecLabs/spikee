@@ -12,3 +12,4 @@ llmwebmail-test
 .vscode
 .vscode/*
 .sonar
+copilot-instructions.md
