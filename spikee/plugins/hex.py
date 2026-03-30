@@ -24,7 +24,6 @@ from spikee.utilities.enums import ModuleTag
 
 
 class HexPlugin(BasicPlugin):
-
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [], "Transforms text into hexadecimal encoding."
 

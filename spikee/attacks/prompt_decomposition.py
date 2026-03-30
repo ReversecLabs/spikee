@@ -27,7 +27,10 @@ class PromptDecompositionAttack(Attack):
     DEFAULT_MODE = "dumb"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.SINGLE, ModuleTag.LLM], "Generates prompt reformulations by decomposing into labeled chunks and shuffling them."
+        return (
+            [ModuleTag.SINGLE, ModuleTag.LLM],
+            "Generates prompt reformulations by decomposing into labeled chunks and shuffling them.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -185,7 +188,9 @@ class PromptDecompositionAttack(Attack):
                         SystemMessage(system_message),
                         HumanMessage(additional_prompt),
                     ]
-                    additional_response = llm.invoke(additional_messages).content.strip()
+                    additional_response = llm.invoke(
+                        additional_messages
+                    ).content.strip()
 
                     for line in additional_response.splitlines():
                         try:
@@ -250,7 +255,9 @@ class PromptDecompositionAttack(Attack):
                     response = target_module.process_input(
                         candidate_text, system_message
                     )
-                    response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                    response = str(
+                        response[0] if isinstance(response, (tuple, list)) else response
+                    )
 
                     last_response = response
                     success = call_judge(entry, response)

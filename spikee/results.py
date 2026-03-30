@@ -261,7 +261,7 @@ def extract_results(args):
     tag = validate_and_get_tag(args.tag)
     output_file = prepare_output_file("results", "extract", category, None, tag)
     write_jsonl_file(output_file, matching_entries)
-    
+
     print(
         f"[Overview] Extracted {id_count} / {total_count} results to {output_file}. Extraction Rate: {round(id_count / total_count if total_count > 0 else 0, 2)}"
     )

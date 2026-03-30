@@ -47,7 +47,12 @@ class StandardisedConversation:
                 f"Parent ID {parent_id} does not exist in the conversation."
             )
 
-        message = {"parent": parent_id, "children": [], "data": data, "attempt": attempt}
+        message = {
+            "parent": parent_id,
+            "children": [],
+            "data": data,
+            "attempt": attempt,
+        }
         self.conversation[message_id] = message
 
         if parent_id in self.conversation:

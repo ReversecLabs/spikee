@@ -1,4 +1,6 @@
 from typing import Dict, List, Any, Union
+
+
 class Message:
     def __init__(self, role: str, content: str):
         self.role = role
@@ -36,7 +38,9 @@ class AIMessage(Message):
         return self.metadata.get("original_response", None)
 
 
-def format_messages(messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> List[Dict[str, str]]:
+def format_messages(
+    messages: Union[str, List[Union[Message, dict, tuple, str]]],
+) -> List[Dict[str, str]]:
     """Convert various message formats (string, dict, tuple, Message objects) into a standardized list of dicts with 'role' and 'content' keys."""
     formatted_messages = []
     if isinstance(messages, str):
@@ -44,19 +48,25 @@ def format_messages(messages: Union[str, List[Union[Message, dict, tuple, str]]]
         formatted_messages.append({"role": "user", "content": messages})
 
     elif isinstance(messages, list):
-
         for msg in messages:
             if isinstance(msg, dict):
-                if ("role" in msg and "content" in msg):
+                if "role" in msg and "content" in msg:
                     formatted_messages.append(msg)
                 else:
-                    raise ValueError(f"Invalid message format: {msg}. Each message dict must contain 'role' and 'content' keys.")
+                    raise ValueError(
+                        f"Invalid message format: {msg}. Each message dict must contain 'role' and 'content' keys."
+                    )
 
             elif isinstance(msg, tuple) and len(msg) == 2:
                 role, content = msg
                 formatted_messages.append({"role": role, "content": content})
 
-            elif isinstance(msg, Message) or isinstance(msg, SystemMessage) or isinstance(msg, HumanMessage) or isinstance(msg, AIMessage):
+            elif (
+                isinstance(msg, Message)
+                or isinstance(msg, SystemMessage)
+                or isinstance(msg, HumanMessage)
+                or isinstance(msg, AIMessage)
+            ):
                 formatted_messages.append(msg.to_dict())
 
             elif isinstance(msg, str):
@@ -72,7 +82,9 @@ def format_messages(messages: Union[str, List[Union[Message, dict, tuple, str]]]
     return formatted_messages
 
 
-def upgrade_messages(messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> List[Message]:
+def upgrade_messages(
+    messages: Union[str, List[Union[Message, dict, tuple, str]]],
+) -> List[Message]:
     """Upgrade various message formats (string, dict, tuple, Message objects) into a standardized list of Message objects."""
     upgraded_messages = []
     if isinstance(messages, str):
@@ -82,16 +94,25 @@ def upgrade_messages(messages: Union[str, List[Union[Message, dict, tuple, str]]
     elif isinstance(messages, list):
         for msg in messages:
             if isinstance(msg, dict):
-                if ("role" in msg and "content" in msg):
-                    upgraded_messages.append(Message(role=msg["role"], content=msg["content"]))
+                if "role" in msg and "content" in msg:
+                    upgraded_messages.append(
+                        Message(role=msg["role"], content=msg["content"])
+                    )
                 else:
-                    raise ValueError(f"Invalid message format: {msg}. Each message dict must contain 'role' and 'content' keys.")
+                    raise ValueError(
+                        f"Invalid message format: {msg}. Each message dict must contain 'role' and 'content' keys."
+                    )
 
             elif isinstance(msg, tuple) and len(msg) == 2:
                 role, content = msg
                 upgraded_messages.append(Message(role=role, content=content))
 
-            elif isinstance(msg, Message) or isinstance(msg, SystemMessage) or isinstance(msg, HumanMessage) or isinstance(msg, AIMessage):
+            elif (
+                isinstance(msg, Message)
+                or isinstance(msg, SystemMessage)
+                or isinstance(msg, HumanMessage)
+                or isinstance(msg, AIMessage)
+            ):
                 upgraded_messages.append(msg)
 
             elif isinstance(msg, str):

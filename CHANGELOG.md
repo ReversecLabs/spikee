@@ -1,6 +1,44 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.7.0] - 2026-03-27
+
+### Features
+
+- local translation plugin (#85)
+- provider modules (agent-framework) and refactoring type hints (#83)
+- refactor web-viewer, add refresh options (#82)
+- goat attack (#77)
+- refactor LLM targets and add billing
+- Streamline TogetherAI content retrieval, fix DeepSeek model parsing, update AWS Bedrock test model, and adjust Azure LLM deployment naming.
+- improve prefix and suffix handling in dataset generation (#74)
+- add LLMWrapper
+- Add tests for invalid model names across inference, attack, and judge targets, ensuring proper error handling, and refactor judge option passing in tests.
+- Add OpenRouter API target, integrate Azure, Groq, and Deepseek with litellm, and update inference tests.
+- Add guardrails to progress bar, remove guardrail print statements (#73)
+- plugin piping, new plugins (google_translate, shortener, mask) and improvements to splat (#72)
+- `spikee list` improvements, LLM-Driven Plugins and Echo Chamber Attack (#69)
+
+### Fixes
+
+- linting
+- linting
+- generation progress bar and plugin only
+- Re-raise `NotFoundError` instead of exiting and update model names in inference tests.
+- objective judge bug
+- offline judge bug
+
+### Changes
+
+- add Modules to viewers (#84)
+- add Modules to viewers
+- add model not found error
+- remove extract dataset
+- remove extract dataset
+- update message formats + llm bugs
+- update llm_judge_objective prompt
+- increase echo chamber efficiency
+
 ## [0.6.1] - 2026-01-28
 
 ### Fixes

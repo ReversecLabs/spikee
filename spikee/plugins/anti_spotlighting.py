@@ -25,7 +25,10 @@ class AntiSpotlighting(Plugin):
     DEFAULT_VARIANTS = 50
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.ATTACK_BASED], "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities."
+        return (
+            [ModuleTag.ATTACK_BASED],
+            "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -50,10 +53,7 @@ class AntiSpotlighting(Plugin):
         return self._parse_variants_option(plugin_option)
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> List[str]:
         """
         Transforms the input text by wrapping it in various delimiter formats to test

@@ -28,7 +28,10 @@ class PromptDecompositionPlugin(Plugin):
     DEFAULT_MODE = "dumb"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.ATTACK_BASED], "Decomposes prompts into labeled components and generates shuffled variations."
+        return (
+            [ModuleTag.ATTACK_BASED],
+            "Decomposes prompts into labeled components and generates shuffled variations.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

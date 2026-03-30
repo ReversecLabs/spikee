@@ -1,7 +1,7 @@
 """
 LLM Poetry Jailbreaker plugin for spikee.
-This plugin is based on the LLM Poetry Jailbreaker attack, and generates single-turn jailbreak 
-attempts using poetry to bypass the target system's safety mechanisms and get it to respond to 
+This plugin is based on the LLM Poetry Jailbreaker attack, and generates single-turn jailbreak
+attempts using poetry to bypass the target system's safety mechanisms and get it to respond to
 harmful or restricted questions.
 
 Usage:
@@ -22,7 +22,10 @@ class LLMPoetryJailbreaker(Plugin):
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates jailbreak attack prompts using an LLM and poetry techniques."
+        return [
+            ModuleTag.LLM,
+            ModuleTag.ATTACK_BASED,
+        ], "Generates jailbreak attack prompts using an LLM and poetry techniques."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -49,14 +52,16 @@ class LLMPoetryJailbreaker(Plugin):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = HumanMessage(SPIKEE_LLM_POETRY_JAILBREAKER_PROMPT.replace(
-            "{{objective}}", objective
-        ).replace(
-            "{{previous_attempts}}",
-            prev_attempts_str
-            if prev_attempts_formatted
-            else "No previous attempts yet.",
-        ))
+        prompt = HumanMessage(
+            SPIKEE_LLM_POETRY_JAILBREAKER_PROMPT.replace(
+                "{{objective}}", objective
+            ).replace(
+                "{{previous_attempts}}",
+                prev_attempts_str
+                if prev_attempts_formatted
+                else "No previous attempts yet.",
+            )
+        )
 
         # Call the model via .invoke and get content
         response = llm.invoke([prompt]).content.strip()
@@ -68,10 +73,7 @@ class LLMPoetryJailbreaker(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
@@ -84,11 +86,9 @@ class LLMPoetryJailbreaker(Plugin):
 
         for i in range(1, variants + 1):
             try:
-                attack_prompts.append(self._generate_jailbreak_attack(
-                    llm,
-                    text,
-                    previous_attempts
-                ))
+                attack_prompts.append(
+                    self._generate_jailbreak_attack(llm, text, previous_attempts)
+                )
             except Exception as e:
                 print(f"[LLMPoetryJailbreaker] Error generating prompt {i}: {str(e)}")
 

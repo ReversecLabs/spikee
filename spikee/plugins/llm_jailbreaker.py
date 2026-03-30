@@ -1,12 +1,13 @@
 """
 LLM Jailbreaker plugin for spikee.
-This plugin is based on the LLM Jailbreaker attack, and generates single-turn jailbreak attempts 
-using different techniques to bypass the target system's safety mechanisms and get it to respond 
+This plugin is based on the LLM Jailbreaker attack, and generates single-turn jailbreak attempts
+using different techniques to bypass the target system's safety mechanisms and get it to respond
 to harmful or restricted questions.
 
 Usage:
   spikee test --plugins llm_jailbreaker--plugin-options "llm_jailbreaker:model=openai/gpt-4o,variants=5"
 """
+
 from typing import Dict, List, Tuple, Union
 
 from spikee.templates.plugin import Plugin
@@ -23,7 +24,10 @@ class LLMJailbreaker(Plugin):
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates jailbreak attack prompts using an LLM."
+        return [
+            ModuleTag.LLM,
+            ModuleTag.ATTACK_BASED,
+        ], "Generates jailbreak attack prompts using an LLM."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -35,10 +39,7 @@ class LLMJailbreaker(Plugin):
         return int(opts.get("variants", self.VARIANTS))
 
     def _generate_jailbreak_attack(
-        self,
-        llm,
-        objective: str,
-        previous_attempts: List[Dict]
+        self, llm, objective: str, previous_attempts: List[Dict]
     ) -> str:
         """Generate a jailbreak attack using the LLM."""
         # Format previous attempts for the prompt
@@ -53,14 +54,14 @@ class LLMJailbreaker(Plugin):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = HumanMessage(SPIKEE_LLM_JAILBREAKER_PROMPT.replace(
-            "{{objective}}", objective
-        ).replace(
-            "{{previous_attempts}}",
-            prev_attempts_str
-            if prev_attempts_formatted
-            else "No previous attempts yet.",
-        ))
+        prompt = HumanMessage(
+            SPIKEE_LLM_JAILBREAKER_PROMPT.replace("{{objective}}", objective).replace(
+                "{{previous_attempts}}",
+                prev_attempts_str
+                if prev_attempts_formatted
+                else "No previous attempts yet.",
+            )
+        )
 
         # Call the model via .invoke and get content
         response = llm.invoke([prompt]).content.strip()
@@ -72,10 +73,7 @@ class LLMJailbreaker(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
@@ -88,11 +86,9 @@ class LLMJailbreaker(Plugin):
 
         for i in range(1, variants + 1):
             try:
-                attack_prompts.append(self._generate_jailbreak_attack(
-                    llm,
-                    text,
-                    previous_attempts
-                ))
+                attack_prompts.append(
+                    self._generate_jailbreak_attack(llm, text, previous_attempts)
+                )
             except Exception as e:
                 print(f"[LLMJailbreaker] Error generating prompt {i}: {str(e)}")
 

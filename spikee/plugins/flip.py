@@ -1,4 +1,3 @@
-
 import re
 from typing import List, Tuple
 
@@ -18,12 +17,14 @@ class FlipPlugin(Plugin):
     """
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], f"Transforms text using the flip attack."
+        return [], "Transforms text using the flip attack."
 
     def get_available_option_values(self) -> List[str]:
         return ["mode=FWO", "FCW", "FCS", "resp_exc=false"]
 
-    def transform(self, text: str, exclude_patterns: List[str] = [], plugin_option: str = "") -> str:
+    def transform(
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+    ) -> str:
         opts = parse_options(plugin_option)
 
         mode = opts.get("mode", "FWO").upper()
@@ -52,13 +53,15 @@ class FlipPlugin(Plugin):
         elif mode == "FCS":
             return self._flip_char_in_sentence(text)
 
-        raise ValueError(f"Invalid mode: {mode}. Supported modes are FWO, FCW, FCS, ALL.")
+        raise ValueError(
+            f"Invalid mode: {mode}. Supported modes are FWO, FCW, FCS, ALL."
+        )
 
     def _flip_word_order(self, input_str: str) -> str:
-        return ' '.join(input_str.split()[::-1])
+        return " ".join(input_str.split()[::-1])
 
     def _flip_char_in_word(self, input_str: str) -> str:
-        return ' '.join([word[::-1] for word in input_str.split()])
+        return " ".join([word[::-1] for word in input_str.split()])
 
     def _flip_char_in_sentence(self, input_str: str) -> str:
         return input_str[::-1]

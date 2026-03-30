@@ -2,7 +2,6 @@ from enum import Enum
 import os
 import inspect
 import json
-from re import I
 import time
 from collections import defaultdict
 from typing import Union, List
@@ -22,41 +21,33 @@ class EntryType(Enum):
     ATTACK = "attack"
 
 
-class Entry():
+class Entry:
     """Class representing a single dataset entry, with methods to convert to output formats."""
 
     def __init__(
         self,
-
         entry_type: EntryType,
-
         entry_id,
         base_id,
         jailbreak_id,
         instruction_id,
         prefix_id,
         suffix_id,
-
         text,
         entry_text,
         system_message,
         payload,
         lang,
-
         plugin_suffix,
         plugin_name,
-
         judge_name,
         judge_args,
-
         position,
         jailbreak_type,
         instruction_type,
         injection_pattern,
         spotlighting_data_markers,
-
         exclude_from_transformations_regex=None,
-
         # Extras
         steering_keywords=None,
     ):
@@ -308,6 +299,7 @@ def get_system_message(system_message_config, spotlighting_data_marker=None):
 
     return default
 
+
 # endregion
 
 
@@ -327,7 +319,7 @@ def load_plugins(plugin_names):
         if isinstance(name, str):
             try:
                 plugins.append((name, load_module_from_path(name, "plugins")))
-            except (ImportError) as e:
+            except ImportError as e:
                 print(e)
                 exit(1)
 
@@ -335,12 +327,14 @@ def load_plugins(plugin_names):
             plugin_pipe = []
             for sub_name in name:
                 try:
-                    plugin_pipe.append((sub_name, load_module_from_path(sub_name, "plugins")))
-                except (ImportError) as e:
+                    plugin_pipe.append(
+                        (sub_name, load_module_from_path(sub_name, "plugins"))
+                    )
+                except ImportError as e:
                     print(e)
                     exit(1)
 
-            plugins.append(('~'.join(name), plugin_pipe))
+            plugins.append(("~".join(name), plugin_pipe))
 
     return plugins
 
@@ -415,9 +409,12 @@ def apply_plugin(
             params = sig.parameters
 
             for t in text:
-
                 if "plugin_option" in params:
-                    res = module.transform(t, exclude_patterns, plugin_option_map.get(name) if plugin_option_map else None)
+                    res = module.transform(
+                        t,
+                        exclude_patterns,
+                        plugin_option_map.get(name) if plugin_option_map else None,
+                    )
                 else:
                     # Older plugin without plugin_option support
                     res = module.transform(t, exclude_patterns)
@@ -451,6 +448,8 @@ def parse_exclude_patterns(jailbreak, instruction):
                 exclude_patterns.add(value)
 
     return list(exclude_patterns) if exclude_patterns else None
+
+
 # endregion
 
 
@@ -471,10 +470,14 @@ def process_standalone_attacks(
     """
 
     if plugin_only:
-        plugins = [] + plugins if plugins else []  # Only include plugin variations, no base attack
+        plugins = (
+            [] + plugins if plugins else []
+        )  # Only include plugin variations, no base attack
 
     else:
-        plugins = [(None, None)] + plugins if plugins else [(None, None)]  # [(plugin name, plugin module)] with a dummy entry for no plugin
+        plugins = (
+            [(None, None)] + plugins if plugins else [(None, None)]
+        )  # [(plugin name, plugin module)] with a dummy entry for no plugin
 
     prefixes = adv_prefixes
     suffixes = adv_suffixes
@@ -501,19 +504,17 @@ def process_standalone_attacks(
 
             else:  # Standalone Plugin
                 plugin_option = (
-                    plugin_options_map.get(plugin_name)
-                    if plugin_options_map
-                    else None
+                    plugin_options_map.get(plugin_name) if plugin_options_map else None
                 )
-                plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+                plugin_variants[plugin_name] = get_plugin_variants(
+                    plugin_module, plugin_option
+                )
 
     # Calculate total entries for progress bar
-    total_entries = len(standalone_attacks) * (sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0))
-    bar_standalone = tqdm(
-        total=total_entries,
-        desc="Standalone Attacks",
-        initial=1
+    total_entries = len(standalone_attacks) * (
+        sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)
     )
+    bar_standalone = tqdm(total=total_entries, desc="Standalone Attacks", initial=1)
 
     for attack in standalone_attacks:
         # If no judge_name, fallback
@@ -528,17 +529,23 @@ def process_standalone_attacks(
 
         # Get permutations for prefixes and suffixes
         combined_texts = []  # Stored all permutations of prefixes/suffixes and plugin outputs for an attack entry.
-        fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
+        fix_permutations = [
+            (prefix, suffix) for prefix in prefixes for suffix in suffixes
+        ]
 
         # Apply plugins to the base attack text
         for plugin_name, plugin_module in plugins:
-            plugin_texts = apply_plugin(
-                plugin_name,
-                plugin_module,
-                attack_text,
-                exclude_patterns,
-                plugin_options_map
-            ) if plugin_name else attack_text
+            plugin_texts = (
+                apply_plugin(
+                    plugin_name,
+                    plugin_module,
+                    attack_text,
+                    exclude_patterns,
+                    plugin_options_map,
+                )
+                if plugin_name
+                else attack_text
+            )
 
             # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
             if not isinstance(plugin_texts, list):
@@ -547,13 +554,19 @@ def process_standalone_attacks(
             # Combine each plugin variation with each prefix/suffix permutation and add to combined_texts
             for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
                 for prefix, suffix in fix_permutations:
-                    combined_texts.append({
-                        "text": (prefix.get("prefix", "") + " " if prefix else "") + plugin_text + (" " + suffix.get("suffix", "") if suffix else ""),
-                        "prefix_id": prefix.get("id", None) if prefix else None,
-                        "suffix_id": suffix.get("id", None) if suffix else None,
-                        "plugin_name": plugin_name,
-                        "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else ""
-                    })
+                    combined_texts.append(
+                        {
+                            "text": (prefix.get("prefix", "") + " " if prefix else "")
+                            + plugin_text
+                            + (" " + suffix.get("suffix", "") if suffix else ""),
+                            "prefix_id": prefix.get("id", None) if prefix else None,
+                            "suffix_id": suffix.get("id", None) if suffix else None,
+                            "plugin_name": plugin_name,
+                            "plugin_suffix": f"_{plugin_name}-{plugin_index}"
+                            if plugin_name
+                            else "",
+                        }
+                    )
 
         for combined_text in combined_texts:
             entry = Entry(
@@ -569,21 +582,16 @@ def process_standalone_attacks(
                 system_message=None,
                 payload=combined_text["text"],
                 lang=attack.get("lang", "en"),
-
                 plugin_suffix=combined_text.get("plugin_suffix", ""),
                 plugin_name=combined_text.get("plugin_name", None),
-
                 judge_name=attack["judge_name"],
                 judge_args=attack["judge_args"],
-
                 position=None,
                 jailbreak_type=None,
                 instruction_type=None,
                 injection_pattern=None,
                 spotlighting_data_markers=None,
-
                 exclude_from_transformations_regex=exclude_patterns,
-
                 steering_keywords=attack.get("steering_keywords", None),
             ).to_attack()
 
@@ -620,10 +628,14 @@ def generate_variations(
     entry_id = 1
 
     if plugin_only:
-        plugins = [] + plugins if plugins else []  # Only include plugin variations, no base attack
+        plugins = (
+            [] + plugins if plugins else []
+        )  # Only include plugin variations, no base attack
 
     else:
-        plugins = [(None, None)] + plugins if plugins else [(None, None)]  # [(plugin name, plugin module)] with a dummy entry for no plugin
+        plugins = (
+            [(None, None)] + plugins if plugins else [(None, None)]
+        )  # [(plugin name, plugin module)] with a dummy entry for no plugin
 
     prefixes = adv_prefixes
     suffixes = adv_suffixes
@@ -661,11 +673,11 @@ def generate_variations(
 
             else:  # Standalone Plugin
                 plugin_option = (
-                    plugin_options_map.get(plugin_name)
-                    if plugin_options_map
-                    else None
+                    plugin_options_map.get(plugin_name) if plugin_options_map else None
                 )
-                plugin_variants[plugin_name] = get_plugin_variants(plugin_module, plugin_option)
+                plugin_variants[plugin_name] = get_plugin_variants(
+                    plugin_module, plugin_option
+                )
 
     # Calculate total entries for progress bar
     total_entries = (
@@ -676,11 +688,12 @@ def generate_variations(
         * len(injection_delimiters)
         * len(spotlighting_data_markers_list)
         * len(suffixes)
-        * sum(plugin_variants.values() or [1]) + 1 if not plugin_only else 0
+        * sum(plugin_variants.values() or [1])
+        + 1
+        if not plugin_only
+        else 0
     )
-    bar_variations = tqdm(
-        total=total_entries, desc="Variations", initial=0
-    )
+    bar_variations = tqdm(total=total_entries, desc="Variations", initial=0)
 
     for base_doc in base_docs:
         base_id = base_doc["id"]
@@ -717,7 +730,7 @@ def generate_variations(
                 instruction_text = instruction["instruction"]
                 instruction_type = instruction.get("instruction_type", "")
                 instruction_lang = instruction.get("lang", "en")
-                #instruction_steering_keywords = instruction.get("steering_keywords", None)
+                # instruction_steering_keywords = instruction.get("steering_keywords", None)
 
                 judge_name = instruction.get("judge_name", "canary")
                 judge_args = instruction.get(
@@ -739,7 +752,9 @@ def generate_variations(
 
                 # Combines jailbreak and instruction texts
                 # Instruction is placed into jailbreak at <INSTRUCTION> placeholder
-                combined_base = jailbreak_text.replace("<INSTRUCTION>", instruction_text)
+                combined_base = jailbreak_text.replace(
+                    "<INSTRUCTION>", instruction_text
+                )
                 lang = instruction_lang
 
                 # Create plugin / transformation regex exclusion lists
@@ -748,16 +763,22 @@ def generate_variations(
                 # Apply all plugin, prefix and suffix combinations for the combined_base text (jailbreak + instruction)
                 # Applied with --plugins, --include-prefixes and --include-suffixes, by default None
                 combined_texts = []
-                fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
+                fix_permutations = [
+                    (prefix, suffix) for prefix in prefixes for suffix in suffixes
+                ]
 
                 for plugin_name, plugin_module in plugins:
-                    plugin_texts = apply_plugin(
-                        plugin_name,
-                        plugin_module,
-                        combined_base,
-                        local_exclude,
-                        plugin_options_map
-                    ) if plugin_name else combined_base
+                    plugin_texts = (
+                        apply_plugin(
+                            plugin_name,
+                            plugin_module,
+                            combined_base,
+                            local_exclude,
+                            plugin_options_map,
+                        )
+                        if plugin_name
+                        else combined_base
+                    )
 
                     # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
                     if not isinstance(plugin_texts, list):
@@ -768,21 +789,37 @@ def generate_variations(
                             prefix_lang = prefix.get("lang", None) if prefix else None
                             suffix_lang = suffix.get("lang", None) if suffix else None
 
-                            if match_languages and ((prefix_lang and prefix_lang != lang) or (suffix_lang and suffix_lang != lang)):
+                            if match_languages and (
+                                (prefix_lang and prefix_lang != lang)
+                                or (suffix_lang and suffix_lang != lang)
+                            ):
                                 continue
 
-                            combined_texts.append({
-                                "text": (prefix.get("prefix", "") + " " if prefix else "") + plugin_text + (" " + suffix.get("suffix", "") if suffix else ""),
-                                "prefix_id": prefix.get("id", None) if prefix else None,
-                                "suffix_id": suffix.get("id", None) if suffix else None,
-                                "plugin_name": plugin_name,
-                                "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else ""
-                            })
+                            combined_texts.append(
+                                {
+                                    "text": (
+                                        prefix.get("prefix", "") + " " if prefix else ""
+                                    )
+                                    + plugin_text
+                                    + (
+                                        " " + suffix.get("suffix", "") if suffix else ""
+                                    ),
+                                    "prefix_id": prefix.get("id", None)
+                                    if prefix
+                                    else None,
+                                    "suffix_id": suffix.get("id", None)
+                                    if suffix
+                                    else None,
+                                    "plugin_name": plugin_name,
+                                    "plugin_suffix": f"_{plugin_name}-{plugin_index}"
+                                    if plugin_name
+                                    else "",
+                                }
+                            )
 
                 for combined_text in combined_texts:
                     # Applied with --positions, by default ['end']
                     for position in insert_positions:
-
                         # Applied with --injection-delimiters, by default "\nINJECTION_PAYLOAD\n"
                         for injection_pattern in injection_delimiters:
                             # Combine document with suffix_combined_text (jailbreak + instruction + suffix)
@@ -799,16 +836,20 @@ def generate_variations(
 
                             for entry_type in output_format:
                                 if entry_type == "burp":
-                                    burp_payload_encoded = json.dumps(injected_doc)[1:-1]
+                                    burp_payload_encoded = json.dumps(injected_doc)[
+                                        1:-1
+                                    ]
                                     dataset.append(burp_payload_encoded)
 
                                 else:
                                     # Applied with --spotlighting-data-markers, by default "\nDOCUMENT\n"
-                                    for spotlighting_data_marker in spotlighting_data_markers_list:
-
+                                    for (
+                                        spotlighting_data_marker
+                                    ) in spotlighting_data_markers_list:
                                         # Applied with --include-system-message flag - gets system message associated with spotlighting data marker
                                         system_message = get_system_message(
-                                            system_message_config, spotlighting_data_marker
+                                            system_message_config,
+                                            spotlighting_data_marker,
                                         )
 
                                         # Combines injected document with spotlighting data marker, for full-prompt entries
@@ -826,27 +867,32 @@ def generate_variations(
                                             base_id=base_id,
                                             jailbreak_id=jailbreak_id,
                                             instruction_id=instruction_id,
-                                            prefix_id=combined_text.get("prefix_id", None),
-                                            suffix_id=combined_text.get("suffix_id", None),
-
-                                            text=injected_doc if entry_type == EntryType.DOCUMENT else wrapped_document,
+                                            prefix_id=combined_text.get(
+                                                "prefix_id", None
+                                            ),
+                                            suffix_id=combined_text.get(
+                                                "suffix_id", None
+                                            ),
+                                            text=injected_doc
+                                            if entry_type == EntryType.DOCUMENT
+                                            else wrapped_document,
                                             entry_text=entry_text,
                                             system_message=system_message,
                                             payload=combined_text.get("text", None),
                                             lang=lang,
-
-                                            plugin_suffix=combined_text.get("plugin_suffix", ""),
-                                            plugin_name=combined_text.get("plugin_name", None),
-
+                                            plugin_suffix=combined_text.get(
+                                                "plugin_suffix", ""
+                                            ),
+                                            plugin_name=combined_text.get(
+                                                "plugin_name", None
+                                            ),
                                             judge_args=judge_args,
                                             judge_name=judge_name,
-
                                             position=position,
                                             jailbreak_type=jailbreak_type,
                                             instruction_type=instruction_type,
                                             injection_pattern=injection_pattern,
                                             spotlighting_data_markers=spotlighting_data_marker,
-
                                             exclude_from_transformations_regex=local_exclude,
                                         ).to_entry()
                                         dataset.append(entry)
@@ -881,7 +927,11 @@ def generate_dataset(args):
     match_languages = args.match_languages
     instruction_filter_input = args.instruction_filter
     jailbreak_filter_input = args.jailbreak_filter
-    include_fixes = [fix.strip() for fix in args.include_fixes.split(",")] if args.include_fixes else []
+    include_fixes = (
+        [fix.strip() for fix in args.include_fixes.split(",")]
+        if args.include_fixes
+        else []
+    )
 
     # legacy cli arg
     if args.include_suffixes and "adv_suffixes" not in include_fixes:
@@ -975,18 +1025,12 @@ def generate_dataset(args):
 
         elif fix.startswith("prefix="):
             _, prefix = fix.split("=", 1)
-            adv_prefixes.append({
-                "id": f"custom-{custom_fix}",
-                "prefix": prefix
-            })
+            adv_prefixes.append({"id": f"custom-{custom_fix}", "prefix": prefix})
             custom_fix += 1
 
         elif fix.startswith("suffix="):
             _, suffix = fix.split("=", 1)
-            adv_suffixes.append({
-                "id": f"custom-{custom_fix}",
-                "suffix": suffix
-            })
+            adv_suffixes.append({"id": f"custom-{custom_fix}", "suffix": suffix})
             custom_fix += 1
 
         elif fix == "none_prefix":
@@ -1170,18 +1214,23 @@ def generate_plugin(args):
     plugins = load_plugins(args.plugins)
 
     if len(plugins) == 0:
-        print("No valid plugins found. Please check the plugin names and ensure they are in the correct directory.")
+        print(
+            "No valid plugins found. Please check the plugin names and ensure they are in the correct directory."
+        )
         return
 
     else:
-        print(f"Applying plugins: {[name for name, _ in plugins]} to input string: '{text}' with exclude patterns: {exclude_patterns}")
+        print(
+            f"Applying plugins: {[name for name, _ in plugins]} to input string: '{text}' with exclude patterns: {exclude_patterns}"
+        )
 
     counter = 0
     print("----------------------------------------------")
     for plugin_name, module in plugins:
-
         for _ in range(iterations):
-            output = apply_plugin(plugin_name, module, text, exclude_patterns, plugin_options_map)
+            output = apply_plugin(
+                plugin_name, module, text, exclude_patterns, plugin_options_map
+            )
 
             if len(output) == 1:
                 print(f"{plugin_name}|{counter}: {output[0]}")

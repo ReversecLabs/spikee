@@ -35,7 +35,7 @@ class Viewer(Module, ABC):
     def context_processor(self):
         return dict()
 
-# region helpers
+    # region helpers
     def get_viewer_folder(self) -> str:
         viewer_folder = os.path.join(os.getcwd(), "viewer")
         if not os.path.isdir(viewer_folder):
@@ -45,7 +45,7 @@ class Viewer(Module, ABC):
 
         return viewer_folder
 
-# endregion
+    # endregion
     def run_viewer(self, args):
         self.app.run(debug=args.debug, host=args.host, port=args.port)
 

@@ -44,7 +44,10 @@ class LLMJudgeObjective(LLMJudge):
         super().__init__(max_tokens=None)
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Judges whether an LLM's output meets a specified objective using an LLM Judge."
+        return (
+            [ModuleTag.LLM],
+            "Judges whether an LLM's output meets a specified objective using an LLM Judge.",
+        )
 
     def judge(self, llm_input, llm_output, judge_args="", judge_options=None) -> bool:
         """
@@ -57,10 +60,11 @@ class LLMJudgeObjective(LLMJudge):
 
         messages = [
             SystemMessage(content=JUDGE_PROMPT),
-            HumanMessage(content=json.dumps({
-                "user_prompt": llm_input,
-                "target_response": llm_output
-            })),
+            HumanMessage(
+                content=json.dumps(
+                    {"user_prompt": llm_input, "target_response": llm_output}
+                )
+            ),
         ]
 
         attempts = 0
@@ -76,7 +80,10 @@ class LLMJudgeObjective(LLMJudge):
                 last_error = e
                 continue
 
-            if all(key in result for key in ["objective_reached", "confidence_level", "reasoning"]):
+            if all(
+                key in result
+                for key in ["objective_reached", "confidence_level", "reasoning"]
+            ):
                 objective_reached = result.get("objective_reached", False)
 
                 if isinstance(objective_reached, str):
@@ -85,7 +92,9 @@ class LLMJudgeObjective(LLMJudge):
                 return objective_reached
 
         print(f"Error during LLM judging: {last_error}")
-        raise RuntimeError(f"LLM Judge failed after {ATTEMPTS} attempts. Last JSON parsing error: {last_error}")
+        raise RuntimeError(
+            f"LLM Judge failed after {ATTEMPTS} attempts. Last JSON parsing error: {last_error}"
+        )
 
 
 if __name__ == "__main__":

@@ -214,7 +214,8 @@ def main():
         "plugin", help="Apply a plugin transformation to a string"
     )
     parser_plugin.add_argument(
-        "-i", "--input_string",
+        "-i",
+        "--input_string",
         help="The string to transform using the specified plugin(s)",
         required=True,
     )
@@ -508,10 +509,10 @@ def main():
     )
 
     # === [Viewer] Sub-command ================================================
-    parser_viewer = subparsers.add_parser(
-        "viewer", help="Launch local web viewers"
+    parser_viewer = subparsers.add_parser("viewer", help="Launch local web viewers")
+    subparsers_viewer = parser_viewer.add_subparsers(
+        dest="viewer_command", help="Viewer sub-commands"
     )
-    subparsers_viewer = parser_viewer.add_subparsers(dest="viewer_command", help="Viewer sub-commands")
     parser_viewer.add_argument(
         "--host",
         type=str,
@@ -569,7 +570,8 @@ def main():
 
     # === [LIST] Sub-command ================================================
     parser_list = subparsers.add_parser(
-        "list", help="List seeds, datasets, judges, targets, plugins, attacks, or providers"
+        "list",
+        help="List seeds, datasets, judges, targets, plugins, attacks, or providers",
     )
     list_subparsers = parser_list.add_subparsers(
         dest="list_command", help="What to list"
@@ -586,7 +588,8 @@ def main():
         list_subparsers.add_parser("providers", help="List available providers"),
     ]:
         subparser.add_argument(
-            "-d", "--description",
+            "-d",
+            "--description",
             action="store_true",
             help="Include descriptions of modules where available",
         )

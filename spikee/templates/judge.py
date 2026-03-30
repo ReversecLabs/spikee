@@ -6,7 +6,6 @@ from spikee.templates.module import Module
 
 
 class Judge(Module, ABC):
-
     @abstractmethod
     def judge(self, llm_input, llm_output, judge_args="", judge_options="") -> bool:
         pass

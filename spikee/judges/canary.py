@@ -6,6 +6,7 @@ A basic judge for spikee that checks if 'judge_args'
 Typically used when you want to detect a specific substring
 in llm_output, e.g., an exfil string or secret token.
 """
+
 from typing import Tuple, List
 
 from spikee.templates.judge import Judge

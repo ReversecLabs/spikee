@@ -6,7 +6,6 @@ from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from any_llm import AnyLLM
 from typing import List, Tuple, Dict, Union, Any
-import os
 
 
 class AnyLLMCustomProvider(Provider):
@@ -32,7 +31,12 @@ class AnyLLMCustomProvider(Provider):
     def api_key(self) -> Union[str, None]:
         return os.getenv("CUSTOM_API_KEY", None)
 
-    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
+    def setup(
+        self,
+        model: str,
+        max_tokens: Union[int, None] = None,
+        temperature: Union[float, None] = None,
+    ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -42,12 +46,18 @@ class AnyLLMCustomProvider(Provider):
 
         # Validate that necessary environment variables are set
         if self.base_url is None or self.api_key is None:
-            raise ValueError(f"URL and API key variables must be set for the {self.name} provider.")
+            raise ValueError(
+                f"URL and API key variables must be set for the {self.name} provider."
+            )
 
         try:
-            self.llm = AnyLLM.create("openai", api_base=self.base_url, api_key=self.api_key)
+            self.llm = AnyLLM.create(
+                "openai", api_base=self.base_url, api_key=self.api_key
+            )
         except ImportError:
-            raise ImportError(f"[Import Error] Provider Module '{self.name}' is missing required packages for OpenAI compatible APIs. Please run `pip install spikee[openai]` to install them.")
+            raise ImportError(
+                f"[Import Error] Provider Module '{self.name}' is missing required packages for OpenAI compatible APIs. Please run `pip install spikee[openai]` to install them."
+            )
 
         options_kwargs: Dict[str, Any] = {}
         if self.max_tokens is not None:
@@ -59,13 +69,21 @@ class AnyLLMCustomProvider(Provider):
         self.options = options_kwargs
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
+        return [
+            ModuleTag.LLM
+        ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
-    def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+    def invoke(
+        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+    ) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(model=self.model, messages=formatted_messages, **self.options)
+        response = self.llm.completion(
+            model=self.model, messages=formatted_messages, **self.options
+        )
 
-        return AIMessage(content=response.choices[0].message.content, original_response=response)
+        return AIMessage(
+            content=response.choices[0].message.content, original_response=response
+        )

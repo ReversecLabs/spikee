@@ -37,17 +37,16 @@ class Shortener(Plugin):
     DEFAULT_ATTEMPTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Shortens input prompts to a defined number of characters."
+        return [
+            ModuleTag.LLM
+        ], "Shortens input prompts to a defined number of characters."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["length=254", "attempts=5"], True
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
@@ -57,7 +56,6 @@ class Shortener(Plugin):
 
         llm = get_llm(llm_model, temperature=1, max_tokens=max_length + 25)
 
-
         # Shorten the text iteratively until it's within the desired length or we run out of attempts
         length = len(text)
         while length > max_length:
@@ -66,13 +64,17 @@ class Shortener(Plugin):
                 "maximum_length": max_length,
                 "key_details": exclude_patterns or [],
                 "character_count": length,
-                "excess_characters": "What the hell! Why are there " + str(max(0, length - max_length)) + " excess characters?"  # The text is critical to getting the LLM to listen, and avoid loops
+                "excess_characters": "What the hell! Why are there "
+                + str(max(0, length - max_length))
+                + " excess characters?",  # The text is critical to getting the LLM to listen, and avoid loops
             }
 
-            response = llm.invoke([
-                SystemMessage(content=SHORTENER_PROMPT),
-                HumanMessage(content=json.dumps(payload))
-            ]).content
+            response = llm.invoke(
+                [
+                    SystemMessage(content=SHORTENER_PROMPT),
+                    HumanMessage(content=json.dumps(payload)),
+                ]
+            ).content
 
             try:
                 response = extract_json_or_fail(response)

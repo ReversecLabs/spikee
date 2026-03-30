@@ -9,7 +9,7 @@ Usage:
     1. Place this file in your local `targets/` folder.
     2. Run the spikee test command, pointing to this target, e.g.:
         spikee test --dataset datasets/example.jsonl --target test_chatbot --attack <multi-turn capable attack>
-    
+
     You can customize the target using `--target-options`:
         spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=gpt-4o-mini'
         spikee test --dataset datasets/example.jsonl --target test_chatbot --target-options 'url=http://localhost:8000,model=bedrock-claude-3-7-sonnet,guardrail=azure-prompt-shields'
@@ -53,7 +53,11 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
-        return ["url=http://localhost:8000", "model=gpt-4o-mini", "guardrail=off"], False
+        return [
+            "url=http://localhost:8000",
+            "model=gpt-4o-mini",
+            "guardrail=off",
+        ], False
 
     def send_message(
         self,
@@ -86,16 +90,25 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
 
         if guardrail == "llm-judge-general-current-llm":
             payload["guardrail"] = "llm-judge"
-            payload["llm_judge_config"] = {"model": "current", "scope": "general-purpose"}
+            payload["llm_judge_config"] = {
+                "model": "current",
+                "scope": "general-purpose",
+            }
         elif guardrail == "llm-judge-bank-current-llm":
             payload["guardrail"] = "llm-judge"
             payload["llm_judge_config"] = {"model": "current", "scope": "my-llm-bank"}
         elif guardrail == "llm-judge-general-gpt-oss-20b-safeguard":
             payload["guardrail"] = "llm-judge"
-            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "general-purpose"}
+            payload["llm_judge_config"] = {
+                "model": "gpt-oss-20b-safeguard",
+                "scope": "general-purpose",
+            }
         elif guardrail == "llm-judge-bank-gpt-oss-20b-safeguard":
             payload["guardrail"] = "llm-judge"
-            payload["llm_judge_config"] = {"model": "gpt-oss-20b-safeguard", "scope": "my-llm-bank"}
+            payload["llm_judge_config"] = {
+                "model": "gpt-oss-20b-safeguard",
+                "scope": "my-llm-bank",
+            }
         elif guardrail and guardrail != "off":
             payload["guardrail"] = guardrail
 
@@ -271,11 +284,15 @@ if __name__ == "__main__":
 
         print(f"Sending message to target with session_id: {test_session_id}")
         response = target.process_input(
-            "Hello, my name is Spikee", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
+            "Hello, my name is Spikee",
+            spikee_session_id=test_session_id,
+            target_options="url=http://localhost:8000,model=gpt-4o-mini",
         )
         print("Response:", response)
         response = target.process_input(
-            "What was my name?", spikee_session_id=test_session_id, target_options="url=http://localhost:8000,model=gpt-4o-mini"
+            "What was my name?",
+            spikee_session_id=test_session_id,
+            target_options="url=http://localhost:8000,model=gpt-4o-mini",
         )
         print("Response:", response)
 

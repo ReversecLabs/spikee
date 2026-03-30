@@ -40,7 +40,10 @@ class BestOfNAttack(Attack):
     NOISE_PROB = 0.06
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.SINGLE], "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising."
+        return (
+            [ModuleTag.SINGLE],
+            "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -77,7 +80,9 @@ class BestOfNAttack(Attack):
                 response, _ = target_module.process_input(
                     candidate_text, system_message
                 )
-                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                response = str(
+                    response[0] if isinstance(response, (tuple, list)) else response
+                )
 
                 last_response = response
                 success = call_judge(entry, response)
@@ -113,7 +118,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload):]
+            + original_text[idx + len(payload) :]
         )
 
     def _generate_variant(self, text, exclusions):

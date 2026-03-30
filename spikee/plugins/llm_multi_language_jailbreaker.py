@@ -1,12 +1,13 @@
 """
 LLM Multi Language Jailbreaker plugin for spikee.
-This plugin is based on the Multi Language LLM Jailbreaker attack, and generates jailbreak attempts 
-using different languages, focusing on low-resource languages that may bypass safety filters in 
+This plugin is based on the Multi Language LLM Jailbreaker attack, and generates jailbreak attempts
+using different languages, focusing on low-resource languages that may bypass safety filters in
 the target system.
 
 Usage:
   spikee test --plugins llm_multi_language_jailbreaker --plugin-options "llm_multi_language_jailbreaker:model=openai/gpt-4o,variants=5"
 """
+
 import random
 from spikee.templates.plugin import Plugin
 from typing import List, Tuple, Union
@@ -73,7 +74,18 @@ Format your response in JSON:
 }
 """
 
-LANGS = ["Chinese (zh-ch)", "Bengali (bn)", "Swahili (sw)", "Javanese (jv)", "Amharic (am)", "Hausa (ha)", "Oromo (om)", "Quechua (qu)", "Pashto (ps)", "Nepali (ne)"]
+LANGS = [
+    "Chinese (zh-ch)",
+    "Bengali (bn)",
+    "Swahili (sw)",
+    "Javanese (jv)",
+    "Amharic (am)",
+    "Hausa (ha)",
+    "Oromo (om)",
+    "Quechua (qu)",
+    "Pashto (ps)",
+    "Nepali (ne)",
+]
 
 
 class LLMMultiLanguageJailbreaker(Plugin):
@@ -81,7 +93,10 @@ class LLMMultiLanguageJailbreaker(Plugin):
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates jailbreak attack prompts using an LLM and multi language techniques."
+        return (
+            [ModuleTag.LLM, ModuleTag.ATTACK_BASED],
+            "Generates jailbreak attack prompts using an LLM and multi language techniques.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -96,13 +111,14 @@ class LLMMultiLanguageJailbreaker(Plugin):
         self, llm, objective: str, lang: str, attempted_langs: List[str] = []
     ) -> str:
         """Generate a multi language jailbreak attack using the LLM."""
-        prompt = HumanMessage(SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace(
-            "{{objective}}", objective
-        ).replace(
-            "{{lang}}", lang
-        ).replace(
-            "{{attempted_langs}}", ", ".join(attempted_langs) if attempted_langs else "None"
-        ))
+        prompt = HumanMessage(
+            SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace("{{objective}}", objective)
+            .replace("{{lang}}", lang)
+            .replace(
+                "{{attempted_langs}}",
+                ", ".join(attempted_langs) if attempted_langs else "None",
+            )
+        )
 
         # call the model via .invoke
         response = llm.invoke([prompt]).content.strip()
@@ -114,10 +130,7 @@ class LLMMultiLanguageJailbreaker(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
@@ -137,13 +150,14 @@ class LLMMultiLanguageJailbreaker(Plugin):
                     lang = random.choice(LANGS)
 
             try:
-                attack_prompts.append(self._generate_multi_language_jailbreak_attack(
-                    llm,
-                    text,
-                    lang,
-                    list(used_langs)
-                ))
+                attack_prompts.append(
+                    self._generate_multi_language_jailbreak_attack(
+                        llm, text, lang, list(used_langs)
+                    )
+                )
             except Exception as e:
-                print(f"[LLMMultiLanguageJailbreaker] Error generating prompt {i}: {str(e)}")
+                print(
+                    f"[LLMMultiLanguageJailbreaker] Error generating prompt {i}: {str(e)}"
+                )
 
         return attack_prompts

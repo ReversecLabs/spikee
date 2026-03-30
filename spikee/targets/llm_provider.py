@@ -7,7 +7,10 @@ from typing import List, Tuple
 
 class LLMProviderTargetModule(ProviderTarget):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Generic LLM target for supported LLM providers - see 'spikee list providers' => '--target-options \"model=<provider>/<model>\"'."
+        return (
+            [ModuleTag.LLM],
+            "Generic LLM target for supported LLM providers - see 'spikee list providers' => '--target-options \"model=<provider>/<model>\"'.",
+        )
 
 
 if __name__ == "__main__":
@@ -15,7 +18,10 @@ if __name__ == "__main__":
     target = LLMProviderTargetModule()
     print("Supported provider keys:", target.get_available_option_values())
     try:
-
-        print(target.process_input("Hello!", target_options="model=bedrock/claude37-sonnet"))
+        print(
+            target.process_input(
+                "Hello!", target_options="model=bedrock/claude37-sonnet"
+            )
+        )
     except Exception as err:
         print("Error:", err)

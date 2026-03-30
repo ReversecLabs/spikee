@@ -29,7 +29,10 @@ from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 class LLMJudgeOutputCriteria(LLMJudge):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Judges whether an LLM's output meets a specified criteria using an LLM Judge."
+        return (
+            [ModuleTag.LLM],
+            "Judges whether an LLM's output meets a specified criteria using an LLM Judge.",
+        )
 
     def judge(self, llm_input, llm_output, judge_args="", judge_options=None) -> bool:
         """

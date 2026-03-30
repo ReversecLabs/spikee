@@ -35,7 +35,10 @@ from spikee.utilities.modules import parse_options
 
 class AsciiSmuggler(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique."
+        return (
+            [],
+            "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -80,14 +83,14 @@ class AsciiSmuggler(BasicPlugin):
             encoded.append(chr(0xE007F))
             code_points.append("U+E007F")
 
-        #status_message = (
+        # status_message = (
         #    f"Invalid characters detected: {invalid_chars}" if invalid_chars else ""
-        #)
+        # )
 
-        #full_response = {
+        # full_response = {
         #    "code_points": " ".join(code_points),
         #    "encoded": "".join(encoded),
         #    "status": status_message,
-        #}
+        # }
 
         return "".join(encoded)

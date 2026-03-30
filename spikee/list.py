@@ -5,7 +5,6 @@ import importlib.util
 import pkgutil
 from dataclasses import dataclass
 from typing import List
-import traceback
 
 from rich.console import Console
 from rich.tree import Tree
@@ -13,7 +12,10 @@ from rich.panel import Panel
 from rich.rule import Rule
 
 from spikee.utilities.enums import ModuleTag, module_tag_to_colour
-from spikee.utilities.modules import get_options_from_module, get_description_from_module
+from spikee.utilities.modules import (
+    get_options_from_module,
+    get_description_from_module,
+)
 
 console = Console()
 
@@ -63,6 +65,7 @@ def list_datasets(args):
 
 
 # --- Helpers ---
+
 
 @dataclass
 class Module:
@@ -114,9 +117,7 @@ def _collect_local(module_type: str):
                 tags = []
                 description = ""
 
-            entries.append(
-                Module(name, opts, util_llm, tags, description)
-            )
+            entries.append(Module(name, opts, util_llm, tags, description))
             if util_llm:
                 any_util_llm = True
 
@@ -158,9 +159,7 @@ def _collect_builtin(pkg: str, module_type: str):
 
                 # traceback.print_exc()
 
-            entries.append(
-                Module(name, opts, util_llm, tags, description)
-            )
+            entries.append(Module(name, opts, util_llm, tags, description))
             if util_llm:
                 any_util_llm = True
     except ModuleNotFoundError:
@@ -168,22 +167,31 @@ def _collect_builtin(pkg: str, module_type: str):
     return entries, any_util_llm
 
 
-def _render_section(title: str, local_entries, builtin_entries, util_llm: bool = False, description: bool = False, tag_line: str = "Available options"):
+def _render_section(
+    title: str,
+    local_entries,
+    builtin_entries,
+    util_llm: bool = False,
+    description: bool = False,
+    tag_line: str = "Available options",
+):
     console.print(Rule(f"[bold]{title}[/bold]"))
 
     if util_llm:
-        console.print(Panel(
-            f"""[yellow]Note:[/yellow] Modules with a [yellow][LLM][/yellow] tag, use the built-in LLM service.
+        console.print(
+            Panel(
+                f"""[yellow]Note:[/yellow] Modules with a [yellow][LLM][/yellow] tag, use the built-in LLM service.
 The LLM options are available, using 'model=<option>':
 Supported Providers (use 'spikee list providers' for more): {", ".join(list_modules("providers"))} 
-""", style="yellow"
-        ))  # TODO: fix
+""",
+                style="yellow",
+            )
+        )  # TODO: fix
 
     def print_section(entries, label) -> Tree:
         tree = Tree(f"[bold]{title} ({label})[/bold]")
         if entries:
             for module in entries:
-
                 node_line = f"[bold cyan]{module.name}[/bold cyan]"
 
                 if module.tags:
@@ -191,21 +199,36 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 
                     tags = []
                     for tag in module.tags:
-                        tags.append(f"[{module_tag_to_colour(tag)}][{tag.value}][/{module_tag_to_colour(tag)}]")
+                        tags.append(
+                            f"[{module_tag_to_colour(tag)}][{tag.value}][/{module_tag_to_colour(tag)}]"
+                        )
 
                     node_line += " " + "".join(tags)
 
                 module_node = tree.add(node_line)
 
-                if description and module.description is not None and module.description != "":
+                if (
+                    description
+                    and module.description is not None
+                    and module.description != ""
+                ):
                     module_node.add(f"Description: {module.description}")
 
                 if module.options is not None and len(module.options) > 0:
                     if module.options == ["<error>"]:
                         module_node.add("[red]<error loading module>[/red]")
                     else:
-                        opt_line = [f"[bold]{module.options[0]} (default)[/bold]"] + module.options[1:] if module.options else []
-                        module_node.add(f"[bright_black]{tag_line}: " + ", ".join(opt_line) + "[/bright_black]")
+                        opt_line = (
+                            [f"[bold]{module.options[0]} (default)[/bold]"]
+                            + module.options[1:]
+                            if module.options
+                            else []
+                        )
+                        module_node.add(
+                            f"[bright_black]{tag_line}: "
+                            + ", ".join(opt_line)
+                            + "[/bright_black]"
+                        )
 
         else:
             tree.add("(none)")
@@ -221,6 +244,7 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 
 # --- Commands ---
 
+
 def list_modules(module_type: str) -> List[str]:
     local, _ = _collect_local(module_type)
     builtin, _ = _collect_builtin(f"spikee.{module_type}", module_type)
@@ -231,28 +255,59 @@ def list_modules(module_type: str) -> List[str]:
 def list_judges(args):
     local, any_util_llm_local = _collect_local("judges")
     builtin, any_util_llm_builtin = _collect_builtin("spikee.judges", "judges")
-    _render_section("Judges", local, builtin, (any_util_llm_local or any_util_llm_builtin), args.description)
+    _render_section(
+        "Judges",
+        local,
+        builtin,
+        (any_util_llm_local or any_util_llm_builtin),
+        args.description,
+    )
 
 
 def list_targets(args):
     local, any_util_llm_local = _collect_local("targets")
     builtin, any_util_llm_builtin = _collect_builtin("spikee.targets", "targets")
-    _render_section("Targets", local, builtin, (any_util_llm_local or any_util_llm_builtin), args.description)
+    _render_section(
+        "Targets",
+        local,
+        builtin,
+        (any_util_llm_local or any_util_llm_builtin),
+        args.description,
+    )
 
 
 def list_plugins(args):
     local, any_util_llm_local = _collect_local("plugins")
     builtin, any_util_llm_builtin = _collect_builtin("spikee.plugins", "plugins")
-    _render_section("Plugins", local, builtin, (any_util_llm_local or any_util_llm_builtin), args.description)
+    _render_section(
+        "Plugins",
+        local,
+        builtin,
+        (any_util_llm_local or any_util_llm_builtin),
+        args.description,
+    )
 
 
 def list_attacks(args):
     local, any_util_llm_local = _collect_local("attacks")
     builtin, any_util_llm_builtin = _collect_builtin("spikee.attacks", "attacks")
-    _render_section("Attacks", local, builtin, (any_util_llm_local or any_util_llm_builtin), args.description)
+    _render_section(
+        "Attacks",
+        local,
+        builtin,
+        (any_util_llm_local or any_util_llm_builtin),
+        args.description,
+    )
 
 
 def list_providers(args):
     local, any_util_llm_local = _collect_local("providers")
     builtin, any_util_llm_builtin = _collect_builtin("spikee.providers", "providers")
-    _render_section("Providers", local, builtin, (any_util_llm_local or any_util_llm_builtin), args.description, "Known supported models")
+    _render_section(
+        "Providers",
+        local,
+        builtin,
+        (any_util_llm_local or any_util_llm_builtin),
+        args.description,
+        "Known supported models",
+    )

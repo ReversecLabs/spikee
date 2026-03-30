@@ -8,6 +8,7 @@ class Turn(enum.Enum):
 
 class ModuleTag(enum.Enum):
     """Enumeration for module tags used to categorize modules."""
+
     ATTACK_BASED = "Attack-Based"
     LLM = "LLM"
     ML = "ML"

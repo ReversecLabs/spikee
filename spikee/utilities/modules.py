@@ -12,27 +12,34 @@ def _resolve_impl_class(module, module_type):
     match module_type:
         case "targets":
             from spikee.templates.target import Target
+
             base_classes = (Target,)
 
         case "judges":
             from spikee.templates.judge import Judge
             from spikee.templates.llm_judge import LLMJudge
+
             base_classes = (Judge, LLMJudge)
 
         case "plugins":
             from spikee.templates.plugin import Plugin
+
             base_classes = (Plugin,)
 
         case "attacks":
             from spikee.templates.attack import Attack
+
             base_classes = (Attack,)
 
         case "providers":
             from spikee.templates.provider import Provider
+
             base_classes = (Provider,)
 
         case _:
-            raise ValueError(f"Unknown module type '{module_type}' for implementation resolution")
+            raise ValueError(
+                f"Unknown module type '{module_type}' for implementation resolution"
+            )
 
     if not base_classes or not inspect.ismodule(module):
         return None
@@ -56,7 +63,6 @@ def _instantiate_impl(module, module_type):
 def load_module_from_path(name, module_type):
     """Loads a module either from a local path or from the spikee package."""
     try:
-
         local_path = os.path.join(os.getcwd(), module_type, f"{name}.py")
         if os.path.isfile(local_path):
             spec = importlib.util.spec_from_file_location(name, local_path)
@@ -72,10 +78,14 @@ def load_module_from_path(name, module_type):
         trimmed = str(e).split("No module named ")[-1].strip("'\"")
 
         if trimmed == name or trimmed.endswith(f".{name}"):
-            raise ImportError(f"[Import Error] Module '{name}' not found locally or built-in. Use 'spikee list {module_type}' to see available options.")
+            raise ImportError(
+                f"[Import Error] Module '{name}' not found locally or built-in. Use 'spikee list {module_type}' to see available options."
+            )
 
         else:
-            raise ImportError(f"[Import Error] Module {name}, dependency '{trimmed}' not found - review {name} and ensure all required dependencies are installed.")
+            raise ImportError(
+                f"[Import Error] Module {name}, dependency '{trimmed}' not found - review {name} and ensure all required dependencies are installed."
+            )
 
     instance = _instantiate_impl(mod, module_type)
     if instance is not None:
@@ -183,7 +193,7 @@ def extract_json_or_fail(text: str) -> Dict[str, Any]:
             if depth > 0:
                 depth -= 1
                 if depth == 0 and start != -1:
-                    candidate = t[start: i + 1]
+                    candidate = t[start : i + 1]
                     try:
                         return json.loads(candidate)
                     except Exception:
@@ -204,7 +214,7 @@ def fix_unescaped_quotes(text: str) -> str:
     """
     result = []
     i = 0
-    STATE_NORMAL = 0     # Outside any string
+    STATE_NORMAL = 0  # Outside any string
     STATE_IN_STRING = 1  # Inside a JSON string value
 
     state = STATE_NORMAL
@@ -219,7 +229,7 @@ def fix_unescaped_quotes(text: str) -> str:
 
         elif state == STATE_IN_STRING:
             # If we have an escape character, add it and the next character
-            if char == '\\':
+            if char == "\\":
                 result.append(char)
                 i += 1
                 if i < len(text):
@@ -232,16 +242,18 @@ def fix_unescaped_quotes(text: str) -> str:
                     j += 1
 
                 # If followed by these characters, it's likely closing the string
-                if j < len(text) and (text[j] == ',' or text[j] == '}' or text[j] == ':' or text[j] == ']'):
+                if j < len(text) and (
+                    text[j] == "," or text[j] == "}" or text[j] == ":" or text[j] == "]"
+                ):
                     result.append(char)  # Closing quote, don't escape
                     state = STATE_NORMAL
                 else:
                     # Internal quote, needs escaping
-                    result.append('\\')
+                    result.append("\\")
                     result.append(char)
             else:
                 result.append(char)
 
         i += 1
 
-    return ''.join(result)
+    return "".join(result)

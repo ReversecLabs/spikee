@@ -20,7 +20,10 @@ class SimpleMultiTarget(MultiTarget, ABC):
             target_data: A multiprocessing managed dictionary to store generic data.
             add_dicts (List[str], optional): List of dictionary keys to add. Defaults to {}.
         """
-        dicts = [self.__SIMPLIFIED_CONVERSATION_KEY, self.__SIMPLIFIED_ID_MAP_KEY] + add_dicts
+        dicts = [
+            self.__SIMPLIFIED_CONVERSATION_KEY,
+            self.__SIMPLIFIED_ID_MAP_KEY,
+        ] + add_dicts
 
         super().add_managed_dicts(target_data, dicts)
 

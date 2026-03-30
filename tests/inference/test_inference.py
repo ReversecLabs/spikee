@@ -1,7 +1,6 @@
 import os
 import json
 import pytest
-from pathlib import Path
 
 # Require RUN_INFERENCE_TESTS environment variable to run these tests
 pytestmark = pytest.mark.skipif(
@@ -28,7 +27,11 @@ JUDGE_MODEL_COMBINATIONS = [
     # (Judge Name, Judge Args, Judge Options (LLM Model))
     ("llm_judge_harmful", "", "openai/gpt-4o-mini"),
     ("llm_judge_objective", "The capital is France.", "groq/llama-3.1-8b-instant"),
-    ("llm_judge_output_criteria", '{"schema": {"type": "string", "maxLength": 10}}', "openrouter/meta-llama/llama-3.1-8b-instruct"),
+    (
+        "llm_judge_output_criteria",
+        '{"schema": {"type": "string", "maxLength": 10}}',
+        "openrouter/meta-llama/llama-3.1-8b-instruct",
+    ),
     ("llm_judge_objective", "The capital is France.", "bedrock/claude35-us-haiku"),
     ("llm_judge_objective", "The capital is France.", "openai/invalid-model-name-123"),
 ]
@@ -47,7 +50,7 @@ def write_single_entry(workspace_dir):
         "system_message": "",
         "judge_name": "canary",
         "judge_args": "test",
-        "tags": ["inference-test"]
+        "tags": ["inference-test"],
     }
     with dataset_file.open("w", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -67,7 +70,7 @@ def write_judge_entry(workspace_dir, judge_name, judge_args, judge_options):
         "system_message": "",
         "judge_name": judge_name,
         "judge_args": judge_args,
-        "tags": ["inference-test"]
+        "tags": ["inference-test"],
     }
     with dataset_file.open("w", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -92,13 +95,18 @@ def test_inference_targets(run_spikee, workspace_dir, target_name, model_name):
     spikee_cmd = "spikee " + " ".join(args)
 
     import re
+
     result = run_spikee(args, cwd=workspace_dir)
 
-    assert result.returncode == 0, f"spikee test failed for {target_name} ({model_name}). Stderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"spikee test failed for {target_name} ({model_name}). Stderr: {result.stderr}"
+    )
 
     # Verify the results file to ensure inference actually worked
     match = re.search(r"saved to results/(results_[^\s]+\.jsonl)", result.stdout)
-    assert match is not None, "Results file not found in stdout. Execution may have failed."
+    assert match is not None, (
+        "Results file not found in stdout. Execution may have failed."
+    )
 
     result_file = workspace_dir / "results" / match.group(1)
     assert result_file.exists(), f"Result file missing: {result_file}"
@@ -110,39 +118,40 @@ def test_inference_targets(run_spikee, workspace_dir, target_name, model_name):
 
     if "invalid-model-name-123" in model_name:
         error_str = str(error_val) if error_val else str(data.get("response", ""))
-        is_invalid = "does not exist" in error_str or "NotFoundError" in error_str or "Unknown" in error_str
-        assert is_invalid, f"Expected a 'Not Found' or 'Unknown' error for invalid model {model_name}, but got: {error_str}. Result data: {data}"
+        is_invalid = (
+            "does not exist" in error_str
+            or "NotFoundError" in error_str
+            or "Unknown" in error_str
+        )
+        assert is_invalid, (
+            f"Expected a 'Not Found' or 'Unknown' error for invalid model {model_name}, but got: {error_str}. Result data: {data}"
+        )
         return
 
     # If the LLM call errored out (e.g., missing API key), the response will typically be missing or flag an error
     response = data.get("response", "")
-    assert response, f"Empty or missing response from {target_name}. LLM call likely failed.\nCommand: {spikee_cmd}\nResult data: {data}"
+    assert response, (
+        f"Empty or missing response from {target_name}. LLM call likely failed.\nCommand: {spikee_cmd}\nResult data: {data}"
+    )
 
 
 ATTACK_MODEL_COMBINATIONS = [
     # (Attack Module, Attack Option (Model))
     ("llm_jailbreaker", "model=openai/gpt-4o-mini"),
     ("llm_jailbreaker", "model=azure_openai/gpt-4o-mini"),
-
     ("llm_poetry_jailbreaker", "model=google/gemini-2.5-flash"),
     ("llm_poetry_jailbreaker", "model=deepseek/deepseek-chat"),
-
     ("llm_multi_language_jailbreaker", "model=groq/llama-3.1-8b-instant"),
     ("llm_multi_language_jailbreaker", "model=bedrock/claude35-haiku"),
-
     ("rag_poisoner", "model=deepseek/deepseek-chat"),
     ("rag_poisoner", "model=togetherai/Qwen/Qwen3.5-9B"),
-
     ("crescendo", "model=togetherai/Qwen/Qwen3.5-9B"),
     ("crescendo", "model=openrouter/meta-llama/llama-3.1-8b-instruct"),
-
     ("echo_chamber", "model=openrouter/meta-llama/llama-3.1-8b-instruct"),
     ("echo_chamber", "model=bedrock/claude35-us-haiku"),
     ("echo_chamber", "model=openai/gpt-4o-mini"),
-
     ("prompt_decomposition", "modes=azure_openai/gpt-4o-mini;variants=2"),
     ("prompt_decomposition", "modes=google/gemini-2.5-flash;variants=2"),
-
     ("crescendo", "model=openai/invalid-model-name-123"),
 ]
 
@@ -154,7 +163,11 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     This verifies that the attacks can successfully format and send litellm completion requests.
     """
     dataset_file = write_single_entry(workspace_dir)
-    target = "mock_multiturn" if attack_name in ("crescendo", "echo_chamber") else "always_refuse"
+    target = (
+        "mock_multiturn"
+        if attack_name in ("crescendo", "echo_chamber")
+        else "always_refuse"
+    )
 
     args = [
         "test",
@@ -172,13 +185,18 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     spikee_cmd = "spikee " + " ".join(args)
 
     import re
+
     result = run_spikee(args, cwd=workspace_dir)
 
-    assert result.returncode == 0, f"spikee test failed for attack {attack_name} ({attack_options}). Stderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"spikee test failed for attack {attack_name} ({attack_options}). Stderr: {result.stderr}"
+    )
 
     # Verify the results file to ensure attack LLM inference actually worked
     match = re.search(r"saved to results/(results_[^\s]+\.jsonl)", result.stdout)
-    assert match is not None, "Results file not found in stdout. Execution may have failed."
+    assert match is not None, (
+        "Results file not found in stdout. Execution may have failed."
+    )
 
     result_file = workspace_dir / "results" / match.group(1)
     assert result_file.exists(), f"Result file missing: {result_file}"
@@ -186,7 +204,9 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     with result_file.open("r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    assert len(lines) >= 2, f"Expected at least standard and attack entries, got {len(lines)} lines."
+    assert len(lines) >= 2, (
+        f"Expected at least standard and attack entries, got {len(lines)} lines."
+    )
 
     # The last entry should represent the attack attempt if it reached that stage and errored,
     # or the final iteration. We verify the attack successfully produced an event.
@@ -197,9 +217,17 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     error_val = attack_data.get("error")
 
     if "invalid-model-name-123" in attack_options:
-        error_str = str(error_val) if error_val else str(attack_data.get("response", ""))
-        is_invalid = "does not exist" in error_str or "NotFoundError" in error_str or "Unknown" in error_str
-        assert is_invalid, f"Expected a 'Not Found' or 'Unknown' error for invalid model {attack_options}, but got: {error_str}. Result data: {attack_data}"
+        error_str = (
+            str(error_val) if error_val else str(attack_data.get("response", ""))
+        )
+        is_invalid = (
+            "does not exist" in error_str
+            or "NotFoundError" in error_str
+            or "Unknown" in error_str
+        )
+        assert is_invalid, (
+            f"Expected a 'Not Found' or 'Unknown' error for invalid model {attack_options}, but got: {error_str}. Result data: {attack_data}"
+        )
         return
 
     # We consider the test passed if it succeeded (Error is None) OR if the LLM successfully connected
@@ -212,15 +240,23 @@ def test_inference_attacks(run_spikee, workspace_dir, attack_name, attack_option
     error_str = str(error_val).lower() if error_val else ""
     is_refusal = "valid json object" in error_str or "refused to answer" in error_str
 
-    assert is_success or is_refusal, f"Attack LLM call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {attack_data}"
+    assert is_success or is_refusal, (
+        f"Attack LLM call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {attack_data}"
+    )
 
 
-@pytest.mark.parametrize("judge_name, judge_args, judge_options", JUDGE_MODEL_COMBINATIONS)
-def test_inference_llm_judges(run_spikee, workspace_dir, judge_name, judge_args, judge_options):
+@pytest.mark.parametrize(
+    "judge_name, judge_args, judge_options", JUDGE_MODEL_COMBINATIONS
+)
+def test_inference_llm_judges(
+    run_spikee, workspace_dir, judge_name, judge_args, judge_options
+):
     """
     Test live inference for LLM-based judges.
     """
-    dataset_file = write_judge_entry(workspace_dir, judge_name, judge_args, judge_options)
+    dataset_file = write_judge_entry(
+        workspace_dir, judge_name, judge_args, judge_options
+    )
 
     # "always_refuse" provides clean predictable text back to the judge
     args = [
@@ -230,17 +266,22 @@ def test_inference_llm_judges(run_spikee, workspace_dir, judge_name, judge_args,
         "--target",
         "always_refuse",
         "--judge-options",
-        judge_options
+        judge_options,
     ]
     spikee_cmd = "spikee " + " ".join(args)
 
     import re
+
     result = run_spikee(args, cwd=workspace_dir)
 
-    assert result.returncode == 0, f"spikee test failed for judge {judge_name} ({judge_options}). Stderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"spikee test failed for judge {judge_name} ({judge_options}). Stderr: {result.stderr}"
+    )
 
     match = re.search(r"saved to results/(results_[^\s]+\.jsonl)", result.stdout)
-    assert match is not None, "Results file not found in stdout. Execution may have failed."
+    assert match is not None, (
+        "Results file not found in stdout. Execution may have failed."
+    )
 
     result_file = workspace_dir / "results" / match.group(1)
 
@@ -250,11 +291,21 @@ def test_inference_llm_judges(run_spikee, workspace_dir, judge_name, judge_args,
     error_val = result_data.get("error")
 
     if "invalid-model-name-123" in judge_options:
-        error_str = str(error_val) if error_val else str(result_data.get("response", ""))
-        is_invalid = "does not exist" in error_str or "NotFoundError" in error_str or "Unknown" in error_str
-        assert is_invalid, f"Expected a 'Not Found' or 'Unknown' error for invalid model {judge_options}, but got: {error_str}. Result data: {result_data}"
+        error_str = (
+            str(error_val) if error_val else str(result_data.get("response", ""))
+        )
+        is_invalid = (
+            "does not exist" in error_str
+            or "NotFoundError" in error_str
+            or "Unknown" in error_str
+        )
+        assert is_invalid, (
+            f"Expected a 'Not Found' or 'Unknown' error for invalid model {judge_options}, but got: {error_str}. Result data: {result_data}"
+        )
         return
 
     # For a judge inference test, we just want to ensure the LLM successfully connected
     # and evaluated without crashing or returning an error string in the results.
-    assert error_val is None, f"LLM Judge call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {result_data}"
+    assert error_val is None, (
+        f"LLM Judge call failed.\nCommand: {spikee_cmd}\nError: {error_val}\nResult data: {result_data}"
+    )

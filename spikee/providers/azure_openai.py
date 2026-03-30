@@ -21,16 +21,26 @@ class AnyLLMAzureOpenAIProvider(Provider):
             "gpt-4o-mini": "gpt-4o-mini",
         }
 
-    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
+    def setup(
+        self,
+        model: str,
+        max_tokens: Union[int, None] = None,
+        temperature: Union[float, None] = None,
+    ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
         try:
-            api_ver = os.getenv("AZURE_OPENAI_API_VERSION", os.getenv("OPENAI_API_VERSION", "2024-02-15-preview"))
+            api_ver = os.getenv(
+                "AZURE_OPENAI_API_VERSION",
+                os.getenv("OPENAI_API_VERSION", "2024-02-15-preview"),
+            )
             self.llm = AnyLLM.create("azureopenai", api_version=api_ver)
         except ImportError:
-            raise ImportError(f"[Import Error] Provider Module 'azure_openai' is missing required packages for Azure OpenAI. Please run `pip install spikee[azure]` to install them.")
+            raise ImportError(
+                "[Import Error] Provider Module 'azure_openai' is missing required packages for Azure OpenAI. Please run `pip install spikee[azure]` to install them."
+            )
 
         options_kwargs: Dict[str, Any] = {}
         if self.max_tokens is not None:
@@ -44,11 +54,17 @@ class AnyLLMAzureOpenAIProvider(Provider):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "LLM Provider for Azure OpenAI models via any-llm."
 
-    def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+    def invoke(
+        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+    ) -> AIMessage:
         """Invoke AnyLLM Azure OpenAI LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(model=self.model, messages=formatted_messages, **self.options)
+        response = self.llm.completion(
+            model=self.model, messages=formatted_messages, **self.options
+        )
 
-        return AIMessage(content=response.choices[0].message.content, original_response=response)
+        return AIMessage(
+            content=response.choices[0].message.content, original_response=response
+        )

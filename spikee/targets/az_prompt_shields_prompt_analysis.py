@@ -19,7 +19,10 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
         self.api_version = "2024-09-01"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Guardrail Target for Azure Prompt Shields Prompt Analysis, testing prompt analysis for harmful content."
+        return (
+            [ModuleTag.LLM],
+            "Guardrail Target for Azure Prompt Shields Prompt Analysis, testing prompt analysis for harmful content.",
+        )
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""
@@ -61,14 +64,18 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
                 result = response.json()
                 prompt_analysis = result.get("userPromptAnalysis", {})
                 attack_detected = prompt_analysis.get("attackDetected", False)
-                return not attack_detected  # True if not detected (bypassed), False if detected (blocked)
+                return (
+                    not attack_detected
+                )  # True if not detected (bypassed), False if detected (blocked)
 
             else:
                 error_message = f"Error {response.status_code}: {response.text}"
                 raise RuntimeError(error_message)
 
         except Exception as e:
-            raise RuntimeError(f"Unexpected error calling Azure Prompt Shields API: {str(e)}")
+            raise RuntimeError(
+                f"Unexpected error calling Azure Prompt Shields API: {str(e)}"
+            )
 
 
 if __name__ == "__main__":

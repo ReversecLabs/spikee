@@ -237,7 +237,7 @@ jobs:
         run: |
           NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
           python - <<EOF
-          import toml, pathlib
+          import toml, pathlib, re
           root = pathlib.Path(".")
           
           # pyproject.toml
@@ -249,10 +249,22 @@ jobs:
           # __init__.py
           initp = root / "spikee" / "__init__.py"
           initp.write_text('__version__ = "${NEXT_DEV}"\n')
+
+          # README.md
+          readme = root / "README.md"
+          if readme.exists():
+              txt = readme.read_text()
+              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
+                                   rf"\g<1>${NEXT_DEV}\3", txt, count=1)
+              if n:
+                  readme.write_text(new_txt)
+                  print("Updated README.md to next dev version.")
+              else:
+                  print("NOTE: README.md version pattern not found; left unchanged.")
           EOF
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml spikee/__init__.py
+          git add pyproject.toml spikee/__init__.py README.md
           git commit -m "chore: bump version to ${NEXT_DEV}"
           git push origin HEAD

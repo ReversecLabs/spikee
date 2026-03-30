@@ -79,7 +79,9 @@ class AdvancedTargetWrapper:
       backtrack (bool): Whether to backtrack the last turn - Multi-Turn.
     """
 
-    def __init__(self, target_module: Target, target_options="", max_retries=3, throttle=0):
+    def __init__(
+        self, target_module: Target, target_options="", max_retries=3, throttle=0
+    ):
         self.target_module: Target = target_module
         self.target_options: str = target_options
         self.max_retries: int = max_retries
@@ -163,12 +165,14 @@ class AdvancedTargetWrapper:
 
                     # Delegate to the wrapped process_input
                 if kwargs:
-                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = self.target_module.process_input(
-                        input_text, system_message, **kwargs
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
+                        self.target_module.process_input(
+                            input_text, system_message, **kwargs
+                        )
                     )
                 else:
-                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = self.target_module.process_input(
-                        input_text, system_message
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
+                        self.target_module.process_input(input_text, system_message)
                     )
 
                 # Unpack (response, meta) if tuple returned
@@ -232,9 +236,7 @@ def _build_target_name(target, target_options):
     """
 
     # Matches Invalid Windows Characters
-    regex_pattern = (
-        r'(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'
-    )
+    regex_pattern = r'(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'
 
     def replacer(match):
         if match.group(1) or match.group(2):  # If at start/end of string, just remove
@@ -303,7 +305,9 @@ def _apply_sampling(dataset, sample_percent, sample_seed):
 def _calculate_total_attempts(
     n_entries, attempts, attack_iters, attack_only, already_done, has_attack
 ):
-    per_item = attempts * ((attack_iters if has_attack else 0) + (0 if attack_only else 1))
+    per_item = attempts * (
+        (attack_iters if has_attack else 0) + (0 if attack_only else 1)
+    )
     return n_entries * per_item + already_done
 
 
@@ -604,7 +608,11 @@ def process_entry(
         if std_success:
             # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
             with global_lock:
-                attempts_bar.total = attempts_bar.total - (attempts - request_attempts) - (attack_iterations * attempts if attack_module else 0)
+                attempts_bar.total = (
+                    attempts_bar.total
+                    - (attempts - request_attempts)
+                    - (attack_iterations * attempts if attack_module else 0)
+                )
 
     else:
         std_success = False
@@ -660,7 +668,9 @@ def process_entry(
 
             if attack_success:
                 with global_lock:
-                    attempts_bar.total = attempts_bar.total - (attempts * attack_iterations - attack_attempts)
+                    attempts_bar.total = attempts_bar.total - (
+                        attempts * attack_iterations - attack_attempts
+                    )
 
             end_time = time.time()
             response_time = end_time - start_time
@@ -704,7 +714,6 @@ def process_entry(
 
             results_list.append(attack_result)
         except Exception as e:
-
             if attack_input is None:
                 attack_input_str = original_input
             elif isinstance(attack_input, dict):
@@ -775,7 +784,7 @@ def _run_threaded(
     total_dataset_size,
     initial_processed,
     initial_success,
-    initial_guardrail
+    initial_guardrail,
 ):
     lock = threading.Lock()
     bar_all = tqdm(
@@ -837,7 +846,9 @@ def _run_threaded(
                 bar_all.close()
                 bar_entries.close()
                 print(f"Import Error Entry ID {entry['id']}: {ie}")
-                print(f"Exiting early due to ImportError in attack module. Please import required dependencies and re-run.")
+                print(
+                    "Exiting early due to ImportError in attack module. Please import required dependencies and re-run."
+                )
                 exit(1)
 
             except Exception as e:
@@ -1014,7 +1025,7 @@ def test_dataset(args):
             len(dataset_json),
             len(completed_ids),
             success_count,
-            guardrail_count
+            guardrail_count,
         )
 
         print(f"[Done] Testing finished. Results saved to {output_file}")

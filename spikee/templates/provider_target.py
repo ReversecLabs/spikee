@@ -11,14 +11,16 @@ class ProviderTarget(Target):
         self,
         provider=None,
         default_model: Union[str, None] = None,
-        models: Union[dict, list, None] = None
+        models: Union[dict, list, None] = None,
     ):
         self._provider_name = provider
 
         self._default_model = default_model
         self._models = models
 
-        if self._provider_name is not None and (self._default_model is None or self._models is None):
+        if self._provider_name is not None and (
+            self._default_model is None or self._models is None
+        ):
             self.set_defaults()
 
     def set_defaults(self):
@@ -59,7 +61,9 @@ class ProviderTarget(Target):
         options = parse_options(target_options)
 
         if len(options) == 0 and target_options is not None and len(target_options) > 0:
-            print(f"Warning: target_options missing key 'model='. Attempting 'model={target_options}'")
+            print(
+                f"Warning: target_options missing key 'model='. Attempting 'model={target_options}'"
+            )
             options["model"] = target_options
 
         model_id = options.get("model", None)
@@ -73,9 +77,8 @@ class ProviderTarget(Target):
             temperature = float(temperature)
 
         if self._provider_name is None:
-
-            if model_id is not None and '/' in model_id:
-                self._provider_name, model = model_id.split('/', 1)
+            if model_id is not None and "/" in model_id:
+                self._provider_name, model = model_id.split("/", 1)
 
                 if model is None or model == "":
                     self.set_defaults()
@@ -101,7 +104,7 @@ class ProviderTarget(Target):
                     "ProviderTarget requires a 'model' option to specify which provider/model to use."
                 )
 
-        if '/' not in model_id:
+        if "/" not in model_id:
             model_id = f"{self._provider_name}/{model_id}"
 
         # Initialize provider client
@@ -121,8 +124,8 @@ class ProviderTarget(Target):
             print(f"Error during provider model completion ({model_id}): {e}")
             raise
 
-        if 'logprobs' in response.metadata and logprobs:
-            return response.content, response.metadata['logprobs']
+        if "logprobs" in response.metadata and logprobs:
+            return response.content, response.metadata["logprobs"]
 
         else:
             return response.content

@@ -1,10 +1,12 @@
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import upgrade_messages, agent_framework_message_translation, Message, AIMessage
+from spikee.utilities.llm_message import (
+    Message,
+    AIMessage,
+)
 
 from agent_framework.openai import OpenAIChatClient, OpenAIChatOptions
 from typing import List, Tuple, Dict, Union, Any
-import asyncio
 
 BASE_URL = "https://example.com/openai/v1"
 
@@ -18,11 +20,14 @@ class AnyLLMSampleProvider(Provider):
 
     @property
     def models(self) -> Dict[str, str]:
-        return {
-            "example1": "example1"
-        }
+        return {"example1": "example1"}
 
-    def setup(self, model: str, max_tokens: Union[int, None] = None, temperature: Union[float, None] = None):
+    def setup(
+        self,
+        model: str,
+        max_tokens: Union[int, None] = None,
+        temperature: Union[float, None] = None,
+    ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -31,9 +36,7 @@ class AnyLLMSampleProvider(Provider):
         self.model = self.models.get(self.model, self.model)
 
         self.llm = OpenAIChatClient(
-            model_id=self.model,
-            base_url=BASE_URL,
-            api_key="example API key"
+            model_id=self.model, base_url=BASE_URL, api_key="example API key"
         )
 
         options_kwargs: Dict[str, Any] = {}
@@ -48,7 +51,9 @@ class AnyLLMSampleProvider(Provider):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM], "Sample provider for OpenAI API based AnyLLM providers."
 
-    def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+    def invoke(
+        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+    ) -> AIMessage:
         """Return Mock Message"""
 
         # upgraded_messages = agent_framework_message_translation(upgrade_messages(messages))
@@ -57,4 +62,7 @@ class AnyLLMSampleProvider(Provider):
 
         # return AIMessage(content=response.messages[0].text, original_response=response)
 
-        return AIMessage(content="This is a sample response from the Sample Provider.", original_response={"mock": "response"})
+        return AIMessage(
+            content="This is a sample response from the Sample Provider.",
+            original_response={"mock": "response"},
+        )

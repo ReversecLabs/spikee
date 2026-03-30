@@ -36,7 +36,10 @@ class BestOfN(Plugin):
     DEFAULT_SAMPLES = 50
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.ATTACK_BASED], "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising."
+        return (
+            [ModuleTag.ATTACK_BASED],
+            "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

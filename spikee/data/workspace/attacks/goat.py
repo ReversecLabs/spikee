@@ -185,14 +185,18 @@ class GOAT(Attack):
         self.__refusals = []
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return ([ModuleTag.LLM, ModuleTag.MULTI],
-                "GOAT: Multi-turn adversarial attack using a toolbox of prompting techniques and dynamic reasoning to elicit policy-violating responses from LLMs. Based on Meta's Generative Offensive Agent Tester.")
+        return (
+            [ModuleTag.LLM, ModuleTag.MULTI],
+            "GOAT: Multi-turn adversarial attack using a toolbox of prompting techniques and dynamic reasoning to elicit policy-violating responses from LLMs. Based on Meta's Generative Offensive Agent Tester.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         return [], True
 
-    def _format_history_for_prompt(self, conversation: StandardisedConversation, last_message_id: int) -> str:
-        """ Format the conversation history into a string suitable for the GOAT prompt, showing roles and content.
+    def _format_history_for_prompt(
+        self, conversation: StandardisedConversation, last_message_id: int
+    ) -> str:
+        """Format the conversation history into a string suitable for the GOAT prompt, showing roles and content.
 
         Args:
             conversation (StandardisedConversation): The conversation object containing the messages.
@@ -211,11 +215,11 @@ class GOAT(Attack):
         for node_id in path:
             node = conversation.get_message_data(node_id)
 
-            if node['role'] == 'agent':
-                attacker = node['content']
+            if node["role"] == "agent":
+                attacker = node["content"]
 
-            elif node['role'] == 'assistant':
-                defender = node['content']
+            elif node["role"] == "assistant":
+                defender = node["content"]
 
             if attacker is not None and defender is not None:
                 turns.append({"agent": attacker, "target": defender})
@@ -239,8 +243,10 @@ class GOAT(Attack):
         # Build the GOAT prompt
         payload = {
             "objective": objective,
-            "chat_history": self._format_history_for_prompt(conversation, last_message_id),
-            "remaining_turns": remaining_turns
+            "chat_history": self._format_history_for_prompt(
+                conversation, last_message_id
+            ),
+            "remaining_turns": remaining_turns,
         }
 
         if backtrack:
@@ -258,7 +264,7 @@ class GOAT(Attack):
 
         messages = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": json.dumps(payload)}
+            {"role": "user", "content": json.dumps(payload)},
         ]
 
         # Generate the next question
@@ -278,20 +284,30 @@ class GOAT(Attack):
                 last_response = response
                 continue
 
-            if all(key in result for key in ["observation", "thought", "strategy", "next_question"]) and (APPLICATION_GUARDRAILS is None or "guardrail_bypass_strategy" in result):
+            if all(
+                key in result
+                for key in ["observation", "thought", "strategy", "next_question"]
+            ) and (
+                APPLICATION_GUARDRAILS is None or "guardrail_bypass_strategy" in result
+            ):
                 return result
 
         refuse, explanation = self.evaluate_refusal(llm, str(messages), last_response)
         if refuse:
             raise RuntimeError(f"Attacker LLM refused to answer: {explanation}")
         else:
-            raise RuntimeError(f"LLM failed to produce all required fields: {last_error}")
+            raise RuntimeError(
+                f"LLM failed to produce all required fields: {last_error}"
+            )
 
     def evaluate_refusal(self, llm, question: str, response: str) -> Tuple[bool, str]:
         """Evaluate if the LLM's response is a refusal using an LLM-based prompt."""
         messages = [
             {"role": "system", "content": GOAT_REFUSAL_EVAL_PROMPT},
-            {"role": "user", "content": json.dumps({"question": question, "response": response})},
+            {
+                "role": "user",
+                "content": json.dumps({"question": question, "response": response}),
+            },
         ]
 
         res = llm.invoke(messages).content
@@ -328,9 +344,7 @@ class GOAT(Attack):
         spikee_session_id = str(uuid.uuid4())
 
         # Conversation Configuration
-        conversation = StandardisedConversation({
-            "objective": objective
-        })
+        conversation = StandardisedConversation({"objective": objective})
         last_message_id = conversation.get_root_id()
         last_response = ""
         backtrack = False
@@ -341,51 +355,55 @@ class GOAT(Attack):
                 prompt_message_id = last_message_id
 
                 # Generate next attacker question and reasoning
-                question = self._generate_question(llm, objective, conversation, last_message_id, max_iterations - turn, backtrack)
+                question = self._generate_question(
+                    llm,
+                    objective,
+                    conversation,
+                    last_message_id,
+                    max_iterations - turn,
+                    backtrack,
+                )
 
                 message = {
                     "role": "agent",
                     "observation": question["observation"],
                     "thought": question["thought"],
                     "strategy": question["strategy"],
-                    "content": question["next_question"]
+                    "content": question["next_question"],
                 }
 
                 if "guardrail_bypass_strategy" in question:
-                    message["guardrail_bypass_strategy"] = question["guardrail_bypass_strategy"]
+                    message["guardrail_bypass_strategy"] = question[
+                        "guardrail_bypass_strategy"
+                    ]
 
                 last_message_id = conversation.add_message(
-                    last_message_id,
-                    message,
-                    attempt=True
+                    last_message_id, message, attempt=True
                 )
 
                 # Query the target model and add response
                 response = target_module.process_input(
                     question["next_question"],
                     spikee_session_id=spikee_session_id,
-                    backtrack=backtrack
+                    backtrack=backtrack,
                 )
-                last_response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                last_response = str(
+                    response[0] if isinstance(response, (tuple, list)) else response
+                )
 
                 backtrack = False
                 last_message_id = conversation.add_message(
-                    last_message_id,
-                    {
-                        "role": "assistant",
-                        "content": last_response
-                    }
+                    last_message_id, {"role": "assistant", "content": last_response}
                 )
 
                 # Refusal
-                refusal, refusal_explanation = self.evaluate_refusal(llm, question["next_question"], last_response)
+                refusal, refusal_explanation = self.evaluate_refusal(
+                    llm, question["next_question"], last_response
+                )
                 if refusal:
                     conversation.add_message(
                         last_message_id,
-                        {
-                            "role": "agent",
-                            "eval_refusal": refusal_explanation
-                        }
+                        {"role": "agent", "eval_refusal": refusal_explanation},
                     )
 
                     backtrack = True
@@ -393,7 +411,7 @@ class GOAT(Attack):
 
                     payload: Dict[str, Any] = {
                         "question": question["next_question"],
-                        "response": last_response
+                        "response": last_response,
                     }
 
                     if APPLICATION_GUARDRAILS is not None:
@@ -412,7 +430,7 @@ class GOAT(Attack):
                             conversation=conversation,
                             objective=objective,
                         ),
-                        last_response
+                        last_response,
                     )
 
                 # Update progress bar
@@ -424,6 +442,7 @@ class GOAT(Attack):
                         attempts_bar.update(1)
         except Exception as e:
             import traceback
+
             traceback.print_exc()
 
             print(f"[GOAT] Attack failed with error: {e}")
@@ -438,5 +457,5 @@ class GOAT(Attack):
                 conversation=conversation,
                 objective=objective,
             ),
-            last_response
+            last_response,
         )

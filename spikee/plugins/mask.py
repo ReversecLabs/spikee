@@ -1,7 +1,7 @@
 """
 Mask Plugin
 
-This is used to mask high-risk words in prompts. 
+This is used to mask high-risk words in prompts.
 
 For Example:
 
@@ -61,10 +61,7 @@ class Shortener(Plugin):
         return "[" + "".join(random.choices(string.ascii_letters, k=3)).upper() + "]"
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
@@ -74,14 +71,15 @@ class Shortener(Plugin):
 
         llm = get_llm(llm_model, temperature=1, max_tokens=1000)
 
-
         # Detect high-risk words
         payload = {"prompt": text}
 
-        response = llm.invoke([
-            SystemMessage(content=MASK_PROMPT),
-            HumanMessage(content=json.dumps(payload))
-        ]).content
+        response = llm.invoke(
+            [
+                SystemMessage(content=MASK_PROMPT),
+                HumanMessage(content=json.dumps(payload)),
+            ]
+        ).content
 
         risk_words = {}
         suffix = ""
@@ -91,13 +89,19 @@ class Shortener(Plugin):
 
             for word in response.get("risk_words", []):
                 if word in text:
-
                     if advanced:
-                        num_masks = len(word) // advanced_split + 1  # Create more masks for longer words
+                        num_masks = (
+                            len(word) // advanced_split + 1
+                        )  # Create more masks for longer words
 
                         masks = [self.generate_mask() for _ in range(num_masks)]
                         chunk_size = len(word) // num_masks
-                        chunks = [word[i*chunk_size:(i+1)*chunk_size] if i < num_masks - 1 else word[i*chunk_size:] for i in range(num_masks)]
+                        chunks = [
+                            word[i * chunk_size : (i + 1) * chunk_size]
+                            if i < num_masks - 1
+                            else word[i * chunk_size :]
+                            for i in range(num_masks)
+                        ]
 
                         for mask, chunk in zip(masks, chunks):
                             suffix += f"{mask}={chunk} "
@@ -111,7 +115,9 @@ class Shortener(Plugin):
                     text = text.replace(word, risk_words[word])
 
                 else:
-                    suffix += f" (Detected risk word '{word}' not found in original text.)"
+                    suffix += (
+                        f" (Detected risk word '{word}' not found in original text.)"
+                    )
 
         except Exception:
             raise RuntimeError("[Mask] Failed to extract risk words from LLM response.")

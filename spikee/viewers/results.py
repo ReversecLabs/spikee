@@ -40,7 +40,9 @@ class ResultsViewer(Viewer):
         self.truncate_length = None if args.truncate == 0 else args.truncate
 
         # Initial results data
-        self.selected_files = "combined"  # Current result data source ("combined" or specific resource)
+        self.selected_files = (
+            "combined"  # Current result data source ("combined" or specific resource)
+        )
         self.loaded = {}  # Loaded result data
         self.results_processor = None  # Loaded result processor output
 
@@ -52,12 +54,14 @@ class ResultsViewer(Viewer):
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         return [], False
 
-# region Results Processing
+    # region Results Processing
 
     def refresh_result_files(self) -> None:
         """Process the initial results files/folders and update the list of results files."""
         results_files = process_jsonl_input_files(
-            self._initial_results_files[0], self._initial_results_files[1], ["results", "rejudge", "extract"]
+            self._initial_results_files[0],
+            self._initial_results_files[1],
+            ["results", "rejudge", "extract"],
         )
 
         if len(results_files) == 0:
@@ -80,7 +84,9 @@ class ResultsViewer(Viewer):
 
         self.app.jinja_env.globals["result_files"] = resource_names
 
-    def refresh_result_data(self, result_files: Dict[str, str]) -> Tuple[Dict[str, Any], ResultProcessor]:
+    def refresh_result_data(
+        self, result_files: Dict[str, str]
+    ) -> Tuple[Dict[str, Any], ResultProcessor]:
         """Load and process result files, returning combined results and processed output."""
 
         results = {}
@@ -127,11 +133,15 @@ class ResultsViewer(Viewer):
 
         if resource == "combined":
             self.selected_files = "combined"
-            self.loaded, self.results_processor = self.refresh_result_data(result_files=self.loaded_files)
+            self.loaded, self.results_processor = self.refresh_result_data(
+                result_files=self.loaded_files
+            )
 
         elif resource in self.loaded_files:
             self.selected_files = resource
-            self.loaded, self.results_processor = self.refresh_result_data(result_files={resource: self.loaded_files[resource]})
+            self.loaded, self.results_processor = self.refresh_result_data(
+                result_files={resource: self.loaded_files[resource]}
+            )
 
         else:
             return False
@@ -142,12 +152,13 @@ class ResultsViewer(Viewer):
 
         return True
 
-# endregion
+    # endregion
 
-# region Formatting Helpers
+    # region Formatting Helpers
 
     def highlight_resource_headings(self, result_output: str):
         """Highlight headings in the resource processor outputs by wrapping them in <mark> and <strong> tags."""
+
         def repl(match):
             heading = match.group(1)
             return f"<mark><strong>=== {heading} ===</strong></mark>"
@@ -156,7 +167,7 @@ class ResultsViewer(Viewer):
 
     def truncate(self, text: str) -> str:
         if self.truncate_length is not None and len(text) > self.truncate_length:
-            return text[:self.truncate_length] + "...[Truncated]"
+            return text[: self.truncate_length] + "...[Truncated]"
         return text
 
     def process_text(self, text: Union[str, None], truncated: bool = False) -> str:
@@ -170,7 +181,9 @@ class ResultsViewer(Viewer):
 
         return text
 
-    def process_standardised_conversation(self, conversation_data: str, truncated: bool = False) -> str:
+    def process_standardised_conversation(
+        self, conversation_data: str, truncated: bool = False
+    ) -> str:
         """Process a standardised conversation for display."""
         try:
             conversation = StandardisedConversation()
@@ -209,9 +222,7 @@ class ResultsViewer(Viewer):
                 return render_message(message_id, message)
 
             else:
-                children = [
-                    render_node(child_id) for child_id in message["children"]
-                ]
+                children = [render_node(child_id) for child_id in message["children"]]
 
                 return f"""{render_message(message_id, message)}<ol class="ps-3 mt-2">{"".join(children)}</ol>"""
 
@@ -240,14 +251,14 @@ class ResultsViewer(Viewer):
         r, g, b = clamp(r), clamp(g), clamp(b)
         return f"#{r:02x}{g:02x}{b:02x}"
 
-# endregion
+    # endregion
 
     @property
     def context_processor(self):
         return dict(
             process_text=self.process_text,
             process_standardised_conversation=self.process_standardised_conversation,
-            text_to_colour=self.text_to_colour
+            text_to_colour=self.text_to_colour,
         )
 
     def setup_before_request(self):
@@ -290,7 +301,10 @@ class ResultsViewer(Viewer):
                 case "file_refresh":
                     self.refresh_result_files()
 
-                    if self.selected_files in list(self.loaded_files.keys()) or self.selected_files == "combined":
+                    if (
+                        self.selected_files in list(self.loaded_files.keys())
+                        or self.selected_files == "combined"
+                    ):
                         self.update_result_data(resource=self.selected_files)
 
                     else:
@@ -302,7 +316,7 @@ class ResultsViewer(Viewer):
             if return_url:
                 return redirect(return_url)
             else:
-                return redirect(f"/")
+                return redirect("/")
 
         @self.app.route("/file/", methods=["GET"])
         def entries():
@@ -368,7 +382,9 @@ class ResultsViewer(Viewer):
 
                             case "rejudge":
                                 # Rejudge individual entry
-                                item["success"] = call_judge(item, item.get("response", ""))
+                                item["success"] = call_judge(
+                                    item, item.get("response", "")
+                                )
 
                         break
 

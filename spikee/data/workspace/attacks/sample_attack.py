@@ -125,7 +125,9 @@ class SampleAttack(Attack):
                     candidate_text, entry.get("system_message", None)
                 )
                 # Handle different return types from process_input
-                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                response = str(
+                    response[0] if isinstance(response, (tuple, list)) else response
+                )
 
                 last_response = response
                 # Determine if this candidate is successful using the provided call_judge() function.

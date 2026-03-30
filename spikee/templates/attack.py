@@ -17,7 +17,7 @@ class Attack(Module, ABC):
     def standardised_input_return(
         input: str,
         conversation: StandardisedConversation = None,
-        objective: Union[str, None] = None
+        objective: Union[str, None] = None,
     ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
         standardised_return = {"input": str(input)}

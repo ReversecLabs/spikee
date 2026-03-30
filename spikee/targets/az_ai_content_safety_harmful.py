@@ -20,10 +20,15 @@ class AzureAIContentSafetyHarmfulTarget(Target):
                 "Azure Content Safety credentials not found in environment variables. "
                 "Please set AZURE_AI_CONTENT_SAFETY_KEY and AZURE_AI_CONTENT_SAFETY_ENDPOINT."
             )
-        self.client = ContentSafetyClient(self.endpoint, AzureKeyCredential(self.api_key))
+        self.client = ContentSafetyClient(
+            self.endpoint, AzureKeyCredential(self.api_key)
+        )
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Guardrail Target for Azure AI Content Safety, testing harmful content detection. (Requires library 'azure-ai-content-safety')"
+        return (
+            [ModuleTag.LLM],
+            "Guardrail Target for Azure AI Content Safety, testing harmful content detection. (Requires library 'azure-ai-content-safety')",
+        )
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""
@@ -74,7 +79,9 @@ class AzureAIContentSafetyHarmfulTarget(Target):
             raise RuntimeError(error_message)
 
         except Exception as e:
-            raise RuntimeError(f"Unexpected error calling Azure Content Safety API: {str(e)}")
+            raise RuntimeError(
+                f"Unexpected error calling Azure Content Safety API: {str(e)}"
+            )
 
 
 if __name__ == "__main__":

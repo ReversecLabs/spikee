@@ -80,7 +80,10 @@ class LLMMultiLanguageJailbreaker(Attack):
     DEFAULT_MODEL = "openai/gpt-4o"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates jailbreak attack prompts using an LLM and multi language techniques."
+        return (
+            [ModuleTag.LLM, ModuleTag.SINGLE],
+            "Generates jailbreak attack prompts using an LLM and multi language techniques.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -102,14 +105,16 @@ class LLMMultiLanguageJailbreaker(Attack):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = HumanMessage(SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace(
-            "{{objective}}", objective
-        ).replace(
-            "{{previous_attempts}}",
-            prev_attempts_str
-            if prev_attempts_formatted
-            else "No previous attempts yet.",
-        ))
+        prompt = HumanMessage(
+            SPIKEE_MULTI_LANGUAGE_JAILBREAKER_PROMPT.replace(
+                "{{objective}}", objective
+            ).replace(
+                "{{previous_attempts}}",
+                prev_attempts_str
+                if prev_attempts_formatted
+                else "No previous attempts yet.",
+            )
+        )
 
         # call the model via .invoke
         response = llm.invoke([prompt]).content.strip()

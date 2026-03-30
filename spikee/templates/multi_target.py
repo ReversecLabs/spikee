@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from re import A
 from typing import List, Optional, Dict, Any, Tuple, Union
 
 from .target import Target

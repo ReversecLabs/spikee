@@ -1,6 +1,6 @@
 """
 RAG Poisoner plugin for spikee.
-This plugin is based on the RAG Poisoner attack, and injects fake RAG context that 
+This plugin is based on the RAG Poisoner attack, and injects fake RAG context that
 appears to be legitimate document snippets supporting the attack objective.
 
 Usage:
@@ -23,7 +23,10 @@ class RAGPoisoner(Plugin):
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.ATTACK_BASED], "Generates RAG Poisoner attack prompts using an LLM."
+        return [
+            ModuleTag.LLM,
+            ModuleTag.ATTACK_BASED,
+        ], "Generates RAG Poisoner attack prompts using an LLM."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -50,12 +53,14 @@ class RAGPoisoner(Plugin):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = HumanMessage(SPIKEE_RAG_POISONER_PROMPT.replace("{{objective}}", objective).replace(
-            "{{previous_attempts}}",
-            prev_attempts_str
-            if prev_attempts_formatted
-            else "No previous attempts yet.",
-        ))
+        prompt = HumanMessage(
+            SPIKEE_RAG_POISONER_PROMPT.replace("{{objective}}", objective).replace(
+                "{{previous_attempts}}",
+                prev_attempts_str
+                if prev_attempts_formatted
+                else "No previous attempts yet.",
+            )
+        )
         res_text = llm.invoke([prompt]).content.strip()
 
         obj = extract_json_or_fail(res_text)
@@ -65,10 +70,7 @@ class RAGPoisoner(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
@@ -81,11 +83,9 @@ class RAGPoisoner(Plugin):
 
         for i in range(1, variants + 1):
             try:
-                attack_prompts.append(self._generate_rag_attack(
-                    llm,
-                    text,
-                    previous_attempts
-                ))
+                attack_prompts.append(
+                    self._generate_rag_attack(llm, text, previous_attempts)
+                )
             except Exception as e:
                 print(f"[RAGPoisoner] Error generating prompt {i}: {str(e)}")
 

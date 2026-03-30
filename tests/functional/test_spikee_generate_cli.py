@@ -620,9 +620,7 @@ def test_generate_with_piped_plugins(run_spikee, workspace_dir):
         payload = entry["payload"]
         # Strip the suffix added by test_repeat before checking uppercasing
         core = payload.removesuffix("-repeat")
-        assert core == core.upper(), (
-            f"Expected uppercased core payload, got: {core}"
-        )
+        assert core == core.upper(), f"Expected uppercased core payload, got: {core}"
 
     # Check that we get both variants: one without suffix and one with "-repeat"
     with_suffix = [

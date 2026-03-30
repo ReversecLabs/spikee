@@ -8,8 +8,8 @@ Usage:
     spikee generate --plugins opus_translator --plugin-options "opus_translator:source=en,targets=zh"
     spikee generate --plugins opus_translator --plugin-options "opus_translator:source=en,targets=es+fr+de" # Multiple targets
     spikee generate --plugins opus_translator --plugin-options "opus_translator:targets=en:fr|fr:de|de:es" # Language chains
-    
-    
+
+
 Options:
     source: Source language code (default: "en")
     targets: Target language(s) in formats:
@@ -46,19 +46,57 @@ from spikee.utilities.modules import parse_options
 class OpusTranslator(Plugin):
     # Common language codes (not exhaustive—OPUS-MT supports 500+)
     SUPPORTED_LANGUAGES = {
-        "ta": "Tamil", "te": "Telugu", "my": "Burmese", "am": "Amharic", "sw": "Swahili",
-        "ny": "Chichewa", "gn": "Guarani", "pap": "Papiamento", "eo": "Esperanto",
-        "mk": "Macedonian", "sq": "Albanian", "mt": "Maltese", "ka": "Georgian",
-        "hy": "Armenian", "tl": "Tagalog", "fi": "Finnish", "hu": "Hungarian",
-        "ro": "Romanian", "cs": "Czech", "sk": "Slovak", "uk": "Ukrainian",
-        "bg": "Bulgarian", "el": "Greek", "th": "Thai", "vi": "Vietnamese",
-        "id": "Indonesian", "fil": "Filipino", "bn": "Bengali", "hi": "Hindi",
-        "gu": "Gujarati", "pa": "Punjabi", "kn": "Kannada", "ml": "Malayalam",
-        "or": "Oriya", "si": "Sinhala", "ne": "Nepali", "ur": "Urdu",
-        "en": "English", "es": "Spanish", "fr": "French", "de": "German",
-        "pt": "Portuguese", "it": "Italian", "nl": "Dutch", "pl": "Polish",
-        "tr": "Turkish", "ar": "Arabic", "zh": "Chinese", "ja": "Japanese",
-        "ko": "Korean", "ru": "Russian",
+        "ta": "Tamil",
+        "te": "Telugu",
+        "my": "Burmese",
+        "am": "Amharic",
+        "sw": "Swahili",
+        "ny": "Chichewa",
+        "gn": "Guarani",
+        "pap": "Papiamento",
+        "eo": "Esperanto",
+        "mk": "Macedonian",
+        "sq": "Albanian",
+        "mt": "Maltese",
+        "ka": "Georgian",
+        "hy": "Armenian",
+        "tl": "Tagalog",
+        "fi": "Finnish",
+        "hu": "Hungarian",
+        "ro": "Romanian",
+        "cs": "Czech",
+        "sk": "Slovak",
+        "uk": "Ukrainian",
+        "bg": "Bulgarian",
+        "el": "Greek",
+        "th": "Thai",
+        "vi": "Vietnamese",
+        "id": "Indonesian",
+        "fil": "Filipino",
+        "bn": "Bengali",
+        "hi": "Hindi",
+        "gu": "Gujarati",
+        "pa": "Punjabi",
+        "kn": "Kannada",
+        "ml": "Malayalam",
+        "or": "Oriya",
+        "si": "Sinhala",
+        "ne": "Nepali",
+        "ur": "Urdu",
+        "en": "English",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "pt": "Portuguese",
+        "it": "Italian",
+        "nl": "Dutch",
+        "pl": "Polish",
+        "tr": "Turkish",
+        "ar": "Arabic",
+        "zh": "Chinese",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "ru": "Russian",
     }
 
     def __init__(self):
@@ -73,7 +111,10 @@ class OpusTranslator(Plugin):
             self.device = "cpu"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.ML], "Translates text to any language(s) using local OPUS-MT models. (Requires: `pip install \"spikee[local-inference]\"`)"
+        return (
+            [ModuleTag.ML],
+            'Translates text to any language(s) using local OPUS-MT models. (Requires: `pip install "spikee[local-inference]"`)',
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported options; Tuple[options (default is first), llm_required]"""
@@ -84,10 +125,16 @@ class OpusTranslator(Plugin):
             "targets=en:fr|fr:de|de:es",
             "quality=4",
             "device=cuda",
-            "cache_dir=<path>"
+            "cache_dir=<path>",
         ], False
 
-    def _load_translator(self, src_lang: str, tgt_lang: str, cache_dir: Optional[str] = None, device: Optional[str] = None):
+    def _load_translator(
+        self,
+        src_lang: str,
+        tgt_lang: str,
+        cache_dir: Optional[str] = None,
+        device: Optional[str] = None,
+    ):
         """Load and cache translator model. Reuses cached models on subsequent calls.
 
         Args:
@@ -103,14 +150,8 @@ class OpusTranslator(Plugin):
         target_device = device or self.device
 
         try:
-            tokenizer = MarianTokenizer.from_pretrained(
-                model_name,
-                cache_dir=cache_dir
-            )
-            model = MarianMTModel.from_pretrained(
-                model_name,
-                cache_dir=cache_dir
-            )
+            tokenizer = MarianTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+            model = MarianMTModel.from_pretrained(model_name, cache_dir=cache_dir)
             # Move model to device (GPU or CPU)
             model = model.to(target_device)
             # Store in cache for reuse
@@ -121,7 +162,15 @@ class OpusTranslator(Plugin):
                 f"[OpusTranslator] Failed to load model '{model_name}': {str(e)}"
             )
 
-    def _translate(self, text: str, src_lang: str, tgt_lang: str, cache_dir: Optional[str] = None, num_beams: int = 1, device: Optional[str] = None) -> str:
+    def _translate(
+        self,
+        text: str,
+        src_lang: str,
+        tgt_lang: str,
+        cache_dir: Optional[str] = None,
+        num_beams: int = 1,
+        device: Optional[str] = None,
+    ) -> str:
         """Translate text from src_lang to tgt_lang with optional beam search.
 
         Args:
@@ -129,7 +178,9 @@ class OpusTranslator(Plugin):
             device: Device to use ('cuda' or 'cpu'). Defaults to auto-detected.
         """
         try:
-            tokenizer, model, target_device = self._load_translator(src_lang, tgt_lang, cache_dir, device)
+            tokenizer, model, target_device = self._load_translator(
+                src_lang, tgt_lang, cache_dir, device
+            )
         except RuntimeError as e:
             raise e
 
@@ -144,10 +195,7 @@ class OpusTranslator(Plugin):
             )
 
     def transform(
-        self,
-        text: str,
-        exclude_patterns: List[str] = [],
-        plugin_option: str = ""
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
     ) -> Union[str, List[str]]:
         """
         Translates input text to target language(s).
@@ -190,10 +238,14 @@ class OpusTranslator(Plugin):
                     for i in range(len(chain) - 1):
                         src = chain[i]
                         tgt = chain[i + 1]
-                        result = self._translate(result, src, tgt, cache_dir, num_beams, device)
+                        result = self._translate(
+                            result, src, tgt, cache_dir, num_beams, device
+                        )
                 else:
                     # Simple translation
-                    result = self._translate(text, source_lang, target_spec, cache_dir, num_beams, device)
+                    result = self._translate(
+                        text, source_lang, target_spec, cache_dir, num_beams, device
+                    )
 
                 translations.append(result)
             except RuntimeError:
@@ -206,12 +258,13 @@ class OpusTranslator(Plugin):
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
     plugin = OpusTranslator()
 
     for i in range(25):
         text = plugin.transform(
             "Hi my name is Spikee, I'm a helpful prompt injection assistant.",
-            plugin_option="source=en,targets=zh+ny,cache_dir=./opus_cache"
+            plugin_option="source=en,targets=zh+ny,cache_dir=./opus_cache",
         )
-        print(f"{i+1}/100 - {text}")
+        print(f"{i + 1}/100 - {text}")

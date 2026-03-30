@@ -19,7 +19,10 @@ class AzurePromptShieldsDocumentAnalysisTarget(Target):
         self.api_version = "2024-02-15-preview"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Guardrail Target for Azure Prompt Shields Document Analysis, testing document analysis for harmful content."
+        return (
+            [ModuleTag.LLM],
+            "Guardrail Target for Azure Prompt Shields Document Analysis, testing document analysis for harmful content.",
+        )
 
     def get_available_option_values(self) -> List[str]:
         """No configurable options for this target."""
@@ -61,14 +64,18 @@ class AzurePromptShieldsDocumentAnalysisTarget(Target):
                 result = response.json()
                 document_analysis = result.get("documentsAnalysis", [{}])[0]
                 attack_detected = document_analysis.get("attackDetected", False)
-                return not attack_detected  # True if not detected (bypassed), False if detected (blocked)
+                return (
+                    not attack_detected
+                )  # True if not detected (bypassed), False if detected (blocked)
 
             else:
                 error_message = f"Error {response.status_code}: {response.text}"
                 raise RuntimeError(error_message)
 
         except Exception as e:
-            raise RuntimeError(f"Unexpected error calling Azure Prompt Shields Document Analysis API: {str(e)}")
+            raise RuntimeError(
+                f"Unexpected error calling Azure Prompt Shields Document Analysis API: {str(e)}"
+            )
 
 
 if __name__ == "__main__":

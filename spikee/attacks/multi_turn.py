@@ -14,7 +14,9 @@ class MultiTurnAttack(Attack):
         super().__init__(turn_type=Turn.MULTI)
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.MULTI], "Performs a manual multi-turn attack by sending a defined series of messages"
+        return [
+            ModuleTag.MULTI
+        ], "Performs a manual multi-turn attack by sending a defined series of messages"
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -54,7 +56,9 @@ class MultiTurnAttack(Attack):
                     system_message=system_message,
                     spikee_session_id=session_id,
                 )
-                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                response = str(
+                    response[0] if isinstance(response, (tuple, list)) else response
+                )
 
                 conversation.append({"role": "assistant", "content": response})
 

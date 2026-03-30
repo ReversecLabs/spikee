@@ -91,7 +91,10 @@ class RAGPoisoner(Attack):
     DEFAULT_MODEL = "openai/gpt-4o"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates RAG Poisoner attack prompts using an LLM."
+        return [
+            ModuleTag.LLM,
+            ModuleTag.SINGLE,
+        ], "Generates RAG Poisoner attack prompts using an LLM."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -113,12 +116,14 @@ class RAGPoisoner(Attack):
 
         prev_attempts_str = "\\n\\n".join(prev_attempts_formatted)
 
-        prompt = HumanMessage(SPIKEE_RAG_POISONER_PROMPT.replace("{{objective}}", objective).replace(
-            "{{previous_attempts}}",
-            prev_attempts_str
-            if prev_attempts_formatted
-            else "No previous attempts yet.",
-        ))
+        prompt = HumanMessage(
+            SPIKEE_RAG_POISONER_PROMPT.replace("{{objective}}", objective).replace(
+                "{{previous_attempts}}",
+                prev_attempts_str
+                if prev_attempts_formatted
+                else "No previous attempts yet.",
+            )
+        )
         res_text = llm.invoke([prompt]).content.strip()
 
         obj = extract_json_or_fail(res_text)

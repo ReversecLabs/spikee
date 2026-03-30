@@ -2,7 +2,7 @@ from spikee.utilities.modules import load_module_from_path
 from spikee.templates.provider import Provider
 from spikee.list import list_modules
 
-from typing import Dict, List, Any, Union
+from typing import List, Union
 
 
 def get_supported_providers() -> List[str]:
@@ -20,7 +20,12 @@ def validate_llm_provider(option: str) -> bool:
         return False
 
 
-def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: float = 0, **additional_kwargs) -> Union[Provider, None]:
+def get_llm(
+    options: str = "",
+    max_tokens: Union[int, None] = 8,
+    temperature: float = 0,
+    **additional_kwargs,
+) -> Union[Provider, None]:
     """
     Returns an Provider.
 
@@ -32,7 +37,7 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
 
     # Strip "model=" prefix if present
     if options.startswith("model="):
-        options = options[len("model="):]
+        options = options[len("model=") :]
 
     if options.startswith("offline"):  # Offline mode, no LLM provider
         return None
@@ -46,9 +51,14 @@ def get_llm(options: str = "", max_tokens: Union[int, None] = 8, temperature: fl
         )
 
     provider = load_module_from_path(provider_name, "providers")
-    
+
     if model_name == "":
         model_name = provider.default_model
 
-    provider.setup(model=model_name, max_tokens=max_tokens, temperature=temperature, **additional_kwargs)
+    provider.setup(
+        model=model_name,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        **additional_kwargs,
+    )
     return provider

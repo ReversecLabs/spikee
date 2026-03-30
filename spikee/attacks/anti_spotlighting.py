@@ -37,7 +37,10 @@ from spikee.utilities.enums import ModuleTag
 
 class AntiSpotlightingAttack(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.SINGLE], "Attempts to bypass spotlighting delimiters using various wrapping techniques."
+        return (
+            [ModuleTag.SINGLE],
+            "Attempts to bypass spotlighting delimiters using various wrapping techniques.",
+        )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -96,7 +99,9 @@ class AntiSpotlightingAttack(Attack):
                 response, _ = target_module.process_input(
                     candidate_text, system_message
                 )
-                response = str(response[0] if isinstance(response, (tuple, list)) else response)
+                response = str(
+                    response[0] if isinstance(response, (tuple, list)) else response
+                )
 
                 last_response = response
                 success = call_judge(entry, response)

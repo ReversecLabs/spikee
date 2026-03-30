@@ -20,11 +20,9 @@ class AnyLLMGoogleProvider(AnyLLMCustomProvider):
             "gemini-3.1-flash": "gemini-3.1-flash",
             "gemini-3-pro": "gemini-3-pro",
             "gemini-3-flash": "gemini-3-flash",
-
             # Gemini 2.5
             "gemini-2.5-pro": "gemini-2.5-pro",
             "gemini-2.5-flash": "gemini-2.5-flash",
-
             # Gemini Older
             "gemini-2.0-flash": "gemini-2.0-flash",
             "gemini-1.5-pro": "gemini-1.5-pro",
