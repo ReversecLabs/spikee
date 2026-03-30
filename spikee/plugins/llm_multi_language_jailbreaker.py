@@ -5,7 +5,7 @@ using different languages, focusing on low-resource languages that may bypass sa
 the target system.
 
 Usage:
-  spikee test --plugins llm_multi_language_jailbreaker --plugin-options "llm_multi_language_jailbreaker:model=openai-gpt-4o,variants=5"
+  spikee test --plugins llm_multi_language_jailbreaker --plugin-options "llm_multi_language_jailbreaker:model=openai/gpt-4o,variants=5"
 """
 import random
 from spikee.templates.plugin import Plugin
@@ -77,7 +77,7 @@ LANGS = ["Chinese (zh-ch)", "Bengali (bn)", "Swahili (sw)", "Javanese (jv)", "Am
 
 
 class LLMMultiLanguageJailbreaker(Plugin):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:

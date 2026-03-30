@@ -131,10 +131,10 @@ The following list provides an overview of each build-in plugin, further informa
 | `best_of_n` | Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
 | `prompt_decomposition` | Attack-Based | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
 | `shortener` | LLM | Uses an LLM to shorten the text to a specified maximum length while retaining key details. | `max_length` (the maximum length for the shortened text, default: 256) |
-| `llm_jailbreaker` | LLM | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `llm_multi_language_jailbreaker` | LLM | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `llm_poetry_jailbreaker` | LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks, default: `model=openai-gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `llm_jailbreaker` | LLM | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `llm_multi_language_jailbreaker` | LLM | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `llm_poetry_jailbreaker` | LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
 
 **Usage Example**
 ```bash
@@ -156,7 +156,7 @@ You can customize the behavior of attacks using the following command-line optio
 | `best_of_n` | Standard | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | N/A |
 | `prompt_decomposition` | Standard | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
 | `random_suffix_attack` | Standard | Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters. | N/A |
-| `llm_jailbreaker` | LLM-Driven | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, e.g., `model=openai-gpt-4o`) |
+| `llm_jailbreaker` | LLM-Driven | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, e.g., `model=openai/gpt-4o`) |
 | `llm_multi_language_jailbreaker` | LLM-Driven | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks) |
 | `llm_poetry_jailbreaker` | LLM-Driven | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
 | `rag_poisoner` | LLM-Driven | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |

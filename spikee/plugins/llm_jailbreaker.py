@@ -5,7 +5,7 @@ using different techniques to bypass the target system's safety mechanisms and g
 to harmful or restricted questions.
 
 Usage:
-  spikee test --plugins llm_jailbreaker--plugin-options "llm_jailbreaker:model=openai-gpt-4o,variants=5"
+  spikee test --plugins llm_jailbreaker--plugin-options "llm_jailbreaker:model=openai/gpt-4o,variants=5"
 """
 from typing import Dict, List, Tuple, Union
 
@@ -19,7 +19,7 @@ from spikee.attacks.llm_jailbreaker import SPIKEE_LLM_JAILBREAKER_PROMPT
 
 
 class LLMJailbreaker(Plugin):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:

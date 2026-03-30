@@ -4,7 +4,7 @@ This attack generates jailbreak attempts using different languages, focusing on 
 languages that may bypass safety filters in the target system.
 Usage:
   spikee test --attack llm_multi_language_jailbreaker --attack-iterations 5
-  spikee test --attack llm_multi_language_jailbreaker --attack-iterations 10 --attack-options "model=openai-gpt-4o"
+  spikee test --attack llm_multi_language_jailbreaker --attack-iterations 10 --attack-options "model=openai/gpt-4o"
 Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
@@ -77,7 +77,7 @@ Format your response in JSON:
 
 
 class LLMMultiLanguageJailbreaker(Attack):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates jailbreak attack prompts using an LLM and multi language techniques."

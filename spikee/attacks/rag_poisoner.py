@@ -5,7 +5,7 @@ supporting the attack objective.
 
 Usage:
   spikee test --attack rag_poisoner --attack-iterations 5
-  spikee test --attack rag_poisoner --attack-iterations 10 --attack-options "model=openai-gpt-4o"
+  spikee test --attack rag_poisoner --attack-iterations 10 --attack-options "model=openai/gpt-4o"
 
 Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
@@ -88,7 +88,7 @@ Ensure the entire attack_prompt is less than 500 characters, this is a limitatio
 
 
 class RAGPoisoner(Attack):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.LLM, ModuleTag.SINGLE], "Generates RAG Poisoner attack prompts using an LLM."

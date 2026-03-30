@@ -4,7 +4,7 @@ This plugin is based on the RAG Poisoner attack, and injects fake RAG context th
 appears to be legitimate document snippets supporting the attack objective.
 
 Usage:
-  spikee test --plugins rag_poisoner --plugin-options "rag_poisoner:model=openai-gpt-4o,variants=5"
+  spikee test --plugins rag_poisoner --plugin-options "rag_poisoner:model=openai/gpt-4o,variants=5"
 """
 
 from typing import Dict, List, Tuple, Union
@@ -19,7 +19,7 @@ from spikee.attacks.rag_poisoner import SPIKEE_RAG_POISONER_PROMPT
 
 
 class RAGPoisoner(Plugin):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:

@@ -5,7 +5,7 @@ attempts using poetry to bypass the target system's safety mechanisms and get it
 harmful or restricted questions.
 
 Usage:
-  spikee test --plugins llm_poetry_jailbreaker --plugin-options "llm_poetry_jailbreaker:model=openai-gpt-4o,variants=5"
+  spikee test --plugins llm_poetry_jailbreaker --plugin-options "llm_poetry_jailbreaker:model=openai/gpt-4o,variants=5"
 """
 
 from spikee.templates.plugin import Plugin
@@ -18,7 +18,7 @@ from spikee.utilities.modules import parse_options, extract_json_or_fail
 
 
 class LLMPoetryJailbreaker(Plugin):
-    DEFAULT_MODEL = "openai-gpt-4o"
+    DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
