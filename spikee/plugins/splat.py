@@ -27,7 +27,7 @@ from spikee.utilities.modules import parse_options
 
 class SplatPlugin(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms text using splat-based obfuscation techniques."
+        return [ModuleTag.OBFUSCATION], "Transforms text using splat-based obfuscation techniques."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

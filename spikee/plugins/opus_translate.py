@@ -112,19 +112,17 @@ class OpusTranslator(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.ML],
+            [ModuleTag.ML, ModuleTag.TRANSLATION],
             'Translates text to any language(s) using local OPUS-MT models. (Requires: `pip install "spikee[local-inference]"`)',
         )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported options; Tuple[options (default is first), llm_required]"""
         return [
-            "source=en",
-            "targets=zh",
-            "targets=es+fr+de",
-            "targets=en:fr|fr:de|de:es",
-            "quality=4",
-            "device=cuda",
+            "source=en,targets=zh",
+            "targets=... (es+fr+de for multiple, en:fr|fr:de for chains)",
+            "quality=4 (1-8)",
+            "device=... (cpu, cuda)",
             "cache_dir=<path>",
         ], False
 

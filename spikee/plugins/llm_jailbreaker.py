@@ -25,6 +25,7 @@ class LLMJailbreaker(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [
+            ModuleTag.SOCIAL_ENGINEERING,
             ModuleTag.LLM,
             ModuleTag.ATTACK_BASED,
         ], "Generates jailbreak attack prompts using an LLM."

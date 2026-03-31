@@ -26,7 +26,7 @@ class AntiSpotlighting(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.ATTACK_BASED],
+            [ModuleTag.FORMATTING, ModuleTag.ATTACK_BASED],
             "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities.",
         )
 

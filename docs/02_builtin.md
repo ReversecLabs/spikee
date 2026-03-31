@@ -109,32 +109,38 @@ Spikee includes several build-in plugins, that can be leveraged to enhance datas
 
 The following list provides an overview of each build-in plugin, further information on each plugin can be found within the plugin file.
 
-**Key**:
-- Basic: Simple text transformations.
-- Attack-Based: Plugins based on dynamic attack techniques, but have been adapted to work as static transformations during dataset generation.
-- LLM: Plugins that leverage an LLM agent to generate variations of the input based on a specific attack strategy or objective.
+**Type Key**
+- **Encoding**: Deterministic format or character conversion.
+- **Obfuscation**: Noise injection, character mangling, and word masking.
+- **Translation**: Language or script conversion.
+- **Formatting**: Structural manipulation of payload layout.
+- **Social Engineering**: LLM-driven persuasion and manipulation tactics.
+- **LLM**: Requires an LLM provider.
+- **ML**: Requires local machine learning models.
+- **Attack-Based**: Adapted from dynamic attack research into static dataset transformations.
 
 | Plugin | Type | Description | Options |
 |--------|------|-------------|---------|
-| `1337` | Basic | Transforms text into "leet speak" by replacing certain letters with numbers or symbols. | N/A |
-| `ascii_smuggler` | Basic | Transforms ASCII text into a series of Unicode rags that are generally invisible to most UI elements (bypassing content filters). | N/A |
-| `base64` | Basic | Encodes text using Base64 encoding. | N/A |
-| `ceasar` | Basic | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
-| `flip` | Basic | Applies a flip attack to obfuscate text:<br> - FWO: Flip Word Order<br> - FCW: Flip Chars in Word<br> - FCS: Flip Chars in Sentence | `mode` (the flip mode to apply, default: `FWO`) |
-| `google_translate` | Basic | Translates text to another language using google translate. | `source-lang` (language code for source language, default: `en`)<br> `target-lang` (language code for target language, default: `zh-cn`) |
-| `opus_translator` | Basic | Translates text to another language using local OPUS-MT models. | `source` (source language code, default: `en`)<br> `targets` (target language(s), default: `zh`)<br> `quality` (translation quality, default: 1)<br> `device` (cpu or gpu, default: auto-detect)<br> `cache_dir` (directory to cache ML models, optional) |
-| `hex` | Basic | Encodes text into its hexadecimal representation. | N/A |
-| `mask` | Basic | Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words. | `advanced` (if true, creates multiple masks for longer words)<br> `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6) | |
-| `morse` | Basic | Encodes text into Morse code. | N/A |
-| `splat` | Basic | Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters, and spacing tricks), to bypass basic filters. | `character` (the character to use for splatting, default: `*`)<br> `insert_rand` (probability of inserting a splat within words, default: 0.6)<br> `pad_rand` (probability of padding words with splats, default: 0.4) |
-| `anti_spotlighting` | Attack-Based | Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities. | `variants` (number of variations to generate, default: 50) |
-| `best_of_n` | Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
-| `prompt_decomposition` | Attack-Based | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
+| `1337` | Encoding | Transforms text into "leet speak" by replacing certain letters with numbers or symbols. | N/A |
+| `ascii_smuggler` | Encoding | Transforms ASCII text into a series of Unicode rags that are generally invisible to most UI elements (bypassing content filters). | N/A |
+| `base64` | Encoding | Encodes text using Base64 encoding. | N/A |
+| `ceasar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
+| `hex` | Encoding | Encodes text into its hexadecimal representation. | N/A |
+| `morse` | Encoding | Encodes text into Morse code. | N/A |
+| `best_of_n` | Obfuscation, Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
+| `flip` | Obfuscation | Applies a flip attack to obfuscate text:<br> - FWO: Flip Word Order<br> - FCW: Flip Chars in Word<br> - FCS: Flip Chars in Sentence | `mode` (the flip mode to apply, default: `FWO`) |
+| `mask` | Obfuscation, LLM | Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words. | `advanced` (if true, creates multiple masks for longer words)<br> `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6) |
+| `splat` | Obfuscation | Obfuscates the text using splat-based techniques (e.g., asterisks '*', special characters, and spacing tricks), to bypass basic filters. | `character` (the character to use for splatting, default: `*`)<br> `insert_rand` (probability of inserting a splat within words, default: 0.6)<br> `pad_rand` (probability of padding words with splats, default: 0.4) |
+| `digraphic_translate` | Translation, LLM | Generates jailbreak prompts by mixing writing systems within a single digraphic language (e.g. Japanese Kanji/Romaji, Serbian Cyrillic/Latin) to evade script-sensitive safety classifiers. | `language` (target digraphic language, default: `japanese`. Options: `korean`, `serbian`, `chinese`, `hindi-urdu`) |
+| `google_translate` | Translation | Translates text to another language using google translate. | `source-lang` (language code for source language, default: `en`)<br> `target-lang` (language code for target language, default: `zh-cn`) |
+| `llm_multi_language_jailbreaker` | Translation, LLM, Attack-Based | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `opus_translator` | Translation, ML | Translates text to another language using local OPUS-MT models. | `source` (source language code, default: `en`)<br> `targets` (target language(s), default: `zh`)<br> `quality` (translation quality, default: 1)<br> `device` (cpu or gpu, default: auto-detect)<br> `cache_dir` (directory to cache ML models, optional) |
+| `anti_spotlighting` | Formatting, Attack-Based | Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities. | `variants` (number of variations to generate, default: 50) |
+| `prompt_decomposition` | Formatting, Attack-Based | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
+| `llm_jailbreaker` | Social Engineering, LLM, Attack-Based | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `llm_poetry_jailbreaker` | Social Engineering, LLM, Attack-Based | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
 | `shortener` | LLM | Uses an LLM to shorten the text to a specified maximum length while retaining key details. | `max_length` (the maximum length for the shortened text, default: 256) |
-| `llm_jailbreaker` | LLM | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `llm_multi_language_jailbreaker` | LLM | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `llm_poetry_jailbreaker` | LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
-| `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
+| `rag_poisoner` | LLM, Attack-Based | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks, default: `model=openai/gpt-4o`)<br> `variants` (number of variations to generate, default: 5) |
 
 **Usage Example**
 ```bash

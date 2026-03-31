@@ -136,7 +136,7 @@ class DigraphicTranslate(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.LLM],
+            [ModuleTag.TRANSLATION, ModuleTag.LLM],
             "Generates jailbreak prompts by mixing writing systems within a single digraphic "
             "language (e.g. Japanese Kanji/Romaji, Serbian Cyrillic/Latin) to evade "
             "script-sensitive safety classifiers.",
@@ -146,10 +146,7 @@ class DigraphicTranslate(Plugin):
         return (
             [
                 "language=japanese",
-                "korean",
-                "serbian",
-                "chinese",
-                "hindi-urdu",
+                "language=... (korean, serbian, chinese, hindi-urdu)",
             ],
             True
         )

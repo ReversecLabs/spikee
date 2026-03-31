@@ -50,7 +50,7 @@ class LeetspeekPlugin(BasicPlugin):
     }
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms text into 1337 speak."
+        return [ModuleTag.ENCODING], "Transforms text into 1337 speak."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
