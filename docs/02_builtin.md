@@ -156,20 +156,27 @@ You can customize the behavior of attacks using the following command-line optio
 * `--attack-iterations`: Specifies the maximum number of iterations for each attack (default: 1000).
 * `--attack-options`: Passes a single string option to the attack script for custom behavior (e.g., `"mode=aggressive"`).
 
+**Type Key**
+- **Obfuscation**: Noise injection, character mangling, and random token perturbation.
+- **Formatting**: Structural manipulation of payload layout.
+- **Social Engineering**: LLM-driven persuasion, escalation, and manipulation tactics.
+- **Translation**: Cross-lingual evasion via language conversion.
+- **LLM**: Requires an LLM provider.
+
 | Attack | Type | Description | Additional Options |
 |--------|------|-------------|---------|
-| `anti_spotlighting` | Standard | Assess spotlighting vulnerabilities by sequentially trying variations of delimiter-based attacks. | N/A |
-| `best_of_n` | Standard | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | N/A |
-| `prompt_decomposition` | Standard | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
-| `random_suffix_attack` | Standard | Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters. | N/A |
-| `llm_jailbreaker` | LLM-Driven | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, e.g., `model=openai/gpt-4o`) |
-| `llm_multi_language_jailbreaker` | LLM-Driven | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks) |
-| `llm_poetry_jailbreaker` | LLM-Driven | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
-| `rag_poisoner` | LLM-Driven | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |
-| `multi_turn` | Simple Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
-| `crescendo` | Instructional Multi-Turn | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). This is a simple multi-turn jailbreak that leverages an LLM Agent to prompt the target application with seemingly benign prompts, but gradually escalates the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
-| `echo_chamber` | Instructional Multi-Turn | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). This multi-turn attack uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
-| `goat` | Instructional Multi-Turn | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). This multi-turn attack uses an LLM, acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
+| `best_of_n` | Obfuscation | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | N/A |
+| `random_suffix_search` | Obfuscation | Implements [Random Suffix Search](https://arxiv.org/abs/2404.02151) techniques, which appends random suffixes to the prompt to bypass filters. | N/A |
+| `anti_spotlighting` | Formatting | Assess spotlighting vulnerabilities by sequentially trying variations of delimiter-based attacks. | N/A |
+| `prompt_decomposition` | Formatting, LLM | Decomposes a prompt into chunks and generates shuffled variations. | `modes` (LLM model to apply, default: dumb)<br> `variants` (number of variations to generate, default: 50) |
+| `llm_multi_language_jailbreaker` | Translation, LLM | Generates jailbreak attempts using different languages, focusing on low-resource languages. | `model` (The LLM model to use for generating attacks) |
+| `llm_jailbreaker` | Social Engineering, LLM | Uses an LLM to iteratively generate jailbreak attacks against the target. | `model` (The LLM model to use for generating attacks, e.g., `model=openai/gpt-4o`) |
+| `llm_poetry_jailbreaker` | Social Engineering, LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
+| `crescendo` | Social Engineering, LLM | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). A multi-turn jailbreak that leverages an LLM Agent to prompt the target with seemingly benign prompts, gradually escalating the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
+| `echo_chamber` | Social Engineering, LLM | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). A multi-turn attack that uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
+| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
+| `multi_turn` | Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
+| `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |
 
 **Usage Example**
 ```bash

@@ -38,7 +38,7 @@ from spikee.utilities.enums import ModuleTag
 class AntiSpotlightingAttack(Attack):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.SINGLE],
+            [ModuleTag.FORMATTING, ModuleTag.SINGLE],
             "Attempts to bypass spotlighting delimiters using various wrapping techniques.",
         )
 
