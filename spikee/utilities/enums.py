@@ -16,7 +16,7 @@ class ModuleTag(enum.Enum):
     LLM = "LLM"
     ML = "ML"
 
-    # Plugin Categories
+    # Plugin / Attack Categories
     ATTACK_BASED = "Attack-Based"
     ENCODING = "Encoding"
     FORMATTING = "Formatting"
@@ -24,20 +24,27 @@ class ModuleTag(enum.Enum):
     SOCIAL_ENGINEERING = "Social Engineering"
     TRANSLATION = "Translation"
 
+    # Multi-Modal
+    IMAGE = "Image"
+    AUDIO = "Audio"
+
 def formatting_priority(tag: ModuleTag) -> int:
     """Determine the priority of a plugin based on its tags for formatting purposes."""
     match tag:
         case ModuleTag.ENCODING | ModuleTag.FORMATTING | ModuleTag.OBFUSCATION | ModuleTag.SOCIAL_ENGINEERING | ModuleTag.TRANSLATION:
             return 1
         
-        case ModuleTag.SINGLE | ModuleTag.MULTI:
+        case ModuleTag.IMAGE | ModuleTag.AUDIO:
             return 2
+        
+        case ModuleTag.SINGLE | ModuleTag.MULTI:
+            return 3
 
         case ModuleTag.LLM | ModuleTag.ML:
-            return 3
+            return 4
         
         case _:
-            return 4
+            return 5
 
 def module_tag_to_colour(tag: ModuleTag) -> str:
     tag_colour_map = {
@@ -46,6 +53,9 @@ def module_tag_to_colour(tag: ModuleTag) -> str:
 
         ModuleTag.LLM: "yellow",
         ModuleTag.ML: "yellow",
+
+        ModuleTag.IMAGE: "bright_magenta",
+        ModuleTag.AUDIO: "bright_magenta",
 
         ModuleTag.ATTACK_BASED: "red",
         ModuleTag.ENCODING: "white",
