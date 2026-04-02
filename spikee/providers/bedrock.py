@@ -2,7 +2,10 @@ from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
+import logging
+
 from any_llm import AnyLLM
+from any_llm.logging import logger as any_llm_logger
 from typing import List, Tuple, Dict, Union, Any
 
 
@@ -51,6 +54,7 @@ class AnyLLMBedrockProvider(Provider):
 
         try:
             self.llm = AnyLLM.create("bedrock")
+            any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'bedrock' is missing required packages for AWS Bedrock. Please run `pip install spikee[bedrock]` to install them."
