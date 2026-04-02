@@ -11,6 +11,22 @@ Options:
     model=<model>        LLM model to use (default: openai/gpt-4o)
     language=<lang>      Digraphic language to use (default: japanese)
                          Supported: japanese, korean, serbian, chinese, hindi-urdu
+
+Effectiveness against spikee-test-chatbot (gemini-2.5-flash) and guardrails:
+=== Breakdown by Plugin ===
+Plugin                   Total    Successes    Attempts  Success Rate
+---------------------  -------  -----------  ----------  --------------
+'digraphic_translate'      172           48         172  27.91%
+'opus_translate'           172            9         172  5.23%
+'None'                     172            0         172  0.00%
+
+=== Breakdown by Guardrail ===
+Plugin                   Total    Successes    Attempts  Success Rate
+---------------------  -------  -----------  ----------  --------------
+'None'                      43           18          43  41.86%
+'aws-bedrock'               43           12          43  27.91%
+'azure-prompt-shields'      43           17          43  39.53%
+'custom-llm-judge'          43            1          43  2.33%
 """
 
 from typing import List, Tuple
