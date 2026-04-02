@@ -51,7 +51,7 @@ class OpenAISTTProvider(Provider):
             )
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.AUDIO, ModuleTag.LLM], "STT Provider for OpenAI speech-to-text models."
+        return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for OpenAI speech-to-text models."
 
     def _detect_audio_format(self, audio_bytes: bytes) -> str:
         if audio_bytes[:3] == b'ID3' or audio_bytes[:2] in (b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'):

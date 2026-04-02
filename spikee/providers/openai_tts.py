@@ -43,7 +43,7 @@ class OpenAITTSProvider(Provider):
         self.model = model
         self.voice = additional_kwargs.get("voice", "alloy")
         self.response_format = additional_kwargs.get("response_format", "mp3")
-        self.speed = additional_kwargs.get("speed", 1.0)
+        self.speed = float(additional_kwargs.get("speed", 1.0)) 
 
         try:
             from openai import OpenAI
@@ -55,7 +55,7 @@ class OpenAITTSProvider(Provider):
             )
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "TTS Provider for OpenAI text-to-speech models."
+        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
 
     def invoke(
         self, messages: Union[str, List[Union[Message, dict, tuple, str]]]

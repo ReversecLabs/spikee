@@ -52,7 +52,7 @@ class ElevenLabsTTSProvider(Provider):
             )
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.AUDIO, ModuleTag.LLM], "TTS Provider for ElevenLabs text-to-speech models."
+        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for ElevenLabs text-to-speech models."
 
     def invoke(
         self, messages: Union[str, List[Union[Message, dict, tuple, str]]]

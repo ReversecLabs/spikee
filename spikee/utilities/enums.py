@@ -14,6 +14,8 @@ class ModuleTag(enum.Enum):
 
     # Models
     LLM = "LLM"
+    LLM_TTS = "LLM-TTS"
+    LLM_STT = "LLM-STT"
     ML = "ML"
 
     # Plugin / Attack Categories
@@ -40,7 +42,7 @@ def formatting_priority(tag: ModuleTag) -> int:
         case ModuleTag.SINGLE | ModuleTag.MULTI:
             return 3
 
-        case ModuleTag.LLM | ModuleTag.ML:
+        case ModuleTag.LLM | ModuleTag.LLM_TTS | ModuleTag.LLM_STT | ModuleTag.ML:
             return 4
         
         case _:
@@ -52,6 +54,8 @@ def module_tag_to_colour(tag: ModuleTag) -> str:
         ModuleTag.SINGLE: "white",
 
         ModuleTag.LLM: "yellow",
+        ModuleTag.LLM_TTS: "yellow",
+        ModuleTag.LLM_STT: "yellow",
         ModuleTag.ML: "yellow",
 
         ModuleTag.IMAGE: "bright_magenta",
