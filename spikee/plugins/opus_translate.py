@@ -33,7 +33,14 @@ Requirements:
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu<version>
 """
 
+import logging
+import os
+import warnings
 from typing import List, Tuple, Union, Optional
+
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 from transformers import MarianMTModel, MarianTokenizer
 import torch
@@ -148,8 +155,10 @@ class OpusTranslator(Plugin):
         target_device = device or self.device
 
         try:
-            tokenizer = MarianTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
-            model = MarianMTModel.from_pretrained(model_name, cache_dir=cache_dir)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                tokenizer = MarianTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+                model = MarianMTModel.from_pretrained(model_name, cache_dir=cache_dir)
             # Move model to device (GPU or CPU)
             model = model.to(target_device)
             # Store in cache for reuse
