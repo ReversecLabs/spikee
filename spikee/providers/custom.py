@@ -62,9 +62,10 @@ class AnyLLMCustomProvider(Provider):
         options_kwargs: Dict[str, Any] = {}
         if self.max_tokens is not None:
             options_kwargs["max_tokens"] = self.max_tokens
+            print(f"Set max_tokens to {self.max_tokens} for provider model ({self.model}).")
 
         if self.temperature is not None:
-            options_kwargs["temperature"] = self.temperature
+            options_kwargs["temperature"] = self.temperature 
 
         self.options = options_kwargs
 
@@ -83,6 +84,11 @@ class AnyLLMCustomProvider(Provider):
         response = self.llm.completion(
             model=self.model, messages=formatted_messages, **self.options
         )
+
+        content = response.choices[0].message.content
+
+        if content is None:
+            raise ValueError(f"Received empty response from {self.model}, commonly due to max_tokens budget being used for thinking. Consider reviewing your choice of model or increase max_tokens if applicable.")
 
         return AIMessage(
             content=response.choices[0].message.content, original_response=response

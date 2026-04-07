@@ -184,7 +184,7 @@ class AdvancedTargetWrapper:
                     response = result
                 else:
                     raise ValueError(
-                        "Invalid return type from target's process_input. Expected str, (str, meta), or bool."
+                        "Invalid return type from target's process_input. Expected str, (str, meta), or bool.", str(type(result))
                     )
                 if self.throttle > 0:
                     time.sleep(self.throttle)
