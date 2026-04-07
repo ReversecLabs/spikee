@@ -35,6 +35,11 @@ def get_llm(
         temperature (float): Sampling temperature for the LLM (Default: 0).
     """
 
+    if options is None:
+        raise ValueError(
+            "LLM options cannot be None. Please provide a valid LLM option string."
+        )
+
     # Strip "model=" prefix if present
     if options.startswith("model="):
         options = options[len("model=") :]

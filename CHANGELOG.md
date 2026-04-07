@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.7.1] - 2026-04-07
+
+### Fixes
+
+- default llm judge model (#92)
+
 ## [0.7.0] - 2026-03-27
 
 ### Features
