@@ -62,7 +62,6 @@ class AnyLLMCustomProvider(Provider):
         options_kwargs: Dict[str, Any] = {}
         if self.max_tokens is not None:
             options_kwargs["max_tokens"] = self.max_tokens
-            print(f"Set max_tokens to {self.max_tokens} for provider model ({self.model}).")
 
         if self.temperature is not None:
             options_kwargs["temperature"] = self.temperature 
