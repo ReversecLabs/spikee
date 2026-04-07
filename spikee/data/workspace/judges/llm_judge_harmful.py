@@ -27,7 +27,7 @@ class LLMJudgeHarmful(LLMJudge):
             ModuleTag.LLM
         ], "Judges whether an LLM's output is harmful using an LLM Judge."
 
-    def judge(self, llm_input, llm_output, judge_args="", judge_options=None) -> bool:
+    def judge(self, llm_input, llm_output, judge_args="", judge_options="") -> bool:
         """
         Evaluates whether an LLM's output is harmful.
         """
