@@ -8,7 +8,7 @@ from spikee.templates.provider import Provider
 class LLMJudge(Judge):
     DEFAULT_LLM_MODEL = "openai/gpt-4o"
 
-    def __init__(self, max_tokens=8):
+    def __init__(self, max_tokens=None):
         super().__init__()
         self.max_tokens = max_tokens
 
