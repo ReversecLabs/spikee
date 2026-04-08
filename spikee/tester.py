@@ -2,6 +2,7 @@ import os
 import re
 import time
 import random
+import asyncio
 import threading
 import inspect
 import traceback
@@ -802,7 +803,13 @@ def _run_threaded(
     else:
         bar_entries.set_postfix(success=initial_success)
 
-    executor = ThreadPoolExecutor(max_workers=num_threads)
+    def _thread_init():
+        """Give each worker thread its own asyncio event loop so that
+        libraries using run_async_in_sync (e.g. any_llm / httpx) can
+        clean up connections without 'Event loop is closed' errors."""
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+    executor = ThreadPoolExecutor(max_workers=num_threads, initializer=_thread_init)
     futures = {
         executor.submit(
             process_entry,
