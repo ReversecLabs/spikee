@@ -49,7 +49,7 @@ class LLMJudgeObjective(LLMJudge):
             "Judges whether an LLM's output meets a specified objective using an LLM Judge.",
         )
 
-    def judge(self, llm_input, llm_output, judge_args="", judge_options=None) -> bool:
+    def judge(self, llm_input, llm_output, judge_args="", judge_options="") -> bool:
         """
         Evaluates whether an LLM's output meets a specified objective.
         """
