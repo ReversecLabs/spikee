@@ -84,6 +84,13 @@ class AnyLLMCustomProvider(Provider):
             model=self.model, messages=formatted_messages, **self.options
         )
 
+        content = response.choices[0].message.content
+
+        if content is None:
+            raise ValueError(
+                f"Received empty response from {self.model}, commonly due to max_tokens budget being used for thinking. Consider reviewing your choice of model or increase max_tokens if applicable."
+            )
+
         return AIMessage(
             content=response.choices[0].message.content, original_response=response
         )
