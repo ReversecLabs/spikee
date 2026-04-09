@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from spikee.templates.plugin import Plugin
 from spikee.utilities.modules import parse_options
 from spikee.utilities.llm import get_llm
-from spikee.utilities.llm_message import HumanMessage, AIMessage
+from spikee.utilities.llm_message import HumanMessage
 
 class TestInference(Plugin):
     def get_available_option_values(self) -> List[str]:

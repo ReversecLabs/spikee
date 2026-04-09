@@ -45,10 +45,10 @@ class TestDatasetArguments:
         Generates two datasets into the datasets/ folder, then passes the folder.
         Each dataset gets its own results file, so we expect 2 results files.
         """
-        dataset_a = spikee_generate_cli(
+        spikee_generate_cli(
             run_spikee, workspace_dir, additional_args=["--languages", "en"]
         )
-        dataset_b = spikee_generate_cli(
+        spikee_generate_cli(
             run_spikee, workspace_dir, additional_args=["--languages", "it"]
         )
 
@@ -102,6 +102,7 @@ class TestDatasetArguments:
         assert total_results == expected_total, \
             f"Expected {expected_total} total results across both files, got {total_results}"
 
+
 class TestResume:
     """Test cases for --result-file, --auto-resume, and --no-auto-resume"""
 
@@ -152,10 +153,10 @@ class TestResume:
         assert len(results_files) == 1, f"Expected 1 results file after resuming, got {len(results_files)}"
         assert f"[Auto-Resume] Using latest: {resume_file.name}" in stdout
         assert len(results) == len(entries), f"Expected all {len(entries)} entries to be processed after resuming, got {len(results)}"
-        
+
         # Check that the resumed results file contains the canary response for the first 2 entries
         for r in results[:2]:
-            assert r["success"] == True, "Expected resumed entries to be marked as success"
+            assert r["success"], "Expected resumed entries to be marked as success"
             assert r["response"] == "canary response", "Expected resumed entries to have the canary response"
 
     def test_single_dataset_resume_file(self, run_spikee, workspace_dir):
@@ -177,15 +178,14 @@ class TestResume:
         )
 
         # 4. Assertions
-        stdout = result.stdout
         results = read_jsonl_file(results_files[0])
 
         assert len(results_files) == 1, f"Expected 1 results file after resuming, got {len(results_files)}"
         assert len(results) == len(entries), f"Expected all {len(entries)} entries to be processed after resuming, got {len(results)}"
-        
+
         # Check that the resumed results file contains the canary response for the first 2 entries
         for r in results[:2]:
-            assert r["success"] == True, "Expected resumed entries to be marked as success"
+            assert r["success"], "Expected resumed entries to be marked as success"
             assert r["response"] == "canary response", "Expected resumed entries to have the canary response"
 
     def test_single_dataset_no_resume(self, run_spikee, workspace_dir):
@@ -211,13 +211,13 @@ class TestResume:
         results = read_jsonl_file(results_files[0])
 
         assert len(results_files) == 1, f"Expected 1 results file after running with no auto-resume, got {len(results_files)}"
-        assert not f"[Auto-Resume] Using specified resume file: {resume_file.name}" in stdout
+        assert f"[Auto-Resume] Using specified resume file: {resume_file.name}" not in stdout
         assert len(results) == len(entries), f"Expected all {len(entries)} entries to be processed when not resuming, got {len(results)}"
-        
+
         # Check that the new results file does NOT contain the canary response for the first 2 entries (since it should have started fresh)
         for r in results[:2]:
             assert r["response"] != "canary response", "Expected new run to not use canary response from resume file"
-    
+
     def test_multiple_datasets_independent_resume(self, run_spikee, workspace_dir):
         """Test that when running with multiple datasets, --auto-resume correctly resumes each dataset independently from its own resume file."""
         # 1. Generate 2 datasets
@@ -260,7 +260,7 @@ class TestResume:
         dataset_path = spikee_generate_cli(run_spikee, workspace_dir, additional_args=["--tag", "resume_test"])
         entries = read_jsonl_file(dataset_path)
 
-        old_resume_file = self.create_partial_results(dataset_path, num_entries=2, target_name="always_refuse", workspace_dir=workspace_dir)
+        self.create_partial_results(dataset_path, num_entries=2, target_name="always_refuse", workspace_dir=workspace_dir)
         time.sleep(1)  # Ensure the second resume file has a later timestamp
         new_resume_file = self.create_partial_results(dataset_path, num_entries=4, target_name="always_success", workspace_dir=workspace_dir)
 
@@ -271,7 +271,7 @@ class TestResume:
             datasets=[dataset_path],
             additional_args=["--auto-resume"],
         )
-    
+
         stdout = result.stdout
         results = read_jsonl_file(results_files[0])
 
@@ -281,7 +281,7 @@ class TestResume:
 
         for r in results:
             assert r["success"], "Expected resumed entries to be marked as success based on the latest resume file"
-    
+
     def test_dataset_skips_complete_dataset_auto_resume(self, run_spikee, workspace_dir):
         """Test that when a resume file is present with all entries marked as complete, --auto-resume skips it and starts fresh."""
         dataset_path = spikee_generate_cli(run_spikee, workspace_dir, additional_args=["--tag", "complete_resume_test"])
@@ -301,9 +301,9 @@ class TestResume:
         results = read_jsonl_file(results_files[0])
 
         assert len(results_files) == 1, f"Expected 1 results file after running with auto-resume on complete dataset, got {len(results_files)}"
-        assert not f"[Auto-Resume] Using latest: {resume_file.name}" in stdout
+        assert f"[Auto-Resume] Using latest: {resume_file.name}" not in stdout
         assert len(results) == len(entries), f"Expected all {len(entries)} entries to be processed when auto-resume skips complete dataset, got {len(results)}"
-        
+
         # Check that the new results file does NOT contain the canary response for any entries (since it should have started fresh)
         for r in results:
             assert r["response"] != "canary response", "Expected new run to not use canary response from complete resume file"

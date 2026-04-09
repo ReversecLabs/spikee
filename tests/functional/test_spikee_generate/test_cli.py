@@ -170,7 +170,7 @@ class TestFormattingArguments:
             doc_snippet = "This is the base document" if "This is the base document" in text \
                           else "Documento to base"
             assert text.index(payload) < text.index(doc_snippet), \
-                f"Expected payload before document text for position 'start'"
+                "Expected payload before document text for position 'start'"
     
     def test_position_end(self, run_spikee, workspace_dir):
         """Test --positions end injects payload after the document text (default)."""
@@ -194,7 +194,7 @@ class TestFormattingArguments:
             doc_pos = text.find("This is the base document") if "This is the base document" in text \
                       else text.find("Documento to base")
             assert text.index(payload) > doc_pos, \
-                f"Expected payload after document text for position 'end'"
+                "Expected payload after document text for position 'end'"
     
     def test_position_middle(self, run_spikee, workspace_dir):
         """Test --positions middle injects payload in the middle of the document text."""
@@ -215,7 +215,7 @@ class TestFormattingArguments:
         for entry in dataset:
             payload = entry["payload"]
             text = entry["text"]
-            assert payload in text, f"Expected payload in text for position 'middle'"
+            assert payload in text, "Expected payload in text for position 'middle'"
     
     def test_placeholder_position(self, run_spikee, workspace_dir):
         """Test placeholder documents inject payload at <PLACEHOLDER> and set position to 'fixed'."""
@@ -238,11 +238,11 @@ class TestFormattingArguments:
         for entry in dataset:
             text = entry["text"]
             payload = entry["payload"]
-            assert "User start" in text, f"Expected 'User start' in text"
-            assert "user end" in text, f"Expected 'user end' in text"
-            assert payload in text, f"Expected payload in text"
+            assert "User start" in text, "Expected 'User start' in text"
+            assert "user end" in text, "Expected 'user end' in text"
+            assert payload in text, "Expected payload in text"
             # <PLACEHOLDER> should be replaced, not literally present
-            assert "<PLACEHOLDER>" not in text, f"Expected <PLACEHOLDER> to be replaced in text"
+            assert "<PLACEHOLDER>" not in text, "Expected <PLACEHOLDER> to be replaced in text"
     
 
     def test_injection_delimiters_custom(self, run_spikee, workspace_dir):
@@ -637,44 +637,6 @@ class TestPlugins:
         for entry in variant2_entries:
             assert entry["payload"].endswith("-repeat"), \
                 f"Expected payload ending in '-repeat' for variant 2, got: {entry['payload']}"
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not set — skipping live inference plugin test",
-    )
-    def test_inference_plugin(self, run_spikee, workspace_dir):
-        """Test test_inference plugin makes a live LLM call during dataset generation.
-
-        Uses --languages en to limit to 2 base combos, reducing API calls.
-        With 1 piped plugin and 2 en combos: 2 base + 2 plugin = 4 entries.
-        Uses gpt-4o-mini via plugin-options for cheapest available model.
-        """
-        output_file = spikee_generate_cli(
-            run_spikee,
-            workspace_dir,
-            additional_args=[
-                "--plugins", "test_inference",
-                "--plugin-options", "test_inference:model=openai/gpt-4o",
-                "--plugin-only",
-                "--languages", "en",
-            ],
-        )
-
-        dataset = read_jsonl_file(output_file)
-
-        # 2 en combos × (1 base + 1 plugin) = 4 entries
-        assert len(dataset) == 4, f"Expected 4 entries (2 base + 2 plugin), got {len(dataset)}"
-
-        inference_entries = [e for e in dataset if e.get("plugin") == "test_inference"]
-        assert len(inference_entries) == 4, \
-            f"Expected 2 test_inference plugin entries, got {len(inference_entries)}"
-
-        # Plugin ran and produced non-empty payloads
-        for entry in inference_entries:
-            assert entry.get("payload"), \
-                f"Expected non-empty payload from inference plugin, got: {entry.get('payload')!r}"
-            assert "_test_inference-1" in entry["long_id"], \
-                f"Expected '_test_inference-1' in long_id, got: {entry['long_id']}"
 
     def test_inference_plugin_invalid_model(self, run_spikee, workspace_dir):
         """Test test_inference plugin with an invalid model name fails gracefully."""

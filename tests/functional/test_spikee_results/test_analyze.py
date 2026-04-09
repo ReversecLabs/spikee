@@ -1,6 +1,5 @@
 import pytest
 from pathlib import Path
-import os
 
 from spikee.utilities.files import read_jsonl_file
 from spikee.utilities.results import (ResultProcessor)
@@ -158,7 +157,7 @@ class TestAnalyzeResults:
         assert "Total Unique Entries" in output
         assert "Successful Attacks: 0" in output
         assert "Attack Success Rate" in output
-        assert not "Combined" in output
+        assert "Combined" not in output
 
         output = spikee_analyze_cli(
             run_spikee,
@@ -170,7 +169,7 @@ class TestAnalyzeResults:
         assert "Total Unique Entries" in output
         assert "Successful Attacks: 0" in output
         assert "Attack Success Rate" in output
-        assert not "Combined" in output
+        assert "Combined" not in output
 
         output = spikee_analyze_cli(
             run_spikee,

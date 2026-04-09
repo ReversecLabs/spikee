@@ -1,7 +1,6 @@
 import pytest
 
 from spikee.utilities.files import read_jsonl_file
-from tests.functional.utils import extract_results_path
 from ..utils import spikee_generate_cli, spikee_test_cli
 
 def _attack_base_name(entry):
@@ -41,7 +40,7 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir, targ
     for attack_entry in attack_results:
         attempts = attack_entry["attempts"]
         assert attempts == 5, f"Expected 5 attempts, got {attempts}"
-        assert not attack_entry["success"], f"Expected attack to fail, but it succeeded"
+        assert not attack_entry["success"], "Expected attack to fail, but it succeeded"
 
 @pytest.mark.parametrize("target_name", ["always_refuse", "always_refuse_legacy"])
 @pytest.mark.parametrize("attack_name", ["mock_attack"])

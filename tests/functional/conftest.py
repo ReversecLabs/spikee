@@ -11,7 +11,8 @@ import pytest
 # Can be overridden via environment variable: SPIKEE_TESTS_USE_ISOLATED_VENV=false
 # - True: Create and install spikee in an isolated venv (recommended, clean isolation)
 # - False: Use the current Python environment (faster for local development)
-USE_ISOLATED_VENV = False and os.getenv("SPIKEE_TESTS_USE_ISOLATED_VENV", "true").lower() == "true"
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))  # Load .env from cwd
+USE_ISOLATED_VENV = os.getenv("SPIKEE_TESTS_USE_ISOLATED_VENV", "true").lower() == "true"
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -162,7 +163,7 @@ def workspace_init(tmp_path, project_root: Path, run_spikee, additional_args):
     # Copy fixture modules from the test fixtures folder into the workspace
     # This lets tests use mock targets, plugins, judges, attacks, and pre-built datasets
     fixtures_workspace = (
-        project_root / "tests" / "tjc_functional" / "workspace"
+        project_root / "tests" / "functional" / "workspace"
     )
     if fixtures_workspace.exists():
         for item in fixtures_workspace.iterdir():

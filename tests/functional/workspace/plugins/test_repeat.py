@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.modules import parse_options
