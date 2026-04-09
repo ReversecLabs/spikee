@@ -1,11 +1,12 @@
 import shutil
 import re
-from .utils import run_generate_command, run_test_command
+
+from ..utils import spikee_generate_cli
 
 
 def test_progress_bar_shows_correct_total(run_spikee, workspace_dir):
     # 1. Generate a dataset (standard small dataset)
-    dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
+    dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
 
     # 2. Rename to a very long filename to distinguish string length from entry count.
     # We use a filename > 200 chars.
@@ -21,11 +22,7 @@ def test_progress_bar_shows_correct_total(run_spikee, workspace_dir):
 
     # 3. Run test command
     # We use "always_success" target to ensure it runs quickly
-    result = run_test_command(
-        run_spikee,
-        workspace_dir,
-        ["--dataset", str(dataset_rel), "--target", "always_success"],
-    )
+    result = run_spikee(["test", "--target", "always_success", "--dataset", str(dataset_rel)], cwd=workspace_dir)
 
     # 4. Check stderr for progress bar totals
     # Tqdm progress bars output patterns like " 5/20 " or " 5/200 " or "100%|...| 5/20"

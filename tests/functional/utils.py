@@ -1,164 +1,161 @@
-from __future__ import annotations
-
-import importlib.util
-import json
-import sys
 from pathlib import Path
+from typing import List
 import os
-import re
+from unittest import result
 
+def get_datasets(workspace_dir: Path) -> set[Path]:
+    datasets_dir = workspace_dir / "datasets"
+    if not datasets_dir.exists():
+        return set()
+    
+    return set(p for p in datasets_dir.iterdir() if p.is_file())
 
-SEED_FOLDER = "datasets/seeds-functional-basic"
+def get_results(workspace_dir: Path) -> set[Path]:
+    results_dir = workspace_dir / "results"
+    if not results_dir.exists():
+        return set()
+    
+    return set(p for p in results_dir.iterdir() if p.is_file())
 
+def judge_dataset_filename(judge_variant: str) -> str:
+    return (
+        "test_judge_dataset_legacy.jsonl"
+        if judge_variant.endswith("_legacy")
+        else "test_judge_dataset.jsonl"
+    )
 
-def _dataset_files(datasets_dir: Path) -> set[Path]:
-    return set(datasets_dir.glob("*-dataset-*.jsonl"))
-
-
-def run_generate_command(
-    run_spikee,
-    workspace: Path,
-    extra_args: list[str] | None = None,
-    match_languages: bool = True,
-    seed_folder: str | None = None,
+def create_judge_results(
+    run_spikee, workspace_dir: Path, target_name: str, judge_variant: str
 ):
-    datasets_dir = workspace / "datasets"
-    before = _dataset_files(datasets_dir)
-    folder = seed_folder or SEED_FOLDER
-    args = ["generate", "--seed-folder", folder]
-    if not match_languages:
-        args.extend(["--match-languages", "false"])
-    if extra_args:
-        args.extend(extra_args)
-    result = run_spikee(args, cwd=workspace)
-    after = _dataset_files(datasets_dir)
-    new_files = after - before
-    assert len(new_files) == 1, f"Expected one new dataset, found {len(new_files)}"
-    dataset_path = new_files.pop()
-    return dataset_path, result
+    dataset_path = workspace_dir / "datasets" / judge_dataset_filename(judge_variant)
+    assert dataset_path.exists()
 
+    results_file, _ = spikee_test_cli(
+        run_spikee,
+        workspace_dir,
+            target=target_name,
+            datasets=[dataset_path],
+            additional_args=[
+                "--judge-options",
+                f"{judge_variant}:mode=fail",
+            ],
+    )
+    return results_file[0] if isinstance(results_file, list) else results_file
 
-def run_test_command(run_spikee, workspace: Path, extra_args: list[str]):
-    args = ["test", *extra_args]
-    return run_spikee(args, cwd=workspace)
+def spikee_list(
+        run_spikee, 
+        workspace_dir, 
+        module: str
+    ) -> list[str]:
+    """Helper function to run `spikee list <entity>` and return the output lines as a list."""
+    result = run_spikee(["list", module], cwd=workspace_dir)
+    return result.stdout.strip().splitlines()
 
+def spikee_generate_cli(
+        run_spikee, 
+        workspace_dir,
+        seed_folder: str = "datasets/seeds-functional-basic",
+        additional_args: list[str] = [],
+    ):
+    """Helper function to run `spikee generate`"""
 
-def run_results_command(
-    run_spikee, workspace: Path, subcommand: str, extra_args: list[str]
-):
-    args = ["results", subcommand, *extra_args]
-    return run_spikee(args, cwd=workspace)
+    init_datasets = get_datasets(workspace_dir)
+    run_spikee(["generate", "--seed-folder", seed_folder, *additional_args], cwd=workspace_dir)
+    new_datasets = get_datasets(workspace_dir) - init_datasets
 
+    assert len(new_datasets) == 1, f"Expected exactly one new dataset to be generated, but found {len(new_datasets)}. New datasets: {new_datasets}"
+    return new_datasets.pop()
 
-def read_jsonl(path: Path) -> list[dict]:
-    entries = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            entries.append(json.loads(line))
-    return entries
+def spikee_test_cli(
+        run_spikee, 
+        workspace_dir,
+        target: str = "mock_target",
+        datasets: List[Path] = [],
+        additional_args: list[str] = [],
+    ):
+    """Helper function to run `spikee test`"""
 
+    if datasets == []:
+        dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
+        datasets = [dataset_path]
 
-def write_jsonl(path: Path, entries: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for entry in entries:
-            json.dump(entry, handle, ensure_ascii=False)
-            handle.write("\n")
+    for dataset in datasets:
+        if not dataset.exists():
+            raise FileNotFoundError(f"Dataset file not found: {dataset}")
+        
+        elif dataset.is_file():
+            additional_args = [ "--dataset", str(dataset), *additional_args]
+        
+        elif dataset.is_dir():
+            additional_args = [ "--dataset-folder", str(dataset), *additional_args]
 
+    init_results = get_results(workspace_dir)
+    result = run_spikee(["test", "--target", target, *additional_args], cwd=workspace_dir)
+    new_results = get_results(workspace_dir) - init_results
 
-def filter_entries(entries: list[dict], **criteria) -> list[dict]:
-    return [
-        entry
-        for entry in entries
-        if all(entry.get(key) == value for key, value in criteria.items())
-    ]
+    assert len(new_results) > 0, f"Expected at least one new results file to be generated, but found {len(new_results)}. New results: {new_results}"
+    return list(new_results), result
 
+def spikee_analyze_cli(
+        run_spikee, 
+        workspace_dir,
+        result_files: List[Path] = [],
+        additional_args: list[str] = [],
+    ):
+    """Helper function to run `spikee analyze`"""
 
-def base_long_id(long_id: str, plugin_name: str) -> str:
-    marker = f"_{plugin_name}-"
-    assert marker in long_id, f"Expected '{marker}' in long_id '{long_id}'"
-    return long_id.rsplit(marker, 1)[0]
+    if result_files == []:
+        raise ValueError("At least one result file must be provided for analysis.")
+    
+    for result_file in result_files:
+        if not result_file.exists():
+            raise FileNotFoundError(f"Result file not found: {result_file}")
+        
+        elif result_file.is_file():
+            additional_args = [ "--result-file", str(result_file), *additional_args]
+        
+        elif result_file.is_dir():
+            additional_args = [ "--result-folder", str(result_file), *additional_args]
+    
+    analyze_result = run_spikee(["results", "analyze", *additional_args], cwd=workspace_dir)
 
+    return analyze_result.stdout
 
-def split_base_and_plugin_entries(entries: list[dict], plugin_name: str):
-    base_entries = [entry for entry in entries if entry.get("plugin") in (None, "None")]
-    plugin_entries = [entry for entry in entries if entry.get("plugin") == plugin_name]
-    base_by_long_id = {entry["long_id"]: entry for entry in base_entries}
-    return base_entries, plugin_entries, base_by_long_id
+def spikee_extract_cli(
+        run_spikee,
+        workspace_dir,
+        result_files: List[Path] = [],
+        category: str = "success",
+        custom_search: List[str] = [],
+    ):
+    """Helper function to run `spikee results extract`.
 
-
-def load_plugin_module(project_root: Path, module_path: str):
-    module_rel = Path(*module_path.split("."))
-    module_file = (project_root / module_rel).with_suffix(".py")
-    assert module_file.exists(), f"Plugin module file not found: {module_file}"
-    project_root_resolved = str(project_root.resolve())
-    inserted = False
-    if project_root_resolved not in sys.path:
-        sys.path.insert(0, project_root_resolved)
-        inserted = True
-    try:
-        spec = importlib.util.spec_from_file_location(module_path, module_file)
-        assert spec and spec.loader, f"Unable to load spec for {module_path}"
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-    finally:
-        if inserted and sys.path[0] == project_root_resolved:
-            sys.path.pop(0)
-
-
-def extract_results_path(stdout: str, workspace: Path) -> Path:
-    for line in reversed(stdout.splitlines()):
-        line = line.strip()
-        if not line:
-            continue
-        if "Results saved to" in line or "Output will be saved to" in line:
-            _, path_str = line.split("to", 1)
-            path_str = path_str.strip()
-            candidates = [
-                workspace / path_str,
-                Path(path_str),
-            ]
-            for candidate in candidates:
-                candidate = candidate.expanduser().resolve()
-                if candidate.exists():
-                    return candidate
-    raise AssertionError(f"Could not determine results path from output:\n{stdout}")
-
-
-def extract_resource_name(file_name: str):
+    Returns (list[Path] of new extract files, CompletedProcess result).
     """
-    Takes a file path/name and extracts the resource name
 
-    Example:
-    datasets\\cybersec-2025-04-user-input-dataset-1762359770.jsonl => cybersec-2025-04-user-input-dataset-1762359770
+    if result_files == []:
+        raise ValueError("At least one result file must be provided for extraction.")
 
-    """
-    file_name = os.path.basename(file_name)
-    file_name = re.sub(r"^\d+-", "", file_name)
-    file_name = re.sub(r".jsonl$", "", file_name)
-    if file_name.startswith("seeds-"):
-        file_name = file_name[len("seeds-") :]
-    return file_name
+    additional_args: List[str] = []
 
+    for result_file in result_files:
+        if not result_file.exists():
+            raise FileNotFoundError(f"Result file not found: {result_file}")
 
-def build_resource_name(*args) -> str:
-    parts = [arg for arg in args if arg is not None]
-    return "_".join(parts)
+        elif result_file.is_file():
+            additional_args.extend(["--result-file", str(result_file)])
 
+        elif result_file.is_dir():
+            additional_args.extend(["--result-folder", str(result_file)])
 
-def extract_prefix_from_file_name(file_name: str):
-    """
-    Takes a file path/name and extracts the prefix before the first underscore.
+    command = ["results", "extract", "--category", category, *additional_args]
 
-    Example:
-    /results/results_cybersec-2025-04-user-input-dataset_1762359770.jsonl => (results, cybersec-2025-04-user-input-dataset_1762359770)
-    """
-    file_name = os.path.basename(file_name)
-    match = re.match(r"([^_]+)_(.+)", file_name)
-    if match:
-        return match.group(1), match.group(2)
-    return None
+    for search in custom_search:
+        command.extend(["--custom-search", search])
+
+    init_results = get_results(workspace_dir)
+    result = run_spikee(command, cwd=workspace_dir)
+    new_results = get_results(workspace_dir) - init_results
+
+    return list(new_results), result
+    

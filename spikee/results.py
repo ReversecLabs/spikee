@@ -229,7 +229,7 @@ def extract_results(args):
             print("[Error] Custom search requires the --custom_value to be specified.")
             exit(1)
         else:
-            custom_query = generate_query(category, args.custom_search)
+            custom_query = generate_query(category, args.custom_search.split(","))
 
     # Print overview
     print("[Overview] Results will be extracted from the following file(s): ")
