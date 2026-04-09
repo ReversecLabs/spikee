@@ -1,10 +1,8 @@
 import pytest
-import os
 
 from spikee.utilities.modules import load_module_from_path
 from spikee.utilities.files import read_jsonl_file
 from spikee.templates.judge import Judge
-from spikee.templates.llm_judge import LLMJudge
 from ..utils import spikee_test_cli
 
 

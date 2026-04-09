@@ -1,8 +1,8 @@
 import pytest
-import os
 
 from spikee.utilities.files import read_jsonl_file
 from ..utils import spikee_test_cli, spikee_generate_cli
+
 
 @pytest.mark.parametrize(
     "target_name,expected_success",
@@ -34,4 +34,3 @@ def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_su
     if target_name == "always_guardrail":
         # For the always_guardrail target, we expect all entries to have success=False and the canary response indicating the guardrail was triggered
         assert all("guardrail" in r and r['guardrail'] for r in results), "Expected all entries to have guardrail=True for the always_guardrail target {}".format(results)
-
