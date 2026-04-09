@@ -18,25 +18,15 @@ DEFAULT_TARGET_LANGUAGE = "zh-cn"  # Default target language for translation
 class GoogleTranslator(Plugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [],
+            [ModuleTag.TRANSLATION],
             'Transforms text using Google Translate. (Requires: `pip install "spikee[google-translate]"`)',
         )
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
-            "source-lang=<language_code>",
-            "target-lang=<language_code>",
-            "en",
-            "es",
-            "fr",
-            "de",
-            "zh-cn",
-            "ja",
-            "ru",
-            "ar",
-            "hi",
-            "pt",
+            f"source-lang={DEFAULT_SOURCE_LANGUAGE}, target-lang={DEFAULT_TARGET_LANGUAGE}",
+            "...-lang=... (en, zh-cn, es, fr, de, ja, ko, ru, hi-urdu, etc.)",
         ], False
 
     def transform(

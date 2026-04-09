@@ -7,11 +7,12 @@ from dataclasses import dataclass
 from typing import List
 
 from rich.console import Console
-from rich.tree import Tree
+from rich.table import Table
 from rich.panel import Panel
 from rich.rule import Rule
+import rich.box
 
-from spikee.utilities.enums import ModuleTag, module_tag_to_colour
+from spikee.utilities.enums import ModuleTag, module_tag_to_colour, formatting_priority
 from spikee.utilities.modules import (
     get_options_from_module,
     get_description_from_module,
@@ -177,6 +178,7 @@ def _render_section(
 ):
     console.print(Rule(f"[bold]{title}[/bold]"))
 
+    # If any module in this section uses the built-in LLM service, show a note about LLM options
     if util_llm:
         console.print(
             Panel(
@@ -186,60 +188,63 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 """,
                 style="yellow",
             )
-        )  # TODO: fix
+        )
 
-    def print_section(entries, label) -> Tree:
-        tree = Tree(f"[bold]{title} ({label})[/bold]")
-        if entries:
-            for module in entries:
-                node_line = f"[bold cyan]{module.name}[/bold cyan]"
 
-                if module.tags:
-                    module.tags = sorted(module.tags, key=lambda x: x.value)
+    def print_section(entries, label):
+        if not entries:
+            console.print(f"\n[bold]{title} ({label})[/bold]")
+            console.print("  (none)")
+            return
 
-                    tags = []
-                    for tag in module.tags:
-                        tags.append(
-                            f"[{module_tag_to_colour(tag)}][{tag.value}][/{module_tag_to_colour(tag)}]"
-                        )
+        table = Table(title=f"{title} ({label})", box=rich.box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
+        table.add_column("Name", style="bold cyan", no_wrap=True)
+        table.add_column("Tags")
+        table.add_column(tag_line)
+        if description:
+            table.add_column("Description")
 
-                    node_line += " " + "".join(tags)
+        def _module_sort_key(m):
+            if m.tags:
+                return tuple(sorted((formatting_priority(t), t.value) for t in m.tags))
+            return ((99, ""),)
 
-                module_node = tree.add(node_line)
+        for module in sorted(entries, key=_module_sort_key):
+            # Tags
+            if module.tags:
+                sorted_tags = sorted(module.tags, key=lambda x: (formatting_priority(x), x.value))
+                tag_parts = []
+                for tag in sorted_tags:
+                    c = module_tag_to_colour(tag)
+                    tag_parts.append(f"[{c}]{tag.value}[/{c}]")
+                tags_str = ", ".join(tag_parts)
+            else:
+                tags_str = ""
 
-                if (
-                    description
-                    and module.description is not None
-                    and module.description != ""
-                ):
-                    module_node.add(f"Description: {module.description}")
+            # Options
+            if module.options is not None and len(module.options) > 0:
+                if module.options == ["<error>"]:
+                    opts_str = "[red]<error>[/red]"
+                else:
+                    opt_parts = (
+                        [f"{module.options[0]} [bold][white](default)[/white][/bold]"]
+                        + module.options[1:]
+                    )
+                    opts_str = ", ".join(opt_parts)
+            else:
+                opts_str = ""
 
-                if module.options is not None and len(module.options) > 0:
-                    if module.options == ["<error>"]:
-                        module_node.add("[red]<error loading module>[/red]")
-                    else:
-                        opt_line = (
-                            [f"[bold]{module.options[0]} (default)[/bold]"]
-                            + module.options[1:]
-                            if module.options
-                            else []
-                        )
-                        module_node.add(
-                            f"[bright_black]{tag_line}: "
-                            + ", ".join(opt_line)
-                            + "[/bright_black]"
-                        )
+            row = [module.name, tags_str, opts_str]
+            if description:
+                row.append(module.description or "")
 
-        else:
-            tree.add("(none)")
+            table.add_row(*row)
 
-        return tree
+        console.print()
+        console.print(table)
 
-    local_tree = print_section(local_entries, "local")
-    console.print(local_tree)
-
-    builtin_tree = print_section(builtin_entries, "built-in")
-    console.print(builtin_tree)
+    print_section(local_entries, "local")
+    print_section(builtin_entries, "built-in")
 
 
 # --- Commands ---

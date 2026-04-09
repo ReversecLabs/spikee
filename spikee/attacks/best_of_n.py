@@ -41,7 +41,7 @@ class BestOfNAttack(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.SINGLE],
+            [ModuleTag.OBFUSCATION, ModuleTag.SINGLE],
             "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
         )
 

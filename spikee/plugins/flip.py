@@ -17,10 +17,10 @@ class FlipPlugin(Plugin):
     """
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms text using the flip attack."
+        return [ModuleTag.OBFUSCATION], "Transforms text using the flip attack."
 
     def get_available_option_values(self) -> List[str]:
-        return ["mode=FWO", "FCW", "FCS", "resp_exc=false"]
+        return ["mode=FWO,resp_exc=false", "mode=... (FCW, FCS)"]
 
     def transform(
         self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""

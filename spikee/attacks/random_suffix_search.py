@@ -53,7 +53,7 @@ class RandomSuffixSearch(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.SINGLE],
+            [ModuleTag.OBFUSCATION, ModuleTag.SINGLE],
             "Performs a random suffix search attack by modifying token sequences appended to the input.",
         )
 

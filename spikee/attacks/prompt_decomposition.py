@@ -28,7 +28,7 @@ class PromptDecompositionAttack(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.SINGLE, ModuleTag.LLM],
+            [ModuleTag.FORMATTING, ModuleTag.SINGLE, ModuleTag.LLM],
             "Generates prompt reformulations by decomposing into labeled chunks and shuffling them.",
         )
 

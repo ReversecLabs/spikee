@@ -51,7 +51,7 @@ class Shortener(Plugin):
     DEFAULT_MODEL = "bedrock-qwen.qwen3-coder-30b-a3b-v1:0"
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "Masks high-risk words in prompts."
+        return [ModuleTag.OBFUSCATION, ModuleTag.LLM], "Masks high-risk words in prompts."
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""

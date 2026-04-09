@@ -29,7 +29,7 @@ class PromptDecompositionPlugin(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.ATTACK_BASED],
+            [ModuleTag.FORMATTING, ModuleTag.ATTACK_BASED],
             "Decomposes prompts into labeled components and generates shuffled variations.",
         )
 

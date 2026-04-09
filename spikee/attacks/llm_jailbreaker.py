@@ -98,6 +98,7 @@ class LLMJailbreaker(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [
+            ModuleTag.SOCIAL_ENGINEERING,
             ModuleTag.LLM,
             ModuleTag.SINGLE,
         ], "Generates jailbreak attack prompts using an LLM."
