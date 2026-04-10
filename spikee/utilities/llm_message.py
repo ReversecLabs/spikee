@@ -40,7 +40,8 @@ class AIMessage(Message):
 
 def format_messages(
     messages: Union[str, List[Union[Message, dict, tuple, str]]],
-) -> List[Dict[str, str]]:
+    bedrock_format: bool = False,
+) -> List[Dict[str, Union[str, List[str]]]]:
     """Convert various message formats (string, dict, tuple, Message objects) into a standardized list of dicts with 'role' and 'content' keys."""
     formatted_messages = []
     if isinstance(messages, str):
@@ -78,6 +79,12 @@ def format_messages(
 
     else:
         raise ValueError(f"Unsupported messages format type: {type(messages)}.")
+
+    if bedrock_format:
+        # Bedrock expects messages in the format: {"role": "user", "content": ["message content"]}
+        for msg in formatted_messages:
+            if isinstance(msg["content"], str):
+                msg["content"] = [{"text": msg["content"]}]
 
     return formatted_messages
 
