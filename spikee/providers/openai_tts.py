@@ -12,13 +12,13 @@ Additional Args:
 import base64
 import os
 
-from spikee.templates.provider import Provider
+from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage, format_messages
-from typing import List, Tuple, Dict, Union, Any
+from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage
+from typing import Callable, List, Tuple, Dict, Union
 
 
-class OpenAITTSProvider(Provider):
+class OpenAITTSProvider(StreamingProvider):
     """OpenAI Text-to-Speech provider"""
 
     @property
@@ -56,12 +56,9 @@ class OpenAITTSProvider(Provider):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
-
-    def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
-    ) -> AIMessage:
-        """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
-        
+    
+    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> Tuple[str, str]:
+        """Validate and extract instruction and text from messages."""
         messages = upgrade_messages(messages)
         
         if len(messages) > 2:
@@ -83,6 +80,15 @@ class OpenAITTSProvider(Provider):
             if text is None:
                 raise ValueError("OpenAI TTS Provider requires a user prompt input.")
         
+        return instruction, text
+
+    def invoke(
+        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+    ) -> AIMessage:
+        """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
+        
+        instruction, text = self._validate_messages(messages)
+        
         response = self.client.audio.speech.create(
             model=self.model,
             voice=self.voice,
@@ -100,28 +106,115 @@ class OpenAITTSProvider(Provider):
             original_response=response,
             response_format=self.response_format,
         )
+        
+    def invoke_streaming(
+        self, messages: Union[str, List[Union[Message, dict, tuple, str]]], callback: Callable
+    ):
+        instruction, text = self._validate_messages(messages)
+        
+        with self.client.audio.speech.with_streaming_response.create(
+            model=self.model,
+            voice=self.voice,
+            input=text,
+            instructions=instruction,
+            response_format=self.response_format,
+            speed=self.speed,
+        ) as response:
+            for audio_bytes in response.iter_bytes():
+                base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+                callback(base64_audio)
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     
-    provider = OpenAITTSProvider()
-    provider.setup(model="gpt-4o-mini-tts", voice="alloy", response_format="mp3", speed=1.0)
-    messages = [
-        HumanMessage(content="Hello, how are you today?"),
-    ]
-    response = provider.invoke(messages)
-    print("Base64 Audio Content:", response.content)
-    
-    audio_bytes = base64.b64decode(response.content)
-
     try:
-        import io
-        import soundfile as sf
+        import numpy as np
         import sounddevice as sd
-
-        data, sample_rate = sf.read(io.BytesIO(audio_bytes))
-        sd.play(data, sample_rate)
-        sd.wait()
     except ImportError:
-        print("Audio playback requires 'soundfile' and 'sounddevice' packages. Please install them to play the audio response.")
+        print("Playback requires 'numpy' and 'sounddevice' packages. Please install them.")
+        exit(1)
+    
+    # PCM format from OpenAI: 24kHz, mono, 16-bit little-endian
+    SAMPLE_RATE = 24000
+    CHANNELS = 1
+    BYTES_PER_SAMPLE = 2  # 16-bit = 2 bytes
+    
+    chunk_count = 0
+    stream = None
+    buffer = b""  # Buffer for incomplete frames
+    
+    def play_audio(base64_audio):
+        global chunk_count, stream, buffer
+        chunk_count += 1
+        
+        audio_bytes = base64.b64decode(base64_audio)
+        print(f"[Chunk {chunk_count}] Received {len(audio_bytes)} bytes")
+        
+        # Append to buffer
+        buffer += audio_bytes
+        
+        # Extract complete samples (16-bit = 2 bytes per sample)
+        complete_bytes = (len(buffer) // BYTES_PER_SAMPLE) * BYTES_PER_SAMPLE
+        if complete_bytes == 0:
+            print(f"  Buffering {len(buffer)} incomplete bytes, waiting for more...")
+            return
+        
+        # Split buffered data
+        to_play = buffer[:complete_bytes]
+        buffer = buffer[complete_bytes:]  # Keep incomplete samples for next chunk
+        
+        # Convert raw PCM bytes to numpy array
+        audio_data = np.frombuffer(to_play, dtype=np.int16)
+        
+        # Normalize to [-1, 1] for playback
+        audio_float = audio_data.astype(np.float32) / 32768.0
+        
+        # Create stream on first chunk
+        if stream is None:
+            stream = sd.OutputStream(channels=CHANNELS, samplerate=SAMPLE_RATE, dtype=np.float32)
+            stream.start()
+            print(f"Starting playback (24kHz, mono, 16-bit PCM)")
+        
+        # Play chunk
+        try:
+            stream.write(audio_float)
+            print(f"  Playing {len(audio_float)} samples ({complete_bytes} bytes)")
+        except Exception as e:
+            print(f"Error playing audio: {e}")
+    
+    provider = OpenAITTSProvider()
+    provider.setup(model="gpt-4o-mini-tts", voice="alloy", response_format="pcm", speed=1.0)
+    
+    if False:
+        messages = [
+            HumanMessage(content="Hello, how are you today?"),
+        ]
+        response = provider.invoke(messages)
+        #print("Base64 Audio Content:", response.content)
+    
+    else:
+        messages = [
+            HumanMessage(content="This is a streaming response test. The audio will play as it is received."),
+        ]
+        provider.invoke_streaming(messages, callback=play_audio)
+        
+        # Flush any remaining buffered bytes
+        if buffer:
+            print(f"\nFlushing {len(buffer)} final bytes from buffer...")
+            audio_data = np.frombuffer(buffer, dtype=np.int16)
+            audio_float = audio_data.astype(np.float32) / 32768.0
+            if stream is not None:
+                stream.write(audio_float)
+        
+        # Close stream
+        if stream is not None:
+            stream.stop()
+            stream.close()
+        print("Playback complete.")
+        
+       
+
+        
+        
+        

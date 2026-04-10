@@ -409,15 +409,15 @@ def apply_plugin(
             params = sig.parameters
 
             for t in text:
+                args = {
+                    "text": t,
+                    "exclude_patterns": exclude_patterns,
+                }
+
                 if "plugin_option" in params:
-                    res = module.transform(
-                        t,
-                        exclude_patterns,
-                        plugin_option_map.get(name) if plugin_option_map else None,
-                    )
-                else:
-                    # Older plugin without plugin_option support
-                    res = module.transform(t, exclude_patterns)
+                    args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
+                
+                res = module.transform(**args)
 
                 if isinstance(res, str):
                     new_text.append(res)
