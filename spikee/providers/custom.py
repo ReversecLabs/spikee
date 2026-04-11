@@ -36,6 +36,7 @@ class AnyLLMCustomProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
@@ -50,9 +51,14 @@ class AnyLLMCustomProvider(Provider):
                 f"URL and API key variables must be set for the {self.name} provider."
             )
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {"api_base": self.base_url, "api_key": self.api_key}
+        if timeout is not None:
+             llm_kwargs["timeout"] = timeout
+
         try:
             self.llm = AnyLLM.create(
-                "openai", api_base=self.base_url, api_key=self.api_key
+                "openai", **llm_kwargs
             )
         except ImportError:
             raise ImportError(

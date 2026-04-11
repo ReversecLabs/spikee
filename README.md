@@ -327,6 +327,9 @@ spikee test --dataset datasets/dataset-name.jsonl \
 - `--throttle`: Time (in seconds) to wait between requests, useful for managing rate limits (Default, 0)
 - `--sample`: Proportion of the dataset to test, between 0 and 1 (e.g., `--sample 0.1` for 10%) (Default, 1)
 
+### 5.7. Global Timeouts (`SPIKEE_API_TIMEOUT`)
+See [_LLM Providers (`SPIKEE_API_TIMEOUT`)_](./docs/03_llm_providers.md#global-timeouts) for information on extending request timeouts, particularly useful when running heavy local models (`llama.cpp`, `ollama`) or complex multi-turn evaluations.
+
 ## 6. Analysing the Results: `spikee results`
 
 `spikee results` includes several tools to aid in the analysis of test results. 

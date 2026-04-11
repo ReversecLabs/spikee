@@ -3,9 +3,21 @@ from spikee.utilities.llm_message import Message, AIMessage
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union
+import os
 
 
 class Provider(Module, ABC):
+    @property
+    def default_timeout(self) -> Union[float, None]:
+        """Global fallback for provider timeouts, reads from SPIKEE_API_TIMEOUT."""
+        val = os.getenv("SPIKEE_API_TIMEOUT")
+        if val:
+            try:
+                return float(val)
+            except ValueError:
+                pass
+        return None
+
     @property
     def default_model(self) -> Union[str, None]:
         """Override in subclass to specify a default model key."""

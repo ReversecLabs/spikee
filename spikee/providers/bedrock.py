@@ -42,6 +42,7 @@ class AnyLLMBedrockProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
@@ -49,8 +50,13 @@ class AnyLLMBedrockProvider(Provider):
 
         self.model = self.models.get(self.model, self.model)
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            self.llm = AnyLLM.create("bedrock")
+            self.llm = AnyLLM.create("bedrock", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'bedrock' is missing required packages for AWS Bedrock. Please run `pip install spikee[bedrock]` to install them."

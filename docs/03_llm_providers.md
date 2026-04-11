@@ -114,6 +114,17 @@ spikee test --dataset evaluations.jsonl \
             --judge-options "groq/llama-3.1-8b-instant"
 ```
 
+## Global Timeouts
+
+When using LLMs for modules like judging and dynamic attacks, you might occasionally need to increase the timeout for the underlying requests. This is especially true if you are using complex multi-turn attacks or running local servers (`llama.cpp`, `ollama` etc) that don't have powerful GPUs and need more time to process large contexts.
+
+You can override the default API timeout (typically 600 seconds) across all Spikee LLM providers by setting the `SPIKEE_API_TIMEOUT` environment variable (in seconds) before running your testing harness.
+
+```bash
+# E.g. Set a 20-minute global timeout across all LLM providers
+SPIKEE_API_TIMEOUT=1200.0 spikee test --dataset my_dataset.jsonl --target llm_provider
+```
+
 ## Implementing Built-In LLM Utilities
 Spikee's built-in LLM utility is implemented within `Provider` modules, and can be obtained using the `get_llm()` function from `spikee/utilities/llm.py`.
 
