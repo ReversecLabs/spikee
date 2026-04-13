@@ -2,13 +2,24 @@ from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
-import logging
 import os
 from typing import List, Tuple, Dict, Union, Any
 
 
-class BedrockSSOProvider(Provider):
-    """Provider for Bedrock models, via SSO"""
+class BedrockProfileProvider(Provider):
+    """
+    Provider for Bedrock models, via an AWS profile.
+
+    https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
+
+    SSO Configuration:
+    1. Ensure you have installed AWS CLI: https://aws.amazon.com/cli/
+    2. Using `aws configure sso` configure your AWS profile, setting a profile name.
+    3. Using `aws sso login --profile <profile_name>` log in to your AWS account via SSO.
+    4. Validate profile using `aws sts get-caller-identity --profile <profile_name>`.
+    5. Set the `AWS_PROFILE` environment variable to your profile name, and `AWS_DEFAULT_REGION` to your desired region (e.g. `us-east-2`).
+
+    """
 
     @property
     def default_model(self) -> str:
@@ -53,15 +64,15 @@ class BedrockSSOProvider(Provider):
         try:
             import boto3
 
-            self.sso_profile = os.getenv("AWS_SSO_PROFILE") or "default"
+            self.profile = os.getenv("AWS_PROFILE") or "default"
             self.region = os.getenv("AWS_DEFAULT_REGION")
 
-            if self.sso_profile is None or self.region is None:
+            if self.profile is None or self.region is None:
                 raise ValueError(
-                    "AWS SSO Profile or AWS Default Region not found. Please set the AWS_SSO_PROFILE and AWS_DEFAULT_REGION environment variables."
+                    "AWS Profile or AWS Default Region not found. Please set the AWS_PROFILE and AWS_DEFAULT_REGION environment variables."
                 )
 
-            self.session = boto3.Session(profile_name=self.sso_profile)
+            self.session = boto3.Session(profile_name=self.profile)
             self.client = self.session.client(service_name="bedrock-runtime", region_name=self.region)
         except ImportError:
             raise ImportError(
@@ -78,12 +89,12 @@ class BedrockSSOProvider(Provider):
         self.options = options_kwargs
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via SSO."
+        return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via an AWS profile. (Requires `AWS_PROFILE` and `AWS_DEFAULT_REGION` env to be set)"
 
     def invoke(
         self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
     ) -> AIMessage:
-        """Invoke Bedrock LLM, via SSO, with the provided messages."""
+        """Invoke Bedrock LLM, via an AWS profile, with the provided messages."""
 
         formatted_messages = format_messages(messages, bedrock_format=True)
 
