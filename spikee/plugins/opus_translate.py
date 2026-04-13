@@ -38,16 +38,16 @@ import os
 import warnings
 from typing import List, Tuple, Union, Optional
 
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-logging.getLogger("transformers").setLevel(logging.ERROR)
-
-from transformers import MarianMTModel, MarianTokenizer
 import torch
+from transformers import MarianMTModel, MarianTokenizer
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
+
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
 class OpusTranslator(Plugin):

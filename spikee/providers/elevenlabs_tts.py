@@ -11,7 +11,7 @@ import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage
+from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import List, Tuple, Dict, Union, Callable
 
 

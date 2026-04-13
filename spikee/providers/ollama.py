@@ -41,7 +41,7 @@ class AnyLLMOllamaProvider(Provider):
             data = response.json()
             return {model["model"]: model["model"] for model in data["models"]}
 
-        except Exception as e:
+        except Exception:
             return {"error": "Unable to fetch models from Ollama API."}
 
     def setup(

@@ -1,5 +1,5 @@
 from spikee.templates.provider import Provider
-from spikee.utilities.llm_message import Message, AIMessage
+from spikee.utilities.llm_message import Message
 
 from abc import ABC, abstractmethod
 from typing import Callable, List, Union
@@ -12,4 +12,3 @@ class StreamingProvider(Provider, ABC):
     ) -> None:
         """Invoke the provider with the given messages and stream the response using the callback."""
         pass
-

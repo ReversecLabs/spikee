@@ -10,7 +10,7 @@ import os
 
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage, format_messages
+from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import List, Tuple, Dict, Union
 
 

@@ -174,7 +174,7 @@ if __name__ == "__main__":
         if stream is None:
             stream = sd.OutputStream(channels=CHANNELS, samplerate=SAMPLE_RATE, dtype=np.float32)
             stream.start()
-            print(f"Starting playback (24kHz, mono, 16-bit PCM)")
+            print("Starting playback (24kHz, mono, 16-bit PCM)")
         
         # Play chunk
         try:

@@ -12,8 +12,9 @@ Engines (set via model):
 - long-form: Optimised for long documents
 - standard: Classic concatenative synthesis
 
-Credentials are read from the environment:
-  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+Allows for AWS Key-based or profile-based authentication via environment variables:
+ - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+ - AWS_PROFILE, AWS_DEFAULT_REGION
 """
 import base64
 import os
@@ -23,10 +24,16 @@ from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import List, Tuple, Dict, Union
 
-#TODO: Confirm data storage adheres to internal policies.
 
 class AWSPollyTTSProvider(Provider):
     """AWS Polly Text-to-Speech provider"""
+
+    def __init__(self):
+        super().__init__()
+        self.engine = None
+        self.voice_id = None
+        self.output_format = None
+        self.client = None
 
     @property
     def default_model(self) -> str:
@@ -36,7 +43,7 @@ class AWSPollyTTSProvider(Provider):
     def models(self) -> Dict[str, str]:
         return {
             "neural": "neural",         # Neural TTS — natural, high-quality voices (default)
-            "generative": "generative", # Generative TTS — most expressive
+            "generative": "generative",  # Generative TTS — most expressive
             "long-form": "long-form",   # Optimised for longer content
             "standard": "standard",     # Classic concatenative synthesis
         }
@@ -54,12 +61,29 @@ class AWSPollyTTSProvider(Provider):
 
         try:
             import boto3
-            self.client = boto3.client(
-                "polly",
-                region_name=os.getenv("AWS_DEFAULT_REGION"),
-                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            )
+            if not os.getenv("AWS_DEFAULT_REGION"):
+                raise ValueError("AWS_DEFAULT_REGION environment variable must be set for AWS Polly TTS Provider.")
+
+            if os.getenv("AWS_PROFILE"):  # AWS Profile-based authentication
+                session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
+                self.client = session.client(
+                    "polly",
+                    region_name=os.getenv("AWS_DEFAULT_REGION"),
+                )
+
+            elif os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):  # AWS Key-based authentication
+                self.client = boto3.client(
+                    "polly",
+                    region_name=os.getenv("AWS_DEFAULT_REGION"),
+                    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                )
+
+            else:
+                raise ValueError(
+                    "AWS Polly TTS Provider requires AWS credentials. Please set either AWS_PROFILE or AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables."
+                )
+
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'aws_polly_tts' is missing required packages. "
@@ -75,22 +99,22 @@ class AWSPollyTTSProvider(Provider):
         ], False
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, input_messages: Union[str, List[Union[Message, dict, tuple, str]]]
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
-        messages = upgrade_messages(messages)
-        
-        if len(messages) > 1 and not isinstance(messages[0], HumanMessage):
+        upgraded_messages: List[Message] = upgrade_messages(input_messages)
+
+        if len(upgraded_messages) > 1 and not isinstance(upgraded_messages[0], HumanMessage):
             raise ValueError("AWS Polly TTS Provider only supports a single user message input.")
 
         else:
             text = None
-            for msg in messages:
+            for msg in upgraded_messages:
                 if isinstance(msg, HumanMessage):
                     text = msg.content
                     break
-                
+
         response = self.client.synthesize_speech(
             Engine=self.engine,
             VoiceId=self.voice_id,
@@ -113,15 +137,17 @@ if __name__ == "__main__":
     load_dotenv()
 
     provider = AWSPollyTTSProvider()
-    provider.setup(model="neural", voice_id="Joanna", output_format="mp3")
+    provider.setup(model="standard", voice_id="Joanna", output_format="mp3")
     messages = [
         HumanMessage(content="Hello, this is a test of the AWS Polly text-to-speech provider."),
     ]
-    response = provider.invoke(messages)
-    #print("Base64 Audio Content:", response.content)
-    
+
+    print("Invoking AWS Polly TTS Provider...")
+    response = provider.invoke(input_messages=messages)
+    # print("Base64 Audio Content:", response.content)
+
     audio_bytes = base64.b64decode(response.content)
-    
+
     try:
         import io
         import soundfile as sf
