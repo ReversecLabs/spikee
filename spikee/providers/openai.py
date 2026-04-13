@@ -48,13 +48,19 @@ class AnyLLMOpenAIProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            self.llm = AnyLLM.create("openai")
+            self.llm = AnyLLM.create("openai", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'openai' is missing required packages for OpenAI. Please run `pip install spikee[openai]` to install them."

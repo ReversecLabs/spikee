@@ -49,13 +49,19 @@ class AnyLLMOllamaProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {"api_base": self.BASE_URL}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            self.llm = AnyLLM.create("ollama", api_base=self.BASE_URL)
+            self.llm = AnyLLM.create("ollama", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'ollama' is missing required packages for Ollama. Please run `pip install spikee[ollama]` to install them."

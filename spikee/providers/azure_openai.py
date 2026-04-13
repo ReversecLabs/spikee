@@ -26,17 +26,24 @@ class AnyLLMAzureOpenAIProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
+        api_ver = os.getenv(
+            "AZURE_OPENAI_API_VERSION",
+            os.getenv("OPENAI_API_VERSION", "2024-02-15-preview"),
+        )
+
+        timeout = kwargs.get("timeout", None)
+        llm_kwargs = {"api_version": api_ver}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            api_ver = os.getenv(
-                "AZURE_OPENAI_API_VERSION",
-                os.getenv("OPENAI_API_VERSION", "2024-02-15-preview"),
-            )
-            self.llm = AnyLLM.create("azureopenai", api_version=api_ver)
+            self.llm = AnyLLM.create("azureopenai", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'azure_openai' is missing required packages for Azure OpenAI. Please run `pip install spikee[azure]` to install them."

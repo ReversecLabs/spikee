@@ -30,13 +30,19 @@ class AnyLLMGroqProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            self.llm = AnyLLM.create("groq")
+            self.llm = AnyLLM.create("groq", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 "[Import Error] Provider Module 'groq' is missing required packages for Groq. Please run `pip install spikee[groq]` to install them."

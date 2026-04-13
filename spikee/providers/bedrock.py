@@ -45,6 +45,7 @@ class AnyLLMBedrockProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
@@ -52,8 +53,13 @@ class AnyLLMBedrockProvider(Provider):
 
         self.model = self.models.get(self.model, self.model)
 
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
+
         try:
-            self.llm = AnyLLM.create("bedrock")
+            self.llm = AnyLLM.create("bedrock", **llm_kwargs)
             any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
             raise ImportError(

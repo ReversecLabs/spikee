@@ -450,7 +450,6 @@ def main():
     parser_extract.add_argument(
         "--custom-search",
         type=str,
-        action="append",
         default=None,
         help="Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match",
     )
