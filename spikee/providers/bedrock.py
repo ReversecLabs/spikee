@@ -1,8 +1,9 @@
+import os
+import logging
+
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
-
-import logging
 
 from any_llm import AnyLLM
 from any_llm.logging import logger as any_llm_logger
@@ -10,7 +11,20 @@ from typing import List, Tuple, Dict, Union, Any
 
 
 class AnyLLMBedrockProvider(Provider):
-    """AnyLLM provider for Bedrock models"""
+    """
+    AnyLLM provider for Bedrock models
+
+    AWS Authentication, can be performed via the following methods:
+    - AWS Keys: Set the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION` environment variables.
+    - AWS Profiles: Configure an AWS profile and set the `AWS_PROFILE` and `AWS_REGION` environment variables.
+        - https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
+        - SSO Configuration:
+            1. Ensure you have installed AWS CLI: https://aws.amazon.com/cli/
+            2. Using `aws configure sso` configure your AWS profile, setting a profile name.
+            3. Using `aws sso login --profile <profile_name>` log in to your AWS account via SSO. (Also for revalidating expired credentials)
+            4. Validate profile using `aws sts get-caller-identity --profile <profile_name>`.
+            5. Set the `AWS_PROFILE` environment variable to your profile name, and `AWS_DEFAULT_REGION` to your desired region (e.g. `us-east-2`).
+    """
 
     @property
     def default_model(self) -> str:
@@ -53,6 +67,17 @@ class AnyLLMBedrockProvider(Provider):
         self.model = self.models.get(self.model, self.model)
 
         try:
+            if os.getenv("AWS_PROFILE"):  # Extract Keys for AWS Profiles
+                import boto3
+                session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
+                frozen = session.get_credentials().get_frozen_credentials()
+
+                # Inject as env vars so awscrt picks them up via the default chain
+                os.environ["AWS_ACCESS_KEY_ID"] = frozen.access_key
+                os.environ["AWS_SECRET_ACCESS_KEY"] = frozen.secret_key
+                if frozen.token:
+                    os.environ["AWS_SESSION_TOKEN"] = frozen.token
+
             self.llm = AnyLLM.create("bedrock")
             any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
