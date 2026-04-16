@@ -1,12 +1,15 @@
 from typing import List, Optional, Union
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 
 class TestUpperPlugin(Plugin):
+    def get_description(self) -> ModuleDescriptionHint:
+        return [], "Test plugin for converting text to uppercase."
+
     def get_available_option_values(self) -> ModuleOptionsHint:
-        return [], True
+        return [], False
 
     def transform(
         self,

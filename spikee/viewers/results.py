@@ -7,7 +7,7 @@ from spikee.utilities.files import (
     extract_resource_name,
 )
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.judge import call_judge
 
 from flask import render_template, request, redirect, abort

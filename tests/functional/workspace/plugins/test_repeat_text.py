@@ -1,18 +1,21 @@
 from typing import List, Optional, Tuple, Union
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 
 class TestRepeatPlugin(Plugin):
     DEFAULT_SUFFIX = "-repeat"
     DEFAULT_COUNT = 2
 
+    def get_description(self) -> ModuleDescriptionHint:
+        return [], "Test plugin for repeating text with optional suffix and count."
+
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [
             "n_variants=2",
             "n_variants=<int>,suffix=<suffix>",
-        ], True
+        ], False
 
     def _parse_options(self, option_string: Optional[str]) -> Tuple[int, str]:
         count = self.DEFAULT_COUNT

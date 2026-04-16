@@ -109,15 +109,15 @@ class TestFormattingArguments:
         # Summarization entries: text starts with "Summarize..." and have ideal_summary
         summarization_entries = [e for e in dataset if e.get("task_type") == "summarization"]
         for entry in summarization_entries:
-            assert entry["text"].startswith("Summarize the following document:"), \
-                f"Summarization text should start with 'Summarize the following document:', got: {entry['text'][:60]}"
+            assert entry["content"].startswith("Summarize the following document:"), \
+                f"Summarization text should start with 'Summarize the following document:', got: {entry['content'][:60]}"
             assert "ideal_summary" in entry, "Summarization entry missing 'ideal_summary' field"
 
         # QnA entries: text starts with "Given this document:" and have ideal_answer
         qna_entries = [e for e in dataset if e.get("task_type") == "qna"]
         for entry in qna_entries:
-            assert entry["text"].startswith("Given this document:"), \
-                f"QnA text should start with 'Given this document:', got: {entry['text'][:60]}"
+            assert entry["content"].startswith("Given this document:"), \
+                f"QnA text should start with 'Given this document:', got: {entry['content'][:60]}"
             assert "ideal_answer" in entry, "QnA entry missing 'ideal_answer' field"
 
         # system_message should be None without --include-system-message
@@ -161,10 +161,10 @@ class TestFormattingArguments:
         positions = {e.get("position") for e in dataset}
         assert positions == {"start"}, f"Expected position 'start', got {positions}"
 
-        # At 'start', the payload appears before the document text in 'text'
+        # At 'start', the payload appears before the document text in 'content'
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             doc_snippet = "This is the base document" if "This is the base document" in text \
                           else "Documento to base"
             assert text.index(payload) < text.index(doc_snippet), \
@@ -188,7 +188,7 @@ class TestFormattingArguments:
         # At 'end', the payload appears after the document text in 'text'
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             doc_pos = text.find("This is the base document") if "This is the base document" in text \
                 else text.find("Documento to base")
             assert text.index(payload) > doc_pos, \
@@ -212,7 +212,7 @@ class TestFormattingArguments:
         # At 'middle', the payload appears between parts of the document
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             assert payload in text, "Expected payload in text for position 'middle'"
 
     def test_placeholder_position(self, run_spikee, workspace_dir):
@@ -234,7 +234,7 @@ class TestFormattingArguments:
         # The payload should be injected where <PLACEHOLDER> was in the source document
         # Source: "User start <PLACEHOLDER> user end"
         for entry in dataset:
-            text = entry["text"]
+            text = entry["content"]
             payload = entry["payload"]
             assert "User start" in text, "Expected 'User start' in text"
             assert "user end" in text, "Expected 'user end' in text"
@@ -270,7 +270,7 @@ class TestFormattingArguments:
         # Verify the delimiter actually wraps the payload in the generated text:
         # '<<<' should appear immediately before the payload, '>>>' immediately after
         for entry in dataset:
-            text = entry["text"]
+            text = entry["content"]
             payload = entry["payload"]
             assert f"<<<{payload}>>>" in text, \
                 f"Expected payload wrapped in '<<<...>>>' in text, but got: {text[:120]}"
@@ -709,3 +709,22 @@ class TestPlugins:
         for entry in dataset:
             assert entry["payload"] == entry["payload"].upper(), \
                 f"Expected uppercase payload in plugin-only mode, got: {entry['payload'][:60]}"
+
+
+class TestContent:
+    def test_content_audio(self, run_spikee, workspace_dir):
+        """Test that entries with audio content have the expected fields."""
+        output_file = spikee_generate_cli(
+            run_spikee,
+            workspace_dir,
+            seed_folder="datasets/seeds-functional-audio",
+            additional_args=["--include-standalone-inputs"],
+        )
+
+        assert output_file.exists(), f"Expected dataset file at {output_file}"
+
+        dataset = read_jsonl_file(output_file)
+
+        assert len(dataset) == 3, "Generated dataset contains no entries"
+        assert sum(1 for e in dataset if e.get("content_type") == "audio") == 2, \
+            f"Expected 2 audio entries, got {sum(1 for e in dataset if e.get('content_type') == 'audio')}"

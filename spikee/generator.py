@@ -37,7 +37,7 @@ class Entry:
         content: Content,
         entry_text,
         system_message,
-        payload,
+        payload: Content,
         lang,
         plugin_suffix,
         plugin_name,
@@ -111,7 +111,7 @@ class Entry:
             "id": self.id,
             "long_id": self.long_id,
             "content": self.content.content,
-            "content_type": type(self.content).__name__,
+            "content_type": str(type(self.content).__name__).lower(),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -127,7 +127,7 @@ class Entry:
             "suffix_id": self.suffix_id,
             "system_message": self.system_message,
             "plugin": self.plugin_name,
-            "payload": self.payload,
+            "payload": self.payload.content,
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
 
@@ -156,7 +156,7 @@ class Entry:
             "id": self.long_id,
             "long_id": self.long_id,
             "content": self.content.content,
-            "content_type": type(self.content).__name__,
+            "content_type": str(type(self.content).__name__).lower(),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -170,7 +170,7 @@ class Entry:
             "lang": self.lang,
             "prefix_id": self.prefix_id,
             "suffix_id": self.suffix_id,
-            "payload": self.payload,
+            "payload": self.payload.content,
             "plugin": self.plugin_name,
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
@@ -409,56 +409,65 @@ def apply_plugin(
     else:
         plugins.append((plugin_name, plugin_module))
 
+    contents: List[Content] = [content]
+
     for name, module in plugins:
-        new_content = []
+        new_content: List[Content] = []
         if hasattr(module, "transform"):
             # Check if the plugin's transform function accepts plugin_option parameter
 
             sig = inspect.signature(module.transform)
             params = sig.parameters
 
-            args = {}
+            for content in contents:
+                args = {}
 
-            if "content" in params:
-                hint = params["content"].annotation
+                if "content" in params:
+                    hint = params["content"].annotation
 
-                if hint == Content or hint == Text and isinstance(content, Text) or hint == Audio and isinstance(content, Audio) or hint == Image and isinstance(content, Image):
-                    args["content"] = content
+                    if hint == Content or hint == Text and isinstance(content, Text) or hint == Audio and isinstance(content, Audio) or hint == Image and isinstance(content, Image):
+                        args["content"] = content
+                    else:
+                        raise ValueError(
+                            f"Plugin '{name}' transform function has 'content' parameter with incompatible type hint. Expected {Content.__name__} or specific subtype, got {hint}."
+                        )
+
                 else:
-                    raise ValueError(
-                        f"Plugin '{name}' transform function has 'content' parameter with incompatible type hint. Expected {Content.__name__} or specific subtype, got {hint}."
-                    )
+                    if not isinstance(content, Text):
+                        raise ValueError(
+                            f"Plugin '{name}' does not accept 'content' parameter but the provided content is not of type Text."
+                        )
+                    args["text"] = content.content
 
-            else:
-                if not isinstance(content, Text):
-                    raise ValueError(
-                        f"Plugin '{name}' does not accept 'content' parameter but the provided content is not of type Text."
-                    )
+                args["exclude_patterns"] = exclude_patterns
 
-                args["text"] = content.content
+                if "plugin_option" in params:
+                    args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
 
-            args["exclude_patterns"] = exclude_patterns
+                res = module.transform(**args)
 
-            if "plugin_option" in params:
-                args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
+                def validate_result(res) -> Content:
+                    if isinstance(res, Content):
+                        return res
+                    elif isinstance(res, str):
+                        return Text(res)
+                    else:
+                        raise ValueError(
+                            f"Plugin '{name}' transform function returned unsupported type: {type(res)}"
+                        )
 
-            res = module.transform(**args)
+                if isinstance(res, list):
+                    for item in res:
+                        new_content.append(validate_result(item))
+                else:
+                    new_content.append(validate_result(res))
 
-            if isinstance(res, Content):
-                new_content.append(res)
-            elif isinstance(res, list):
-                new_content.extend(res)
-            elif isinstance(res, str):
-                new_content.append(Text(res))
-            else:
-                raise ValueError(
-                    f"Plugin '{name}' transform function returned unsupported type: {type(res)}"
-                )
+            contents = new_content
 
         else:
             print(f"Plugin '{plugin_name}' does not have a 'transform' function.")
 
-    return new_content
+    return contents
 
 
 def parse_exclude_patterns(jailbreak, instruction):
@@ -865,7 +874,7 @@ def generate_variations(
 
                             for entry_type in output_format:
                                 if entry_type == "burp":
-                                    burp_payload_encoded = json.dumps(injected_doc)[
+                                    burp_payload_encoded = json.dumps(injected_doc.content)[
                                         1:-1
                                     ]
                                     dataset.append(burp_payload_encoded)
@@ -1141,6 +1150,7 @@ def generate_dataset(args):
         )
 
         # Generate Standalone Attacks
+        # TODO: Validate that burp format works on standalone attacks
         if getattr(args, "include_standalone_inputs", False):
             standalone_file = resolve_standalone_inputs_path(seed_folder)
             standalone_inputs = read_jsonl_file(str(standalone_file))
