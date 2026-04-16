@@ -81,7 +81,7 @@ class LLMMultiLanguageJailbreaker(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.LLM, ModuleTag.SINGLE],
+            [ModuleTag.TRANSLATION, ModuleTag.LLM, ModuleTag.SINGLE],
             "Generates jailbreak attack prompts using an LLM and multi language techniques.",
         )
 

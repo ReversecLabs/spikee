@@ -284,7 +284,7 @@ class EchoChamber(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.MULTI, ModuleTag.LLM],
+            [ModuleTag.SOCIAL_ENGINEERING, ModuleTag.MULTI, ModuleTag.LLM],
             "Leverages an LLM Agent to generate poisonous seeds and gradually escalates an LLM's output by amplifying hidden harmful content in a self-reinforcing loop.",
         )
 

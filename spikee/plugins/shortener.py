@@ -43,7 +43,7 @@ class Shortener(Plugin):
 
     def get_available_option_values(self) -> Tuple[List[str], bool]:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
-        return ["length=254", "attempts=5"], True
+        return ["length=254,attempts=5"], True
 
     def transform(
         self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""

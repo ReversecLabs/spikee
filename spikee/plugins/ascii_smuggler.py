@@ -36,7 +36,7 @@ from spikee.utilities.modules import parse_options
 class AsciiSmuggler(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [],
+            [ModuleTag.ENCODING],
             "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique.",
         )
 

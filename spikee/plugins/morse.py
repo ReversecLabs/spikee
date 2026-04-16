@@ -26,7 +26,7 @@ from spikee.utilities.enums import ModuleTag
 
 class MorsePlugin(BasicPlugin):
     def get_description(self) -> Tuple[List[ModuleTag], str]:
-        return [], "Transforms text into Morse code."
+        return [ModuleTag.ENCODING], "Transforms text into Morse code."
 
     MORSE_CODE_DICT = {
         "A": ".-",

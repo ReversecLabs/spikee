@@ -44,7 +44,7 @@ Use `spikee list providers` to get a list of providers and known supported model
 | TogetherAI | `together` | `gemma2-8b` (default)<br/>`mixtral-8x22b`<br/><small>*(Allows internal shorthands)*</small> | `TOGETHER_API_KEY` | [Models List](https://docs.together.ai/docs/inference-models) |
 | OpenRouter | `openrouter` | `google/gemini-2.5-flash` (default)<br/>`anthropic/claude-3.5-haiku` | `OPENROUTER_API_KEY` | [Models List](https://openrouter.ai/models) |
 | Local (Ollama) | `ollama` | *None* | `OLLAMA_URL` | |
-| Local (LLaMA CCP Server) | `llamaccp` | *None* | `LLAMACPP_URL` | |
+| Local (LLaMA CPP Server) | `llamacpp` | *None* | `LLAMACPP_URL` | |
 | Custom | `custom` | *None* | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
 | Offline | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
 

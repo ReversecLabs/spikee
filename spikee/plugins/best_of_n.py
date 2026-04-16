@@ -37,7 +37,7 @@ class BestOfN(Plugin):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.ATTACK_BASED],
+            [ModuleTag.OBFUSCATION, ModuleTag.ATTACK_BASED],
             "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
         )
 

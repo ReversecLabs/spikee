@@ -108,7 +108,7 @@ class Crescendo(Attack):
 
     def get_description(self) -> Tuple[List[ModuleTag], str]:
         return (
-            [ModuleTag.MULTI, ModuleTag.LLM],
+            [ModuleTag.SOCIAL_ENGINEERING, ModuleTag.MULTI, ModuleTag.LLM],
             "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak.",
         )
 
