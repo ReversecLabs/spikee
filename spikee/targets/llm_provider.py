@@ -2,7 +2,7 @@ from spikee.templates.target import Target
 from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, ContentHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
@@ -62,7 +62,7 @@ class LLMProvider(Target):
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]]:
+    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
         """
         Send messages to a provider model by key.
 

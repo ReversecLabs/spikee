@@ -68,7 +68,7 @@ def call_judge(entry, output: ContentHint):
         if not isinstance(llm_input, input_annotation):
             if isinstance(llm_input, Content) and input_annotation is str:
                 llm_input = llm_input.content
-            elif isinstance(llm_input, str) and input_annotation is Content:
+            elif isinstance(llm_input, str) and (input_annotation is Content or (inspect.isclass(input_annotation) and issubclass(input_annotation, Content))):
                 llm_input = Text(content=llm_input)
 
             else:
@@ -77,7 +77,7 @@ def call_judge(entry, output: ContentHint):
         if not isinstance(output, output_annotation):
             if isinstance(output, Content) and output_annotation is str:
                 output = output.content
-            elif isinstance(output, str) and output_annotation is Content:
+            elif isinstance(output, str) and (output_annotation is Content or (inspect.isclass(output_annotation) and issubclass(output_annotation, Content))):
                 output = Text(content=output)
 
             else:

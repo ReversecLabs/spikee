@@ -425,8 +425,15 @@ def apply_plugin(
                 if "content" in params:
                     hint = params["content"].annotation
 
-                    if hint == Content or hint == Text and isinstance(content, Text) or hint == Audio and isinstance(content, Audio) or hint == Image and isinstance(content, Image):
+                    if isinstance(content, hint):
                         args["content"] = content
+
+                    elif isinstance(content, str) and hint == Text:
+                        args["content"] = Text(content)
+
+                    elif isinstance(content, Content) and hint == str:
+                        args["content"] = content.content
+
                     else:
                         raise ValueError(
                             f"Plugin '{name}' transform function has 'content' parameter with incompatible type hint. Expected {Content.__name__} or specific subtype, got {hint}."
