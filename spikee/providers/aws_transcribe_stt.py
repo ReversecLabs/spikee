@@ -23,6 +23,7 @@ from typing import Optional, Union, Tuple, List, Dict
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, upgrade_messages
 
@@ -187,7 +188,7 @@ class AWSTranscribeSTTProvider(Provider):
         return " ".join(transcript_parts).strip()
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AWS Transcribe streaming STT with base64-encoded audio. Returns transcribed text."""
 

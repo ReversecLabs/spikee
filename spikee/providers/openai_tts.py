@@ -14,6 +14,7 @@ import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage
 from typing import Callable, Union, Dict, List, Tuple
@@ -58,7 +59,7 @@ class OpenAITTSProvider(StreamingProvider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> Tuple[str, str]:
+    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]) -> Tuple[str, str]:
         """Validate and extract instruction and text from messages."""
         messages = upgrade_messages(messages)
 
@@ -84,7 +85,7 @@ class OpenAITTSProvider(StreamingProvider):
         return instruction, text
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
 
@@ -109,7 +110,7 @@ class OpenAITTSProvider(StreamingProvider):
         )
 
     def invoke_streaming(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]], callback: Callable
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]], callback: Callable
     ):
         instruction, text = self._validate_messages(messages)
 

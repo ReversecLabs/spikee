@@ -12,6 +12,7 @@ from io import BytesIO
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import Union, Dict, List
@@ -72,7 +73,7 @@ class ElevenLabsSTTProvider(Provider):
             return 'mp3'
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke ElevenLabs Scribe STT with base64-encoded audio. Returns transcribed text."""
 

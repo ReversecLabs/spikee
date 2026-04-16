@@ -11,6 +11,7 @@ import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import Callable, Union, Dict, List
@@ -55,7 +56,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for ElevenLabs text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> str:
+    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]) -> str:
         """Extract text from messages."""
         messages = upgrade_messages(messages)
 
@@ -74,7 +75,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         return text
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""
 
@@ -96,7 +97,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         )
 
     def invoke_streaming(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]], callback: Callable
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]], callback: Callable
     ) -> None:
         """Invoke ElevenLabs TTS with streaming, calling callback for each audio chunk."""
 

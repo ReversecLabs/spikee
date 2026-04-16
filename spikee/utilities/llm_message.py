@@ -58,7 +58,7 @@ class AIMessage(Message):
 
 
 def format_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str]]],
+    messages: Union[str, List[Union[Message, dict, tuple, str, Content]]],
     bedrock_format: bool = False,
 ) -> List[Dict[str, Union[str, List[str]]]]:
     """Convert various message formats (string, dict, tuple, Message objects) into a standardized list of dicts with 'role' and 'content' keys."""
@@ -88,6 +88,10 @@ def format_messages(
                 or isinstance(msg, AIMessage)
             ):
                 formatted_messages.append(msg.formatted_dict())
+
+            elif isinstance(msg, Content):
+                # If a Content object is provided without a role, assume it's a user message
+                formatted_messages.append({"role": "user", "content": msg.content})
 
             elif isinstance(msg, str):
                 # Assume it's a user message if only a string is provided

@@ -2,6 +2,7 @@ import os
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, AIMessage
 from typing import Union, Dict, List
@@ -47,7 +48,7 @@ class OpenAISTSProvider(Provider):
         return [ModuleTag.AUDIO, ModuleTag.LLM_STS], "STS Provider for OpenAI speech-to-speech models."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke OpenAI STS."""
         return AIMessage(content="This is a placeholder response from OpenAI STS provider.")

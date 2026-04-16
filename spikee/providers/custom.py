@@ -2,6 +2,7 @@ import os
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
@@ -55,7 +56,7 @@ class AnyLLMCustomProvider(Provider):
         timeout = kwargs.get("timeout", self.default_timeout)
         llm_kwargs = {"api_base": self.base_url, "api_key": self.api_key}
         if timeout is not None:
-             llm_kwargs["timeout"] = timeout
+            llm_kwargs["timeout"] = timeout
 
         try:
             self.llm = AnyLLM.create(
@@ -81,7 +82,7 @@ class AnyLLMCustomProvider(Provider):
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 

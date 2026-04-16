@@ -21,6 +21,7 @@ import os
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
 from typing import Union, Dict, List
@@ -100,7 +101,7 @@ class AWSPollyTTSProvider(Provider):
         ], False
 
     def invoke(
-        self, input_messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, input_messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
