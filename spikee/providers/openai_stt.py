@@ -12,8 +12,8 @@ from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import Union, Dict, List
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from typing import Union, Dict, List, Sequence
 
 
 class OpenAISTTProvider(Provider):
@@ -66,23 +66,24 @@ class OpenAISTTProvider(Provider):
             return 'mp3'
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke OpenAI STT with the provided audio. Returns transcribed text in metadata."""
 
-        messages = upgrade_messages(messages)
+        msg, _ = single_message(messages)
 
-        if len(messages) > 1 and not isinstance(messages[0], HumanMessage):
-            raise ValueError("OpenAI TTS Provider only supports an instruction an user prompt input.")
+        if msg.content_type != "audio":
+            raise ValueError("ElevenLabs STT Provider requires a user message containing base64-encoded audio.")
 
-        else:
-            try:
-                audio_bytes = base64.b64decode(messages[0].content)
-                ext = self._detect_audio_format(audio_bytes)
-                audio_buffer = BytesIO(audio_bytes)
-                audio_buffer.name = f"input_audio.{ext}"
-            except Exception as e:
-                raise ValueError("Failed to decode base64 audio content.") from e
+        audio_b64 = msg.content
+
+        try:
+            audio_bytes = base64.b64decode(audio_b64)
+            ext = self._detect_audio_format(audio_bytes)
+            audio_buffer = BytesIO(audio_bytes)
+            audio_buffer.name = f"input_audio.{ext}"
+        except Exception as e:
+            raise ValueError("Failed to decode base64 audio content.") from e
 
         response = self.client.audio.transcriptions.create(
             model=self.model,

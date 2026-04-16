@@ -14,10 +14,10 @@ import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
+from spikee.utilities.content import Content, Audio
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage
-from typing import Callable, Union, Dict, List, Tuple
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage, SystemMessage
+from typing import Callable, Union, Dict, Tuple, Sequence
 
 
 class OpenAITTSProvider(StreamingProvider):
@@ -59,33 +59,22 @@ class OpenAITTSProvider(StreamingProvider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]) -> Tuple[str, str]:
+    def _validate_messages(self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]) -> Tuple[str, str]:
         """Validate and extract instruction and text from messages."""
-        messages = upgrade_messages(messages)
+        msg, instruction = single_message(messages)
 
-        if len(messages) > 2:
-            raise ValueError("OpenAI TTS Provider only supports an instruction an user prompt input.")
+        if msg.content_type != "text":
+            raise ValueError("OpenAI TTS Provider requires text content as input.")
 
+        if instruction is None:
+            instruction = "Speak in a cheerful and positive tone."
         else:
-            instruction = None
-            text = None
+            instruction = instruction.content if isinstance(instruction, SystemMessage) else str(instruction)
 
-            for msg in messages:
-                if isinstance(msg, SystemMessage):
-                    instruction = msg.content
-                elif isinstance(msg, HumanMessage):
-                    text = msg.content
-
-            if instruction is None:
-                instruction = "Speak in a cheerful and positive tone."
-
-            if text is None:
-                raise ValueError("OpenAI TTS Provider requires a user prompt input.")
-
-        return instruction, text
+        return instruction, msg.content
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
 
@@ -104,13 +93,13 @@ class OpenAITTSProvider(StreamingProvider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=base64_audio,
+            content=Audio(base64_audio),
             original_response=response,
             response_format=self.response_format,
         )
 
     def invoke_streaming(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]], callback: Callable
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], callback: Callable
     ):
         instruction, text = self._validate_messages(messages)
 

@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Tuple, Union, Sequence
 
 from spikee.utilities.hinting import ContentHint
 from spikee.utilities.content import Content, Text
@@ -58,7 +58,7 @@ class AIMessage(Message):
 
 
 def format_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str, Content]]],
+    messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
     bedrock_format: bool = False,
 ) -> List[Dict[str, Union[str, List[str]]]]:
     """Convert various message formats (string, dict, tuple, Message objects) into a standardized list of dicts with 'role' and 'content' keys."""
@@ -113,7 +113,7 @@ def format_messages(
 
 
 def upgrade_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str, Content]]],
+    messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
 ) -> List[Message]:
     """Upgrade various message formats (string, dict, tuple, Message objects) into a standardized list of Message objects."""
     upgraded_messages = []
@@ -160,3 +160,29 @@ def upgrade_messages(
         raise ValueError(f"Unsupported messages format type: {type(messages)}.")
 
     return upgraded_messages
+
+
+def single_message(messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], system_prompt: bool = False):
+    """Utility function to extract a single Message object from various input formats. Raises an error if multiple messages are provided."""
+    upgraded = upgrade_messages(messages)
+
+    count = 2 if system_prompt else 1
+
+    if len(upgraded) > count:
+        raise ValueError(f"Expected at most {count} messages, but got {len(upgraded)}.")
+
+    user_message = None
+    system_prompt_message = None
+    for msg in upgraded:
+        if isinstance(msg, SystemMessage) and system_prompt and not system_prompt_message:
+            system_prompt_message = msg
+        elif isinstance(msg, HumanMessage) and not user_message:
+            user_message = msg
+
+    if not user_message:
+        raise ValueError("User message is required but not found in messages.")
+
+    if system_prompt:
+        return user_message, system_prompt_message
+    else:
+        return user_message, None

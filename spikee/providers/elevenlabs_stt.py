@@ -14,8 +14,8 @@ from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import Union, Dict, List
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from typing import Union, Dict, List, Sequence
 
 
 class ElevenLabsSTTProvider(Provider):
@@ -73,20 +73,16 @@ class ElevenLabsSTTProvider(Provider):
             return 'mp3'
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke ElevenLabs Scribe STT with base64-encoded audio. Returns transcribed text."""
 
-        messages = upgrade_messages(messages)
+        msg, _ = single_message(messages)
 
-        audio_b64 = None
-        for msg in messages:
-            if isinstance(msg, HumanMessage):
-                audio_b64 = msg.content
-
-        if audio_b64 is None:
+        if msg.content_type != "audio":
             raise ValueError("ElevenLabs STT Provider requires a user message containing base64-encoded audio.")
 
+        audio_b64 = msg.content
         try:
             audio_bytes = base64.b64decode(audio_b64)
         except Exception as e:

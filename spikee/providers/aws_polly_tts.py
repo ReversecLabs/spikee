@@ -21,10 +21,10 @@ import os
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Content
+from spikee.utilities.content import Content, Audio
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import Union, Dict, List
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from typing import Union, Dict, List, Sequence
 
 
 class AWSPollyTTSProvider(Provider):
@@ -101,27 +101,20 @@ class AWSPollyTTSProvider(Provider):
         ], False
 
     def invoke(
-        self, input_messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, input_messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
-        upgraded_messages: List[Message] = upgrade_messages(input_messages)
+        msg, _ = single_message(input_messages)
 
-        if len(upgraded_messages) > 1 and not isinstance(upgraded_messages[0], HumanMessage):
-            raise ValueError("AWS Polly TTS Provider only supports a single user message input.")
-
-        else:
-            text = None
-            for msg in upgraded_messages:
-                if isinstance(msg, HumanMessage):
-                    text = msg.content
-                    break
+        if msg.content_type != "text":
+            raise ValueError("AWS Polly TTS Provider requires text content as input.")
 
         response = self.client.synthesize_speech(
             Engine=self.engine,
             VoiceId=self.voice_id,
             OutputFormat=self.output_format,
-            Text=text,
+            Text=msg.content,
             TextType="text",
         )
 
@@ -129,7 +122,7 @@ class AWSPollyTTSProvider(Provider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=base64_audio,
+            content=Audio(base64_audio),
             response_format=self.output_format,
         )
 
@@ -141,7 +134,7 @@ if __name__ == "__main__":
     provider = AWSPollyTTSProvider()
     provider.setup(model="standard", voice_id="Joanna", output_format="mp3")
     messages = [
-        HumanMessage(content="Hello, this is a test of the AWS Polly text-to-speech provider."),
+        HumanMessage(content="Hello, this is a test of the AWS Polly text-to-speech provider.")
     ]
 
     print("Invoking AWS Polly TTS Provider...")

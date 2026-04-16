@@ -7,7 +7,7 @@ from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from any_llm import AnyLLM
-from typing import Union, Any, Dict, List
+from typing import Union, Any, Dict, List, Sequence
 
 
 class AnyLLMCustomProvider(Provider):
@@ -82,7 +82,7 @@ class AnyLLMCustomProvider(Provider):
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 

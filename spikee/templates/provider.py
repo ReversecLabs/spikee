@@ -1,9 +1,10 @@
 from spikee.templates.module import Module
 from spikee.utilities.llm_message import Message, AIMessage
 from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.content import Content
 
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Sequence
 import os
 
 
@@ -55,7 +56,7 @@ class Provider(Module, ABC):
 
     @abstractmethod
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke the provider with the given messages and return an AIMessage response."""
         pass

@@ -19,13 +19,13 @@ import asyncio
 import base64
 import os
 from io import BytesIO
-from typing import Optional, Union, Tuple, List, Dict
+from typing import Optional, Union, Tuple, List, Dict, Sequence
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.content import Content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, upgrade_messages
+from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, single_message
 
 
 class AWSTranscribeSTTProvider(Provider):
@@ -188,22 +188,18 @@ class AWSTranscribeSTTProvider(Provider):
         return " ".join(transcript_parts).strip()
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AWS Transcribe streaming STT with base64-encoded audio. Returns transcribed text."""
 
-        upgraded_messages: List[Message] = upgrade_messages(messages)
+        msg, _ = single_message(messages)
 
-        audio_b64 = None
-        for msg in upgraded_messages:
-            if isinstance(msg, HumanMessage):
-                audio_b64 = msg.content
-                break
-
-        if audio_b64 is None:
+        if msg.content_type != "audio":
             raise ValueError(
                 "AWS Transcribe STT Provider requires a user message containing base64-encoded audio."
             )
+
+        audio_b64 = msg.content
 
         try:
             audio_bytes = base64.b64decode(audio_b64)

@@ -10,7 +10,7 @@ from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from any_llm import AnyLLM
 from any_llm.logging import logger as any_llm_logger
-from typing import Union, Any, Dict, List
+from typing import Union, Any, Dict, List, Sequence
 
 
 class AnyLLMBedrockProvider(Provider):
@@ -107,7 +107,7 @@ class AnyLLMBedrockProvider(Provider):
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM Bedrock LLM with the provided messages."""
 

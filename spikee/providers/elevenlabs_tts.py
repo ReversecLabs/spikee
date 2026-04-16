@@ -11,10 +11,10 @@ import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
+from spikee.utilities.content import Content, Audio
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import Callable, Union, Dict, List
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from typing import Callable, Union, Dict, Sequence
 
 
 class ElevenLabsTTSProvider(StreamingProvider):
@@ -56,26 +56,17 @@ class ElevenLabsTTSProvider(StreamingProvider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for ElevenLabs text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]) -> str:
+    def _validate_messages(self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]) -> str:
         """Extract text from messages."""
-        messages = upgrade_messages(messages)
+        msg, _ = single_message(messages)
 
-        if len(messages) > 1 and not isinstance(messages[0], HumanMessage):
-            raise ValueError("ElevenLabs TTS Provider only supports a single user message as input.")
+        if msg.content_type != "text":
+            raise ValueError("ElevenLabs TTS Provider requires text content as input.")
 
-        text = None
-        for msg in messages:
-            if isinstance(msg, HumanMessage):
-                text = msg.content
-                break
-
-        if text is None:
-            raise ValueError("ElevenLabs TTS Provider requires a user message as input.")
-
-        return text
+        return msg.content
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""
 
@@ -92,12 +83,12 @@ class ElevenLabsTTSProvider(StreamingProvider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=base64_audio,
+            content=Audio(base64_audio),
             response_format=self.output_format,
         )
 
     def invoke_streaming(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str, Content]]], callback: Callable
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], callback: Callable
     ) -> None:
         """Invoke ElevenLabs TTS with streaming, calling callback for each audio chunk."""
 
