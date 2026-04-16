@@ -54,7 +54,7 @@ from spikee.templates.attack import Attack
 
 
 class SampleAttack(Attack):
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["strategy=random", "strategy=aggressive", "strategy=stealth"], False
 

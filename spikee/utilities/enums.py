@@ -6,6 +6,12 @@ class Turn(enum.Enum):
     MULTI = "multi-turn"
 
 
+class ContentType(enum.Enum):
+    TEXT = "text"
+    AUDIO = "audio"
+    IMAGE = "image"
+
+
 class ModuleTag(enum.Enum):
     """Enumeration for module tags used to categorize modules."""
     # Turn-based tags
@@ -31,23 +37,25 @@ class ModuleTag(enum.Enum):
     IMAGE = "Image"
     AUDIO = "Audio"
 
+
 def formatting_priority(tag: ModuleTag) -> int:
     """Determine the priority of a plugin based on its tags for formatting purposes."""
     match tag:
         case ModuleTag.ENCODING | ModuleTag.FORMATTING | ModuleTag.OBFUSCATION | ModuleTag.SOCIAL_ENGINEERING | ModuleTag.TRANSLATION:
             return 1
-        
+
         case ModuleTag.IMAGE | ModuleTag.AUDIO:
             return 2
-        
+
         case ModuleTag.SINGLE | ModuleTag.MULTI:
             return 3
 
         case ModuleTag.LLM | ModuleTag.LLM_TTS | ModuleTag.LLM_STT | ModuleTag.LLM_STS | ModuleTag.ML:
             return 4
-        
+
         case _:
             return 5
+
 
 def module_tag_to_colour(tag: ModuleTag) -> str:
     tag_colour_map = {
@@ -71,4 +79,3 @@ def module_tag_to_colour(tag: ModuleTag) -> str:
         ModuleTag.TRANSLATION: "white",
     }
     return tag_colour_map.get(tag, "white")
-

@@ -12,7 +12,7 @@ class LLMJudge(Judge):
         super().__init__()
         self.max_tokens = max_tokens
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """
         Returns the list of supported judge_options; first option is default.
         """

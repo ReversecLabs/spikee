@@ -22,10 +22,10 @@ from typing import Optional, Dict, List, Tuple, Union, Any
 import requests
 
 class ExampleTarget(Target):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.SINGLE], "Example Target Template"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -102,7 +102,7 @@ To make your target more flexible, you can advertise its supported `target_optio
 from typing import List, Tuple, Union, Any
 from spikee.utilities.modules import parse_options # Utility function to parse target_options string into a dictionary
 
-def get_available_option_values(self) -> Tuple[List[str], bool]:
+def get_available_option_values(self) -> ModuleOptionsHint:
     """Return supported attack options; Tuple[options (default is first), llm_required]"""
     return ["mode=default_option", "additional_option1", "additional_option2"], False
 
@@ -127,7 +127,7 @@ _OPTIONS_MAP: Dict[str, str] = {
 }
 _DEFAULT_KEY = "example1"
 
-def get_available_option_values(self) -> Tuple[List[str], bool]:
+def get_available_option_values(self) -> ModuleOptionsHint:
     """Return supported attack options; Tuple[options (default is first), llm_required]"""
     options = ["mode=" + self._DEFAULT_KEY]
     options.extend([key for key in self._OPTIONS_MAP if key != self._DEFAULT_KEY])
@@ -272,10 +272,10 @@ class SampleMultiTurnTarget(MultiTarget):
             backtrack=True 
         )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.MULTI], "Example Multi-Turn Target Template"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -335,10 +335,10 @@ class SampleSimpleMultiTurnTarget(SimpleMultiTarget):
             backtrack=True 
         )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.MULTI], "Example Simple Multi-Turn Target Template"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

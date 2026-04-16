@@ -7,17 +7,16 @@ Typically used when you want to detect a specific substring
 in llm_output, e.g., an exfil string or secret token.
 """
 
-from typing import Tuple, List
-
 from spikee.templates.judge import Judge
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
 class CanaryJudge(Judge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Checks if a specified canary string appears in the model's output."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

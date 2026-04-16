@@ -18,20 +18,27 @@ Usage within Spikee:
 This sample plugin simply transforms the input text to uppercase.
 """
 
-from typing import List, Union, Tuple
+from typing import List, Union
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 import re
 
 from spikee.templates.plugin import Plugin
 
 
 class SamplePlugin(Plugin):
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_description(self) -> ModuleDescriptionHint:
+        return [], "A sample plugin that transforms text to uppercase, preserving excluded patterns."
+
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = []
-    ) -> Union[str, List[str]]:
+        self,
+        content: Text,  # specify specific content types using Text, Audio, Image subclasses of Content
+        exclude_patterns: List[str] = []
+    ) -> Union[Text, List[Text]]:
         """
         Transforms the input text to uppercase, preserving any substrings that match the given exclusion patterns.
 
@@ -42,6 +49,8 @@ class SamplePlugin(Plugin):
         Returns:
             str: The transformed text in uppercase.
         """
+        text = content.content
+
         if exclude_patterns:
             compound = "(" + "|".join(exclude_patterns) + ")"
             compound_re = re.compile(compound)
@@ -53,6 +62,6 @@ class SamplePlugin(Plugin):
                     result_chunks.append(chunk)
                 else:
                     result_chunks.append(chunk.upper())
-            return "".join(result_chunks)
+            return Text("".join(result_chunks))
         else:
-            return text.upper()
+            return Text(text.upper())

@@ -13,9 +13,10 @@ import base64
 import os
 
 from spikee.templates.streaming_provider import StreamingProvider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage, SystemMessage
-from typing import Callable, List, Tuple, Dict, Union
+from typing import Callable, Union
 
 
 class OpenAITTSProvider(StreamingProvider):
@@ -54,7 +55,7 @@ class OpenAITTSProvider(StreamingProvider):
                 "Please run `pip install spikee[openai]` to install them."
             )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
 
     def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> Tuple[str, str]:

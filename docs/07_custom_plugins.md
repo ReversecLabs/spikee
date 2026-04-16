@@ -28,23 +28,25 @@ Every plugin is a Python module located in the `plugins/` directory of your work
 from spikee.templates.plugin import Plugin
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Content, Text, Audio, Image
 from typing import List, Union, Tuple
 
 class SamplePlugin(Plugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the plugin."""
         return [], "A brief description of what this plugin does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
     def transform(
         self, 
-        text: str, 
+        content: Content, # To specify specific content types, use Text, Audio, Image subclasses of Content
         exclude_patterns: List[str] = [],
         plugin_option: str = ""
-    ) -> Union[str, List[str]]:
+    ) -> Union[Content, List[Content]]:
         """Transforms the input text according to the user-defined logic, returning one or more variations.
 
         Args:
@@ -57,11 +59,11 @@ class SamplePlugin(Plugin):
         # Your implementation here...
 
 class SampleBasicPlugin(BasicPlugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the plugin."""
         return [], "A brief description of what this plugin does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -87,11 +89,11 @@ class SampleBasicPlugin(BasicPlugin):
 This is the core function of every plugin. It receives a payload string and returns one or more transformed versions.
 
 #### Parameters
-*   `text: str`: 
+*   `content: Content`: 
     The input payload, which is typically a combination of a jailbreak and a malicious instruction.
 
 *   `exclude_patterns: List[str]`:
-    A list of regular expression patterns. Your plugin **must not** transform any part of the `text` that matches one of these patterns. This is critical for preserving sensitive parts of a prompt, like URLs or specific keywords.
+    A list of regular expression patterns. Your plugin **must not** transform any part of the `content` that matches one of these patterns. This is critical for preserving sensitive parts of a prompt, like URLs or specific keywords.
 
 *   `plugin_option: str` **(Optional)**:
     A string passed from the command line via `--plugin-options` (e.g., `"my_plugin:mode=full;variants=10"`). If your plugin doesn't need configuration, you can omit this parameter.
@@ -109,7 +111,7 @@ def get_available_option_values() -> Tuple[List[str], bool]:
     """Return supported attack options; Tuple[options (default is first), llm_required]"""
     return ["mode=strict", "mode=full"], False # "mode=strict" is the default
 
-def transform(text: str, exclude_patterns: List[str] = [], plugin_option: str = "") -> Union[str, List[str]]:
+def transform(content: Content, exclude_patterns: List[str] = [], plugin_option: str = "") -> Union[Content, List[Content]]:
     """Transforms the payload based on the provided option."""
     # Your transformation logic here...
 ```
@@ -122,16 +124,16 @@ from spikee.templates.plugin import Plugin
 from typing import List, Union
 
 class SamplePlugin(Plugin):
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["mode=strict", "mode=full"], False # "mode=strict" is the default
 
     def transform(
         self, 
-        text: str, 
+        content: Content, 
         exclude_patterns: List[str] = [],
         plugin_option: str = "",
-    ) -> Union[str, List[str]]:
+    ) -> Union[Content, List[Content]]:
         # Your implementation here...
 ```
 
@@ -141,8 +143,11 @@ Correctly handling `exclude_patterns` is the most important part of writing a ro
 ```python
 # Example transformation function converting all text to uppercase with exclude_patterns support
 import re
+from typing import List, Union
 
-def transform(self, text: str, exclude_patterns: List[str] = []) -> str:
+def transform(self, content: Text, exclude_patterns: List[str] = []) -> Union[Text, List[Text]]:
+    text = content.content
+
     if not exclude_patterns:
         # No exclusions, transform the whole text
         return apply_transformation(text)
@@ -166,7 +171,7 @@ def transform(self, text: str, exclude_patterns: List[str] = []) -> str:
             transformed_chunks.append(chunk)
             
     # 4. Rejoin the chunks into a single string.
-    return "".join(transformed_chunks)
+    return Text("".join(transformed_chunks))
 
 def apply_transformation(text: str) -> str:
     return text.upper()

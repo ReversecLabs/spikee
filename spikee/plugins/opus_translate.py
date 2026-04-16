@@ -36,12 +36,14 @@ Requirements:
 import logging
 import os
 import warnings
-from typing import List, Tuple, Union, Optional
+from typing import List, Optional
 
 import torch
 from transformers import MarianMTModel, MarianTokenizer
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -117,13 +119,13 @@ class OpusTranslator(Plugin):
         except ImportError:
             self.device = "cpu"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.ML, ModuleTag.TRANSLATION],
             'Translates text to any language(s) using local OPUS-MT models. (Requires: `pip install "spikee[local-inference]"`)',
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported options; Tuple[options (default is first), llm_required]"""
         return [
             "source=en,targets=zh",
@@ -202,8 +204,11 @@ class OpusTranslator(Plugin):
             )
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> Union[str, List[str]]:
+        self,
+        content: Text,
+        exclude_patterns: List[str] = [],
+        plugin_option: str = ""
+    ) -> Union[Text, List[Text]]:
         """
         Translates input text to target language(s).
 
@@ -259,8 +264,8 @@ class OpusTranslator(Plugin):
                 continue
 
         if len(translations) == 1:
-            return translations[0]
-        return translations if translations else text
+            return Text(translations[0])
+        return [Text(t) for t in translations] if translations else content
 
 
 if __name__ == "__main__":

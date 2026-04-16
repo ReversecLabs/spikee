@@ -11,9 +11,10 @@ Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Callable
 
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -90,13 +91,13 @@ Ensure the entire attack_prompt is less than 500 characters, this is a limitatio
 class RAGPoisoner(Attack):
     DEFAULT_MODEL = "openai/gpt-4o"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.LLM,
             ModuleTag.SINGLE,
         ], "Generates RAG Poisoner attack prompts using an LLM."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], True
 

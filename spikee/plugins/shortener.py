@@ -1,7 +1,9 @@
-from typing import List, Tuple, Union
+from typing import List, Union
 import json
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -36,23 +38,28 @@ class Shortener(Plugin):
     DEFAULT_LENGTH = 254
     DEFAULT_ATTEMPTS = 5
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.LLM
         ], "Shortens input prompts to a defined number of characters."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["length=254,attempts=5"], True
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> Union[str, List[str]]:
+        self,
+        content: Text,
+        exclude_patterns: List[str] = [],
+        plugin_option: str = ""
+    ) -> Union[Text, List[Text]]:
 
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         max_length = int(opts.get("length", self.DEFAULT_LENGTH))
         attempts = int(opts.get("attempts", self.DEFAULT_ATTEMPTS))
+
+        text = content.content
 
         llm = get_llm(llm_model, temperature=1, max_tokens=max_length + 25)
 
@@ -88,4 +95,4 @@ class Shortener(Plugin):
             if attempts <= 0:
                 raise RuntimeError("[Shortener] Failed to shorten text.")
 
-        return text
+        return Text(text)

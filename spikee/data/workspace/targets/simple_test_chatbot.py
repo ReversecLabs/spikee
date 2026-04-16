@@ -50,10 +50,10 @@ class TestChatbotTarget(SimpleMultiTarget):
             backtrack=True,  # Does the target + target application support backtracking
         )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Sample Simple Chatbot Target"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "url=http://localhost:8000",

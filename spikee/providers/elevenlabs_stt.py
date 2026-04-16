@@ -11,13 +11,15 @@ import os
 from io import BytesIO
 
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import List, Tuple, Dict, Union
+from typing import Union
+
 
 class ElevenLabsSTTProvider(Provider):
     """ElevenLabs Speech-to-Text (Scribe) provider"""
-    
+
     _MIME_MAP = {
         "mp3": "audio/mpeg",
         "wav": "audio/wav",
@@ -54,7 +56,7 @@ class ElevenLabsSTTProvider(Provider):
                 "Please run `pip install elevenlabs` to install them."
             )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for ElevenLabs Scribe speech-to-text models."
 
     def _detect_audio_format(self, audio_bytes: bytes) -> str:

@@ -17,17 +17,16 @@ Returns:
     str: The transformed text in hexadecimal encoding.
 """
 
-from typing import List, Tuple
-
 from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
 class HexPlugin(BasicPlugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.ENCODING], "Transforms text into hexadecimal encoding."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

@@ -2,12 +2,13 @@ import os
 import logging
 
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from any_llm import AnyLLM
 from any_llm.logging import logger as any_llm_logger
-from typing import List, Tuple, Dict, Union, Any
+from typing import Union, Any, Dict, List
 
 
 class AnyLLMBedrockProvider(Provider):
@@ -94,7 +95,7 @@ class AnyLLMBedrockProvider(Provider):
 
         self.options = options_kwargs
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via any-llm."
 
     def invoke(

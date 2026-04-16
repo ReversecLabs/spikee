@@ -48,10 +48,10 @@ class ResultsViewer(Viewer):
 
         self.update_result_data(resource=self.selected_files)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Viewer for analyzing and rejudging Spikee results."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [], False
 
     # region Results Processing

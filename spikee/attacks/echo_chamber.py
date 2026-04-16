@@ -6,9 +6,10 @@ This attack implements the Echo Chamber attack, based on https://arxiv.org/pdf/2
 
 import json
 import random
-from typing import Tuple, List, Union, Callable
+from typing import List, Callable
 import uuid
 
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
@@ -282,13 +283,13 @@ class EchoChamber(Attack):
     def __init__(self):
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.SOCIAL_ENGINEERING, ModuleTag.MULTI, ModuleTag.LLM],
             "Leverages an LLM Agent to generate poisonous seeds and gradually escalates an LLM's output by amplifying hidden harmful content in a self-reinforcing loop.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["max-turns=20", "stage-attempts=3", "debug=false"], True
 

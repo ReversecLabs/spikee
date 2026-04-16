@@ -11,22 +11,29 @@ Requires the Pillow library for image processing. Install with:
 """
 import base64
 from io import BytesIO
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text, Image as ImageContent
 from spikee.utilities.enums import ModuleTag
 
 
 class MultiModalImage(Plugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.ENCODING, ModuleTag.IMAGE], "Transforms text into image data, with Base64 encoding. (Requires: `pip install Pillow`)"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [], False
 
-    def transform(self, text: str, exclude_patterns: Optional[List[str]] = None, plugin_option: Optional[str] = None) -> str:
+    def transform(self,
+                  content: Text,
+                  exclude_patterns: Optional[List[str]] = None,
+                  plugin_option: Optional[str] = None
+                  ) -> ImageContent:
+
         # Load font
         try:
             font = ImageFont.truetype("arial.ttf", 24)
@@ -37,6 +44,7 @@ class MultiModalImage(Plugin):
         padding = 20
 
         # Split text into lines that fit max_width
+        text = content.content
         words = text.split()
         lines = []
         line = ""
@@ -67,10 +75,11 @@ class MultiModalImage(Plugin):
         buffered = BytesIO()
         img.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        return "data:image/png;base64," + img_base64
-    
+        return ImageContent(img_base64)
+
+
 if __name__ == "__main__":
     plugin = MultiModalImage()
-    sample_text = "Hello, this is a test of the Base64 Image Plugin. It converts this text into an image and encodes it in Base64 format."
+    sample_text = Text("Hello, this is a test of the Base64 Image Plugin. It converts this text into an image and encodes it in Base64 format.")
     result = plugin.transform(sample_text)
     print(result)

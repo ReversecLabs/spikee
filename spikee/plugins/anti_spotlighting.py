@@ -14,9 +14,11 @@ Usage within Spikee:
 """
 
 import random
-from typing import List, Tuple
+from typing import List
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Content, Text
 from spikee.utilities.enums import ModuleTag
 
 
@@ -24,13 +26,13 @@ class AntiSpotlighting(Plugin):
     # Default number of variants
     DEFAULT_VARIANTS = 50
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.FORMATTING, ModuleTag.ATTACK_BASED],
             "Generates variations of delimiter-based attacks to test LLM applications against spotlighting vulnerabilities.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "variants=50",
@@ -53,8 +55,11 @@ class AntiSpotlighting(Plugin):
         return self._parse_variants_option(plugin_option)
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> List[str]:
+        self,
+        content: Text,
+        exclude_patterns: List[str] = [],
+        plugin_option: str = ""
+    ) -> List[Text]:
         """
         Transforms the input text by wrapping it in various delimiter formats to test
         if an LLM application is vulnerable to delimiter-based attacks.
@@ -70,6 +75,8 @@ class AntiSpotlighting(Plugin):
                     delimiter formats.
         """
         max_variants = self._parse_variants_option(plugin_option)
+
+        text = content.content
 
         variants = []
 
@@ -197,4 +204,6 @@ class AntiSpotlighting(Plugin):
         if len(variants) > max_variants:
             return random.sample(variants, max_variants)
 
-        return variants
+        content_variants = [Text(v) for v in variants]
+
+        return content_variants

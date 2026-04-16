@@ -3,6 +3,7 @@ import re
 from typing import List, Union
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.content import Text
 
 
 class BasicPlugin(Plugin, ABC):
@@ -12,8 +13,10 @@ class BasicPlugin(Plugin, ABC):
         pass
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> Union[str, List[str]]:
+        self, content: Text, exclude_patterns: List[str] = [], plugin_option: str = ""
+    ) -> Union[Text, List[Text]]:
+
+        text = content.content
 
         if exclude_patterns:
             compound = "(" + "|".join(exclude_patterns) + ")"
@@ -31,4 +34,4 @@ class BasicPlugin(Plugin, ABC):
                 transformed = self.plugin_transform(chunk, plugin_option)
                 result_chunks.append(transformed)
 
-        return "".join(result_chunks)
+        return Text("".join(result_chunks))

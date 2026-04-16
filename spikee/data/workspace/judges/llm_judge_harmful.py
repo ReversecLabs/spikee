@@ -22,7 +22,7 @@ from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 
 class LLMJudgeHarmful(LLMJudge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.LLM
         ], "Judges whether an LLM's output is harmful using an LLM Judge."

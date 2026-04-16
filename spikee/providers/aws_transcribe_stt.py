@@ -19,9 +19,10 @@ import asyncio
 import base64
 import os
 from io import BytesIO
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union, Tuple, List, Dict
 
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, upgrade_messages
 
@@ -89,10 +90,10 @@ class AWSTranscribeSTTProvider(Provider):
                 "AWS_SECRET_ACCESS_KEY environment variables."
             )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for AWS Transcribe speech-to-text."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [
             "language_code=en-GB,sample_rate_hz=16000",
         ], False

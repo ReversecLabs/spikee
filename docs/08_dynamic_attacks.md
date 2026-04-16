@@ -41,11 +41,11 @@ class SampleAttack(Attack):
         "strategy": "random",
     }
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the attack."""
         return [], "A brief description of what this attack does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         options = ["strategy=" + self.OPTIONS_MAP[DEFAULT_KEY]]
         options.extend(
@@ -155,11 +155,11 @@ class SampleMultiTurnAttack(Attack):
         # turn_type defines an attack's multi-turn capability, either Turn.SINGLE (Default) or Turn.MULTI
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the attack."""
         return [ModuleTag.MULTI], "A brief description of what this attack does."
     
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

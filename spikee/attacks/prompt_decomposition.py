@@ -14,9 +14,10 @@ Usage:
 
 import json
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable
 
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -26,13 +27,13 @@ class PromptDecompositionAttack(Attack):
     # Default mode
     DEFAULT_MODE = "dumb"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.FORMATTING, ModuleTag.SINGLE, ModuleTag.LLM],
             "Generates prompt reformulations by decomposing into labeled chunks and shuffling them.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["mode=dumb", "mode=<utility-llm-model>"], True
 

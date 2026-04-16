@@ -10,9 +10,10 @@ import base64
 import os
 
 from spikee.templates.streaming_provider import StreamingProvider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import List, Tuple, Dict, Union, Callable
+from typing import Callable, Union, Dict, List
 
 
 class ElevenLabsTTSProvider(StreamingProvider):
@@ -51,25 +52,25 @@ class ElevenLabsTTSProvider(StreamingProvider):
                 "Please run `pip install elevenlabs` to install them."
             )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for ElevenLabs text-to-speech models."
 
     def _validate_messages(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> str:
         """Extract text from messages."""
         messages = upgrade_messages(messages)
-        
+
         if len(messages) > 1 and not isinstance(messages[0], HumanMessage):
             raise ValueError("ElevenLabs TTS Provider only supports a single user message as input.")
-        
+
         text = None
         for msg in messages:
             if isinstance(msg, HumanMessage):
                 text = msg.content
                 break
-        
+
         if text is None:
             raise ValueError("ElevenLabs TTS Provider requires a user message as input.")
-        
+
         return text
 
     def invoke(
@@ -78,7 +79,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""
 
         text = self._validate_messages(messages)
-        
+
         response = self.client.text_to_speech.convert(
             voice_id=self.voice_id,
             text=text,
@@ -98,9 +99,9 @@ class ElevenLabsTTSProvider(StreamingProvider):
         self, messages: Union[str, List[Union[Message, dict, tuple, str]]], callback: Callable
     ) -> None:
         """Invoke ElevenLabs TTS with streaming, calling callback for each audio chunk."""
-        
+
         text = self._validate_messages(messages)
-        
+
         response = self.client.text_to_speech.stream(
             voice_id=self.voice_id,
             text=text,
@@ -182,7 +183,7 @@ if __name__ == "__main__":
             HumanMessage(content="Hello, how are you today?"),
         ]
         response = provider.invoke(messages)
-        #print("Base64 Audio Content:", response.content)
+        # print("Base64 Audio Content:", response.content)
 
         audio_bytes = base64.b64decode(response.content)
         try:

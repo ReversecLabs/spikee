@@ -1,10 +1,11 @@
 import uuid
-from typing import Callable, List, Tuple
+from typing import Tuple, Callable
 import traceback
 
 
 from spikee.templates.attack import Attack
 from spikee.tester import Target
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import Turn, ModuleTag
 
 
@@ -13,12 +14,12 @@ class MultiTurnAttack(Attack):
         """Define multi-turn capabilities for attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.MULTI
         ], "Performs a manual multi-turn attack by sending a defined series of messages"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

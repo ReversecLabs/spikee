@@ -43,7 +43,7 @@ class LLMJudgeObjective(LLMJudge):
     def __init__(self):
         super().__init__(max_tokens=None)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Judges whether an LLM's output meets a specified objective using an LLM Judge.",

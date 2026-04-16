@@ -31,10 +31,10 @@ from typing import Optional, List, Tuple, Union, Any
 class SampleRequestTarget(Target):
     _DEFAULT_URL = "https://reversec.com/api/example1"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Sample Request Target - sends HTTP request to URL"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["url=" + self._DEFAULT_URL], False
 

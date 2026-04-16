@@ -21,7 +21,7 @@ class Provider(Module, ABC):
         """Override in subclass to specify which models support logprobs."""
         return []
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]."""
         if self.models is not None:
             return [model for model in self.models.keys()], True

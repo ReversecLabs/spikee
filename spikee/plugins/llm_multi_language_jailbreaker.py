@@ -9,8 +9,11 @@ Usage:
 """
 
 import random
+from typing import List
+
 from spikee.templates.plugin import Plugin
-from typing import List, Tuple, Union
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -92,13 +95,13 @@ class LLMMultiLanguageJailbreaker(Plugin):
     DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.TRANSLATION, ModuleTag.LLM, ModuleTag.ATTACK_BASED],
             "Generates jailbreak attack prompts using an LLM and multi language techniques.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["enforce-lang=chinese(zh-ch)"], True
 
@@ -130,11 +133,16 @@ class LLMMultiLanguageJailbreaker(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> Union[str, List[str]]:
+        self,
+        content: Text,
+        exclude_patterns: List[str] = [],
+        plugin_option: str = ""
+    ) -> Union[Text, List[Text]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         variants = int(opts.get("variants", self.VARIANTS))
+
+        text = content.content
 
         llm = get_llm(llm_model, max_tokens=2000)
 
@@ -151,9 +159,9 @@ class LLMMultiLanguageJailbreaker(Plugin):
 
             try:
                 attack_prompts.append(
-                    self._generate_multi_language_jailbreak_attack(
+                    Text(self._generate_multi_language_jailbreak_attack(
                         llm, text, lang, list(used_langs)
-                    )
+                    ))
                 )
             except Exception as e:
                 print(

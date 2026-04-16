@@ -29,10 +29,10 @@ except ImportError as e:
 
 
 class SamplePDFRequestTarget(Target):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], 'Sample PDF Request Target. (Requires: `pip install "spikee[pdf]"`)'
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

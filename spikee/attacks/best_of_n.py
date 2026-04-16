@@ -26,10 +26,11 @@ Returns:
 
 import re
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable, Any
 
 
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
@@ -39,13 +40,13 @@ class BestOfNAttack(Attack):
     CAPITALIZATION_PROB = 0.6
     NOISE_PROB = 0.06
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.OBFUSCATION, ModuleTag.SINGLE],
             "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -118,7 +119,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload) :]
+            + original_text[idx + len(payload):]
         )
 
     def _generate_variant(self, text, exclusions):

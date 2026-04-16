@@ -29,20 +29,21 @@ Returns:
 """
 
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable, Any
 
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
 class AntiSpotlightingAttack(Attack):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.FORMATTING, ModuleTag.SINGLE],
             "Attempts to bypass spotlighting delimiters using various wrapping techniques.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

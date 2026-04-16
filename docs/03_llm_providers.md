@@ -172,7 +172,7 @@ class ExampleProvider(Provider):
 
         self.llm = ...
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "Sample LLM Provider, always returns 'Hello, world!'"
 
     def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:

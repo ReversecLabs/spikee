@@ -28,7 +28,7 @@ from spikee.utilities.llm_message import HumanMessage, SystemMessage
 
 
 class LLMJudgeOutputCriteria(LLMJudge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Judges whether an LLM's output meets a specified criteria using an LLM Judge.",

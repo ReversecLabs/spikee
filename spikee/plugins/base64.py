@@ -14,28 +14,34 @@ Returns:
 """
 
 import base64
-from typing import List, Tuple
+from typing import List
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 
 class Base64(Plugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.ENCODING], "Transforms text into Base64 encoding."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
-    def transform(self, text: str, exclude_patterns: List[str] = []) -> str:
+    def transform(
+        self,
+        content: Text,
+        exclude_patterns: List[str] = []
+    ) -> Text:
         """
         Transforms the input text into Base64 encoding.
 
         Args:
-            text (str): The input text.
+            content (Text): The input text.
 
         Returns:
-            str: The transformed text in Base64 encoding.
+            Text: The transformed text in Base64 encoding.
         """
-        return base64.b64encode(text.encode()).decode()
+        return Text(base64.b64encode(content.content.encode()).decode())

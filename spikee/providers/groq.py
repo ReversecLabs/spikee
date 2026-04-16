@@ -1,9 +1,10 @@
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 from any_llm import AnyLLM
-from typing import List, Tuple, Dict, Union, Any
+from typing import Union, Any
 
 
 class AnyLLMGroqProvider(Provider):
@@ -51,7 +52,7 @@ class AnyLLMGroqProvider(Provider):
 
         self.options = options_kwargs
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for Groq models via any-llm."
 
     def invoke(

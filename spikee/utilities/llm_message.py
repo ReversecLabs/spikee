@@ -1,10 +1,13 @@
 from typing import Dict, List, Any, Union
 
+from spikee.utilities.hinting import ContentHint
+from spikee.utilities.content import Content, Text
+
 
 class Message:
-    def __init__(self, role: str, content: str):
+    def __init__(self, role: str, content: ContentHint):
         self.role = role
-        self.content = content
+        self.content: Content = content if isinstance(content, Content) else Text(content)
         self.metadata = {}
 
     @property
@@ -12,22 +15,25 @@ class Message:
         """For compatibility with list representation of contents"""
         return [self.content]
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Union[str, Content]]:
         return {"role": self.role, "content": self.content}
+
+    def formatted_dict(self) -> Dict[str, str]:
+        return {"role": self.role, "content": str(self.content.content)}
 
 
 class SystemMessage(Message):
-    def __init__(self, content: str):
+    def __init__(self, content: ContentHint):
         super().__init__("system", content)
 
 
 class HumanMessage(Message):
-    def __init__(self, content: str):
+    def __init__(self, content: ContentHint):
         super().__init__("user", content)
 
 
 class AIMessage(Message):
-    def __init__(self, content: str, **kwargs):
+    def __init__(self, content: ContentHint, **kwargs):
         super().__init__("assistant", content)
 
         for key, value in kwargs.items():
@@ -68,7 +74,7 @@ def format_messages(
                 or isinstance(msg, HumanMessage)
                 or isinstance(msg, AIMessage)
             ):
-                formatted_messages.append(msg.to_dict())
+                formatted_messages.append(msg.formatted_dict())
 
             elif isinstance(msg, str):
                 # Assume it's a user message if only a string is provided
@@ -90,7 +96,7 @@ def format_messages(
 
 
 def upgrade_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str]]],
+    messages: Union[str, List[Union[Message, dict, tuple, str, Content]]],
 ) -> List[Message]:
     """Upgrade various message formats (string, dict, tuple, Message objects) into a standardized list of Message objects."""
     upgraded_messages = []
@@ -121,6 +127,10 @@ def upgrade_messages(
                 or isinstance(msg, AIMessage)
             ):
                 upgraded_messages.append(msg)
+
+            elif isinstance(msg, Content):
+                # If a Content object is provided without a role, assume it's a user message
+                upgraded_messages.append(Message(role="user", content=msg))
 
             elif isinstance(msg, str):
                 # Assume it's a user message if only a string is provided

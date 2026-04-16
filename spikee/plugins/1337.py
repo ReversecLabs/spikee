@@ -21,9 +21,8 @@ Returns:
     str: The transformed text.
 """
 
-from typing import List, Tuple
-
 from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
@@ -49,10 +48,10 @@ class LeetspeekPlugin(BasicPlugin):
         "z": "2",
     }
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.ENCODING], "Transforms text into 1337 speak."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

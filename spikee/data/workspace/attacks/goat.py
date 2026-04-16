@@ -184,13 +184,13 @@ class GOAT(Attack):
 
         self.__refusals = []
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM, ModuleTag.MULTI],
             "GOAT: Multi-turn adversarial attack using a toolbox of prompting techniques and dynamic reasoning to elicit policy-violating responses from LLMs. Based on Meta's Generative Offensive Agent Tester.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [], True
 
     def _format_history_for_prompt(

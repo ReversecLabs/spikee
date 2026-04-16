@@ -20,9 +20,10 @@ import base64
 import os
 
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import List, Tuple, Dict, Union
+from typing import Union, Dict, List
 
 
 class AWSPollyTTSProvider(Provider):
@@ -90,10 +91,10 @@ class AWSPollyTTSProvider(Provider):
                 "Please run `pip install boto3` to install them."
             )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for AWS Polly text-to-speech."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [
             "voice_id=Joanna,output_format=mp3",
         ], False

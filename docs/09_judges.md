@@ -75,11 +75,11 @@ from spikee.templates.judge import Judge
 from spikee.utilities.enums import ModuleTag
 
 class SampleJudge(Judge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the judge."""
         return [], "A brief description of what this judge does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return None, False
 
@@ -112,7 +112,7 @@ from spikee.utilities.enums import ModuleTag
 
 class SampleLLMJudge(LLMJudge):
     # get_available_option_values is handled by LLMJudge to select an LLM model for judging, do not redefine.
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the judge."""
         return [ModuleTag.LLM], "A brief description of what this judge does."
 

@@ -1,10 +1,11 @@
 from spikee.templates.target import Target
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
-from typing import List, Optional, Tuple, Union, Any
+from typing import Optional, Tuple, Union, Any
 
 
 class LLMProvider(Target):
@@ -33,14 +34,14 @@ class LLMProvider(Target):
 
             if self._models is None:
                 self._models = provider.models
-    
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Generic LLM target for supported LLM providers - see 'spikee list providers' => '--target-options \"model=<provider>/<model>\"'.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
 
         if isinstance(self._models, dict):
@@ -116,7 +117,7 @@ class LLMProvider(Target):
 
         # Initialize provider client
         llm = get_llm(model_id, max_tokens=max_tokens, temperature=temperature)
-        
+
         if ModuleTag.LLM not in llm.get_description()[0]:
             raise ValueError(
                 f"Specified model '{model_id}' is not a valid LLM provider model. Please check the available models for this provider and ensure it is an LLM."
@@ -143,11 +144,10 @@ class LLMProvider(Target):
             return response.content
 
 
-
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
-    
+
     target = LLMProvider()
     print("Supported provider keys:", target.get_available_option_values())
     try:

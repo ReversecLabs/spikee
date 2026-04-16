@@ -2,7 +2,6 @@ from typing import List, Optional, Tuple, Union
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
 class TestRepeatPlugin(Plugin):
@@ -47,17 +46,16 @@ class TestRepeatPlugin(Plugin):
 
     def transform(
         self,
-        content: Text,
+        text: str,
         exclude_patterns: Optional[List[str]] = None,
         plugin_option: Optional[str] = None,
-    ) -> Union[Text, List[Text]]:
+    ) -> Union[str, List[str]]:
         count, suffix = self._parse_options(plugin_option)
-        text = content.content
 
-        results = [Text(text)]
+        results = [text]
         for idx in range(1, count):
             if idx == 1:
-                results.append(Text(f"{text}{suffix}"))
+                results.append(f"{text}{suffix}")
             else:
-                results.append(Text(f"{text}{suffix}-{idx}"))
+                results.append(f"{text}{suffix}-{idx}")
         return results

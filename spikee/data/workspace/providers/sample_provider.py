@@ -48,7 +48,7 @@ class AnyLLMSampleProvider(Provider):
 
         self.options: OpenAIChatOptions = OpenAIChatOptions(**options_kwargs)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "Sample provider for OpenAI API based AnyLLM providers."
 
     def invoke(
