@@ -44,7 +44,7 @@ Use `spikee list providers` to get a list of providers and known supported model
 | TogetherAI | `together` | `gemma2-8b` (default)<br/>`mixtral-8x22b`<br/><small>*(Allows internal shorthands)*</small> | `TOGETHER_API_KEY` | [Models List](https://docs.together.ai/docs/inference-models) |
 | OpenRouter | `openrouter` | `google/gemini-2.5-flash` (default)<br/>`anthropic/claude-3.5-haiku` | `OPENROUTER_API_KEY` | [Models List](https://openrouter.ai/models) |
 | Local (Ollama) | `ollama` | *None* | `OLLAMA_URL` | |
-| Local (LLaMA CCP Server) | `llamaccp-server` | *None* | `LLAMACPP_URL` | |
+| Local (LLaMA CPP Server) | `llamacpp` | *None* | `LLAMACPP_URL` | |
 | Custom | `custom` | *None* | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
 | Offline | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
 
@@ -112,6 +112,17 @@ spikee test --dataset evaluations.jsonl \
             --attack crescendo \
             --attack-options "model=openrouter/google/gemini-2.5-flash" \
             --judge-options "groq/llama-3.1-8b-instant"
+```
+
+## Global Timeouts
+
+When using LLMs for modules like judging and dynamic attacks, you might occasionally need to increase the timeout for the underlying requests. This is especially true if you are using complex multi-turn attacks or running local servers (`llama.cpp`, `ollama` etc) that don't have powerful GPUs and need more time to process large contexts.
+
+You can override the default API timeout (typically 600 seconds) across all Spikee LLM providers by setting the `SPIKEE_API_TIMEOUT` environment variable (in seconds) before running your testing harness.
+
+```bash
+# E.g. Set a 20-minute global timeout across all LLM providers
+SPIKEE_API_TIMEOUT=1200.0 spikee test --dataset my_dataset.jsonl --target llm_provider
 ```
 
 ## Implementing Built-In LLM Utilities

@@ -33,19 +33,22 @@ Requirements:
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu<version>
 """
 
+from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.content import Text
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.templates.plugin import Plugin
+from transformers import MarianMTModel, MarianTokenizer
+import torch
 import logging
 import os
 import warnings
-from typing import List, Optional
+from typing import List, Union, Optional
 
-import torch
-from transformers import MarianMTModel, MarianTokenizer
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
-from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.modules import parse_options
 
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"

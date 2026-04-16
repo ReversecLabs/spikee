@@ -6,9 +6,9 @@ from spikee.templates.provider import Provider
 
 
 class LLMJudge(Judge):
-    DEFAULT_LLM_MODEL = "openai-gpt-4.1-mini"
+    DEFAULT_LLM_MODEL = "openai/gpt-4o"
 
-    def __init__(self, max_tokens=8):
+    def __init__(self, max_tokens=None):
         super().__init__()
         self.max_tokens = max_tokens
 
@@ -22,4 +22,7 @@ class LLMJudge(Judge):
         """
         Initialize and return the appropriate LLM based on judge_options.
         """
+        if judge_options is None or judge_options.strip() == "":
+            judge_options = self.DEFAULT_LLM_MODEL
+
         return get_llm(judge_options, max_tokens=self.max_tokens)

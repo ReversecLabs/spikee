@@ -28,7 +28,7 @@ jobs:
           pip install pytest
 
       - name: Install spikee package
-        run: pip install .
+        run: pip install .[all]
 
       - name: Run inference tests
         env:

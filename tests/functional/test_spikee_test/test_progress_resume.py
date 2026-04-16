@@ -1,13 +1,15 @@
 import re
-from .utils import run_generate_command, run_test_command, write_jsonl, read_jsonl
+
+from spikee.utilities.files import read_jsonl_file, write_jsonl_file
+from ..utils import spikee_generate_cli
 
 
 def test_progress_bar_resume_total_correctness(run_spikee, workspace_dir):
     # 1. Generate a dataset with known size (e.g. 10 entries)
     # We can control size by editing the file or assuming default.
     # Let's generate and then truncate/expand if needed, or just count.
-    dataset_path, _ = run_generate_command(run_spikee, workspace_dir)
-    entries = read_jsonl(dataset_path)
+    dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
+    entries = read_jsonl_file(dataset_path)
     full_count = len(entries)
 
     # We need at least some entries to split.
@@ -29,24 +31,16 @@ def test_progress_bar_resume_total_correctness(run_spikee, workspace_dir):
         completed_entries.append(res)
 
     resume_file = workspace_dir / "results_resume.jsonl"
-    write_jsonl(resume_file, completed_entries)
+    write_jsonl_file(resume_file, completed_entries)
 
     dataset_rel = dataset_path.relative_to(workspace_dir)
     resume_rel = resume_file.relative_to(workspace_dir)
 
     # 3. Run test command with --resume-file
     # Target "always_success"
-    result = run_test_command(
-        run_spikee,
-        workspace_dir,
-        [
-            "--dataset",
-            str(dataset_rel),
-            "--target",
-            "always_success",
-            "--resume-file",
-            str(resume_rel),
-        ],
+    result = run_spikee(
+        ["test", "--target", "always_success", "--dataset", str(dataset_rel), "--resume-file", str(resume_rel)],
+        cwd=workspace_dir,
     )
 
     # 4. Check stderr for progress bar totals

@@ -6,6 +6,8 @@ from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
+import logging
+
 from any_llm import AnyLLM
 from any_llm.logging import logger as any_llm_logger
 from typing import Union, Any, Dict, List
@@ -60,12 +62,18 @@ class AnyLLMBedrockProvider(Provider):
         model: str,
         max_tokens: Union[int, None] = None,
         temperature: Union[float, None] = None,
+        **kwargs,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
 
         self.model = self.models.get(self.model, self.model)
+
+        timeout = kwargs.get("timeout", self.default_timeout)
+        llm_kwargs = {}
+        if timeout is not None:
+            llm_kwargs["timeout"] = timeout
 
         try:
             if os.getenv("AWS_PROFILE"):  # Extract Keys for AWS Profiles
@@ -79,7 +87,7 @@ class AnyLLMBedrockProvider(Provider):
                 if frozen.token:
                     os.environ["AWS_SESSION_TOKEN"] = frozen.token
 
-            self.llm = AnyLLM.create("bedrock")
+            self.llm = AnyLLM.create("bedrock", **llm_kwargs)
             any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
             raise ImportError(

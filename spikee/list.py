@@ -111,7 +111,7 @@ def _collect_local(module_type: str):
                     tags, description = description
                 else:
                     tags, description = [], ""
-                    
+
             except (ModuleNotFoundError, ImportError):
                 opts = ["<import error - check module for dependencies>"]
                 util_llm = False
@@ -120,7 +120,7 @@ def _collect_local(module_type: str):
 
             except Exception as e:
                 error = e if len(str(e)) < 70 else str(e)[:70] + "..."
-                
+
                 opts = [f"<error - {error}>"]
                 util_llm = False
                 tags = []
@@ -168,7 +168,7 @@ def _collect_builtin(pkg: str, module_type: str):
 
             except Exception as e:
                 error = e if len(str(e)) < 70 else str(e)[:70] + "..."
-                
+
                 opts = [f"<error - {error}>"]
                 util_llm = False
                 tags = []
@@ -205,7 +205,6 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
                 style="yellow",
             )
         )
-
 
     def print_section(entries, label):
         if not entries:

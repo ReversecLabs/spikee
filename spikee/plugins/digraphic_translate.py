@@ -29,15 +29,20 @@ Plugin                   Total    Successes    Attempts  Success Rate
 'custom-llm-judge'          43            1          43  2.33%
 """
 
-from typing import List
-
-from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm import get_llm
-from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
+from spikee.utilities.llm_message import HumanMessage
+from spikee.utilities.llm import get_llm
+from spikee.utilities.enums import ModuleTag
+from typing import List, Tuple
+from spikee.utilities.content import Text
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.templates.plugin import Plugin
+from typing import List
+<< << << < HEAD
+
+== == == =
+
+>>>>>> > 3bb931dbde719565fc72d5886fd4ef0c7762592f
 
 
 # ---------------------------------------------------------------------------
