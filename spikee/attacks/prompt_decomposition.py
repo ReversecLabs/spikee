@@ -14,7 +14,7 @@ Usage:
 
 import json
 import random
-from typing import Callable
+from typing import Callable, Dict, Any, List, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
@@ -223,7 +223,10 @@ class PromptDecompositionAttack(Attack):
         Executes the prompt decomposition attack by sequentially trying different
         reformulations until success or max_iterations is reached.
         """
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("PromptDecomposition Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs
         last_response = ""

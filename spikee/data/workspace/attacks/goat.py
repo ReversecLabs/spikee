@@ -8,7 +8,7 @@ See `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS` for optional configuration
 
 import uuid
 import json
-from typing import Any, List, Tuple, Callable, Dict
+from typing import Any, Tuple, Callable, Dict
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
@@ -16,6 +16,7 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import parse_options, extract_json_or_fail
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 # Enhanced system prompt for more effective attacks
 GOAT_SYSTEM_PROMPT = """

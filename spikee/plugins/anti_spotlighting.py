@@ -18,7 +18,7 @@ from typing import List
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Content, Text
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 

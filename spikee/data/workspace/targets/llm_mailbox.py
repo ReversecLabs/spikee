@@ -1,9 +1,9 @@
 from spikee.templates.target import Target
-from spikee.utilities.enums import ModuleTag
 
 import requests
 import json
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 
 class LLMMailboxTarget(Target):

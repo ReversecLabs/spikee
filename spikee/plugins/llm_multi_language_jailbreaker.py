@@ -9,7 +9,7 @@ Usage:
 """
 
 import random
-from typing import List
+from typing import List, Union
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint

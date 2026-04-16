@@ -2,6 +2,7 @@ from spikee.templates.target import Target
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.modules import parse_options
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.content import Text
 
 from dotenv import load_dotenv
 from typing import Optional
@@ -55,7 +56,7 @@ class AWSBedrockGuardrailTarget(Target):
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
     ) -> bool:
@@ -65,12 +66,15 @@ class AWSBedrockGuardrailTarget(Target):
         Returns:
             bool: True if guardrail was bypassed (attack success), False if blocked (attack failed)
         """
+        # Extract string content from Text
+        text = input_text.content
+
         opts = parse_options(target_options)
         version = opts.get("version", "DRAFT")
 
         try:
             attack_detected = self.detect_prompt_injection_result(
-                input_text, version=version
+                text, version=version
             )
 
             return not attack_detected
@@ -86,6 +90,6 @@ if __name__ == "__main__":
         "Testing AWS Bedrock guardrail with input:", "Your prompt injection attack here"
     )
     result = target.process_input(
-        "Your prompt injection attack here", target_options="version=DRAFT"
+        Text("Your prompt injection attack here"), target_options="version=DRAFT"
     )
     print("Guardrail bypassed (attack success):", result)

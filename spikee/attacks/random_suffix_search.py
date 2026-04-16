@@ -40,7 +40,7 @@ Returns:
 import random
 import numpy as np
 import tiktoken
-from typing import Callable
+from typing import Callable, Dict, Any, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
@@ -89,7 +89,10 @@ class RandomSuffixSearch(Attack):
         attempts_bar=None,
         bar_lock=None,
     ) -> Tuple[int, bool, str, str]:
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("RandomSuffixSearch Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         payload_field = entry.get("payload", "")
 

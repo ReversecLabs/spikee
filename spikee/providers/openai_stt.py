@@ -9,10 +9,10 @@ from io import BytesIO
 import os
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, upgrade_messages, AIMessage, HumanMessage
-from typing import Union
+from typing import Union, Dict, List
 
 
 class OpenAISTTProvider(Provider):

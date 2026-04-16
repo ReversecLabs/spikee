@@ -1,8 +1,9 @@
-from typing import Tuple, List, Union
+from typing import Union
 
 from .judge import Judge
 from spikee.utilities.llm import get_llm
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 class LLMJudge(Judge):

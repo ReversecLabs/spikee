@@ -11,7 +11,7 @@ Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
 
-from typing import Callable
+from typing import Callable, Dict, Any, List, Tuple
 
 from spikee.templates.attack import Attack
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
@@ -162,7 +162,10 @@ class LLMJailbreaker(Attack):
         model_name = opts.get("model", self.DEFAULT_MODEL)
 
         # Get the objective from the entry
-        objective = entry.get("text", "")
+        objective = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("LLMJailbreaker Attack only supports text content type.")
+
         if not objective:
             return 0, False, "", "No objective provided in entry"
 

@@ -3,7 +3,7 @@ from spikee.utilities.enums import ContentType
 
 class Content:
     def __init__(self, content, content_type: ContentType = ContentType.TEXT):
-        self.content = content
+        self.content: str = content
         self.content_type = content_type
 
     def __repr__(self):

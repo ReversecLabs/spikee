@@ -1,7 +1,9 @@
 from spikee.templates.target import Target
+from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, ContentHint
+from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -15,6 +17,7 @@ class LLMProvider(Target):
         default_model: Union[str, None] = None,
         models: Union[dict, list, None] = None,
     ):
+        super().__init__()
         self._provider_name = provider
 
         self._default_model = default_model
@@ -29,10 +32,10 @@ class LLMProvider(Target):
         if self._provider_name is not None:
             provider = get_llm(f"{self._provider_name}/")
 
-            if self._default_model is None:
+            if self._default_model is None and isinstance(provider, Provider):
                 self._default_model = f"{self._provider_name}/{provider.default_model}"
 
-            if self._models is None:
+            if self._models is None and isinstance(provider, Provider):
                 self._models = provider.models
 
     def get_description(self) -> ModuleDescriptionHint:
@@ -55,11 +58,11 @@ class LLMProvider(Target):
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]]:
         """
         Send messages to a provider model by key.
 
@@ -112,11 +115,21 @@ class LLMProvider(Target):
                     "LLMProvider requires a 'model' option to specify which provider/model to use."
                 )
 
+        if model_id is None:
+            raise ValueError(
+                "Unable to determine model_id. Please provide a valid model option."
+            )
+
         if "/" not in model_id:
             model_id = f"{self._provider_name}/{model_id}"
 
         # Initialize provider client
         llm = get_llm(model_id, max_tokens=max_tokens, temperature=temperature)
+
+        if not isinstance(llm, Provider):
+            raise ValueError(
+                f"Specified model '{model_id}' does not correspond to a valid Provider instance. Please check your provider and model options."
+            )
 
         if ModuleTag.LLM not in llm.get_description()[0]:
             raise ValueError(
@@ -137,11 +150,13 @@ class LLMProvider(Target):
             print(f"Error during provider model completion ({model_id}): {e}")
             raise
 
+        response_content = Text(response.content) if isinstance(response.content, str) else response.content
+
         if "logprobs" in response.metadata and logprobs:
-            return response.content, response.metadata["logprobs"]
+            return response_content, response.metadata["logprobs"]
 
         else:
-            return response.content
+            return response_content
 
 
 if __name__ == "__main__":
@@ -153,7 +168,7 @@ if __name__ == "__main__":
     try:
         print(
             target.process_input(
-                "Hello!", target_options="model=bedrock/claude37-sonnet"
+                Text("Hello!"), target_options="model=bedrock/claude37-sonnet"
             )
         )
     except Exception as err:

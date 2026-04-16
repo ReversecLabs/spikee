@@ -1,5 +1,5 @@
 import uuid
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Dict, Any, Union
 import traceback
 
 
@@ -25,22 +25,20 @@ class MultiTurnAttack(Attack):
 
     def attack(
         self,
-        entry: dict,
+        entry: Dict[str, Any],
         target_module: Target,
         call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
-        if (
-            "text" not in entry
-            or not isinstance(entry["text"], list)
-            or not all(isinstance(item, str) for item in entry["text"])
-        ):
-            raise ValueError(
-                "Entry must contain a valid 'text' field for manual multi-turn attack."
-            )
+    ) -> Tuple[int, bool, Union[Dict[str, Any], str], str]:
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("MultiTurn Attack only supports text content type.")
+
+        if not isinstance(original_text, list) or not all(isinstance(item, str) for item in original_text):
+            raise ValueError("For MultiTurn Attack, 'text' field must be a list of strings representing the conversation turns.")
 
         # Attempt multi-turn attack
         try:
@@ -49,7 +47,7 @@ class MultiTurnAttack(Attack):
             conversation = []
 
             count = 0
-            for message in entry["text"]:
+            for message in original_text:
                 # Send message and handle history
                 conversation.append({"role": "user", "content": message})
                 response = target_module.process_input(
@@ -81,7 +79,7 @@ class MultiTurnAttack(Attack):
                     remaining = max_iterations - count
                     attempts_bar.total = attempts_bar.total - remaining
 
-            return len(entry["text"]), success, {"conversation": conversation}, response
+            return len(original_text), success, {"conversation": conversation}, response
         except Exception as e:
             traceback.print_exc()
             return 0, False, f"Error during multi-turn attack: {str(e)}", ""

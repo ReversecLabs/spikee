@@ -2,18 +2,17 @@ from typing import Optional
 
 from spikee.templates.target import Target
 from spikee.utilities.hinting import ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
-class AlwaysErrorTarget(Target):
+class AlwaysRefuseTarget(Target):
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [], False
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Text:
-        raise ValueError("This target always raises an error. The response should be checked for the canary response to confirm that the error was raised correctly.")
+    ) -> str:
+        return str("Sorry, I can't answer that.")

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Any, Tuple, Dict, Callable
 import threading
 from collections import defaultdict
 import spikee.attacks.crescendo
@@ -42,18 +42,25 @@ class MockCrescendoAttack(Crescendo):
         self,
         entry: dict,
         target_module: object,
-        call_judge: callable,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> Tuple[int, bool, Dict[str, Any], str]:
         # Parse scenario
         opts = parse_options(attack_option)
         # Store scenario in thread-local because attack() sets it for the duration of the call
         if not hasattr(self._thread_local, "scenario"):
             self._thread_local.scenario = "success"
         self._thread_local.scenario = opts.get("scenario", "success")
+
+        # Inject a mock model option if not present (Crescendo requires model= option)
+        if "model" not in opts:
+            if attack_option:
+                attack_option += ",model=mock-llm"
+            else:
+                attack_option = "model=mock-llm"
 
         return super().attack(
             entry,

@@ -2,24 +2,37 @@ from typing import Dict, List, Any, Union
 
 from spikee.utilities.hinting import ContentHint
 from spikee.utilities.content import Content, Text
+from spikee.utilities.enums import ContentType
 
 
 class Message:
     def __init__(self, role: str, content: ContentHint):
         self.role = role
-        self.content: Content = content if isinstance(content, Content) else Text(content)
+        self.__content: Content = content if isinstance(content, Content) else Text(content)
         self.metadata = {}
 
     @property
-    def contents(self):
+    def content(self) -> str:
+        return self.__content.content
+
+    @property
+    def content_type(self) -> ContentType:
+        return self.__content.content_type
+
+    @property
+    def content_object(self) -> Content:
+        return self.__content
+
+    @property
+    def contents(self) -> List[Content]:
         """For compatibility with list representation of contents"""
-        return [self.content]
+        return [self.__content]
 
     def to_dict(self) -> Dict[str, Union[str, Content]]:
-        return {"role": self.role, "content": self.content}
+        return {"role": self.role, "content": self.__content}
 
     def formatted_dict(self) -> Dict[str, str]:
-        return {"role": self.role, "content": str(self.content.content)}
+        return {"role": self.role, "content": str(self.__content.content)}
 
 
 class SystemMessage(Message):

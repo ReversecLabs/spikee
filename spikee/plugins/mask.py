@@ -18,7 +18,7 @@ Options:
 
 """
 
-from typing import List
+from typing import List, Union
 import json
 import random
 import string

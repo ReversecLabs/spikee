@@ -1,5 +1,5 @@
 from spikee.providers.custom import AnyLLMCustomProvider
-from typing import Union
+from typing import Union, Dict
 import os
 
 

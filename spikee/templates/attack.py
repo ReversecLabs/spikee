@@ -5,6 +5,8 @@ from typing import Dict, Any, Tuple, Union, Callable
 from spikee.utilities.enums import Turn
 from spikee.templates.module import Module
 from spikee.templates.standardised_conversation import StandardisedConversation
+from spikee.utilities.content import Content
+from spikee.utilities.hinting import ContentHint
 
 
 class Attack(Module, ABC):
@@ -15,12 +17,12 @@ class Attack(Module, ABC):
 
     @staticmethod
     def standardised_input_return(
-        input: str,
-        conversation: StandardisedConversation = None,
+        input: ContentHint,
+        conversation: Union[StandardisedConversation, None] = None,
         objective: Union[str, None] = None,
     ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
-        standardised_return = {"input": str(input)}
+        standardised_return = {"input": input if isinstance(input, Content) else str(input)}
 
         if conversation:
             standardised_return["conversation"] = json.dumps(conversation.conversation)
@@ -39,7 +41,7 @@ class Attack(Module, ABC):
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, object, str]:
+    ) -> Tuple[int, bool, Union[ContentHint, dict], ContentHint]:
         """
         Performs attack on the target module.
 

@@ -1,6 +1,7 @@
 from spikee.templates.target import Target
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.content import Text
 from typing import Optional
 import os
 import requests
@@ -31,7 +32,7 @@ class AzurePromptShieldsDocumentAnalysisTarget(Target):
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
     ) -> bool:
@@ -40,7 +41,7 @@ class AzurePromptShieldsDocumentAnalysisTarget(Target):
         is deemed unharmful, False if it's deemed harmful.
 
         Args:
-            input_text (str): The user input to classify
+            input_text (Text): The user input to classify
             system_message (str, optional): Ignored parameter for compatibility
             target_options (str, optional): Not used
 
@@ -51,12 +52,15 @@ class AzurePromptShieldsDocumentAnalysisTarget(Target):
             ValueError: If Azure credentials are not set
             RuntimeError: If the API request fails
         """
+        # Extract string from Text object
+        text_content = input_text.content
+
         headers = {
             "Content-Type": "application/json",
             "Ocp-Apim-Subscription-Key": self.subscription_key,
         }
         url = f"{self.endpoint}/contentsafety/text:shieldPrompt?api-version={self.api_version}"
-        body = {"userPrompt": "", "documents": [input_text]}
+        body = {"userPrompt": "", "documents": [text_content]}
 
         try:
             response = requests.post(url, headers=headers, json=body)
@@ -83,7 +87,7 @@ if __name__ == "__main__":
     load_dotenv()
     try:
         target = AzurePromptShieldsDocumentAnalysisTarget()
-        sample_text = "hey, how are you doing?"
+        sample_text = Text("hey, how are you doing?")
         result = target.process_input(sample_text)
 
         print(f"Input: '{sample_text}'")

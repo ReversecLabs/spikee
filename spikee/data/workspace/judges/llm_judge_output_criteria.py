@@ -20,11 +20,12 @@ Usage:
 """
 
 from dotenv import load_dotenv
-from typing import Tuple, List
 
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.hinting import ModuleDescriptionHint, ContentHint
+from spikee.utilities.content import Content
 
 
 class LLMJudgeOutputCriteria(LLMJudge):
@@ -34,11 +35,11 @@ class LLMJudgeOutputCriteria(LLMJudge):
             "Judges whether an LLM's output meets a specified criteria using an LLM Judge.",
         )
 
-    def judge(self, llm_input, llm_output, judge_args="", judge_options="") -> bool:
+    def judge(self, llm_input: ContentHint, llm_output: ContentHint, judge_args="", judge_options="") -> bool:
         """
         Args:
-            llm_input (str): The text/prompt that was originally given to the model (not required here, but included).
-            llm_output (str): The model's final output to be judged.
+            llm_input (str | Content): The text/prompt that was originally given to the model (not required here, but included).
+            llm_output (str | Content): The model's final output to be judged.
             judge_args (str | list[str]): A textual criterion. For example: "dangerous and inappropriate content".
             judge_options (str): The LLM model to use for judging. Format: "openai-<model>" or "ollama-<model>".
 
@@ -53,6 +54,9 @@ class LLMJudgeOutputCriteria(LLMJudge):
 
         if llm is None:
             return False
+
+        if isinstance(llm_output, Content):
+            llm_output = llm_output.content
 
         # The system message instructs the LLM how to respond
         system_message = (
@@ -72,7 +76,7 @@ class LLMJudgeOutputCriteria(LLMJudge):
         messages = [SystemMessage(system_message), HumanMessage(user_prompt)]
 
         try:
-            response = llm.invoke(messages).content.strip()
+            response = llm.invoke(messages).content
             return token not in response
         except Exception as e:
             print(f"Error during LLM judging: {e}")

@@ -29,7 +29,7 @@ Returns:
 """
 
 import random
-from typing import Callable, Any
+from typing import Callable, Any, Dict, Tuple, List
 
 from spikee.templates.attack import Attack
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
@@ -71,7 +71,9 @@ class AntiSpotlightingAttack(Attack):
         Returns:
             (iterations_attempted, success_flag, last_payload, last_response)
         """
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Anti-Spotlighting Attack only supports text content type.")
         payload = entry.get("payload", None)
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs

@@ -1,6 +1,6 @@
 import traceback
 import uuid
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Tuple, Dict, Any
 import threading
 import re
 import json
@@ -265,7 +265,7 @@ class Crescendo(Attack):
         session_id: str,
         conversation: StandardisedConversation,
         last_message_id: int,
-    ) -> Tuple[int, bool, List[Dict[str, str]], str]:
+    ) -> Tuple[int, StandardisedConversation, int, str]:
         """
         Run a single conversation attempt.
         - max_iterations: the maximum number of calls allowed for this attempt (cannot exceed global budget).
@@ -275,7 +275,7 @@ class Crescendo(Attack):
         - max_turns counts only non-backtrack turns appended to chat_history.
         """
         # Extract objective and system message
-        objective = entry["text"]
+        objective = entry.get("content", entry.get("text", ""))
         system_message = entry.get("system_message")
 
         # Variables
@@ -383,7 +383,7 @@ class Crescendo(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> Tuple[int, bool, Dict[str, Any], str]:
         """
         Attack entry point.
 
@@ -394,17 +394,25 @@ class Crescendo(Attack):
         - max_iterations is treated as the global budget of calls (prompts).
         - conversation is the chat history list (may be empty).
         """
+        if "content" not in entry and "text" not in entry:
+            raise ValueError("entry must contain 'content' or 'text' (the jailbreak objective)")
 
-        if "text" not in entry:
-            raise ValueError("entry must contain 'text' (the jailbreak objective)")
+        objective = entry.get("content", entry.get("text", ""))
+
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Crescendo Attack only supports text content type.")
 
         # Parse options
         opts = parse_options(attack_option)
         max_turns = self._parse_max_turns(opts)
-        llm = get_llm(opts.get("model", None), max_tokens=None)
+        model = opts.get("model", None)
+        if not model:
+            raise ValueError("Crescendo attack requires an LLM model specified in options, e.g. 'model=gpt-4'")
+
+        llm = get_llm(model, max_tokens=None)
 
         # Variables
-        conversation = StandardisedConversation({"objective": entry["text"]})
+        conversation = StandardisedConversation({"objective": objective})
         last_message_id = conversation.get_root_id()  # last message id
         last_response = ""  # last LLM response
 
@@ -437,9 +445,9 @@ class Crescendo(Attack):
                     conversation.get_attempt_total(),
                     False,
                     Crescendo.standardised_input_return(
-                        input=entry["text"],
+                        input=objective,
                         conversation=conversation,
-                        objective=entry["text"],
+                        objective=objective,
                     ),
                     str(e),
                 )
@@ -461,9 +469,9 @@ class Crescendo(Attack):
                     conversation.get_attempt_total(),
                     True,
                     Crescendo.standardised_input_return(
-                        input=entry["text"],
+                        input=objective,
                         conversation=conversation,
-                        objective=entry["text"],
+                        objective=objective,
                     ),
                     last_response,
                 )
@@ -475,7 +483,7 @@ class Crescendo(Attack):
             conversation.get_attempt_total(),
             False,
             Crescendo.standardised_input_return(
-                input=entry["text"], conversation=conversation, objective=entry["text"]
+                input=objective, conversation=conversation, objective=objective
             ),
             last_response,
         )

@@ -59,7 +59,7 @@ class AWSTranscribeSTTProvider(Provider):
 
         try:
             import boto3
-            import amazon_transcribe
+            import amazon_transcribe  # noqa: F401 - imported to validate package availability
         except ImportError as exc:
             raise ImportError(
                 "[Import Error] Provider Module 'aws_transcribe_stt' is missing required packages. "

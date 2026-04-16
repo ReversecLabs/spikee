@@ -13,12 +13,13 @@ Usage:
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 
 from dotenv import load_dotenv
 import json
 import requests
-from typing import Any, Optional, List, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 try:
     from fpdf import FPDF
@@ -38,16 +39,19 @@ class SamplePDFRequestTarget(Target):
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
+        # Extract string from Text object
+        text_content = input_text.content
+
         url = "https://reversec.com/api/upload_pdf"
 
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, input_text)
+        pdf.multi_cell(0, 10, text_content)
         pdf_bytes = pdf.output(dest="S").encode("latin1")
 
         files = {
@@ -64,13 +68,13 @@ class SamplePDFRequestTarget(Target):
         }
 
         try:
-            response = requests.post(
+            response: requests.Response = requests.post(
                 url, files=files, data={"payload": json.dumps(payload)}, timeout=30
             )
 
             response.raise_for_status()
             result = response.json()
-            return result.get("answer", "No answer available.")
+            return Text(result.get("answer", "No answer available."))
 
         except requests.exceptions.RequestException as e:
             if response.status_code == 400:  # Guardrail Triggered
@@ -85,7 +89,6 @@ if __name__ == "__main__":
     load_dotenv()
     try:
         target = SamplePDFRequestTarget()
-        response = target.process_input("Hello!")
-        print(response)
+        print(target.process_input(Text("Hello!")))
     except Exception as err:
         print("Error:", err)

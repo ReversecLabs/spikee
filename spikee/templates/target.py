@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 from spikee.utilities.enums import Turn
 from spikee.templates.module import Module
+from spikee.utilities.hinting import ContentHint
 
 
 class Target(Module, ABC):
@@ -18,19 +19,21 @@ class Target(Module, ABC):
     @abstractmethod
     def process_input(
         self,
-        input_text: str,
-        system_message: Optional[str] = None,
+        input_text: ContentHint,
+        system_message: Optional[ContentHint] = None,
         target_options: Optional[str] = None,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]]:
         """Sends prompts to the defined target
 
         Args:
-            input_text (str): User Prompt
-            system_message (Optional[str], optional): System Prompt. Defaults to None.
+            input_text (ContentHint): User Prompt
+            system_message (Optional[ContentHint], optional): System Prompt. Defaults to None.
             target_options (Optional[str], optional): Target options. Defaults to None.
 
         Returns:
-            str: Response from the target
+            ContentHint: Response from the target
+            bool: Whether the target's response indicates a successful attack (if applicable)
+            Tuple[Union[ContentHint, bool], Any]: Optionally return additional metadata along with the response and success status
             throws tester.GuardrailTrigger: Indicates guardrail was triggered
             throws Exception: Raises exception on failure
         """

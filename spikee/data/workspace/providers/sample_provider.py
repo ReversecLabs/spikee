@@ -4,9 +4,10 @@ from spikee.utilities.llm_message import (
     Message,
     AIMessage,
 )
+from spikee.utilities.hinting import ModuleDescriptionHint
 
 from agent_framework.openai import OpenAIChatClient, OpenAIChatOptions
-from typing import List, Tuple, Dict, Union, Any
+from typing import List, Dict, Union, Any
 
 BASE_URL = "https://example.com/openai/v1"
 

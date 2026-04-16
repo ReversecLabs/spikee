@@ -33,16 +33,11 @@ from spikee.utilities.modules import parse_options, extract_json_or_fail
 from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.llm import get_llm
 from spikee.utilities.enums import ModuleTag
-from typing import List, Tuple
 from spikee.utilities.content import Text
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.templates.plugin import Plugin
+from spikee.templates.provider import Provider
 from typing import List
-<< << << < HEAD
-
-== == == =
-
->>>>>> > 3bb931dbde719565fc72d5886fd4ef0c7762592f
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +190,8 @@ class DigraphicTranslate(Plugin):
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         lang_key = opts.get("language", "japanese")
 
+        text = content.content
+
         if lang_key not in DIGRAPHIC_LANGUAGES:
             raise ValueError(
                 f"Unsupported language '{lang_key}'. "
@@ -203,8 +200,11 @@ class DigraphicTranslate(Plugin):
 
         llm = get_llm(llm_model, max_tokens=2000)
 
+        if not isinstance(llm, Provider):
+            raise ValueError("DigraphicTranslate plugin requires an LLM provider model")
+
         prompt_text = self._build_prompt(text, lang_key)
-        response = llm.invoke([HumanMessage(prompt_text)]).content.strip()
+        response = llm.invoke([HumanMessage(prompt_text)]).content
 
         obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "").strip()

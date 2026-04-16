@@ -26,7 +26,7 @@ Returns:
 
 import re
 import random
-from typing import Callable, Any
+from typing import Callable, Any, Dict, Tuple
 
 
 from spikee.templates.attack import Attack
@@ -59,7 +59,10 @@ class BestOfNAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
     ) -> Tuple[int, bool, str, str]:
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Best-Of-N Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         # Use the payload field (if present) to restrict transformation.
         payload_field = entry.get("payload", "")

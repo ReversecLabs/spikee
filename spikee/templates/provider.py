@@ -1,8 +1,9 @@
 from spikee.templates.module import Module
 from spikee.utilities.llm_message import Message, AIMessage
+from spikee.utilities.hinting import ModuleOptionsHint
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union
+from typing import List, Union
 import os
 
 

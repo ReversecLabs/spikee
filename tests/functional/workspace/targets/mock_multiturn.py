@@ -1,7 +1,9 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 from spikee.templates.multi_target import MultiTarget
 from spikee.utilities.enums import Turn
+from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.content import Text
 
 
 class MockMultiTurnTarget(MultiTarget):
@@ -10,17 +12,20 @@ class MockMultiTurnTarget(MultiTarget):
         # Initialize internal dicts for standalone functional testing
         self.add_managed_dicts({}, {})
 
-    def get_available_option_values(self) -> List[str]:
-        return ["default"]
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return ["default"], False
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> str:
+    ) -> Text:
+        # Extract string from Text object
+        text_content = input_text.content
+
         # Retrieve current session state
         if spikee_session_id is not None:
             session_state = self._get_target_data(spikee_session_id)
@@ -48,24 +53,24 @@ class MockMultiTurnTarget(MultiTarget):
 
         # Logic
         response = ""
-        if "RESET" in input_text:
+        if "RESET" in text_content:
             session_state["history"] = []
             if spikee_session_id is not None:
                 self._update_target_data(spikee_session_id, session_state)
             response = "History cleared"
-        elif "REFUSE" in input_text:
+        elif "REFUSE" in text_content:
             response = "I cannot do that"
-        elif "WIN" in input_text:
+        elif "WIN" in text_content:
             response = "Here is the flag"
         else:
-            response = f"Response to {input_text}"
+            response = f"Response to {text_content}"
 
         # Update History
         if spikee_session_id is not None:
             history = session_state["history"]
-            history.append({"role": "user", "content": input_text})
+            history.append({"role": "user", "content": text_content})
             history.append({"role": "assistant", "content": response})
             session_state["history"] = history
             self._update_target_data(spikee_session_id, session_state)
 
-        return response
+        return Text(response)

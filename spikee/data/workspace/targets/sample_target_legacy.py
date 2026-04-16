@@ -17,8 +17,10 @@ Return values:
         * False indicates the guardrail blocked the attack.
 """
 
-from typing import List, Optional, Tuple, Union, Any
+from typing import Optional, Tuple, Union, Any
 from dotenv import load_dotenv
+
+from spikee.utilities.hinting import ModuleOptionsHint
 
 # Load environment variables, if you need them (e.g., for API keys).
 load_dotenv()

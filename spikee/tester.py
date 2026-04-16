@@ -13,13 +13,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from datetime import datetime
 from InquirerPy import inquirer
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, Union, Optional
 
 from spikee.templates.target import Target
 
-from .judge import annotate_judge_options, call_judge
-from .utilities.enums import Turn
-from .utilities.files import (
+from spikee.judge import annotate_judge_options, call_judge
+from spikee.utilities.enums import Turn
+from spikee.utilities.files import (
     read_jsonl_file,
     write_jsonl_file,
     append_jsonl_entry,
@@ -29,8 +29,10 @@ from .utilities.files import (
     prepare_output_file,
     does_resource_name_match,
 )
-from .utilities.modules import load_module_from_path, get_default_option
-from .utilities.tags import validate_and_get_tag
+from spikee.utilities.modules import load_module_from_path, get_default_option
+from spikee.utilities.content import Content, Text, content_factory
+from spikee.utilities.hinting import ContentHint
+from spikee.utilities.tags import validate_and_get_tag
 
 
 class GuardrailTrigger(Exception):
@@ -109,6 +111,14 @@ class AdvancedTargetWrapper:
         self.supports_spikee_session_id = "spikee_session_id" in params
         self.supports_backtrack = "backtrack" in params
 
+        self.supports_input_content = params["input_text"].annotation
+        if self.supports_input_content == inspect.Parameter.empty:
+            self.supports_input_content = str
+
+        self.supports_system_message_content = params["system_message"].annotation if "system_message" in params else None
+        if self.supports_system_message_content == inspect.Parameter.empty:
+            self.supports_system_message_content = Optional[str]
+
     @classmethod
     def create_target_wrapper(cls, target_name, target_options, max_retries, throttle):
         """Static method to create an AdvancedTargetWrapper for a given target name."""
@@ -128,14 +138,14 @@ class AdvancedTargetWrapper:
 
     def process_input(
         self,
-        input_text,
-        system_message=None,
+        input_text: ContentHint,
+        system_message: Union[ContentHint, None] = None,
         logprobs=False,
         input_id=None,
         output_file=None,
         spikee_session_id=None,
         backtrack=False,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]]:
         last_error: Union[Exception, None] = None
         retries = 0
 
@@ -157,35 +167,76 @@ class AdvancedTargetWrapper:
                 if self.supports_backtrack:
                     kwargs["backtrack"] = backtrack
 
-                # Correct Multi-Turn -> Single-Turn handling
-                if isinstance(input_text, list):
-                    # input_text = "\n".join(input_text)
-                    raise MultiTurnSkip(
-                        "Multi-Turn Skip - Process via Multi-Turn capable attack."
+                # Delegate to the wrapped process_input
+                # Convert input_text based on target requirements
+                if isinstance(input_text, self.supports_input_content):
+                    converted_input = input_text
+
+                elif self.supports_input_content is str and isinstance(input_text, Content):
+                    converted_input = input_text.content
+
+                elif self.supports_input_content is not str and isinstance(input_text, str):
+                    # Convert class type to string name for content_factory
+                    content_type_str = self.supports_input_content.__name__.lower()
+                    converted_input = content_factory(input_text, content_type_str)
+
+                else:
+                    raise ValueError(
+                        f"Unsupported content type for target: {self.supports_input_content}, expected {type(input_text)}"
                     )
 
-                    # Delegate to the wrapped process_input
+                # Convert system_message based on target requirements
+                if system_message is not None and self.supports_system_message_content is not None:
+                    if isinstance(system_message, self.supports_system_message_content):
+                        converted_system_message = system_message
+
+                    elif (self.supports_system_message_content is str or self.supports_system_message_content == Optional[str]) and isinstance(system_message, Content):
+                        converted_system_message = system_message.content
+
+                    elif self.supports_system_message_content is not str and isinstance(system_message, str):
+                        # Convert class type to string name for content_factory
+                        content_type_str = self.supports_system_message_content.__name__.lower()
+                        converted_system_message = content_factory(system_message, content_type_str)
+
+                    else:
+                        raise ValueError(
+                            f"Unsupported system_message content type for target: {self.supports_system_message_content}, got {type(system_message)}"
+                        )
+                else:
+                    converted_system_message = None
+
                 if kwargs:
-                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
+                    result: Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]] = (
                         self.target_module.process_input(
-                            input_text, system_message, **kwargs
+                            converted_input, converted_system_message, **kwargs
                         )
                     )
                 else:
-                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
-                        self.target_module.process_input(input_text, system_message)
+                    result: Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]] = (
+                        self.target_module.process_input(converted_input, converted_system_message)
                     )
 
                 # Unpack (response, meta) if tuple returned
-                response: Union[str, bool]
+                response: Union[ContentHint, bool]
                 meta: Any = None
                 if isinstance(result, tuple) and len(result) == 2:
-                    response, meta = result
-                elif isinstance(result, str) or isinstance(result, bool):
+                    result, meta = result
+
+                if isinstance(result, str) and self.supports_input_content is not str:
+                    response = Text(result)
+
+                elif isinstance(result, Content) and self.supports_input_content is str:
+                    response = result.content
+
+                elif isinstance(result, self.supports_input_content):
                     response = result
+
+                elif isinstance(result, bool):
+                    response = result
+
                 else:
                     raise ValueError(
-                        "Invalid return type from target's process_input. Expected str, (str, meta), or bool.",
+                        "Invalid return type from target's process_input. Expected str, bool, or Content.",
                         str(type(result)),
                     )
                 if self.throttle > 0:
@@ -468,6 +519,8 @@ def _do_single_request(
     system_message = entry.get("system_message", None)
     plugin = entry.get("plugin", None)
 
+    system_message = Text(system_message) if system_message else None
+
     # Guardrail Specific Errors
     guardrail = False
     guardrail_categories = {}
@@ -522,8 +575,10 @@ def _do_single_request(
     result_dict = {
         "id": entry["id"],
         "long_id": entry["long_id"],
-        "input": input_text,
-        "response": response_str,
+        "input": input_text.content,
+        "input_type": str(type(input_text).__name__).lower(),
+        "response": response_str.content if isinstance(response_str, Content) else response_str,
+        "response_type": str(type(response_str).__name__).lower() if isinstance(response_str, Content) else "text",
         "response_time": response_time,
         "success": success,
         "judge_name": entry["judge_name"],
@@ -539,7 +594,7 @@ def _do_single_request(
         "injection_delimiters": injection_delimiters,
         "suffix_id": suffix_id,
         "lang": lang,
-        "system_message": system_message,
+        "system_message": system_message.content if system_message else None,
         "plugin": plugin,
         "attack_name": "None",
         "error": error_message,
@@ -583,7 +638,12 @@ def process_entry(
     Returns:
       List[dict]: A list containing one or two result entries.
     """
-    original_input = entry["text"]
+    # Create Content object from entry (new format) or fall back to plain text (legacy)
+    content_data = entry.get("content", entry.get("text"))
+    content_type = entry.get("content_type", "text")
+    entry["text"] = content_data  # For backward compatibility with attacks that expect 'text' field
+    original_input = content_factory(content_data, content_type)
+
     std_result = None
     std_success = False
 
@@ -677,13 +737,40 @@ def process_entry(
             end_time = time.time()
             response_time = end_time - start_time
 
+            # Save original attack_input for extracting conversation/objective if it's a dict
+            attack_input_original = attack_input
+
+            attack_input_type = None
+            attack_response_type = None
+            if isinstance(attack_input, Content):
+                attack_input = attack_input.content
+                attack_input_type = str(type(attack_input).__name__).lower()
+
+            elif isinstance(attack_input, dict):
+                if "input" in attack_input:
+                    attack_input = attack_input["input"]
+
+                    if isinstance(attack_input, Content):
+                        attack_input = attack_input.content
+                        attack_input_type = str(type(attack_input).__name__).lower()
+
+                else:
+                    attack_input = str(attack_input)
+                    attack_input_type = "text"
+
+            if isinstance(attack_response, Content):
+                attack_response = attack_response.content
+                attack_response_type = str(type(attack_response).__name__).lower()
+            else:
+                attack_response_type = "text"
+
             attack_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name,
-                "input": attack_input["input"]
-                if isinstance(attack_input, dict)
-                else attack_input,
+                "input": attack_input,
+                "input_type": attack_input_type,
                 "response": attack_response,
+                "response_type": attack_response_type,
                 "response_time": response_time,
                 "success": attack_success,
                 "judge_name": entry["judge_name"],
@@ -708,14 +795,16 @@ def process_entry(
                 "attack_options": effective_attack_options,
             }
 
-            if isinstance(attack_input, dict) and "conversation" in attack_input:
-                attack_result["conversation"] = attack_input["conversation"]
+            if isinstance(attack_input_original, dict) and "conversation" in attack_input_original:
+                attack_result["conversation"] = attack_input_original["conversation"]
 
-            if isinstance(attack_input, dict) and "objective" in attack_input:
-                attack_result["objective"] = attack_input["objective"]
+            if isinstance(attack_input_original, dict) and "objective" in attack_input_original:
+                attack_result["objective"] = attack_input_original["objective"]
 
             results_list.append(attack_result)
         except Exception as e:
+            # Save original attack_input for extracting conversation/objective if it's a dict
+
             if attack_input is None:
                 attack_input_str = original_input
             elif isinstance(attack_input, dict):
@@ -723,11 +812,18 @@ def process_entry(
             else:
                 attack_input_str = attack_input
 
+            attack_input_type = None
+            if isinstance(attack_input_str, Content):
+                attack_input_str = attack_input_str.content
+                attack_input_type = str(type(attack_input_str).__name__).lower()
+
             error_result = {
                 "id": f"{entry['id']}-attack",
                 "long_id": entry["long_id"] + "-" + attack_name + "-ERROR",
                 "input": attack_input_str,
+                "input_type": attack_input_type,
                 "response": "",
+                "response_type": None,
                 "success": False,
                 "judge_name": entry["judge_name"],
                 "judge_args": entry["judge_args"],

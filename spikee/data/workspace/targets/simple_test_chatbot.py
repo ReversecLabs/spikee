@@ -29,13 +29,14 @@ from spikee.templates.simple_multi_target import (
 )  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
 from spikee.utilities.enums import Turn
 from spikee.utilities.modules import parse_options
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.content import Text
 import traceback
 
 import json
 import uuid
 import requests
-from typing import Optional, List, Tuple, Union, Any
+from typing import Optional, Tuple, Union, Any
 
 from dotenv import load_dotenv
 
@@ -184,12 +185,15 @@ class TestChatbotTarget(SimpleMultiTarget):
 
     def process_input(
         self,
-        input_text: str,
+        input_text: Text,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
+        # Extract string from Text object
+        text_content = input_text.content
+
         # ---- Determine the URL based on target options ----
         opts = parse_options(target_options)
         if "url" in opts:
@@ -257,7 +261,7 @@ class TestChatbotTarget(SimpleMultiTarget):
         response = self.send_message(
             url=url,
             session_id=target_session_id,
-            message=input_text,
+            message=text_content,
             model=model,
             guardrail=guardrail,
             system_prompt=system_message,
@@ -266,13 +270,13 @@ class TestChatbotTarget(SimpleMultiTarget):
         # ---- Update History ----
         if spikee_session_id is not None:
             self._append_conversation_data(
-                spikee_session_id, role="user", content=input_text
+                spikee_session_id, role="user", content=text_content
             )
             self._append_conversation_data(
                 spikee_session_id, role="assistant", content=response
             )
 
-        return response
+        return Text(response)
 
 
 if __name__ == "__main__":
@@ -287,13 +291,13 @@ if __name__ == "__main__":
 
         print(f"Sending message to target with session_id: {test_session_id}")
         response = target.process_input(
-            "Hello, my name is Spikee",
+            Text("Hello, my name is Spikee"),
             spikee_session_id=test_session_id,
             target_options="url=http://localhost:8000,model=bedrock-claude-3-7-sonnet",
         )
         print("Response:", response)
         response = target.process_input(
-            "What was my name?",
+            Text("What was my name?"),
             spikee_session_id=test_session_id,
             target_options="url=http://localhost:8000,model=bedrock-claude-3-7-sonnet",
         )

@@ -17,7 +17,7 @@ import hashlib
 import html
 import json
 import re
-from typing import Dict, Any, Tuple, Union, List
+from typing import Dict, Any, Tuple, Union
 
 
 class ResultsViewer(Viewer):

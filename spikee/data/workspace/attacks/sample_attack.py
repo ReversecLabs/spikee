@@ -48,9 +48,9 @@ Notes:
 """
 
 import random
-from typing import List, Tuple
 
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 class SampleAttack(Attack):

@@ -8,8 +8,10 @@ from ..utils import spikee_test_cli, spikee_generate_cli
     "target_name,expected_success",
     [
         ("always_refuse", False),
+        ("always_refuse_str", False),
         ("always_refuse_legacy", False),
         ("always_success", True),
+        ("always_success_str", True),
         ("always_success_legacy", True),
         ("always_guardrail", False),  # This target raises a GuardrailTrigger, which should be treated as a failure with the canary response
     ],

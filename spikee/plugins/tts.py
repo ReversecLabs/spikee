@@ -19,7 +19,6 @@ Additional options are forwarded to the provider's setup() as keyword arguments:
 
 from typing import List
 
-from torch.cuda import temperature
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
