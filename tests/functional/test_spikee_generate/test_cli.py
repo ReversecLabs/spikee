@@ -728,3 +728,13 @@ class TestContent:
         assert len(dataset) == 3, "Generated dataset contains no entries"
         assert sum(1 for e in dataset if e.get("content_type") == "audio") == 2, \
             f"Expected 2 audio entries, got {sum(1 for e in dataset if e.get('content_type') == 'audio')}"
+
+    def test_invalid_content_type(self, run_spikee, workspace_dir):
+        """Test that an invalid content type in the seed document is handled gracefully."""
+        with pytest.raises(Exception):
+            spikee_generate_cli(
+                run_spikee,
+                workspace_dir,
+                seed_folder="datasets/seeds-functional-audio",
+                additional_args=["--include-standalone-inputs", "--plugins", "base64"],
+            )
