@@ -13,13 +13,12 @@ Usage:
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 from dotenv import load_dotenv
 import json
 import requests
-from typing import Any, Optional, Tuple, Union
+from typing import Optional
 
 try:
     from fpdf import FPDF
@@ -39,19 +38,17 @@ class SamplePDFRequestTarget(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
-        # Extract string from Text object
-        text_content = input_text.content
+    ) -> TargetResponseHint:
 
         url = "https://reversec.com/api/upload_pdf"
 
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, text_content)
+        pdf.multi_cell(0, 10, input_text)
         pdf_bytes = pdf.output(dest="S").encode("latin1")
 
         files = {
@@ -74,7 +71,7 @@ class SamplePDFRequestTarget(Target):
 
             response.raise_for_status()
             result = response.json()
-            return Text(result.get("answer", "No answer available."))
+            return result.get("answer", "No answer available.")
 
         except requests.exceptions.RequestException as e:
             if response.status_code == 400:  # Guardrail Triggered
@@ -89,6 +86,6 @@ if __name__ == "__main__":
     load_dotenv()
     try:
         target = SamplePDFRequestTarget()
-        print(target.process_input(Text("Hello!")))
+        print(target.process_input("Hello!"))
     except Exception as err:
         print("Error:", err)

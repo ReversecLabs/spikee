@@ -14,11 +14,10 @@ Usage within Spikee:
 """
 
 import random
-from typing import List
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 
@@ -56,16 +55,16 @@ class AntiSpotlighting(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> List[Text]:
+    ) -> List[str]:
         """
         Transforms the input text by wrapping it in various delimiter formats to test
         if an LLM application is vulnerable to delimiter-based attacks.
 
         Args:
-            text (str): The malicious payload to wrap in delimiters.
+            content (str): The malicious payload to wrap in delimiters.
             exclude_patterns (List[str], optional): Not used in this plugin as we're
                                                 adding wrapping rather than modifying the text.
             plugin_option: Option string like "variants=100" to control number of variants (1-500)
@@ -76,7 +75,7 @@ class AntiSpotlighting(Plugin):
         """
         max_variants = self._parse_variants_option(plugin_option)
 
-        text = content.content
+        text = content
 
         variants = []
 
@@ -204,6 +203,6 @@ class AntiSpotlighting(Plugin):
         if len(variants) > max_variants:
             return random.sample(variants, max_variants)
 
-        content_variants = [Text(v) for v in variants]
+        content_variants = [v for v in variants]
 
         return content_variants

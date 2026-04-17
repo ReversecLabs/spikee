@@ -6,10 +6,10 @@ This attack implements the Echo Chamber attack, based on https://arxiv.org/pdf/2
 
 import json
 import random
-from typing import List, Callable, Tuple, Any, Dict, Union
+from typing import List, Callable, Tuple, Union
 import uuid
 
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
@@ -593,11 +593,9 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                 + json.dumps({"keywords": keywords})
             )
 
-        response = target.process_input(
+        response = process_target_content(target.process_input(
             prompt, spikee_session_id=spikee_session_id, backtrack=False
-        )
-
-        response = str(response[0] if isinstance(response, (tuple, list)) else response)
+        ))
 
         try:
             seed_sentences = extract_json_or_fail(response).get("sentences", None)
@@ -617,14 +615,14 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
 
     def attack(
         self,
-        entry: Dict[str, Any],
+        entry: dict,
         target_module: AdvancedTargetWrapper,
         call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, Dict[str, Any], str]:
+    ) -> AttackResponseHint:
         """
         Performs the Echo Chamber attack on the target module.
 
@@ -919,18 +917,12 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                             attempt=True,
                         )
 
-                        response_data = target_module.process_input(
+                        last_response = process_target_content(target_module.process_input(
                             prompt,
                             spikee_session_id=spikee_session_id,
                             backtrack=backtrack,
-                        )
+                        ))
                         backtrack = False
-
-                        last_response = str(
-                            response_data[0]
-                            if isinstance(response_data, (tuple, list))
-                            else response_data
-                        )
 
                     except GuardrailTrigger as e:
                         if self.debug:

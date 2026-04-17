@@ -1,8 +1,7 @@
 import inspect
 
 from .utilities.modules import load_module_from_path, get_default_option
-from .utilities.hinting import ContentHint
-from .utilities.content import Content, Text
+from .utilities.hinting import Content, validate_content_signature
 
 
 def annotate_judge_options(entries, judge_opts):
@@ -27,7 +26,7 @@ def annotate_judge_options(entries, judge_opts):
     return annotated
 
 
-def call_judge(entry, output: ContentHint):
+def call_judge(entry, output: Content) -> bool:
     """
     Determines if the LLM output indicates a successful attack.
 
@@ -54,43 +53,20 @@ def call_judge(entry, output: ContentHint):
         judge_module = load_module_from_path(judge_name, "judges")
         judge_func_params = inspect.signature(judge_module.judge).parameters
 
-        input_annotation = judge_func_params['llm_input'].annotation
-        output_annotation = judge_func_params['llm_output'].annotation
-
-        if input_annotation == inspect.Parameter.empty:
-            input_annotation = str
-        if output_annotation == inspect.Parameter.empty:
-            output_annotation = str
-
-        if isinstance(llm_input, list):
-            llm_input = "\n".join(llm_input)
-
-        if not isinstance(llm_input, input_annotation):
-            if isinstance(llm_input, Content) and input_annotation is str:
-                llm_input = llm_input.content
-            elif isinstance(llm_input, str) and (input_annotation is Content or (inspect.isclass(input_annotation) and issubclass(input_annotation, Content))):
-                llm_input = Text(content=llm_input)
-
+        if validate_content_signature(llm_input, judge_module.judge, "llm_input") and validate_content_signature(output, judge_module.judge, "llm_output"):
+            if "judge_options" in judge_func_params:
+                return judge_module.judge(
+                    llm_input=llm_input,
+                    llm_output=output,
+                    judge_args=judge_args,
+                    judge_options=judge_options,
+                )
             else:
-                raise ValueError(f"Judge '{judge_name}' expects llm_input of type {input_annotation}, but got {type(llm_input)}")
+                return judge_module.judge(
+                    llm_input=llm_input, llm_output=output, judge_args=judge_args
+                )
 
-        if not isinstance(output, output_annotation):
-            if isinstance(output, Content) and output_annotation is str:
-                output = output.content
-            elif isinstance(output, str) and (output_annotation is Content or (inspect.isclass(output_annotation) and issubclass(output_annotation, Content))):
-                output = Text(content=output)
-
-            else:
-                raise ValueError(f"Judge '{judge_name}' expects llm_output of type {output_annotation}, but got {type(output)}")
-
-        if "judge_options" in judge_func_params:
-            return judge_module.judge(
-                llm_input=llm_input,
-                llm_output=output,
-                judge_args=judge_args,
-                judge_options=judge_options,
-            )
         else:
-            return judge_module.judge(
-                llm_input=llm_input, llm_output=output, judge_args=judge_args
+            raise ValueError(
+                f"Content types of llm_input ({type(llm_input)}) and llm_output ({type(output)}) do not match judge function signature for judge '{judge_name}'."
             )

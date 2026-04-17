@@ -1,9 +1,9 @@
-from typing import List, Union
+from typing import List, Union, Optional
 import json
 
 from spikee.templates.plugin import Plugin
+from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -49,25 +49,26 @@ class Shortener(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Union[Text, List[Text]]:
+    ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         max_length = int(opts.get("length", self.DEFAULT_LENGTH))
         attempts = int(opts.get("attempts", self.DEFAULT_ATTEMPTS))
 
-        text = content.content
-
         llm = get_llm(llm_model, temperature=1, max_tokens=max_length + 25)
 
+        if not isinstance(llm, Provider):
+            raise ValueError(f"LLM model {llm_model} is not a valid provider.")
+
         # Shorten the text iteratively until it's within the desired length or we run out of attempts
-        length = len(text)
+        length = len(content)
         while length > max_length:
             payload = {
-                "text": text,
+                "text": content,
                 "maximum_length": max_length,
                 "key_details": exclude_patterns or [],
                 "character_count": length,
@@ -83,16 +84,18 @@ class Shortener(Plugin):
                 ]
             ).content
 
+            if not isinstance(response, str):
+                raise ValueError(f"LLM response is not a string as expected, got {type(response)}.")
             try:
                 response = extract_json_or_fail(response)
-                text = response.get("text")
+                content = response.get("text")
             except Exception:
                 continue
 
-            length = len(text)
+            length = len(content)
             attempts -= 1
 
             if attempts <= 0:
                 raise RuntimeError("[Shortener] Failed to shorten text.")
 
-        return Text(text)
+        return content

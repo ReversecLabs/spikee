@@ -16,8 +16,7 @@ from typing import List, Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text, Image as ImageContent
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Image as ImageContent
 from spikee.utilities.enums import ModuleTag
 
 
@@ -29,7 +28,7 @@ class MultiModalImage(Plugin):
         return [], False
 
     def transform(self,
-                  content: Text,
+                  content: str,
                   exclude_patterns: Optional[List[str]] = None,
                   plugin_option: Optional[str] = None
                   ) -> ImageContent:
@@ -44,8 +43,7 @@ class MultiModalImage(Plugin):
         padding = 20
 
         # Split text into lines that fit max_width
-        text = content.content
-        words = text.split()
+        words = content.split()
         lines = []
         line = ""
         for word in words:
@@ -80,6 +78,6 @@ class MultiModalImage(Plugin):
 
 if __name__ == "__main__":
     plugin = MultiModalImage()
-    sample_text = Text("Hello, this is a test of the Base64 Image Plugin. It converts this text into an image and encodes it in Base64 format.")
+    sample_text = "Hello, this is a test of the Base64 Image Plugin. It converts this text into an image and encodes it in Base64 format."
     result = plugin.transform(sample_text)
     print(result)

@@ -10,7 +10,7 @@ def test_boolean_response_handling(run_spikee, workspace_dir):
     # If bug exists: tester converts True -> "True". call_judge("True") runs canary judge.
     # Canary judge checks key. "True" does not contain key. result=False.
     # If bug fixed: tester keeps True. call_judge(True) returns True. result=True.
-    results_path, _ = spikee_test_cli(
+    results_path, result = spikee_test_cli(
         run_spikee,
         workspace_dir,
         target="mock_boolean"
@@ -18,8 +18,8 @@ def test_boolean_response_handling(run_spikee, workspace_dir):
 
     # 3. Verify results
     results = read_jsonl_file(results_path[0])
-    assert results, "No results recorded by spikee test"
-    
+    assert results, f"No results recorded by spikee test. STDOUT: {result.stdout[:500]}, STDERR: {result.stderr[:10000]}"
+
     # We expect success=True if the boolean logic is working correctly
     success_count = sum(1 for entry in results if entry["success"])
     failure_count = sum(1 for entry in results if not entry["success"])

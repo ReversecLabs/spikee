@@ -16,17 +16,15 @@ Return values:
         * True indicates the attack was successful (guardrail bypassed).
         * False indicates the guardrail blocked the attack.
 """
+from dotenv import load_dotenv
+import json
+import requests
+from typing import Optional
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
 from spikee.utilities.modules import parse_options
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
-
-from dotenv import load_dotenv
-import json
-import requests
-from typing import Optional, Tuple, Union, Any
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class SampleRequestTarget(Target):
@@ -41,12 +39,10 @@ class SampleRequestTarget(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = "",
-    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
-        # Extract string from Text object
-        text_content = input_text.content
+    ) -> TargetResponseHint:
 
         # Option Validation `--target-options 'url=https://myapi.com/endpoint'` to override default URL
         options = parse_options(target_options)
@@ -64,7 +60,7 @@ class SampleRequestTarget(Target):
                     if system_message
                     else "You are a helpful assistant.",
                 },
-                {"role": "user", "content": text_content},
+                {"role": "user", "content": input_text},
             ]
         }
 
@@ -75,7 +71,7 @@ class SampleRequestTarget(Target):
 
             response.raise_for_status()
             result = response.json()
-            return Text(result.get("answer", "No answer available."))
+            return result.get("answer", "No answer available.")
 
         except requests.exceptions.RequestException as e:
             if response.status_code == 400:  # Guardrail Triggered

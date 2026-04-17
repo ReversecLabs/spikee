@@ -17,12 +17,11 @@ Additional options are forwarded to the provider's setup() as keyword arguments:
   elevenlabs_tts:  voice_id, output_format
 """
 
-from typing import List
+from typing import List, Optional
 
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
@@ -44,8 +43,8 @@ class TTSPlugin(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = "",
     ) -> Audio:
         opts = parse_options(plugin_option)
@@ -70,7 +69,7 @@ class TTSPlugin(Plugin):
         if ModuleTag.LLM_TTS not in llm_description:
             raise ValueError(f"Selected model '{llm_model}' is not a valid TTS provider.")
 
-        return Audio(llm.invoke([HumanMessage(content=content.content)]).content)
+        return Audio(get_content(llm.invoke([HumanMessage(content=content)]).content))
 
 
 if __name__ == "__main__":
@@ -78,7 +77,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     plugin = TTSPlugin()
-    response = plugin.transform(Text("Hello, how are you today?"), plugin_option="model=openai_tts/gpt-4o-mini-tts,voice=alloy,response_format=mp3,speed=1.0")
+    response = plugin.transform("Hello, how are you today?", plugin_option="model=openai_tts/gpt-4o-mini-tts,voice=alloy,response_format=mp3,speed=1.0")
     # print("Base64 Audio Content:", response)
 
     import base64

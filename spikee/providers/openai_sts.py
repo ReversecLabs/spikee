@@ -1,11 +1,10 @@
 import os
+from typing import Union, Dict, Sequence
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, AIMessage
-from typing import Union, Dict, List, Sequence
 
 
 class OpenAISTSProvider(Provider):

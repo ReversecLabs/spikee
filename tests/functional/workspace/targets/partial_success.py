@@ -2,7 +2,6 @@ from typing import Optional
 
 from spikee.templates.target import Target
 from spikee.utilities.hinting import ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
 class PartialSuccessTarget(Target):
@@ -17,12 +16,12 @@ class PartialSuccessTarget(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Text:
+    ) -> str:
         self._call_count += 1
         if self._call_count <= self.SUCCESS_THRESHOLD:
-            return Text(self.CANARY_RESPONSES)
-        return Text("Sorry, I can't answer that.")
+            return str(self.CANARY_RESPONSES)
+        return str("Sorry, I can't answer that.")

@@ -40,10 +40,11 @@ Returns:
 import random
 import numpy as np
 import tiktoken
-from typing import Callable, Dict, Any, Tuple
+from typing import Callable
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
@@ -82,13 +83,14 @@ class RandomSuffixSearch(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError("RandomSuffixSearch Attack only supports text content type.")
@@ -137,12 +139,9 @@ class RandomSuffixSearch(Attack):
 
             try:
                 # Call process_input. The wrapper guarantees a tuple is returned.
-                response = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate, system_message, logprobs=False
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
+                ))
 
                 success = call_judge(entry, response)
             except Exception as e:

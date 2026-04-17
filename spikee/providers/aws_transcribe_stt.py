@@ -22,8 +22,7 @@ from io import BytesIO
 from typing import Optional, Union, Tuple, List, Dict, Sequence
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Content
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, single_message
 
@@ -199,7 +198,7 @@ class AWSTranscribeSTTProvider(Provider):
                 "AWS Transcribe STT Provider requires a user message containing base64-encoded audio."
             )
 
-        audio_b64 = msg.content
+        audio_b64 = get_content(msg.content)
 
         try:
             audio_bytes = base64.b64decode(audio_b64)

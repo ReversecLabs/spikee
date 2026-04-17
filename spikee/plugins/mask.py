@@ -18,14 +18,14 @@ Options:
 
 """
 
-from typing import List, Union
+from typing import List, Optional, Union
 import json
 import random
 import string
 
 from spikee.templates.plugin import Plugin
+from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -64,22 +64,23 @@ class Shortener(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Union[Text, List[Text]]:
+    ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         advanced = opts.get("advanced", "false").lower() == "true"
         advanced_split = int(opts.get("advanced-split", 6))
 
-        text = content.content
-
         llm = get_llm(llm_model, temperature=1, max_tokens=1000)
 
+        if not isinstance(llm, Provider):
+            raise RuntimeError("[Mask] LLM provider is required for this plugin.")
+
         # Detect high-risk words
-        payload = {"prompt": text}
+        payload = {"prompt": content}
 
         response = llm.invoke(
             [
@@ -88,6 +89,9 @@ class Shortener(Plugin):
             ]
         ).content
 
+        if not isinstance(response, str):
+            raise RuntimeError("[Mask] LLM response is not a string.")
+
         risk_words = {}
         suffix = ""
 
@@ -95,7 +99,7 @@ class Shortener(Plugin):
             response = extract_json_or_fail(response)
 
             for word in response.get("risk_words", []):
-                if word in text:
+                if word in content:
                     if advanced:
                         num_masks = (
                             len(word) // advanced_split + 1
@@ -119,7 +123,7 @@ class Shortener(Plugin):
                         risk_words[word] = self.generate_mask()
                         suffix += f"{risk_words[word]}={word}"
 
-                    text = text.replace(word, risk_words[word])
+                    content = content.replace(word, risk_words[word])
 
                 else:
                     suffix += (
@@ -129,4 +133,4 @@ class Shortener(Plugin):
         except Exception:
             raise RuntimeError("[Mask] Failed to extract risk words from LLM response.")
 
-        return Text(text + " " + suffix.strip())
+        return content + " " + suffix.strip()

@@ -3,7 +3,6 @@ from typing import Optional
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
 from spikee.utilities.hinting import ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
 class AlwaysGuardrailTarget(Target):
@@ -12,7 +11,7 @@ class AlwaysGuardrailTarget(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,

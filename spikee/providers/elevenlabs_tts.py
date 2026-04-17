@@ -8,13 +8,13 @@ Additional Args:
 """
 import base64
 import os
+from typing import Callable, Union, Dict, Sequence
+
 
 from spikee.templates.streaming_provider import StreamingProvider
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
-from typing import Callable, Union, Dict, Sequence
 
 
 class ElevenLabsTTSProvider(StreamingProvider):
@@ -63,7 +63,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         if msg.content_type != "text":
             raise ValueError("ElevenLabs TTS Provider requires text content as input.")
 
-        return msg.content
+        return get_content(msg.content)
 
     def invoke(
         self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         response = provider.invoke(messages)
         # print("Base64 Audio Content:", response.content)
 
-        audio_bytes = base64.b64decode(response.content)
+        audio_bytes = base64.b64decode(get_content(response.content))
         try:
             import io
             import soundfile as sf

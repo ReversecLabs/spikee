@@ -17,10 +17,10 @@ Return values:
         * False indicates the guardrail blocked the attack.
 """
 
-from typing import Optional, Tuple, Union, Any
+from typing import Optional
 from dotenv import load_dotenv
 
-from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.hinting import ModuleOptionsHint, TargetResponseHint
 
 # Load environment variables, if you need them (e.g., for API keys).
 load_dotenv()
@@ -37,7 +37,7 @@ def process_input(
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
     logprobs=False,
-) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+) -> TargetResponseHint:
     """
     Mock target function required by spikee.
 

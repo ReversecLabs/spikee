@@ -35,7 +35,6 @@ Requirements:
 
 from spikee.utilities.modules import parse_options
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.content import Text
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.templates.plugin import Plugin
 from transformers import MarianMTModel, MarianTokenizer
@@ -208,10 +207,10 @@ class OpusTranslator(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Union[Text, List[Text]]:
+    ) -> Union[str, List[str]]:
         """
         Translates input text to target language(s).
 
@@ -245,7 +244,7 @@ class OpusTranslator(Plugin):
 
         for target_spec in target_specs:
             try:
-                result = text
+                result = content
 
                 # Handle language chains (e.g., "en:fr" or "en:fr:de:es")
                 if ":" in target_spec:
@@ -259,7 +258,7 @@ class OpusTranslator(Plugin):
                 else:
                     # Simple translation
                     result = self._translate(
-                        text, source_lang, target_spec, cache_dir, num_beams, device
+                        content, source_lang, target_spec, cache_dir, num_beams, device
                     )
 
                 translations.append(result)
@@ -267,8 +266,8 @@ class OpusTranslator(Plugin):
                 continue
 
         if len(translations) == 1:
-            return Text(translations[0])
-        return [Text(t) for t in translations] if translations else content
+            return translations[0]
+        return translations if translations else content
 
 
 if __name__ == "__main__":

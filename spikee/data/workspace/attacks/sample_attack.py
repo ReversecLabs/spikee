@@ -48,9 +48,11 @@ Notes:
 """
 
 import random
+from typing import Callable
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.hinting import ModuleOptionsHint, AttackResponseHint
 
 
 class SampleAttack(Attack):
@@ -60,14 +62,14 @@ class SampleAttack(Attack):
 
     def attack(
         self,
-        entry,
-        target_module,
-        call_judge,
-        max_iterations,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
+        max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option=None,
-    ):
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         """
         Executes a dynamic attack on the given entry.
 

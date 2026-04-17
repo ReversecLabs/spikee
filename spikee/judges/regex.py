@@ -11,7 +11,6 @@ import re
 
 from spikee.templates.judge import Judge
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
 class RegexJudge(Judge):
@@ -22,11 +21,11 @@ class RegexJudge(Judge):
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
-    def judge(self, llm_input: Text, llm_output: Text, judge_args, judge_options=None) -> bool:
+    def judge(self, llm_input: str, llm_output: str, judge_args, judge_options=None) -> bool:
         """
         Args:
-            llm_input (Text): The original text/prompt sent to the model (optional for logic here).
-            llm_output (Text): The model's response.
+            llm_input (str): The original text/prompt sent to the model (optional for logic here).
+            llm_output (str): The model's response.
             judge_args (str): A valid Python regex pattern to match in llm_output.
 
         Returns:
@@ -37,12 +36,12 @@ class RegexJudge(Judge):
 
         if isinstance(judge_args, str):
             pattern = re.compile(judge_args)
-            return bool(pattern.search(llm_output.content))
+            return bool(pattern.search(llm_output))
 
         elif isinstance(judge_args, list):
             for arg in judge_args:
                 pattern = re.compile(arg)
-                if pattern.search(llm_output.content):
+                if pattern.search(llm_output):
                     return True
             return False
 
@@ -54,4 +53,4 @@ class RegexJudge(Judge):
 
 if __name__ == "__main__":
     judge = RegexJudge()
-    print(judge.judge(Text(""), Text("Wowzers is a great word"), "Wowzers"))
+    print(judge.judge("", "Wowzers is a great word", "Wowzers"))

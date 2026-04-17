@@ -21,11 +21,10 @@ This plugin supports configurable number of samples via options.
 
 import re
 import random
-from typing import List
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 
@@ -67,10 +66,10 @@ class BestOfN(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> List[Text]:
+    ) -> List[str]:
         """
         Generates a configurable number of augmented samples from the input text.
 
@@ -83,14 +82,13 @@ class BestOfN(Plugin):
             List[str]: A list of independently generated augmented samples.
         """
         num_samples = self._parse_samples_option(plugin_option)
-        text = content.content
 
         samples = []
         for _ in range(num_samples):
-            samples.append(Text(self._scramble_text(text, exclude_patterns)))
+            samples.append(self._scramble_text(content, exclude_patterns))
         return samples
 
-    def _scramble_text(self, text: str, exclude_patterns: List[str] = []) -> str:
+    def _scramble_text(self, text: str, exclude_patterns: Optional[List[str]] = None) -> str:
         """
         Processes the input text by splitting it into chunks based on the user‐supplied
         exclusion patterns. Any chunk that exactly matches the compound exclusion regex

@@ -28,8 +28,7 @@ Every plugin is a Python module located in the `plugins/` directory of your work
 from spikee.templates.plugin import Plugin
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Content, Text, Audio, Image
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content
 from typing import List, Union, Tuple
 
 class SamplePlugin(Plugin):
@@ -43,18 +42,18 @@ class SamplePlugin(Plugin):
 
     def transform(
         self, 
-        content: Content, # To specify specific content types, use Text, Audio, Image subclasses of Content
-        exclude_patterns: List[str] = [],
+        content: Content, # To specify specific content types, use str, Audio, Image subclasses of Content
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
     ) -> Union[Content, List[Content]]:
         """Transforms the input text according to the user-defined logic, returning one or more variations.
 
         Args:
-            text (str): The input prompt to transform.
+            content (Content): The input prompt to transform.
             exclude_patterns (List[str], optional): Regex patterns for substrings to preserve.
 
         Returns:
-            str: The transformed text in uppercase.
+            Content: The transformed text in uppercase.
         """
         # Your implementation here...
 
@@ -111,7 +110,7 @@ def get_available_option_values() -> Tuple[List[str], bool]:
     """Return supported attack options; Tuple[options (default is first), llm_required]"""
     return ["mode=strict", "mode=full"], False # "mode=strict" is the default
 
-def transform(content: Content, exclude_patterns: List[str] = [], plugin_option: str = "") -> Union[Content, List[Content]]:
+def transform(content: Content, exclude_patterns: Optional[List[str]] = None, plugin_option: str = "") -> Union[Content, List[Content]]:
     """Transforms the payload based on the provided option."""
     # Your transformation logic here...
 ```
@@ -131,7 +130,7 @@ class SamplePlugin(Plugin):
     def transform(
         self, 
         content: Content, 
-        exclude_patterns: List[str] = [],
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = "",
     ) -> Union[Content, List[Content]]:
         # Your implementation here...
@@ -143,9 +142,9 @@ Correctly handling `exclude_patterns` is the most important part of writing a ro
 ```python
 # Example transformation function converting all text to uppercase with exclude_patterns support
 import re
-from typing import List, Union
+from typing import List, Union, Optional
 
-def transform(self, content: Text, exclude_patterns: List[str] = []) -> Union[Text, List[Text]]:
+def transform(self, content: str, exclude_patterns: Optional[List[str]] = None) -> Union[str, List[str]]:
     text = content.content
 
     if not exclude_patterns:
@@ -171,7 +170,7 @@ def transform(self, content: Text, exclude_patterns: List[str] = []) -> Union[Te
             transformed_chunks.append(chunk)
             
     # 4. Rejoin the chunks into a single string.
-    return Text("".join(transformed_chunks))
+    return "".join(transformed_chunks)
 
 def apply_transformation(text: str) -> str:
     return text.upper()

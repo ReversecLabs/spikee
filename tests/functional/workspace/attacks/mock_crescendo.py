@@ -5,6 +5,8 @@ import spikee.attacks.crescendo
 from spikee.attacks.crescendo import Crescendo
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.modules import parse_options
+from spikee.utilities.hinting import AttackResponseHint
+from spikee.tester import AdvancedTargetWrapper
 
 
 # 1. Mock the LLM object used by Crescendo
@@ -41,13 +43,13 @@ class MockCrescendoAttack(Crescendo):
     def attack(
         self,
         entry: dict,
-        target_module: object,
+        target_module: AdvancedTargetWrapper,
         call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, Dict[str, Any], str]:
+    ) -> AttackResponseHint:
         # Parse scenario
         opts = parse_options(attack_option)
         # Store scenario in thread-local because attack() sets it for the duration of the call

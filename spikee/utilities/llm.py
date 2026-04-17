@@ -1,8 +1,8 @@
+from typing import List, Union
+
 from spikee.utilities.modules import load_module_from_path
 from spikee.templates.provider import Provider
 from spikee.list import list_modules
-
-from typing import List, Union
 
 
 def get_supported_providers() -> List[str]:
@@ -42,7 +42,7 @@ def get_llm(
 
     # Strip "model=" prefix if present
     if options.startswith("model="):
-        options = options[len("model=") :]
+        options = options[len("model="):]
 
     if options.startswith("offline"):  # Offline mode, no LLM provider
         return None
@@ -57,8 +57,18 @@ def get_llm(
 
     provider = load_module_from_path(provider_name, "providers")
 
+    if not isinstance(provider, Provider):
+        raise TypeError(
+            f"Loaded module '{provider_name}' is not an instance of Provider. Please ensure it inherits from the Provider base class."
+        )
+
     if model_name == "":
         model_name = provider.default_model
+
+    if model_name is None:
+        raise ValueError(
+            f"No model specified for provider '{provider_name}', and no default model is set. Please specify a model in the options string, for example 'lang-bedrock/claude35-haiku'."
+        )
 
     provider.setup(
         model=model_name,
@@ -66,4 +76,5 @@ def get_llm(
         temperature=temperature,
         **additional_kwargs,
     )
+
     return provider

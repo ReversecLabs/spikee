@@ -1,52 +1,42 @@
-from typing import Dict, List, Any, Tuple, Union, Sequence
+from typing import Dict, List, Any, Union, Sequence
 
-from spikee.utilities.hinting import ContentHint
-from spikee.utilities.content import Content, Text
-from spikee.utilities.enums import ContentType
+from spikee.utilities.hinting import Content, get_content_type, get_content
 
 
 class Message:
-    def __init__(self, role: str, content: ContentHint):
+    def __init__(self, role: str, content: Content):
         self.role = role
-        self.__content: Content = content if isinstance(content, Content) else Text(content)
+        self.content: Content = content
         self.metadata = {}
 
     @property
-    def content(self) -> str:
-        return self.__content.content
-
-    @property
-    def content_type(self) -> ContentType:
-        return self.__content.content_type
-
-    @property
-    def content_object(self) -> Content:
-        return self.__content
+    def content_type(self) -> str:
+        return get_content_type(self.content)
 
     @property
     def contents(self) -> List[Content]:
         """For compatibility with list representation of contents"""
-        return [self.__content]
+        return [self.content]
 
     def to_dict(self) -> Dict[str, Union[str, Content]]:
-        return {"role": self.role, "content": self.__content}
+        return {"role": self.role, "content": self.content}
 
     def formatted_dict(self) -> Dict[str, str]:
-        return {"role": self.role, "content": str(self.__content.content)}
+        return {"role": self.role, "content": get_content(self.content)}
 
 
 class SystemMessage(Message):
-    def __init__(self, content: ContentHint):
+    def __init__(self, content: Content):
         super().__init__("system", content)
 
 
 class HumanMessage(Message):
-    def __init__(self, content: ContentHint):
+    def __init__(self, content: Content):
         super().__init__("user", content)
 
 
 class AIMessage(Message):
-    def __init__(self, content: ContentHint, **kwargs):
+    def __init__(self, content: Content, **kwargs):
         super().__init__("assistant", content)
 
         for key, value in kwargs.items():
@@ -91,11 +81,7 @@ def format_messages(
 
             elif isinstance(msg, Content):
                 # If a Content object is provided without a role, assume it's a user message
-                formatted_messages.append({"role": "user", "content": msg.content})
-
-            elif isinstance(msg, str):
-                # Assume it's a user message if only a string is provided
-                formatted_messages.append({"role": "user", "content": msg})
+                formatted_messages.append({"role": "user", "content": get_content(msg)})
 
             else:
                 raise ValueError(f"Unsupported message format type: {type(msg)}.")
@@ -106,8 +92,8 @@ def format_messages(
     if bedrock_format:
         # Bedrock expects messages in the format: {"role": "user", "content": ["message content"]}
         for msg in formatted_messages:
-            if isinstance(msg["content"], str):
-                msg["content"] = [{"text": msg["content"]}]
+            if isinstance(msg["content"], Content):
+                msg["content"] = [{"text": get_content(msg["content"])}]
 
     return formatted_messages
 
@@ -146,11 +132,6 @@ def upgrade_messages(
                 upgraded_messages.append(msg)
 
             elif isinstance(msg, Content):
-                # If a Content object is provided without a role, assume it's a user message
-                upgraded_messages.append(Message(role="user", content=msg))
-
-            elif isinstance(msg, str):
-                # Assume it's a user message if only a string is provided
                 upgraded_messages.append(Message(role="user", content=msg))
 
             else:

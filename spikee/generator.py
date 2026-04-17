@@ -1,4 +1,3 @@
-from enum import Enum
 import os
 import inspect
 import json
@@ -9,17 +8,11 @@ from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
 
-from .utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
-from .utilities.modules import load_module_from_path
-from .utilities.tags import validate_tag
-from spikee.utilities.content import Content, Text, Audio, Image, content_factory
-
-
-class EntryType(Enum):
-    DOCUMENT = "document"
-    SUMMARY = "summarization"
-    QA = "qna"
-    ATTACK = "attack"
+from spikee.utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
+from spikee.utilities.modules import load_module_from_path
+from spikee.utilities.tags import validate_tag
+from spikee.utilities.enums import EntryType
+from spikee.utilities.hinting import Content, content_factory, get_content, get_content_type, validate_content_annotation
 
 
 class Entry:
@@ -52,14 +45,14 @@ class Entry:
         # Extras
         steering_keywords=None,
     ):
+        # Validate entry type and convert from string if necessary
         if isinstance(entry_type, str):
             try:
                 entry_type = EntryType(entry_type.lower())
-            except ValueError:
+            except ValueError as e:
                 raise ValueError(
                     f"Invalid entry type: {entry_type}. Must be one of {[e.value for e in EntryType]}"
-                )
-
+                ) from e
         self.entry_type = entry_type
 
         self.id = entry_id
@@ -97,10 +90,10 @@ class Entry:
 
         match self.entry_type:
             case EntryType.SUMMARY:
-                self.content = Text(f"Summarize the following document:\n{self.content.content}")
+                self.content = f"Summarize the following document:\n{self.content}"
 
             case EntryType.QA:
-                self.content = Text(f"Given this document:\n{self.content.content}\nAnswer the following question: {self.entry_text.get('question', '')}")
+                self.content = f"Given this document:\n{self.content}\nAnswer the following question: {self.entry_text.get('question', '')}"
 
         # Extras
         self.steering_keywords = steering_keywords
@@ -110,8 +103,8 @@ class Entry:
         entry = {
             "id": self.id,
             "long_id": self.long_id,
-            "content": self.content.content,
-            "content_type": str(type(self.content).__name__).lower(),
+            "content": get_content(self.content),
+            "content_type": get_content_type(self.content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -127,7 +120,7 @@ class Entry:
             "suffix_id": self.suffix_id,
             "system_message": self.system_message,
             "plugin": self.plugin_name,
-            "payload": self.payload.content,
+            "payload": get_content(self.payload),
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
 
@@ -155,8 +148,8 @@ class Entry:
         attack = {
             "id": self.long_id,
             "long_id": self.long_id,
-            "content": self.content.content,
-            "content_type": str(type(self.content).__name__).lower(),
+            "content": get_content(self.content),
+            "content_type": get_content_type(self.content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -170,7 +163,7 @@ class Entry:
             "lang": self.lang,
             "prefix_id": self.prefix_id,
             "suffix_id": self.suffix_id,
-            "payload": self.payload.content,
+            "payload": get_content(self.payload),
             "plugin": self.plugin_name,
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
@@ -239,7 +232,7 @@ def resolve_standalone_inputs_path(seed_folder: str):
 
 
 # region dataset builders
-def insert_jailbreak(document, combined_text: Content, position, injection_pattern, placeholder) -> str:
+def insert_jailbreak(document, combined_text: Content, position, injection_pattern, placeholder) -> Content:
     """
     Inserts the combined_text into the document at the specified position
     using the provided injection_pattern. The pattern must contain the
@@ -249,26 +242,29 @@ def insert_jailbreak(document, combined_text: Content, position, injection_patte
         raise ValueError(
             "Injection pattern must contain 'INJECTION_PAYLOAD' placeholder."
         )
-    injected_text = injection_pattern.replace("INJECTION_PAYLOAD", combined_text.content)
+    injected_text = injection_pattern.replace("INJECTION_PAYLOAD", get_content(combined_text))
 
     # if there is an explicit placeholder, replace it with the injected text
     # and ignore any explicit position
     if placeholder:
-        return document.replace(placeholder, injected_text)
+        jailbreak = document.replace(placeholder, injected_text)
 
-    if position == "start":
-        return f"{injected_text}{document}"
-    elif position == "middle":
-        mid_point = len(document) // 2
-        insert_index = find_nearest_whitespace(document, mid_point)
-        return f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
-    elif position == "end":
-        return f"{document}{injected_text}"
     else:
-        raise ValueError(f"Invalid position: {position}")
+        if position == "start":
+            jailbreak = f"{injected_text}{document}"
+        elif position == "middle":
+            mid_point = len(document) // 2
+            insert_index = find_nearest_whitespace(document, mid_point)
+            jailbreak = f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
+        elif position == "end":
+            jailbreak = f"{document}{injected_text}"
+        else:
+            raise ValueError(f"Invalid position: {position}")
+
+    return content_factory(jailbreak, get_content_type(combined_text))
 
 
-def find_nearest_whitespace(text, index):
+def find_nearest_whitespace(text, index) -> int:
     """
     Finds the nearest whitespace character to the given index in the text.
     Returns the index of that whitespace character (or original index if none found).
@@ -290,7 +286,7 @@ def find_nearest_whitespace(text, index):
         )
 
 
-def get_system_message(system_message_config, spotlighting_data_marker=None):
+def get_system_message(system_message_config, spotlighting_data_marker=None) -> Union[str, None]:
     """
     Retrieves the appropriate system message from the system_message_config
     based on a given spotlighting data marker. Falls back to 'default' if no
@@ -334,7 +330,7 @@ def load_plugins(plugin_names):
                 print(e)
                 exit(1)
 
-        else:  # If it's a plugin pipe, load each sub-plugin and store as a list
+        elif name is not None:  # If it's a plugin pipe, load each sub-plugin and store as a list
             plugin_pipe = []
             for sub_name in name:
                 try:
@@ -396,7 +392,7 @@ def get_plugin_variants(plugin_module, plugin_option):
 
 
 def apply_plugin(
-    plugin_name, plugin_module, content: Content, exclude_patterns=None, plugin_option_map=None
+    plugin_name, plugin_module, init_content: Content, exclude_patterns=None, plugin_option_map=None
 ) -> List[Content]:
     """
     Applies a plugin module's transform function to the given content if available.
@@ -409,43 +405,29 @@ def apply_plugin(
     else:
         plugins.append((plugin_name, plugin_module))
 
-    contents: List[Content] = [content]
+    contents: List[Content] = [init_content]
 
     for name, module in plugins:
         new_content: List[Content] = []
         if hasattr(module, "transform"):
             # Check if the plugin's transform function accepts plugin_option parameter
-
             sig = inspect.signature(module.transform)
             params = sig.parameters
 
             for content in contents:
+
                 args = {}
 
-                if "content" in params:
-                    hint = params["content"].annotation
+                if "content" in params and validate_content_annotation(content, params["content"].annotation):
+                    args["content"] = get_content(content)
 
-                    if isinstance(content, hint):
-                        args["content"] = content
-
-                    elif isinstance(content, str) and hint == Text:
-                        args["content"] = Text(content)
-
-                    elif isinstance(content, Content) and hint == str:
-                        args["content"] = content.content
-
-                    else:
-                        raise ValueError(
-                            f"Plugin '{name}' transform function has 'content' parameter with incompatible type hint. Expected {Content.__name__} or specific subtype, got {hint}."
-                        )
+                elif "text" in params and validate_content_annotation(content, params["text"].annotation):
+                    args["text"] = get_content(content)
 
                 else:
-                    if not isinstance(content, Text):
-                        raise ValueError(
-                            f"Plugin '{name}' does not accept 'content' parameter but the provided content is not of type Text."
-                        )
-                    args["text"] = content.content
-
+                    raise ValueError(
+                        f"Plugin '{name}' transform function must have a parameter annotated to accept the content type '{get_content_type(content)}'."
+                    )
                 args["exclude_patterns"] = exclude_patterns
 
                 if "plugin_option" in params:
@@ -453,21 +435,13 @@ def apply_plugin(
 
                 res = module.transform(**args)
 
-                def validate_result(res) -> Content:
-                    if isinstance(res, Content):
-                        return res
-                    elif isinstance(res, str):
-                        return Text(res)
-                    else:
-                        raise ValueError(
-                            f"Plugin '{name}' transform function returned unsupported type: {type(res)}"
-                        )
-
                 if isinstance(res, list):
                     for item in res:
-                        new_content.append(validate_result(item))
+                        if isinstance(item, Content):
+                            new_content.append(item)
                 else:
-                    new_content.append(validate_result(res))
+                    if isinstance(res, Content):
+                        new_content.append(res)
 
             contents = new_content
 
@@ -569,16 +543,8 @@ def process_standalone_attacks(
             attack["judge_args"] = attack.get("canary", "")
 
         # Get the base attack text and exclude patterns
-        if "content" in attack:
-            attack_type = attack.get("content_type", "text")
-            attack_content = content_factory(attack["content"], attack_type)
-
-        elif "text" in attack:
-            attack_type = "text"
-            attack_content = Text(attack["text"])
-
-        else:
-            raise ValueError(f"Attack entry {attack['id']} must contain either 'content' with 'content_type' or 'text' field.")
+        attack_type = attack.get("content_type", "text")
+        attack_content = content_factory(attack.get("content", attack.get("text", "")), attack_type)
 
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
@@ -608,7 +574,8 @@ def process_standalone_attacks(
 
                     prefix_text = prefix.get("prefix", "") + " " if prefix else ""
                     suffix_text = " " + suffix.get("suffix", "") if suffix else ""
-                    text = content_factory(prefix_text + plugin_text.content + suffix_text, type(plugin_text).__name__)
+                    # TODO: Should this only apply to text content?
+                    text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
 
                     combined_texts.append(
                         {
@@ -781,11 +748,17 @@ def generate_variations(
 
             for instruction in instructions:
                 instruction_id = instruction["id"]
-                instruction_content = instruction.get("instruction_content", "text")
-                instruction_text = content_factory(instruction["instruction"], instruction_content)  # TODO: Analyse content type usage on composed datasets
+                instruction_content_type = instruction.get("content_type", "text")
+                instruction_content = content_factory(instruction["instruction"], instruction_content_type)
                 instruction_type = instruction.get("instruction_type", "")
                 instruction_lang = instruction.get("lang", "en")
                 # instruction_steering_keywords = instruction.get("steering_keywords", None)
+
+                if instruction_content_type != "text":
+                    print(
+                        f"Skipping instruction {instruction_id} for jailbreak {jailbreak_id} because instruction content type '{instruction_content_type}' is not supported yet."
+                    )
+                    continue
 
                 judge_name = instruction.get("judge_name", "canary")
                 judge_args = instruction.get(
@@ -808,8 +781,8 @@ def generate_variations(
                 # Combines jailbreak and instruction texts
                 # Instruction is placed into jailbreak at <INSTRUCTION> placeholder
                 combined_base = content_factory(jailbreak_text.replace(
-                    "<INSTRUCTION>", str(instruction_text)
-                ), type(instruction_text).__name__)
+                    "<INSTRUCTION>", str(get_content(instruction_content))
+                ), get_content_type(instruction_content))
                 lang = instruction_lang
 
                 # Create plugin / transformation regex exclusion lists
@@ -848,7 +821,7 @@ def generate_variations(
 
                             prefix_text = prefix.get("prefix", "") + " " if prefix else ""
                             suffix_text = " " + suffix.get("suffix", "") if suffix else ""
-                            text = content_factory(prefix_text + plugin_text.content + suffix_text, type(plugin_text).__name__)
+                            text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
 
                             combined_texts.append(
                                 {
@@ -877,11 +850,11 @@ def generate_variations(
                                 position,
                                 injection_pattern,
                                 placeholder,
-                            ), type(combined_text["text"]).__name__)
+                            ), get_content_type(combined_text["text"]))
 
                             for entry_type in output_format:
                                 if entry_type == "burp":
-                                    burp_payload_encoded = json.dumps(injected_doc.content)[
+                                    burp_payload_encoded = json.dumps(get_content(injected_doc))[
                                         1:-1
                                     ]
                                     dataset.append(burp_payload_encoded)
@@ -903,8 +876,8 @@ def generate_variations(
                                                 injected_doc
                                                 if spotlighting_data_marker == "none"
                                                 else content_factory(spotlighting_data_marker.replace(
-                                                    "DOCUMENT", injected_doc.content
-                                                ), type(injected_doc).__name__)
+                                                    "DOCUMENT", get_content(injected_doc)
+                                                ), get_content_type(injected_doc))
                                             )
 
                                         entry = Entry(

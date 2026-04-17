@@ -14,11 +14,10 @@ Returns:
 """
 
 import base64
-from typing import List
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 
@@ -32,16 +31,16 @@ class Base64(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = []
-    ) -> Text:
+        content: str,
+        exclude_patterns: Optional[List[str]] = None
+    ) -> str:
         """
         Transforms the input text into Base64 encoding.
 
         Args:
-            content (Text): The input text.
+            content (str): The input text.
 
         Returns:
-            Text: The transformed text in Base64 encoding.
+            str: The transformed text in Base64 encoding.
         """
-        return Text(base64.b64encode(content.content.encode()).decode())
+        return base64.b64encode(content.encode()).decode()

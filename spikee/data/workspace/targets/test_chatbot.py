@@ -23,20 +23,17 @@ References:
     - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
     - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
-
-import traceback
-from spikee.templates.simple_multi_target import SimpleMultiTarget
-from spikee.utilities.enums import Turn
-from spikee.utilities.modules import parse_options
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
-
 import json
 import uuid
 import requests
-from typing import Any, Optional, Tuple, Union
-
+from typing import Optional
 from dotenv import load_dotenv
+import traceback
+
+from spikee.templates.simple_multi_target import SimpleMultiTarget
+from spikee.utilities.enums import Turn
+from spikee.utilities.modules import parse_options
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class SimpleTestChatbotTarget(SimpleMultiTarget):
@@ -184,14 +181,12 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
-        # Extract string from Text object
-        text_content = input_text.content
+    ) -> TargetResponseHint:
 
         # ---- Determine the URL, model, and guardrail based on target options ----
         opts = parse_options(target_options)
@@ -258,7 +253,7 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         response = self.send_message(
             url=url,
             session_id=target_session_id,
-            message=text_content,
+            message=input_text,
             model=model,
             guardrail=guardrail,
             system_prompt=system_message,
@@ -267,13 +262,13 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         # ---- Update History ----
         if spikee_session_id is not None:
             self._append_conversation_data(
-                spikee_session_id, role="user", content=text_content
+                spikee_session_id, role="user", content=input_text
             )
             self._append_conversation_data(
                 spikee_session_id, role="assistant", content=response
             )
 
-        return Text(response)
+        return response
 
 
 if __name__ == "__main__":

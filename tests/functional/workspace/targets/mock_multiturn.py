@@ -3,7 +3,6 @@ from typing import Optional
 from spikee.templates.multi_target import MultiTarget
 from spikee.utilities.enums import Turn
 from spikee.utilities.hinting import ModuleOptionsHint
-from spikee.utilities.content import Text
 
 
 class MockMultiTurnTarget(MultiTarget):
@@ -17,14 +16,13 @@ class MockMultiTurnTarget(MultiTarget):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> Text:
-        # Extract string from Text object
-        text_content = input_text.content
+    ) -> str:
+        # Extract string from str object
 
         # Retrieve current session state
         if spikee_session_id is not None:
@@ -53,24 +51,24 @@ class MockMultiTurnTarget(MultiTarget):
 
         # Logic
         response = ""
-        if "RESET" in text_content:
+        if "RESET" in input_text:
             session_state["history"] = []
             if spikee_session_id is not None:
                 self._update_target_data(spikee_session_id, session_state)
             response = "History cleared"
-        elif "REFUSE" in text_content:
+        elif "REFUSE" in input_text:
             response = "I cannot do that"
-        elif "WIN" in text_content:
+        elif "WIN" in input_text:
             response = "Here is the flag"
         else:
-            response = f"Response to {text_content}"
+            response = f"Response to {input_text}"
 
         # Update History
         if spikee_session_id is not None:
             history = session_state["history"]
-            history.append({"role": "user", "content": text_content})
+            history.append({"role": "user", "content": input_text})
             history.append({"role": "assistant", "content": response})
             session_state["history"] = history
             self._update_target_data(spikee_session_id, session_state)
 
-        return Text(response)
+        return str(response)

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, Tuple, Union
+from typing import List, Optional, Dict, Any
 
 from .target import Target
 from spikee.utilities.enums import Turn
-from spikee.utilities.hinting import ContentHint
+from spikee.utilities.hinting import Content, TargetResponseHint
 
 
 class MultiTarget(Target, ABC):
@@ -48,24 +48,23 @@ class MultiTarget(Target, ABC):
     @abstractmethod
     def process_input(
         self,
-        input_text: ContentHint,
-        system_message: Optional[ContentHint] = None,
+        input_text: Content,
+        system_message: Optional[Content] = None,
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> Union[ContentHint, bool, Tuple[Union[ContentHint, bool], Any]]:
+    ) -> TargetResponseHint:
         """Sends prompts to the defined target
 
         Args:
-            input_text(ContentHint): User Prompt
-            system_message(Optional[ContentHint], optional): System Prompt. Defaults to None.
+            input_text(Content): User Prompt
+            system_message(Optional[Content], optional): System Prompt. Defaults to None.
             target_options(Optional[str], optional): Target options. Defaults to None.
 
         Returns:
-            ContentHint: Response from the target
+            Content: Response from the target
             bool: Whether the target's response indicates a successful attack (if applicable)
-            Tuple[Union[ContentHint, bool], Any]: Optionally return additional metadata along with the response and success status
+            Tuple[Union[Content, bool], Any]: Optionally return additional metadata along with the response and success status
             throws tester.GuardrailTrigger: Indicates guardrail was triggered
             throws Exception: Raises exception on failure
         """
-        pass

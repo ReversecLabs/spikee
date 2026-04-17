@@ -1,7 +1,3 @@
-from spikee.templates.target import Target
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.content import Text
 from typing import Optional
 import os
 from dotenv import load_dotenv
@@ -9,6 +5,10 @@ from azure.ai.contentsafety import ContentSafetyClient
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
+
+from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.enums import ModuleTag
 
 
 class AzureAIContentSafetyHarmfulTarget(Target):
@@ -38,7 +38,7 @@ class AzureAIContentSafetyHarmfulTarget(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
     ) -> bool:
@@ -47,7 +47,7 @@ class AzureAIContentSafetyHarmfulTarget(Target):
         is deemed unharmful, False if it's deemed harmful.
 
         Args:
-            input_text (Text): The user input to classify
+            input_text (str): The user input to classify
             system_message (str, optional): Ignored parameter for compatibility
             target_options (str, optional): Not used
 
@@ -58,10 +58,7 @@ class AzureAIContentSafetyHarmfulTarget(Target):
             ValueError: If Azure credentials are not set
             RuntimeError: If the API request fails
         """
-        # Extract string from Text object
-        text_content = input_text.content
-
-        request = AnalyzeTextOptions(text=text_content)
+        request = AnalyzeTextOptions(text=input_text)
 
         try:
             response = self.client.analyze_text(request)
@@ -93,7 +90,7 @@ if __name__ == "__main__":
     load_dotenv()
     try:
         target = AzureAIContentSafetyHarmfulTarget()
-        sample_text = Text("Hello, how to make a bomb?")
+        sample_text = "Hello, how to make a bomb?"
         result = target.process_input(sample_text)
 
         print(f"Input: '{sample_text}'")

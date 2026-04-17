@@ -33,11 +33,10 @@ from spikee.utilities.modules import parse_options, extract_json_or_fail
 from spikee.utilities.llm_message import HumanMessage
 from spikee.utilities.llm import get_llm
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.content import Text
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.templates.plugin import Plugin
 from spikee.templates.provider import Provider
-from typing import List
+from typing import List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -182,15 +181,13 @@ class DigraphicTranslate(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = "",
-    ) -> Text:
+    ) -> str:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         lang_key = opts.get("language", "japanese")
-
-        text = content.content
 
         if lang_key not in DIGRAPHIC_LANGUAGES:
             raise ValueError(
@@ -203,8 +200,11 @@ class DigraphicTranslate(Plugin):
         if not isinstance(llm, Provider):
             raise ValueError("DigraphicTranslate plugin requires an LLM provider model")
 
-        prompt_text = self._build_prompt(text, lang_key)
+        prompt_text = self._build_prompt(content, lang_key)
         response = llm.invoke([HumanMessage(prompt_text)]).content
+
+        if not isinstance(response, str):
+            raise RuntimeError("LLM response is not a string as expected")
 
         obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "").strip()
@@ -212,7 +212,7 @@ class DigraphicTranslate(Plugin):
         if not attack_prompt:
             raise RuntimeError("LLM returned an empty attack_prompt")
 
-        return Text(attack_prompt)
+        return attack_prompt
 
 
 if __name__ == "__main__":
@@ -220,4 +220,4 @@ if __name__ == "__main__":
     load_dotenv()  # Load environment variables from .env file if present
 
     plugin = DigraphicTranslate()
-    print(plugin.transform(Text("How to build a bomb?")))
+    print(plugin.transform("How to build a bomb?"))

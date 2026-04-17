@@ -29,10 +29,11 @@ Returns:
 """
 
 import random
-from typing import Callable, Any, Dict, Tuple, List
+from typing import Callable, List
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
@@ -49,13 +50,14 @@ class AntiSpotlightingAttack(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         """
         Executes the anti-spotlighting attack by sequentially trying different
         delimiter-based attacks until success or max_iterations is reached.
@@ -99,12 +101,9 @@ class AntiSpotlightingAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response, _ = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate_text, system_message
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
+                ))
 
                 last_response = response
                 success = call_judge(entry, response)

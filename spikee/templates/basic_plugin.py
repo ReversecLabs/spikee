@@ -3,27 +3,23 @@ import re
 from typing import List, Union
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.content import Text
 
 
 class BasicPlugin(Plugin, ABC):
     @abstractmethod
     def plugin_transform(self, text: str, plugin_option: str = "") -> str:
         """Transform the input text according to the plugin's functionality."""
-        pass
 
     def transform(
-        self, content: Text, exclude_patterns: List[str] = [], plugin_option: str = ""
-    ) -> Union[Text, List[Text]]:
-
-        text = content.content
+        self, content: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+    ) -> Union[str, List[str]]:
 
         if exclude_patterns:
             compound = "(" + "|".join(exclude_patterns) + ")"
             compound_re = re.compile(compound)
-            chunks = re.split(compound, text)
+            chunks = re.split(compound, content)
         else:
-            chunks = [text]
+            chunks = [content]
             compound_re = None
 
         result_chunks = []
@@ -34,4 +30,4 @@ class BasicPlugin(Plugin, ABC):
                 transformed = self.plugin_transform(chunk, plugin_option)
                 result_chunks.append(transformed)
 
-        return Text("".join(result_chunks))
+        return "".join(result_chunks)

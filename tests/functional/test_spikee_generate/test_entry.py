@@ -2,7 +2,7 @@
 
 from spikee.generator import Entry, EntryType
 
-from spikee.utilities.content import Text, Audio
+from spikee.utilities.hinting import Audio, get_content
 
 
 class TestEntryInitialization:
@@ -18,10 +18,10 @@ class TestEntryInitialization:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            content=Text("This is a document"),
+            content="This is a document",
             entry_text={},
             system_message=None,
-            payload=Text("jailbreak_text"),
+            payload="jailbreak_text",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -37,7 +37,7 @@ class TestEntryInitialization:
         assert entry.id == "doc_001"
         assert entry.base_id == "base_001"
         assert entry.lang == "en"
-        assert entry.content.content == "This is a document"
+        assert get_content(entry.content) == "This is a document"
         assert entry.entry_type == EntryType.DOCUMENT
 
     def test_entry_initialization_with_all_optional_fields(self):
@@ -50,10 +50,10 @@ class TestEntryInitialization:
             instruction_id="instr_002",
             prefix_id="prefix_123",
             suffix_id="suffix_456",
-            content=Text("Document with all fields"),
+            content="Document with all fields",
             entry_text={},
             system_message="You are a helpful assistant",
-            payload=Text("full_jailbreak"),
+            payload="full_jailbreak",
             lang="it",
             plugin_suffix="-plugin_upper",
             plugin_name="upper",
@@ -88,10 +88,10 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -117,10 +117,10 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_002",
             prefix_id=None,
             suffix_id=None,
-            content=Text("document text"),
+            content="document text",
             entry_text={"ideal_summary": "summary"},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -135,7 +135,7 @@ class TestEntryLongIdGeneration:
 
         assert entry.long_id == "summarization_base_002_jb_002_instr_002_end"
         # SUMMARY entries should prepend "Summarize..." to text
-        assert entry.content.content.startswith("Summarize the following document:")
+        assert get_content(entry.content).startswith("Summarize the following document:")
 
     def test_long_id_qa_entry(self):
         """Test long_id format and text transformation for QA entries."""
@@ -147,10 +147,10 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_003",
             prefix_id=None,
             suffix_id=None,
-            content=Text("document text"),
+            content="document text",
             entry_text={"question": "What is the answer?", "ideal_answer": "42"},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -165,8 +165,8 @@ class TestEntryLongIdGeneration:
 
         assert entry.long_id == "qna_base_003_jb_003_instr_003_middle"
         # QA entries should include question in text
-        assert "What is the answer?" in entry.content.content
-        assert entry.content.content.startswith("Given this document:")
+        assert "What is the answer?" in get_content(entry.content)
+        assert get_content(entry.content).startswith("Given this document:")
 
     def test_long_id_attack_entry(self):
         """Test long_id format for ATTACK entries."""
@@ -178,10 +178,10 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            content=Text("attack text"),
+            content="attack text",
             entry_text={},
             system_message=None,
-            payload=Text("attack_payload"),
+            payload="attack_payload",
             lang="en",
             plugin_suffix="-custom",
             plugin_name="custom",
@@ -207,10 +207,10 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_004",
             prefix_id="001",
             suffix_id="002",
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message="system prompt",
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="-plugin_test",
             plugin_name="plugin_test",
@@ -244,10 +244,10 @@ class TestEntryToEntry:
             instruction_id="instr_005",
             prefix_id=None,
             suffix_id=None,
-            content=Text("Test document"),
+            content="Test document",
             entry_text={},
             system_message=None,
-            payload=Text("test_payload"),
+            payload="test_payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -289,10 +289,10 @@ class TestEntryToEntry:
             instruction_id="instr_006",
             prefix_id=None,
             suffix_id=None,
-            content=Text("Transformed text"),
+            content="Transformed text",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="-reverse",
             plugin_name="reverse",
@@ -319,10 +319,10 @@ class TestEntryToEntry:
             instruction_id="instr_007",
             prefix_id=None,
             suffix_id=None,
-            content=Text("long document"),
+            content="long document",
             entry_text={"ideal_summary": "concise summary"},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -349,10 +349,10 @@ class TestEntryToEntry:
             instruction_id="instr_008",
             prefix_id=None,
             suffix_id=None,
-            content=Text("document"),
+            content="document",
             entry_text={"question": "Q?", "ideal_answer": "Answer"},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -379,10 +379,10 @@ class TestEntryToEntry:
             instruction_id="instr_009",
             prefix_id=None,
             suffix_id=None,
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -414,10 +414,10 @@ class TestEntryToAttack:
             instruction_id="instr_010",
             prefix_id="p_010",
             suffix_id="s_010",
-            content=Text("Attack payload"),
+            content="Attack payload",
             entry_text={},
             system_message="attack system",
-            payload=Text("attack_payload"),
+            payload="attack_payload",
             lang="en",
             plugin_suffix="-attack",
             plugin_name="attack_plugin",
@@ -460,10 +460,10 @@ class TestEntryToAttack:
             instruction_id="instr_011",
             prefix_id=None,
             suffix_id=None,
-            content=Text("Attack"),
+            content="Attack",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -495,10 +495,10 @@ class TestEntryEdgeCases:
             instruction_id="instr_012",
             prefix_id=None,
             suffix_id=None,
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="",
             plugin_suffix="",
             plugin_name=None,
@@ -523,10 +523,10 @@ class TestEntryEdgeCases:
             instruction_id="instr_013",
             prefix_id=None,
             suffix_id=None,
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="fr",
             plugin_suffix="",
             plugin_name=None,
@@ -551,10 +551,10 @@ class TestEntryEdgeCases:
             instruction_id="instr_014",
             prefix_id=None,
             suffix_id=None,
-            content=Text("document"),
+            content="document",
             entry_text={},  # Missing 'question' key
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,
@@ -568,7 +568,7 @@ class TestEntryEdgeCases:
         )
 
         # Should not raise error, but include empty string
-        assert "Answer the following question:" in entry.content.content
+        assert "Answer the following question:" in get_content(entry.content)
 
     def test_entry_exclude_from_transformations_regex(self):
         """Test entry preserves exclude_from_transformations_regex."""
@@ -581,10 +581,10 @@ class TestEntryEdgeCases:
             instruction_id="instr_015",
             prefix_id=None,
             suffix_id=None,
-            content=Text("test"),
+            content="test",
             entry_text={},
             system_message=None,
-            payload=Text("payload"),
+            payload="payload",
             lang="en",
             plugin_suffix="",
             plugin_name=None,

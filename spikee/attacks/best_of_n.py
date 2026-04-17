@@ -26,11 +26,11 @@ Returns:
 
 import re
 import random
-from typing import Callable, Any, Dict, Tuple
+from typing import Callable
 
-
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
@@ -52,13 +52,14 @@ class BestOfNAttack(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError("Best-Of-N Attack only supports text content type.")
@@ -81,13 +82,9 @@ class BestOfNAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response, _ = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate_text, system_message
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
-
+                ))
                 last_response = response
                 success = call_judge(entry, response)
             except Exception as e:

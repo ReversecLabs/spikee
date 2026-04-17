@@ -20,11 +20,10 @@ import base64
 import os
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
-from typing import Union, Dict, List, Sequence
+from typing import Union, Dict, Sequence
 
 
 class AWSPollyTTSProvider(Provider):
@@ -141,7 +140,10 @@ if __name__ == "__main__":
     response = provider.invoke(input_messages=messages)
     # print("Base64 Audio Content:", response.content)
 
-    audio_bytes = base64.b64decode(response.content)
+    if response.content_type != "audio":
+        raise ValueError("Expected audio content from AWS Polly TTS Provider.")
+
+    audio_bytes = base64.b64decode(get_content(response.content))
 
     try:
         import io

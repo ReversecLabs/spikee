@@ -1,9 +1,8 @@
 import re
-from typing import List
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -26,19 +25,18 @@ class FlipPlugin(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Text:
+    ) -> str:
         opts = parse_options(plugin_option)
-        text = content.content
 
         mode = opts.get("mode", "FWO").upper()
         respect_exclude = opts.get("resp_exc", "false").lower() == "true"
 
         if respect_exclude:
             combined_pattern = "(" + "|".join(exclude_patterns) + ")"
-            chunks = re.split(combined_pattern, text)
+            chunks = re.split(combined_pattern, content)
             transformed_chunks = []
             for i, chunk in enumerate(chunks):
                 if i % 2 == 0:
@@ -46,10 +44,10 @@ class FlipPlugin(Plugin):
                 else:
                     transformed_chunks.append(chunk)
 
-            return Text("".join(transformed_chunks))
+            return "".join(transformed_chunks)
 
         else:
-            return Text(self._apply_flip(text, mode))
+            return self._apply_flip(content, mode)
 
     def _apply_flip(self, text: str, mode: str) -> str:
         if mode == "FWO":

@@ -4,6 +4,7 @@ from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 class Module(ABC):
     def get_description(self) -> ModuleDescriptionHint:
+        """Return a description of the module's functionality."""
         return [], "No Module description available."
 
     def get_available_option_values(self) -> ModuleOptionsHint:

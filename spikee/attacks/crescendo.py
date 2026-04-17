@@ -5,9 +5,10 @@ import threading
 import re
 import json
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -317,13 +318,12 @@ class Crescendo(Attack):
             )
 
             # call target; each call consumes budget immediately
-            resp = target_module.process_input(
+            response_text = process_target_content(target_module.process_input(
                 prompt,
                 system_message,
                 spikee_session_id=session_id,
                 backtrack=is_refuse,
-            )
-            response_text = str(resp[0] if isinstance(resp, (tuple, list)) else resp)
+            ))
 
             last_message_id = conversation.add_message(
                 last_message_id,
@@ -377,13 +377,13 @@ class Crescendo(Attack):
     def attack(
         self,
         entry: dict,
-        target_module: object,
-        call_judge: Callable,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, Dict[str, Any], str]:
+    ) -> AttackResponseHint:
         """
         Attack entry point.
 

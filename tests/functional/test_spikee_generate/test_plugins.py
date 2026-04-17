@@ -11,7 +11,7 @@ from spikee.generator import (
     load_plugins,
     apply_plugin
 )
-from spikee.utilities.content import Text
+from spikee.utilities.hinting import get_content
 
 
 class TestParsePluginPiping:
@@ -165,10 +165,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_upper"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, Text("hello"), None, None)
+        result = apply_plugin(plugin_name, plugin_module, "hello", None, None)
 
         assert isinstance(result, list)
-        assert [r.content for r in result] == ["HELLO"]
+        assert [r for r in result] == ["HELLO"]
 
     def test_1337_known_values(self, workspace_dir):
         """1337 plugin applies the fixed leet dictionary substitution."""
@@ -177,10 +177,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["1337"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, Text("hello"), None, None)
+        result = apply_plugin(plugin_name, plugin_module, "hello", None, None)
 
         assert isinstance(result, list)
-        assert any("h3ll0" in r.content for r in result)
+        assert any("h3ll0" in get_content(r) for r in result)
 
     def test_upper_legacy_matches_oop(self, workspace_dir):
         """test_upper_legacy (module-level function) produces the same output as the OOP version."""
@@ -190,12 +190,12 @@ class TestApplyPlugin:
         text_plugins = load_plugins(["test_upper_text"])
         legacy_plugins = load_plugins(["test_upper_legacy"])
 
-        text = Text("Hello World")
+        text = "Hello World"
         oop_result = apply_plugin(oop_plugins[0][0], oop_plugins[0][1], text, None, None)
         text_result = apply_plugin(text_plugins[0][0], text_plugins[0][1], text, None, None)
         legacy_result = apply_plugin(legacy_plugins[0][0], legacy_plugins[0][1], text, None, None)
 
-        assert [r.content for r in oop_result] == [r.content for r in legacy_result] == [r.content for r in text_result] == ["HELLO WORLD"]
+        assert [get_content(r) for r in oop_result] == [get_content(r) for r in legacy_result] == [get_content(r) for r in text_result] == ["HELLO WORLD"]
 
     def test_repeat_legacy_default(self, workspace_dir):
         """test_repeat_legacy (module-level function) returns 2 variants by default."""
@@ -204,10 +204,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_repeat_legacy"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, Text("payload"), None, None)
+        result = apply_plugin(plugin_name, plugin_module, "payload", None, None)
 
         assert isinstance(result, list)
-        assert [r.content for r in result] == ["payload", "payload-repeat"]
+        assert [get_content(r) for r in result] == ["payload", "payload-repeat"]
 
     def test_repeat_legacy_matches_oop(self, workspace_dir):
         """test_repeat_legacy produces the same output as test_repeat for all option combinations."""
@@ -219,10 +219,10 @@ class TestApplyPlugin:
 
         for option in [None, "n_variants=3", "n_variants=2,suffix=-copy"]:
             option_map = {"test_repeat": option} if option else None
-            oop_result = apply_plugin(oop_plugins[0][0], oop_plugins[0][1], Text("x"), None, option_map)
-            text_result = apply_plugin(text_plugins[0][0], text_plugins[0][1], Text("x"), None, {"test_repeat_text": option} if option else None)
-            legacy_result = apply_plugin(legacy_plugins[0][0], legacy_plugins[0][1], Text("x"), None, {"test_repeat_legacy": option} if option else None)
-            assert [r.content for r in oop_result] == [r.content for r in legacy_result] == [r.content for r in text_result], \
+            oop_result = apply_plugin(oop_plugins[0][0], oop_plugins[0][1], "x", None, option_map)
+            text_result = apply_plugin(text_plugins[0][0], text_plugins[0][1], "x", None, {"test_repeat_text": option} if option else None)
+            legacy_result = apply_plugin(legacy_plugins[0][0], legacy_plugins[0][1], "x", None, {"test_repeat_legacy": option} if option else None)
+            assert [get_content(r) for r in oop_result] == [get_content(r) for r in legacy_result] == [get_content(r) for r in text_result], \
                 f"OOP, legacy, and text results differ for option={option!r}: {oop_result} vs {legacy_result} vs {text_result}"
 
     def test_repeat_custom_count_and_suffix(self, workspace_dir):
@@ -232,11 +232,11 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_repeat"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, Text("payload"), None, {"test_repeat": "n_variants=3,suffix=-copy"})
+        result = apply_plugin(plugin_name, plugin_module, "payload", None, {"test_repeat": "n_variants=3,suffix=-copy"})
 
         assert isinstance(result, list)
         assert len(result) == 3
-        assert [r.content for r in result] == ["payload", "payload-copy", "payload-copy-2"]
+        assert [get_content(r) for r in result] == ["payload", "payload-copy", "payload-copy-2"]
 
     def test_piped_upper_then_base64(self, workspace_dir):
         """Piped test_upper|base64: 'hello' → 'HELLO' → 'SEVMTE8='"""
@@ -245,10 +245,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_upper|base64"])
         plugin_name, plugin_modules = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_modules, Text("hello"), None, None)
+        result = apply_plugin(plugin_name, plugin_modules, "hello", None, None)
 
         assert isinstance(result, list)
-        assert any("SEVMTE8=" in r.content for r in result)
+        assert any("SEVMTE8=" in get_content(r) for r in result)
 
     def test_piped_upper_then_1337(self, workspace_dir):
         """Piped test_upper|1337: 'hello' → 'HELLO' → 'H3LL0' (E→3, O→0)"""
@@ -257,10 +257,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_upper|1337"])
         plugin_name, plugin_modules = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_modules, Text("hello"), None, None)
+        result = apply_plugin(plugin_name, plugin_modules, "hello", None, None)
 
         assert isinstance(result, list)
-        assert any("H3LL0" in r.content for r in result)
+        assert any("H3LL0" in get_content(r) for r in result)
 
     def test_piped_base64_then_1337(self, workspace_dir):
         """Piped base64|1337: 'hello' → 'aGVsbG8=' → '46V5868=' (a→4, G→6, s→5, b→8)"""
@@ -269,10 +269,10 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_upper|1337|base64"])
         plugin_name, plugin_modules = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_modules, Text("hello"), None, None)
+        result = apply_plugin(plugin_name, plugin_modules, "hello", None, None)
 
         assert isinstance(result, list)
-        assert any("SDNMTDA=" in r.content for r in result)
+        assert any("SDNMTDA=" in get_content(r) for r in result)
 
     def test_exclude_patterns_token_preserved(self, workspace_dir):
         """1337 plugin with exclude_patterns leaves matched tokens verbatim while transforming the rest.
@@ -284,12 +284,12 @@ class TestApplyPlugin:
         plugins = load_plugins(["1337"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, Text("hello <SKIP> world"), ["<SKIP>"], None)
+        result = apply_plugin(plugin_name, plugin_module, "hello <SKIP> world", ["<SKIP>"], None)
 
         assert isinstance(result, list)
-        assert any("<SKIP>" in r.content for r in result), \
+        assert any("<SKIP>" in get_content(r) for r in result), \
             f"Expected '<SKIP>' preserved verbatim in result, got: {result}"
-        assert any("h3ll0" in r.content for r in result), \
+        assert any("h3ll0" in get_content(r) for r in result), \
             f"Expected 'hello' to be leet-transformed outside the excluded token, got: {result}"
 
     def test_multi_variant_plugin_mid_pipe_fans_out(self, workspace_dir):
@@ -302,7 +302,7 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_repeat|base64"])
         plugin_name, plugin_modules = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_modules, Text("payload"), None, None)
+        result = apply_plugin(plugin_name, plugin_modules, "payload", None, None)
 
         expected_plain = base64_lib.b64encode(b"payload").decode()
         expected_repeat = base64_lib.b64encode(b"payload-repeat").decode()
@@ -310,7 +310,7 @@ class TestApplyPlugin:
         assert isinstance(result, list)
         assert len(result) == 2, \
             f"Expected 2 variants (one per repeat output), got {len(result)}: {result}"
-        assert expected_plain in [r.content for r in result], \
+        assert expected_plain in [get_content(r) for r in result], \
             f"Expected base64('payload')='{expected_plain}' in result, got: {result}"
-        assert expected_repeat in [r.content for r in result], \
+        assert expected_repeat in [get_content(r) for r in result], \
             f"Expected base64('payload-repeat')='{expected_repeat}' in result, got: {result}"

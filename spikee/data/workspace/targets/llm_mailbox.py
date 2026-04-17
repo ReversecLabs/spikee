@@ -2,8 +2,8 @@ from spikee.templates.target import Target
 
 import requests
 import json
-from typing import Any, Optional, Tuple, Union
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from typing import Optional
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class LLMMailboxTarget(Target):
@@ -19,7 +19,7 @@ class LLMMailboxTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> TargetResponseHint:
         url = "http://llmwebmail:5000/api/summarize"
         headers = {
             "Content-Type": "application/json",

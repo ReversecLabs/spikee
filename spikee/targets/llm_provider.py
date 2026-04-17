@@ -1,13 +1,12 @@
+from typing import Optional, Union
+
 from spikee.templates.target import Target
 from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, get_content, TargetResponseHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
-
-from typing import Optional, Tuple, Union, Any
 
 
 class LLMProvider(Target):
@@ -58,11 +57,11 @@ class LLMProvider(Target):
 
     def process_input(
         self,
-        input_text: Text,
+        input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
         logprobs: bool = False,
-    ) -> Union[Text, bool, Tuple[Union[Text, bool], Any]]:
+    ) -> TargetResponseHint:
         """
         Send messages to a provider model by key.
 
@@ -150,7 +149,7 @@ class LLMProvider(Target):
             print(f"Error during provider model completion ({model_id}): {e}")
             raise
 
-        response_content = Text(response.content) if isinstance(response.content, str) else response.content
+        response_content = get_content(response.content)
 
         if "logprobs" in response.metadata and logprobs:
             return response_content, response.metadata["logprobs"]
@@ -168,7 +167,7 @@ if __name__ == "__main__":
     try:
         print(
             target.process_input(
-                Text("Hello!"), target_options="model=bedrock/claude37-sonnet"
+                "Hello!", target_options="model=bedrock/claude37-sonnet"
             )
         )
     except Exception as err:

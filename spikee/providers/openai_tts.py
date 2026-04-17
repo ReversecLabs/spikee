@@ -13,10 +13,9 @@ import base64
 import os
 
 from spikee.templates.streaming_provider import StreamingProvider
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage, SystemMessage
+from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
 from typing import Callable, Union, Dict, Tuple, Sequence
 
 
@@ -69,9 +68,9 @@ class OpenAITTSProvider(StreamingProvider):
         if instruction is None:
             instruction = "Speak in a cheerful and positive tone."
         else:
-            instruction = instruction.content if isinstance(instruction, SystemMessage) else str(instruction)
+            instruction = get_content(instruction.content)
 
-        return instruction, msg.content
+        return instruction, get_content(msg.content)
 
     def invoke(
         self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]

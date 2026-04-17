@@ -7,11 +7,10 @@ Usage:
   spikee test --plugins rag_poisoner --plugin-options "rag_poisoner:model=openai/gpt-4o,variants=5"
 """
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -63,7 +62,10 @@ class RAGPoisoner(Plugin):
                 else "No previous attempts yet.",
             )
         )
-        res_text = llm.invoke([prompt]).content.strip()
+        res_text = llm.invoke([prompt]).content
+
+        if not isinstance(res_text, str):
+            raise RuntimeError("LLM response is not a string as expected.")
 
         obj = extract_json_or_fail(res_text)
         attack_prompt = obj.get("attack_prompt", "")
@@ -73,15 +75,13 @@ class RAGPoisoner(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Union[Text, List[Text]]:
+    ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
         variants = int(opts.get("variants", self.VARIANTS))
-
-        text = content.content
 
         llm = get_llm(llm_model, max_tokens=800)
 
@@ -91,7 +91,7 @@ class RAGPoisoner(Plugin):
         for i in range(1, variants + 1):
             try:
                 attack_prompts.append(
-                    Text(self._generate_rag_attack(llm, text, previous_attempts))
+                    self._generate_rag_attack(llm, content, previous_attempts)
                 )
             except Exception as e:
                 print(f"[RAGPoisoner] Error generating prompt {i}: {str(e)}")

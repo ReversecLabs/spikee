@@ -1,13 +1,13 @@
-from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
-
 from any_llm import AnyLLM
-from typing import Union, Any, Dict, List, Sequence
+from typing import Union, Any, Dict, Sequence
 import os
 import requests
+
+
+from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 
 class AnyLLMOllamaProvider(Provider):

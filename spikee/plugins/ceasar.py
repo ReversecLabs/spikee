@@ -15,11 +15,10 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
-from typing import List
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 
 
@@ -69,10 +68,10 @@ class CeasarPlugin(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Text:
+    ) -> str:
         """
         Transforms the input text using the Caesar cipher.
 
@@ -85,4 +84,4 @@ class CeasarPlugin(Plugin):
         """
         shift = self._parse_shift_option(plugin_option)
 
-        return Text(self.caesar_cipher(content.content, shift))
+        return self.caesar_cipher(content, shift)

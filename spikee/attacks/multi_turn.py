@@ -1,11 +1,11 @@
 import uuid
-from typing import Tuple, Callable, Dict, Any, Union
+from typing import Callable
 import traceback
 
 
 from spikee.templates.attack import Attack
-from spikee.tester import Target
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.tester import AdvancedTargetWrapper
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import Turn, ModuleTag
 
 
@@ -25,14 +25,14 @@ class MultiTurnAttack(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Target,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = "",
-    ) -> Tuple[int, bool, Union[Dict[str, Any], str], str]:
+        attack_options: str = "",
+    ) -> AttackResponseHint:
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError("MultiTurn Attack only supports text content type.")
@@ -50,14 +50,11 @@ class MultiTurnAttack(Attack):
             for message in original_text:
                 # Send message and handle history
                 conversation.append({"role": "user", "content": message})
-                response = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     input_text=message,
                     system_message=system_message,
                     spikee_session_id=session_id,
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
+                ))
 
                 conversation.append({"role": "assistant", "content": response})
 

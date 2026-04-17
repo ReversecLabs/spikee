@@ -1,15 +1,16 @@
 import enum
 
 
+class EntryType(enum.Enum):
+    DOCUMENT = "document"
+    SUMMARY = "summarization"
+    QA = "qna"
+    ATTACK = "attack"
+
+
 class Turn(enum.Enum):
     SINGLE = "single-turn"
     MULTI = "multi-turn"
-
-
-class ContentType(enum.Enum):
-    TEXT = "text"
-    AUDIO = "audio"
-    IMAGE = "image"
 
 
 class ModuleTag(enum.Enum):

@@ -1,5 +1,4 @@
 from typing import Optional
-from spikee.utilities.content import Text
 
 CANARY_RESPONSES = "EN-CHECK IT-CHECK restricted-check"
 
@@ -12,7 +11,7 @@ def get_available_option_values():
 
 
 def process_input(
-    input_text: Text,
+    input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
     logprobs: bool = False,
@@ -20,5 +19,5 @@ def process_input(
     global _CALL_COUNT
     _CALL_COUNT += 1
     if _CALL_COUNT <= _SUCCESS_THRESHOLD:
-        return Text(CANARY_RESPONSES)
-    return Text("Sorry, I can't answer that.")
+        return str(CANARY_RESPONSES)
+    return str("Sorry, I can't answer that.")

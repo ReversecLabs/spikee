@@ -1,5 +1,4 @@
 from typing import Optional
-from spikee.utilities.content import Text
 
 
 def get_available_option_values():
@@ -7,9 +6,9 @@ def get_available_option_values():
 
 
 def process_input(
-    input_text: Text,
+    input_text: str,
     system_message: Optional[str] = None,
     target_options: Optional[str] = None,
     logprobs: bool = False,
 ):
-    return Text("Sorry, I can't answer that.")
+    return str("Sorry, I can't answer that.")

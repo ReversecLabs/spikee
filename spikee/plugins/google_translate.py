@@ -4,12 +4,11 @@ Google Translate Plugin
 Requires: pip install "spikee[google-translate]"
 """
 
-from typing import List
+from typing import List, Optional
 import asyncio
 
 from spikee.templates.plugin import Plugin
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -33,20 +32,20 @@ class GoogleTranslator(Plugin):
 
     def transform(
         self,
-        content: Text,
-        exclude_patterns: List[str] = [],
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = ""
-    ) -> Text:
+    ) -> str:
         """
         Transforms the input text into another language using google translate.
 
         Args:
-            content (Text): The input text.
-            exclude_patterns (List[str], optional): Patterns to exclude from translation. Defaults to None.
+            content (str): The input text.
+            exclude_patterns (Optional[List[str]], optional): Patterns to exclude from translation. Defaults to None.
             plugin_option (str, optional): Plugin options as a string. Defaults to None.
 
         Returns:
-            Text: The translated text.
+            str: The translated text.
         """
         try:
             from googletrans import Translator
@@ -59,10 +58,8 @@ class GoogleTranslator(Plugin):
         source_lang = options.get("source-lang", DEFAULT_SOURCE_LANGUAGE)
         target_lang = options.get("target-lang", DEFAULT_TARGET_LANGUAGE)
 
-        text = content.content
-
         translator = Translator()
         translated = asyncio.run(
-            translator.translate(text, src=source_lang, dest=target_lang)
+            translator.translate(content, src=source_lang, dest=target_lang)
         )
-        return Text(translated.text)
+        return translated.text

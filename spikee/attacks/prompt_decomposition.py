@@ -14,10 +14,11 @@ Usage:
 
 import json
 import random
-from typing import Callable, Dict, Any, List, Tuple
+from typing import Callable, List
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -211,14 +212,14 @@ class PromptDecompositionAttack(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> AttackResponseHint:
         """
         Executes the prompt decomposition attack by sequentially trying different
         reformulations until success or max_iterations is reached.
@@ -256,12 +257,9 @@ class PromptDecompositionAttack(Attack):
                 last_payload = candidate_text
 
                 try:
-                    response = target_module.process_input(
+                    response = process_target_content(target_module.process_input(
                         candidate_text, system_message
-                    )
-                    response = str(
-                        response[0] if isinstance(response, (tuple, list)) else response
-                    )
+                    ))
 
                     last_response = response
                     success = call_judge(entry, response)

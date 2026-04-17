@@ -18,11 +18,10 @@ Usage within Spikee:
 This sample plugin simply transforms the input text to uppercase.
 """
 
-from typing import List, Union
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
-from spikee.utilities.content import Text
+from typing import List, Union, Optional
 import re
 
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.templates.plugin import Plugin
 
 
@@ -36,25 +35,24 @@ class SamplePlugin(Plugin):
 
     def transform(
         self,
-        content: Text,  # specify specific content types using Text, Audio, Image subclasses of Content
-        exclude_patterns: List[str] = []
-    ) -> Union[Text, List[Text]]:
+        content: str,  # specify specific content types using Text, Audio, Image subclasses of Content
+        exclude_patterns: Optional[List[str]] = None,
+    ) -> Union[str, List[str]]:
         """
         Transforms the input text to uppercase, preserving any substrings that match the given exclusion patterns.
 
         Args:
-            text (str): The input prompt to transform.
+            content (str): The input prompt to transform.
             exclude_patterns (List[str], optional): Regex patterns for substrings to preserve.
 
         Returns:
             str: The transformed text in uppercase.
         """
-        text = content.content
 
         if exclude_patterns:
             compound = "(" + "|".join(exclude_patterns) + ")"
             compound_re = re.compile(compound)
-            chunks = re.split(compound, text)
+            chunks = re.split(compound, content)
 
             result_chunks = []
             for chunk in chunks:
@@ -62,6 +60,6 @@ class SamplePlugin(Plugin):
                     result_chunks.append(chunk)
                 else:
                     result_chunks.append(chunk.upper())
-            return Text("".join(result_chunks))
+            return "".join(result_chunks)
         else:
-            return Text(text.upper())
+            return content.upper()

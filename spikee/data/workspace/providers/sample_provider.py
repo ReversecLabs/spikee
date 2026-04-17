@@ -1,14 +1,11 @@
+from typing import Dict, Union, Any, Sequence
+
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import (
-    Message,
-    AIMessage,
-)
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
+from spikee.utilities.llm_message import Message, AIMessage
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 
 from agent_framework.openai import OpenAIChatClient, OpenAIChatOptions
-from typing import List, Dict, Union, Any, Sequence
 
 BASE_URL = "https://example.com/openai/v1"
 

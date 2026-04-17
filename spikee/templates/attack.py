@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 import json
-from typing import Dict, Any, Tuple, Union, Callable
+from typing import Dict, Any, Union, Callable, Optional
 
 from spikee.utilities.enums import Turn
 from spikee.templates.module import Module
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.content import Content
-from spikee.utilities.hinting import ContentHint
+from spikee.utilities.hinting import Content, AttackResponseHint
 
 
 class Attack(Module, ABC):
@@ -17,9 +16,9 @@ class Attack(Module, ABC):
 
     @staticmethod
     def standardised_input_return(
-        input: ContentHint,
+        input: Content,
         conversation: Union[StandardisedConversation, None] = None,
-        objective: Union[str, None] = None,
+        objective: Optional[Content] = None,
     ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
         standardised_return = {"input": input if isinstance(input, Content) else str(input)}
@@ -41,15 +40,15 @@ class Attack(Module, ABC):
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, Union[ContentHint, dict], ContentHint]:
+        attack_options=None,
+    ) -> AttackResponseHint:
         """
         Performs attack on the target module.
 
         Returns:
-            Tuple[int, bool, object, str]: A tuple containing:
+            AttackResponseHint / Tuple[int, bool, Union[Content, Dict[str, Any]], Content]: A tuple containing:
                 - Total number of messages in the conversation (int)
                 - Success status of the attack (bool)
                 - Input (Str or Dict) - Use standardised_input_return to format Dict
                 - Last response from the target module (str)
         """
-        pass

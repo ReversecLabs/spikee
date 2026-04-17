@@ -9,13 +9,13 @@ Additional Args: none currently exposed.
 import base64
 import os
 from io import BytesIO
+from typing import Union, Dict, Sequence
+
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint
-from spikee.utilities.content import Content
+from spikee.utilities.hinting import ModuleDescriptionHint, Content, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
-from typing import Union, Dict, List, Sequence
 
 
 class ElevenLabsSTTProvider(Provider):
@@ -82,7 +82,7 @@ class ElevenLabsSTTProvider(Provider):
         if msg.content_type != "audio":
             raise ValueError("ElevenLabs STT Provider requires a user message containing base64-encoded audio.")
 
-        audio_b64 = msg.content
+        audio_b64 = get_content(msg.content)
         try:
             audio_bytes = base64.b64decode(audio_b64)
         except Exception as e:
