@@ -102,15 +102,16 @@ This is the core function of every plugin. It receives a payload string and retu
 *   `List[str]`: Return a list of transformed strings. Spikee will create a separate test case for **each string in the list**, allowing you to test multiple variations at once.
 
 ### Signature with Options Support
-For more advanced plugins, you can accept a configuration string and advertise the available options.
+For more advanced plugins, you can accept a configuration string and advertise the available options. This must be implemented as a class method — standalone functions are not supported in the current OOP API.
 ```python
-from typing import List, Union, Tuple
+from typing import List, Union, Optional
+from spikee.utilities.hinting import Content, ModuleOptionsHint
 
-def get_available_option_values() -> Tuple[List[str], bool]:
+def get_available_option_values(self) -> ModuleOptionsHint:
     """Return supported attack options; Tuple[options (default is first), llm_required]"""
     return ["mode=strict", "mode=full"], False # "mode=strict" is the default
 
-def transform(content: Content, exclude_patterns: Optional[List[str]] = None, plugin_option: str = "") -> Union[Content, List[Content]]:
+def transform(self, content: Content, exclude_patterns: Optional[List[str]] = None, plugin_option: str = "") -> Union[Content, List[Content]]:
     """Transforms the payload based on the provided option."""
     # Your transformation logic here...
 ```
@@ -143,9 +144,10 @@ Correctly handling `exclude_patterns` is the most important part of writing a ro
 # Example transformation function converting all text to uppercase with exclude_patterns support
 import re
 from typing import List, Union, Optional
+from spikee.utilities.hinting import Content, get_content
 
-def transform(self, content: str, exclude_patterns: Optional[List[str]] = None) -> Union[str, List[str]]:
-    text = content.content
+def transform(self, content: Content, exclude_patterns: Optional[List[str]] = None) -> Union[Content, List[Content]]:
+    text = get_content(content)  # Unwrap Content wrapper to get the raw string
 
     if not exclude_patterns:
         # No exclusions, transform the whole text
@@ -175,3 +177,40 @@ def transform(self, content: str, exclude_patterns: Optional[List[str]] = None) 
 def apply_transformation(text: str) -> str:
     return text.upper()
 ```
+
+## Multimodal Plugins
+
+Plugins can output non-text content types by returning `Audio` or `Image` objects. This is how TTS (text-to-speech) and image-generation plugins work. When a plugin returns a `Content` subclass, the generator updates the dataset entry's `content_type` field accordingly so that targets and judges can handle it correctly.
+
+**Content-type routing**: The generator inspects the plugin's `transform` (or `plugin_transform`) parameter annotations to decide whether to call it:
+*   A `content: Content` parameter annotation — plugin accepts any content type.
+*   A `content: str` (or `text: str`) parameter annotation — plugin only accepts text; the generator will skip it for audio/image entries.
+
+```python
+from typing import Optional, List
+from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import Audio, Content, get_content, ModuleDescriptionHint, ModuleOptionsHint
+
+class MyTTSPlugin(Plugin):
+    """Example plugin that converts text to audio using a TTS service."""
+
+    def get_description(self) -> ModuleDescriptionHint:
+        return [ModuleTag.SINGLE], "Converts text payload to Audio via TTS"
+
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return ["voice=alloy", "voice=nova"], True  # Requires LLM/TTS provider
+
+    def transform(
+        self,
+        content: str,  # Annotate as str: only receives text entries
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = "",
+    ) -> Audio:
+        text = get_content(content)
+        # ... call TTS API to get base64-encoded audio bytes ...
+        audio_bytes_b64 = call_tts_api(text)
+        return Audio(audio_bytes_b64)
+```
+
+See `spikee/plugins/tts.py` and `spikee/plugins/text2image.py` for full reference implementations.

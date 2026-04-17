@@ -38,7 +38,7 @@ Use `spikee list providers` to get a list of providers and known supported model
 | OpenAI | `openai` | `gpt-4o` (default)<br/>`gpt-4.1` | `OPENAI_API_KEY` | [Models List](https://platform.openai.com/docs/models) |
 | Azure OpenAI | `azure` | `gpt-4o` (default)<br/>`gpt-4o-mini` | `AZURE_OPENAI_API_KEY`<br/>`AZURE_OPENAI_ENDPOINT` | [Models List](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models) |
 | AWS Bedrock | `bedrock` | `claude45-sonnet` (default)<br/>`claude45-haiku`<br/>`deepseek-v3`<br/><small>*(Allows internal shorthands)*</small> | `AWS_ACCESS_KEY_ID`<br/>`AWS_SECRET_ACCESS_KEY`<br/>`AWS_DEFAULT_REGION` | [Models List](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) |
-| Google Gemini | `google` | `gemini-2.5-flash` (default)<br/>`gemini-2.5-pro`<br/>`gemini-3-pro` | `GEMINI_API_KEY` | [Models List](https://ai.google.dev/gemini-api/docs/models/gemini) |
+| Google Gemini | `google` | `gemini-2.5-flash` (default)<br/>`gemini-2.5-pro`<br/>`gemini-3-pro` | `GOOGLE_API_KEY` | [Models List](https://ai.google.dev/gemini-api/docs/models/gemini) |
 | Deepseek | `deepseek` | `deepseek-chat` (default)<br/>`deepseek-reasoner` | `DEEPSEEK_API_KEY` | [Models List](https://platform.deepseek.com/api-docs/) |
 | Groq | `groq` | `llama-3.1-8b-instant` (default)<br/>`llama-3.3-70b-versatile` | `GROQ_API_KEY` | [Models List](https://console.groq.com/docs/models) |
 | TogetherAI | `together` | `gemma2-8b` (default)<br/>`mixtral-8x22b`<br/><small>*(Allows internal shorthands)*</small> | `TOGETHER_API_KEY` | [Models List](https://docs.together.ai/docs/inference-models) |

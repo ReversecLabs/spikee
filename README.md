@@ -119,8 +119,6 @@ Spikee features several sample plugins and targets that require specific third-p
 
 ```bash
 pip install "spikee[local-inference]"
-pip install "spikee[google-translate]"
-pip install "spikee[pdf]"
 ```
 
 

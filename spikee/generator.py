@@ -873,11 +873,11 @@ def generate_variations(
                                         # Combines injected document with spotlighting data marker, for full-prompt entries
                                         if entry_type == EntryType.DOCUMENT:
                                             injected_doc = (
-                                                injected_doc
-                                                if spotlighting_data_marker == "none"
-                                                else content_factory(spotlighting_data_marker.replace(
+                                                content_factory(spotlighting_data_marker.replace(
                                                     "DOCUMENT", get_content(injected_doc)
                                                 ), get_content_type(injected_doc))
+                                                if spotlighting_data_marker != "none" and isinstance(get_content(injected_doc), str)
+                                                else injected_doc
                                             )
 
                                         entry = Entry(

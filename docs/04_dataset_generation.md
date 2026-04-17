@@ -89,6 +89,9 @@ Spikee supports two types of multi-turn datasets:
 
 # Transformations
 
+> **Dataset Entry Format Note:**  
+> Seed files use a `"text"` field for input content. The output JSONL datasets produced by `spikee generate` serialize each entry using `"content"` + `"content_type"` fields instead of `"text"`. Legacy datasets with only a `"text"` field are still accepted by `spikee test` for backward compatibility. When writing tooling that reads generated datasets, use the `"content"` field (and check `"content_type"` for multimodal entries).
+
 ### Plugins `--plugins`
 Plugins are Python script that transforms a payload during dataset generation. This is typically used to assess transformation based jailbreaking techniques, or to modify prompts into a target friendly format.
 
