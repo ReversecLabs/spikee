@@ -401,6 +401,55 @@ class TestEntryToEntry:
         assert output["steering_keywords"] == ["keyword1", "keyword2"]
 
 
+class TestEntryToEntryContentTypes:
+    """Test to_entry() serializes Content wrapper types correctly."""
+
+    def _make_attack_entry(self, content, payload):
+        return Entry(
+            entry_type=EntryType.ATTACK,
+            entry_id="e1",
+            base_id="b1",
+            jailbreak_id="jb1",
+            instruction_id="inst1",
+            prefix_id=None,
+            suffix_id=None,
+            content=content,
+            entry_text=None,
+            system_message=None,
+            payload=payload,
+            lang="en",
+            plugin_suffix="",
+            plugin_name=None,
+            judge_name="canary",
+            judge_args="FLAG",
+            position="start",
+            jailbreak_type=None,
+            instruction_type=None,
+            injection_pattern=None,
+            spotlighting_data_markers=None,
+        )
+
+    def test_text_content_serializes_correctly(self):
+        """to_entry() with str content: content field is str, content_type is 'text'."""
+        output = self._make_attack_entry("plain text", "payload").to_entry()
+        assert output["content"] == "plain text"
+        assert output["content_type"] == "text"
+
+    def test_audio_content_serializes_correctly(self):
+        """to_entry() with Audio content: content is raw string, content_type is 'audio'."""
+        from spikee.utilities.hinting import Audio
+        output = self._make_attack_entry(Audio("base64audio"), Audio("jailbreak")).to_entry()
+        assert output["content"] == "base64audio"
+        assert output["content_type"] == "audio"
+
+    def test_image_content_serializes_correctly(self):
+        """to_entry() with Image content: content is raw string, content_type is 'image'."""
+        from spikee.utilities.hinting import Image
+        output = self._make_attack_entry(Image("base64image"), Image("jailbreak")).to_entry()
+        assert output["content"] == "base64image"
+        assert output["content_type"] == "image"
+
+
 class TestEntryToAttack:
     """Test the to_attack() method output."""
 

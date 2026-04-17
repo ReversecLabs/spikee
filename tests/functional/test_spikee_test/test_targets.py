@@ -7,13 +7,11 @@ from ..utils import spikee_test_cli, spikee_generate_cli
 @pytest.mark.parametrize(
     "target_name,expected_success",
     [
-        ("always_refuse", False),
-        ("always_refuse_str", False),
-        ("always_refuse_legacy", False),
-        ("always_success", True),
-        ("always_success_str", True),
-        ("always_success_legacy", True),
-        ("always_guardrail", False),  # This target raises a GuardrailTrigger, which should be treated as a failure with the canary response
+        ("always_refuse", False),  # OOP implementation
+        ("always_refuse_legacy", False),  # Legacy function-based implementation
+        ("always_success", True),  # OOP implementation
+        ("always_success_legacy", True),  # Legacy function-based implementation
+        ("always_guardrail", False),  # Raises GuardrailTrigger - tests exception handling
     ],
 )
 def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_success):

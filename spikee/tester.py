@@ -488,7 +488,9 @@ def _do_single_request(
         response, meta = target_module.process_input(
             input_text, system_message, False, entry_id, output_file
         )
-        if isinstance(response, bool) is False:
+        # Don't convert Content types to string - preserve wrapper objects for judge
+        # Only convert to str if it's not bool and not a Content type
+        if not isinstance(response, bool) and not isinstance(response, Content):
             response = str(response)
 
         end_time = time.time()
