@@ -62,7 +62,8 @@ class Entry:
         self.prefix_id = prefix_id
         self.suffix_id = suffix_id
 
-        self.content = content
+        self.original_content = content  # Keep original content for reference
+        self.content = get_content(content)  # This may be modified by plugins or injection
         self.entry_text = entry_text
         self.system_message = system_message
         self.payload = payload
@@ -103,8 +104,8 @@ class Entry:
         entry = {
             "id": self.id,
             "long_id": self.long_id,
-            "content": get_content(self.content),
-            "content_type": get_content_type(self.content),
+            "content": self.content,
+            "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -148,8 +149,8 @@ class Entry:
         attack = {
             "id": self.long_id,
             "long_id": self.long_id,
-            "content": get_content(self.content),
-            "content_type": get_content_type(self.content),
+            "content": self.content,
+            "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -844,13 +845,13 @@ def generate_variations(
                             # suffix_combined_text is inserted into the injection_pattern at 'INJECTION_PAYLOAD' placeholder
                             # Document Placeholder: Injection is placed into document placeholder
                             # Otherwise: Injection is placed into document at position (start, middle, end)
-                            injected_doc = content_factory(insert_jailbreak(
+                            injected_doc = insert_jailbreak(
                                 document,
                                 combined_text["text"],
                                 position,
                                 injection_pattern,
                                 placeholder,
-                            ), get_content_type(combined_text["text"]))
+                            )
 
                             for entry_type in output_format:
                                 if entry_type == "burp":

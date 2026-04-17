@@ -18,7 +18,10 @@ class ParentContent:
 class Audio(ParentContent):
     """Stored audio content as a Base64-encoded string. The format can be optionally specified for better handling downstream."""
 
-    def __init__(self, content, audio_format: Optional[str] = None):
+    def __init__(self, content: str, audio_format: Optional[str] = None):
+        if not isinstance(content, str):
+            raise ValueError(f"Audio content must be a base64-encoded string, got {type(content)}")
+
         super().__init__(content)
 
         self.format = audio_format
@@ -146,6 +149,11 @@ class Audio(ParentContent):
 
 
 class Image(ParentContent):
+    def __init__(self, content: str):
+        if not isinstance(content, str):
+            raise ValueError(f"Image content must be a base64-encoded string, got {type(content)}")
+
+        super().__init__(content)
 
     def base64_inline(self) -> str:
         """Return the image content as a Base64-encoded string suitable for inline embedding."""
