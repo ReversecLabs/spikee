@@ -20,7 +20,7 @@ class GoogleTranslator(Plugin):
     def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.TRANSLATION],
-            'Transforms text using Google Translate. (Requires: `pip install "spikee[google-translate]"`)',
+            'Transforms text using Google Translate. (Requires: `pip install "googletrans"`)',
         )
 
     def get_available_option_values(self) -> ModuleOptionsHint:
@@ -51,7 +51,7 @@ class GoogleTranslator(Plugin):
             from googletrans import Translator
         except ImportError as e:
             raise ImportError(
-                'Missing required packages for Google Translate. Please install it with: `pip install "spikee[google-translate]"`'
+                'Missing required packages for Google Translate. Please install it with: `pip install "googletrans"`'
             ) from e
 
         options = parse_options(plugin_option)
