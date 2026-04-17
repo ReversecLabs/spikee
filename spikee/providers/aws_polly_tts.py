@@ -20,7 +20,7 @@ import base64
 import os
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio, get_content
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
 from typing import Set, Union, Dict, Sequence

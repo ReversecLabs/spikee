@@ -8,8 +8,6 @@ Focus on high-impact scenarios:
 """
 import pytest
 import os
-import tempfile
-from pathlib import Path
 
 from spikee.utilities.modules import (
     load_module_from_path,

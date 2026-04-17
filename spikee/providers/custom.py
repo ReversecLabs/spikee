@@ -86,9 +86,7 @@ class AnyLLMCustomProvider(Provider):
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(
-            model=self.model, messages=formatted_messages, **self.options
-        )
+        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
 
         content = response.choices[0].message.content
 

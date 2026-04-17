@@ -11,7 +11,7 @@ from typing import Union, Dict, Sequence
 
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, get_content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
 

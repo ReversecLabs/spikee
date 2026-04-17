@@ -925,6 +925,7 @@ def generate_dataset(args):
     Main entry point for generating the dataset. Loads files, filters content,
     generates variations, writes results to disk, and prints stats.
     """
+
     seed_folder = resolve_seed_folder(args.seed_folder)
     output_format = args.format
     include_system_message = args.include_system_message

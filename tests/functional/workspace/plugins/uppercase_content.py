@@ -1,5 +1,5 @@
 """Plugin that uppercases content while preserving type."""
-from typing import Optional, List
+from typing import Optional
 
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.hinting import ModuleOptionsHint, Content, get_content, get_content_type, content_factory

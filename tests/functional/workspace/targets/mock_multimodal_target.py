@@ -2,7 +2,7 @@
 from typing import Optional
 
 from spikee.templates.target import Target
-from spikee.utilities.hinting import ModuleOptionsHint, Content, Audio, Image
+from spikee.utilities.hinting import ModuleOptionsHint, Content
 
 
 class MockMultimodalTarget(Target):

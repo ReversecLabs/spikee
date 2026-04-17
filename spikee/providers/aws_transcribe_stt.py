@@ -18,11 +18,10 @@ Authentication via environment variables:
 import asyncio
 import base64
 import os
-from io import BytesIO
-from typing import Optional, Set, Union, Tuple, List, Dict, Sequence
+from typing import Optional, Set, Union, List, Dict, Sequence
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, get_content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, single_message
 
