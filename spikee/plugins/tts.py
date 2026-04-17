@@ -69,7 +69,12 @@ class TTSPlugin(Plugin):
         if ModuleTag.LLM_TTS not in llm_description:
             raise ValueError(f"Selected model '{llm_model}' is not a valid TTS provider.")
 
-        return Audio(get_content(llm.invoke([HumanMessage(content=content)]).content))
+        response = llm.invoke([HumanMessage(content=content)]).content
+
+        if isinstance(response, Audio):
+            return response
+        else:
+            raise ValueError(f"Unexpected response type from TTS provider: {type(response)}. Expected Audio.")
 
 
 if __name__ == "__main__":
@@ -81,7 +86,7 @@ if __name__ == "__main__":
     # print("Base64 Audio Content:", response)
 
     import base64
-    audio_bytes = base64.b64decode(response.content)
+    audio_bytes = base64.b64decode(get_content(response.content))
 
     try:
         import io

@@ -8,7 +8,7 @@ Additional Args:
 """
 import base64
 import os
-from typing import Callable, Union, Dict, Sequence
+from typing import Callable, Set, Union, Dict, Sequence
 
 
 from spikee.templates.streaming_provider import StreamingProvider
@@ -33,6 +33,10 @@ class ElevenLabsTTSProvider(StreamingProvider):
             "eleven_monolingual_v1": "eleven_monolingual_v1",
         }
 
+    @property
+    def audio_formats(self) -> Set[str]:
+        return {"mp3_44100_128", "mp3_22050_32", "pcm_16000", "pcm_22050", "pcm_44100", "ulaw_8000"}
+
     def setup(
         self,
         model: str,
@@ -42,7 +46,10 @@ class ElevenLabsTTSProvider(StreamingProvider):
     ) -> None:
         self.model = model
         self.voice_id = additional_kwargs.get("voice_id", "JBFqnCBsd6RMkjVDRZzb")
-        self.output_format = additional_kwargs.get("output_format", "pcm_22050")
+        self.output_format = additional_kwargs.get("output_format", "pcm_16000")
+
+        if self.output_format not in self.audio_formats:
+            raise ValueError(f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}")
 
         try:
             from elevenlabs import ElevenLabs
@@ -83,7 +90,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=Audio(base64_audio),
+            content=Audio(base64_audio, audio_format=None),
             response_format=self.output_format,
         )
 
@@ -107,105 +114,14 @@ class ElevenLabsTTSProvider(StreamingProvider):
 
 
 if __name__ == "__main__":
+    import sys
     from dotenv import load_dotenv
     load_dotenv()
-
-    try:
-        import numpy as np
-        import sounddevice as sd
-    except ImportError:
-        print("Playback requires 'numpy' and 'sounddevice' packages. Please install them.")
-        exit(1)
-
-    # ElevenLabs PCM format: pcm_22050
-    SAMPLE_RATE = 22050
-    CHANNELS = 1
-    BYTES_PER_SAMPLE = 2  # 16-bit = 2 bytes
-
-    chunk_count = 0
-    stream = None
-    buffer = b""  # Buffer for incomplete frames
-
-    def play_audio(base64_audio):
-        global chunk_count, stream, buffer
-        chunk_count += 1
-
-        audio_bytes = base64.b64decode(base64_audio)
-        print(f"[Chunk {chunk_count}] Received {len(audio_bytes)} bytes")
-
-        # Append to buffer
-        buffer += audio_bytes
-
-        # Extract complete samples (16-bit = 2 bytes per sample)
-        complete_bytes = (len(buffer) // BYTES_PER_SAMPLE) * BYTES_PER_SAMPLE
-        if complete_bytes == 0:
-            print(f"  Buffering {len(buffer)} incomplete bytes, waiting for more...")
-            return
-
-        # Split buffered data
-        to_play = buffer[:complete_bytes]
-        buffer = buffer[complete_bytes:]  # Keep incomplete samples for next chunk
-
-        # Convert raw PCM bytes to numpy array
-        audio_data = np.frombuffer(to_play, dtype=np.int16)
-
-        # Normalize to [-1, 1] for playback
-        audio_float = audio_data.astype(np.float32) / 32768.0
-
-        # Create stream on first chunk
-        if stream is None:
-            stream = sd.OutputStream(channels=CHANNELS, samplerate=SAMPLE_RATE, dtype=np.float32)
-            stream.start()
-            print(f"Starting playback ({SAMPLE_RATE}Hz, mono, 16-bit PCM)")
-
-        # Play chunk
-        try:
-            stream.write(audio_float)
-            print(f"  Playing {len(audio_float)} samples ({complete_bytes} bytes)")
-        except Exception as e:
-            print(f"Error playing audio: {e}")
-
-    # Test with streaming
+    text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = ElevenLabsTTSProvider()
-    provider.setup(model="eleven_flash_v2_5", voice_id="JBFqnCBsd6RMkjVDRZzb", output_format="pcm_22050")
-
-    if False:
-        # Non-streaming test
-        messages = [
-            HumanMessage(content="Hello, how are you today?"),
-        ]
-        response = provider.invoke(messages)
-        # print("Base64 Audio Content:", response.content)
-
-        audio_bytes = base64.b64decode(get_content(response.content))
-        try:
-            import io
-            import soundfile as sf
-
-            data, sample_rate = sf.read(io.BytesIO(audio_bytes))
-            sd.play(data, sample_rate)
-            sd.wait()
-            print("Playback complete.")
-        except Exception as e:
-            print(f"Playback error: {e}")
-
-    else:
-        # Streaming test with PCM format
-        messages = [
-            HumanMessage(content="This is a streaming test with ElevenLabs. The audio will play as it is received."),
-        ]
-        provider.invoke_streaming(messages, callback=play_audio)
-
-        # Flush any remaining buffered bytes
-        if buffer:
-            print(f"\nFlushing {len(buffer)} final bytes from buffer...")
-            audio_data = np.frombuffer(buffer, dtype=np.int16)
-            audio_float = audio_data.astype(np.float32) / 32768.0
-            if stream is not None:
-                stream.write(audio_float)
-
-        # Close stream
-        if stream is not None:
-            stream.stop()
-            stream.close()
-        print("Playback complete.")
+    provider.setup(model="eleven_flash_v2_5", voice_id="JBFqnCBsd6RMkjVDRZzb", output_format="pcm_16000")
+    response = provider.invoke([HumanMessage(content=text)])
+    raw = response.content.get_raw_audio()
+    with open("audio_file.pcm", "wb") as f:
+        f.write(raw)
+    print("Written to audio_file.pcm")

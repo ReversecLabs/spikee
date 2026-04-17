@@ -16,7 +16,7 @@ from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
-from typing import Callable, Union, Dict, Tuple, Sequence
+from typing import Callable, Union, Dict, Tuple, Sequence, Set
 
 
 class OpenAITTSProvider(StreamingProvider):
@@ -34,6 +34,10 @@ class OpenAITTSProvider(StreamingProvider):
             "tts-1": "tts-1",
         }
 
+    @property
+    def audio_formats(self) -> Set[str]:
+        return {"mp3", "opus", "aac", "flac", "wav", "pcm"}
+
     def setup(
         self,
         model: str,
@@ -43,8 +47,11 @@ class OpenAITTSProvider(StreamingProvider):
     ) -> None:
         self.model = model
         self.voice = additional_kwargs.get("voice", "alloy")
-        self.response_format = additional_kwargs.get("response_format", "mp3")
+        self.response_format = additional_kwargs.get("response_format", "pcm")
         self.speed = float(additional_kwargs.get("speed", 1.0))
+
+        if self.response_format not in self.audio_formats:
+            raise ValueError(f"Invalid response_format '{self.response_format}'. Supported formats: {self.audio_formats}")
 
         try:
             from openai import OpenAI
@@ -92,7 +99,7 @@ class OpenAITTSProvider(StreamingProvider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=Audio(base64_audio),
+            content=Audio(base64_audio, audio_format=self.response_format),
             original_response=response,
             response_format=self.response_format,
         )
@@ -116,90 +123,14 @@ class OpenAITTSProvider(StreamingProvider):
 
 
 if __name__ == "__main__":
+    import sys
     from dotenv import load_dotenv
     load_dotenv()
-
-    try:
-        import numpy as np
-        import sounddevice as sd
-    except ImportError:
-        print("Playback requires 'numpy' and 'sounddevice' packages. Please install them.")
-        exit(1)
-
-    # PCM format from OpenAI: 24kHz, mono, 16-bit little-endian
-    SAMPLE_RATE = 24000
-    CHANNELS = 1
-    BYTES_PER_SAMPLE = 2  # 16-bit = 2 bytes
-
-    chunk_count = 0
-    stream = None
-    buffer = b""  # Buffer for incomplete frames
-
-    def play_audio(base64_audio):
-        global chunk_count, stream, buffer
-        chunk_count += 1
-
-        audio_bytes = base64.b64decode(base64_audio)
-        print(f"[Chunk {chunk_count}] Received {len(audio_bytes)} bytes")
-
-        # Append to buffer
-        buffer += audio_bytes
-
-        # Extract complete samples (16-bit = 2 bytes per sample)
-        complete_bytes = (len(buffer) // BYTES_PER_SAMPLE) * BYTES_PER_SAMPLE
-        if complete_bytes == 0:
-            print(f"  Buffering {len(buffer)} incomplete bytes, waiting for more...")
-            return
-
-        # Split buffered data
-        to_play = buffer[:complete_bytes]
-        buffer = buffer[complete_bytes:]  # Keep incomplete samples for next chunk
-
-        # Convert raw PCM bytes to numpy array
-        audio_data = np.frombuffer(to_play, dtype=np.int16)
-
-        # Normalize to [-1, 1] for playback
-        audio_float = audio_data.astype(np.float32) / 32768.0
-
-        # Create stream on first chunk
-        if stream is None:
-            stream = sd.OutputStream(channels=CHANNELS, samplerate=SAMPLE_RATE, dtype=np.float32)
-            stream.start()
-            print("Starting playback (24kHz, mono, 16-bit PCM)")
-
-        # Play chunk
-        try:
-            stream.write(audio_float)
-            print(f"  Playing {len(audio_float)} samples ({complete_bytes} bytes)")
-        except Exception as e:
-            print(f"Error playing audio: {e}")
-
+    text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = OpenAITTSProvider()
-    provider.setup(model="gpt-4o-mini-tts", voice="alloy", response_format="pcm", speed=1.0)
-
-    if False:
-        messages = [
-            HumanMessage(content="Hello, how are you today?"),
-        ]
-        response = provider.invoke(messages)
-        # print("Base64 Audio Content:", response.content)
-
-    else:
-        messages = [
-            HumanMessage(content="This is a streaming response test. The audio will play as it is received."),
-        ]
-        provider.invoke_streaming(messages, callback=play_audio)
-
-        # Flush any remaining buffered bytes
-        if buffer:
-            print(f"\nFlushing {len(buffer)} final bytes from buffer...")
-            audio_data = np.frombuffer(buffer, dtype=np.int16)
-            audio_float = audio_data.astype(np.float32) / 32768.0
-            if stream is not None:
-                stream.write(audio_float)
-
-        # Close stream
-        if stream is not None:
-            stream.stop()
-            stream.close()
-        print("Playback complete.")
+    provider.setup(model="gpt-4o-mini-tts", voice="alloy", response_format="pcm")
+    response = provider.invoke([HumanMessage(content=text)])
+    raw = response.content.get_raw_audio()
+    with open("audio_file.pcm", "wb") as f:
+        f.write(raw)
+    print("Written to audio_file.pcm")

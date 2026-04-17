@@ -4,7 +4,7 @@ AWS Polly Text-to-Speech provider module for Spikee.
 Additional Args:
 - `voice_id`: Polly VoiceId (default: "Joanna" — neural, en-US)
   See: https://docs.aws.amazon.com/polly/latest/dg/voicelist.html
-- `output_format`: mp3 (default), ogg_vorbis, pcm
+- `output_format`: mp3 (default), ogg_vorbis, pcm16
 
 Engines (set via model):
 - neural (default): Neural TTS — natural, high-quality voices
@@ -23,7 +23,7 @@ from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
-from typing import Union, Dict, Sequence
+from typing import Set, Union, Dict, Sequence
 
 
 class AWSPollyTTSProvider(Provider):
@@ -33,7 +33,7 @@ class AWSPollyTTSProvider(Provider):
         super().__init__()
         self.engine = None
         self.voice_id = None
-        self.output_format = None
+        self.output_format = "pcm"
         self.client = None
 
     @property
@@ -49,6 +49,10 @@ class AWSPollyTTSProvider(Provider):
             "standard": "standard",     # Classic concatenative synthesis
         }
 
+    @property
+    def audio_formats(self) -> Set[str]:
+        return {"mp3", "ogg_vorbis", "pcm"}
+
     def setup(
         self,
         model: str,
@@ -58,7 +62,10 @@ class AWSPollyTTSProvider(Provider):
     ) -> None:
         self.engine = model
         self.voice_id = additional_kwargs.get("voice_id", "Joanna")
-        self.output_format = additional_kwargs.get("output_format", "mp3")
+        self.output_format = additional_kwargs.get("output_format", "pcm")
+
+        if self.output_format not in self.audio_formats:
+            raise ValueError(f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}")
 
         try:
             import boto3
@@ -96,7 +103,7 @@ class AWSPollyTTSProvider(Provider):
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [
-            "voice_id=Joanna,output_format=mp3",
+            "voice_id=Joanna,output_format=pcm",
         ], False
 
     def invoke(
@@ -121,37 +128,20 @@ class AWSPollyTTSProvider(Provider):
         base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
 
         return AIMessage(
-            content=Audio(base64_audio),
+            content=Audio(base64_audio, audio_format=self.output_format),
             response_format=self.output_format,
         )
 
 
 if __name__ == "__main__":
+    import sys
     from dotenv import load_dotenv
     load_dotenv()
-
+    text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = AWSPollyTTSProvider()
-    provider.setup(model="standard", voice_id="Joanna", output_format="mp3")
-    messages = [
-        HumanMessage(content="Hello, this is a test of the AWS Polly text-to-speech provider.")
-    ]
-
-    print("Invoking AWS Polly TTS Provider...")
-    response = provider.invoke(input_messages=messages)
-    # print("Base64 Audio Content:", response.content)
-
-    if response.content_type != "audio":
-        raise ValueError("Expected audio content from AWS Polly TTS Provider.")
-
-    audio_bytes = base64.b64decode(get_content(response.content))
-
-    try:
-        import io
-        import soundfile as sf
-        import sounddevice as sd
-
-        data, sample_rate = sf.read(io.BytesIO(audio_bytes))
-        sd.play(data, sample_rate)
-        sd.wait()
-    except ImportError:
-        print("Audio playback requires 'soundfile' and 'sounddevice' packages. Please install them to play the audio response.")
+    provider.setup(model="neural", voice_id="Joanna", output_format="pcm")
+    response = provider.invoke([HumanMessage(content=text)])
+    raw = response.content.get_raw_audio()
+    with open("audio_file.pcm", "wb") as f:
+        f.write(raw)
+    print("Written to audio_file.pcm")
