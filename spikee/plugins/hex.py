@@ -1,8 +1,8 @@
 """
 Hex Encoding Plugin
 
-This plugin transforms the input text into hexadecimal encoding. Any substring that 
-exactly matches one of the user-supplied exclusion regex patterns (passed via the 
+This plugin transforms the input text into hexadecimal encoding. Any substring that
+exactly matches one of the user-supplied exclusion regex patterns (passed via the
 exclude_patterns parameter) is left unchanged.
 
 Usage:
@@ -10,55 +10,38 @@ Usage:
 
 Parameters:
     text (str): The input text to be transformed.
-    exclude_patterns (List[str], optional): A list of regex patterns. Any substring 
+    exclude_patterns (List[str], optional): A list of regex patterns. Any substring
         that exactly matches one of these patterns will be preserved as-is.
 
 Returns:
     str: The transformed text in hexadecimal encoding.
 """
 
-import re
-from typing import List
+from typing import List, Tuple
 
-def hex_encode(text: str) -> str:
-    """
-    Encodes the input text into hexadecimal format.
+from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.enums import ModuleTag
 
-    Args:
-        text (str): The input text.
 
-    Returns:
-        str: The hex-encoded representation of the text.
-    """
-    return text.encode().hex()
+class HexPlugin(BasicPlugin):
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ENCODING], "Transforms text into hexadecimal encoding."
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text into hexadecimal encoding while preserving any substring 
-    that exactly matches one of the exclusion regex patterns.
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [], False
 
-    Args:
-        text (str): The input text.
-        exclude_patterns (List[str], optional): A list of regex patterns to exclude from transformation.
+    def plugin_transform(self, text: str, plugin_option: str = "") -> str:
+        """
+        Transforms the input text into hexadecimal encoding while preserving any substring
+        that exactly matches one of the exclusion regex patterns.
 
-    Returns:
-        str: The transformed text in hexadecimal encoding.
-    """
-    if exclude_patterns:
-        compound = "(" + "|".join(exclude_patterns) + ")"
-        compound_re = re.compile(compound)
-        chunks = re.split(compound, text)
-    else:
-        chunks = [text]
-        compound_re = None
+        Args:
+            text (str): The input text.
+            plugin_option (str, optional): An optional plugin option.
 
-    result_chunks = []
-    for chunk in chunks:
-        if compound_re and compound_re.fullmatch(chunk):
-            # Leave excluded substrings untouched.
-            result_chunks.append(chunk)
-        else:
-            transformed = hex_encode(chunk)
-            result_chunks.append(transformed)
-    
-    return " ".join(result_chunks)
+        Returns:
+            str: The transformed text in hexadecimal encoding.
+        """
+
+        return text.encode().hex()

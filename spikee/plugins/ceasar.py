@@ -15,35 +15,69 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
-def caesar_cipher(text: str, shift: int = 3) -> str:
-    """
-    Encrypts the input text using a Caesar cipher with the given shift value.
+from typing import List, Tuple
 
-    Args:
-        text (str): The input text.
-        shift (int): The number of positions to shift each letter.
+from spikee.templates.plugin import Plugin
+from spikee.utilities.enums import ModuleTag
 
-    Returns:
-        str: The encrypted text.
-    """
-    result = []
-    for char in text:
-        if char.isalpha():
-            shift_base = ord('A') if char.isupper() else ord('a')
-            result.append(chr((ord(char) - shift_base + shift) % 26 + shift_base))
-        else:
-            result.append(char)
-    return "".join(result)
 
-def transform(text: str, exclude_patterns: List[str] = None) -> str:
-    """
-    Transforms the input text using the Caesar cipher.
+class CeasarPlugin(Plugin):
+    DEFAULT_SHIFT = 3
 
-    Args:
-        text (str): The input text.
-        shift (int): The number of positions to shift each letter (default is 3).
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [ModuleTag.ENCODING], "Transforms text using a Caesar cipher encryption."
 
-    Returns:
-        str: The encrypted text using the Caesar cipher.
-    """
-    return caesar_cipher(text, 3)
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return [
+            "shift=3",
+            "shift=N (1-26)",
+        ], False
+
+    def _parse_shift_option(self, option: str) -> int:
+        """Parse shift option string like 'shift=3' and return the number."""
+        if option and option.startswith("shift="):
+            try:
+                n = int(option.split("=")[1])
+                if 0 <= n <= 26:
+                    return n
+            except (ValueError, IndexError):
+                pass
+        return self.DEFAULT_SHIFT
+
+    def caesar_cipher(self, text: str, shift: int = 3) -> str:
+        """
+        Encrypts the input text using a Caesar cipher with the given shift value.
+
+        Args:
+            text (str): The input text.
+            shift (int): The number of positions to shift each letter.
+
+        Returns:
+            str: The encrypted text.
+        """
+        result = []
+        for char in text:
+            if char.isalpha():
+                shift_base = ord("A") if char.isupper() else ord("a")
+                result.append(chr((ord(char) - shift_base + shift) % 26 + shift_base))
+            else:
+                result.append(char)
+        return "".join(result)
+
+    def transform(
+        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+    ) -> str:
+        """
+        Transforms the input text using the Caesar cipher.
+
+        Args:
+            text (str): The input text.
+            shift (int): The number of positions to shift each letter (default is 3).
+
+        Returns:
+            str: The encrypted text using the Caesar cipher.
+        """
+        shift = self._parse_shift_option(plugin_option)
+
+        return self.caesar_cipher(text, shift)

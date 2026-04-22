@@ -4,30 +4,39 @@
 import os
 import sys
 import shutil
-import time
 import argparse
 from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
-import importlib
-import pkgutil
-from typing import List
 
-from .generator import generate_dataset
+from .generator import generate_dataset, generate_plugin
 from .tester import test_dataset
-from .results import analyze_results, rejudge_results, convert_results_to_excel
-from .list import list_seeds, list_datasets, list_judges, list_targets, list_plugins, list_attacks
+from .results import (
+    analyze_results,
+    rejudge_results,
+    extract_results,
+    dataset_comparison,
+    convert_results_to_excel,
+)
+from .list import (
+    list_seeds,
+    list_datasets,
+    list_judges,
+    list_targets,
+    list_plugins,
+    list_attacks,
+    list_providers,
+)
+from .viewers.results import ResultsViewer
 
-import importlib.resources
-
-banner = r'''
-   _____ _____ _____ _  ________ ______ 
+banner = r"""
+   _____ _____ _____ _  ________ ______
   / ____|  __ \_   _| |/ /  ____|  ____|
- | (___ | |__) || | | ' /| |__  | |__   
-  \___ \|  ___/ | | |  < |  __| |  __|  
-  ____) | |    _| |_| . \| |____| |____ 
+ | (___ | |__) || | | ' /| |__  | |__
+  \___ \|  ___/ | | |  < |  __| |  __|
+  ____) | |    _| |_| . \| |____| |____
  |_____/|_|   |_____|_|\_\______|______|
-'''
+"""
 
 # Explicitly load the .env file
 env_loaded = load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
@@ -36,12 +45,13 @@ env_loaded = load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ("yes", "true", "t", "y", "1"):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
 
 def convert_to_new_args(args):
     """
@@ -49,176 +59,599 @@ def convert_to_new_args(args):
     Keeps cli.py clean and readable.
     """
     # --format=document -> user-input
-    if getattr(args, 'format', None) == 'document':
+    if getattr(args, "format", None) == "document":
         print("DEPRECATION: --format=document → --format=user-input (default).")
-        args.format = 'user-input'
+        args.format = "user-input"
 
     # --standalone-attacks <path>  ->  --include-standalone-inputs (ignore supplied path)
-    if getattr(args, 'standalone_attacks', None) is not None:
-        print(f"DEPRECATION: --standalone-attacks is ignored. "
-              f"Use --include-standalone-inputs instead. "
-              f"Ignoring supplied filename '{args.standalone_attacks}'.")
+    if getattr(args, "standalone_attacks", None) is not None:
+        print(
+            f"DEPRECATION: --standalone-attacks is ignored. "
+            f"Use --include-standalone-inputs instead. "
+            f"Ignoring supplied filename '{args.standalone_attacks}'."
+        )
         args.include_standalone_inputs = True
 
     return args
 
-def main():
-    print(banner)
-    print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
-    print(f"Version: {__version__}\n")
-    print("Author: Reversec (reversec.com)\n")
 
+def main():
     parser = argparse.ArgumentParser(
-        description="SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation"
+        description=f"SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation - Version: {__version__}\n"
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress banner and informational messages",
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Sub-commands')
+    subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
     # === [INIT] Sub-command (NEW) ==============================================
-    parser_init = subparsers.add_parser('init', help='Initialize a local SPIKEE workspace')
-    parser_init.add_argument('--force', action='store_true',
-                             help='Overwrite existing directories if they exist.')
-    parser_init.add_argument('--include-builtin', choices=['none', 'all', 'plugins', 'judges', 'targets', 'attacks'],
-                             default='none',
-                             help='Copy built-in modules to local workspace (default: none)')
+    parser_init = subparsers.add_parser(
+        "init", help="Initialize a local SPIKEE workspace"
+    )
+    parser_init.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing directories if they exist.",
+    )
+    parser_init.add_argument(
+        "--include-builtin",
+        choices=["none", "all", "plugins", "judges", "targets", "attacks"],
+        default="none",
+        help="Copy built-in modules to local workspace (default: none)",
+    )
+    parser_init.add_argument(
+        "--include-viewer",
+        action="store_true",
+        help="Include the built-in web viewer in the local workspace",
+    )
 
     # === [GENERATE] Sub-command ===============================================
-    parser_generate = subparsers.add_parser('generate', help='Generate a dataset')
-    parser_generate.add_argument('--seed-folder', default='datasets/seeds-mini-test',
-                                 help='Name of seed folder in local "datasets/" or built-in package data')
-    parser_generate.add_argument('--positions', nargs='+', default=['end'],
-                                 help='Positions to insert jailbreaks (start, middle, end). Ignored if the document entry contains a placeholder attribute.')
-    parser_generate.add_argument('--injection-delimiters', default='\nINJECTION_PAYLOAD\n',
-                                 help='Comma-separated list of patterns to use when injecting payloads')
-    parser_generate.add_argument('--plugins', nargs='*', default=[],
-                                 help='List of plugin names to modify the jailbreak+instruction text')
-    parser_generate.add_argument('--plugin-options', default=None,
-                                 help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"')
-    parser_generate.add_argument('--include-standalone-inputs', action='store_true',
-                             help='Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)')      
-    parser_generate.add_argument('--standalone-attacks', default=None,
-                             help=argparse.SUPPRESS)  # hidden legacy alias
-    parser_generate.add_argument('--format', choices=['user-input', 'full-prompt', 'burp'],
-                             default='user-input',
-                             help='Output format: user-input (default, for apps), full-prompt, or burp')
-    parser_generate.add_argument('--spotlighting-data-markers', default='\nDOCUMENT\n',
-                                 help='Comma-separated list of data markers (placeholder: "DOCUMENT")')
-    parser_generate.add_argument('--languages', default=None,
-                                 help='Comma-separated list of languages to filter jailbreaks and instructions')
-    parser_generate.add_argument('--match-languages', type=str2bool, nargs='?', const=True, default=True,
-                                 help='Only combine jailbreaks and instructions with matching languages (default: True)')
-    parser_generate.add_argument('--instruction-filter', default=None,
-                                 help='Comma-separated list of instruction types to include')
-    parser_generate.add_argument('--jailbreak-filter', default=None,
-                                 help='Comma-separated list of jailbreak types to include')
-    parser_generate.add_argument('--include-suffixes', action='store_true',
-                                 help='Include advanced suffixes in the dataset generation')
-    parser_generate.add_argument('--include-system-message', action='store_true',
-                                 help='Include system message based on system_messages.toml')
-    parser_generate.add_argument('--tag', default=None,
-                                 help='Include a tag at the end of the generated dataset filename')
+    parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
+    subparsers_generate = parser_generate.add_subparsers(
+        dest="generate_command", help="Generation sub-commands"
+    )
+
+    parser_generate.add_argument(
+        "--seed-folder",
+        default="datasets/seeds-mini-test",
+        help='Name of seed folder in local "datasets/" or built-in package data',
+    )
+    parser_generate.add_argument(
+        "--positions",
+        nargs="+",
+        default=["end"],
+        help="Positions to insert jailbreaks (start, middle, end). Ignored if the document entry contains a placeholder attribute.",
+    )
+    parser_generate.add_argument(
+        "--injection-delimiters",
+        default="\nINJECTION_PAYLOAD\n",
+        help="Comma-separated list of patterns to use when injecting payloads",
+    )
+    parser_generate.add_argument(
+        "--plugins",
+        nargs="*",
+        default=[],
+        help="List of plugin names to modify the jailbreak+instruction text",
+    )
+    parser_generate.add_argument(
+        "--plugin-options",
+        default=None,
+        help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
+    )
+    parser_generate.add_argument(
+        "--plugin-only",
+        action="store_true",
+        help="Only output plugin entries",
+    )
+    parser_generate.add_argument(
+        "--include-standalone-inputs",
+        action="store_true",
+        help="Include standalone_user_inputs.jsonl (fallback: standalone_attacks.jsonl)",
+    )
+    parser_generate.add_argument(
+        "--standalone-attacks", default=None, help=argparse.SUPPRESS
+    )  # hidden legacy alias
+    parser_generate.add_argument(
+        "--format",
+        choices=["user-input", "full-prompt", "burp"],
+        default="user-input",
+        help="Output format: user-input (default, for apps), full-prompt (for llms), or burp",
+    )
+    parser_generate.add_argument(
+        "--spotlighting-data-markers",
+        default="\nDOCUMENT\n",
+        help='Comma-separated list of data markers (placeholder: "DOCUMENT")',
+    )
+    parser_generate.add_argument(
+        "--languages",
+        default=None,
+        help="Comma-separated list of languages to filter jailbreaks and instructions",
+    )
+    parser_generate.add_argument(
+        "--match-languages",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=True,
+        help="Only combine jailbreaks and instructions with matching languages (default: True)",
+    )
+    parser_generate.add_argument(
+        "--instruction-filter",
+        default=None,
+        help="Comma-separated list of instruction types to include",
+    )
+    parser_generate.add_argument(
+        "--jailbreak-filter",
+        default=None,
+        help="Comma-separated list of jailbreak types to include",
+    )
+    parser_generate.add_argument(
+        "--include-fixes",
+        default=None,
+        help="Comma-separated list of fix types to include (e.g., 'adv_prefixes', 'adv_suffixes', prefixes=<filename>, suffixes=<filename>, or prefix='Start your...')",
+    )
+    parser_generate.add_argument(
+        "--include-suffixes",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )  # hidden legacy alias for --include-fixes=adv_suffixes
+    parser_generate.add_argument(
+        "--include-system-message",
+        action="store_true",
+        help="Include system message based on system_messages.toml",
+    )
+    parser_generate.add_argument(
+        "--tag",
+        default=None,
+        help="Include a tag at the end of the generated dataset filename",
+    )
+
+    parser_plugin = subparsers_generate.add_parser(
+        "plugin", help="Apply a plugin transformation to a string"
+    )
+    parser_plugin.add_argument(
+        "-i",
+        "--input_string",
+        help="The string to transform using the specified plugin(s)",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--exclude-patterns",
+        action="append",
+        default=None,
+        help="regex patterns to exclude from plugin transformation",
+    )
+    parser_plugin.add_argument(
+        "--iterations",
+        type=int,
+        default=1,
+        help="Number of iterations to apply the plugin transformation (default: 1)",
+    )
+    parser_plugin.add_argument(
+        "--plugins",
+        nargs="*",
+        default=[],
+        help="List of plugin names to modify the jailbreak+instruction text",
+        required=True,
+    )
+    parser_plugin.add_argument(
+        "--plugin-options",
+        default=None,
+        help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
+    )
 
     # === [TEST] Sub-command ===================================================
-    parser_test = subparsers.add_parser('test', help='Test the dataset against a target')
-    parser_test.add_argument('--dataset', type=str, required=True,
-                             help='Path to the dataset file (local workspace)')
-    parser_test.add_argument('--target', type=str, required=True,
-                             help='Name of the target to test (in local or built-in targets/ dir)')
-    parser_test.add_argument('--target-options', type=str, required=False,
-                             help='Option to pass to the target [Optional]')
-    parser_test.add_argument('--threads', type=int, default=4,
-                             help='Number of threads for parallel processing')
-    parser_test.add_argument('--attempts', type=int, default=1,
-                             help='Number of attempts per payload (default: 1)')
-    parser_test.add_argument('--max-retries', type=int, default=3,
-                             help='Number of retries for failed requests due to API quotas/resources exhusted (default: 3)')
-    parser_test.add_argument('--judge-options', type=str, default=None,
-                             help='Judge options, typically the name of the LLM to use as a judge')
-    parser_test.add_argument('--resume-file', type=str, default=None,
-                             help='Path to a results JSONL file to resume from')
-    parser_test.add_argument('--throttle', type=float, default=0,
-                             help='Time in seconds to wait between requests per thread')
-    parser_test.add_argument('--attack', default=None,
-                             help='Name of the attack module (from the "attacks" folder) to use if standard attempts fail')
-    parser_test.add_argument('--attack-iterations', type=int, default=100,
-                             help='Number of attack iterations per dataset entry (if --attack is provided)')
-    parser_test.add_argument('--attack-options', default=None,
-                             help='Options to pass to the attack module (e.g., "mode-X")')
-    parser_test.add_argument('--tag', default=None,
-                             help='Include a tag at the end of the results filename')
-    parser_test.add_argument('--sample', type=float, default=None,
-                             help='Sample a percentage of the dataset (e.g., 0.15 for 15%%)')
-    parser_test.add_argument('--sample-seed', default='42',
-                             help='Seed for sampling (default: 42, or use "random" for random seed)')
+    parser_test = subparsers.add_parser(
+        "test", help="Test the dataset against a target"
+    )
+    parser_test.add_argument(
+        "--dataset",
+        type=str,
+        action="append",
+        help="Path to a dataset file (local workspace)",
+    )
+    parser_test.add_argument(
+        "--dataset-folder",
+        type=str,
+        action="append",
+        help="Path to a dataset folder containing multiple JSONL files",
+    )
+    parser_test.add_argument(
+        "--target",
+        type=str,
+        required=True,
+        help="Name of the target to test (in local or built-in targets/ dir)",
+    )
+    parser_test.add_argument(
+        "--target-options",
+        type=str,
+        required=False,
+        help="Option to pass to the target [Optional]",
+    )
+    parser_test.add_argument(
+        "--threads",
+        type=int,
+        default=4,
+        help="Number of threads for parallel processing",
+    )
+    parser_test.add_argument(
+        "--attempts",
+        type=int,
+        default=1,
+        help="Number of attempts per payload (default: 1)",
+    )
+    parser_test.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Number of retries for failed requests due to API quotas/resources exhusted (default: 3)",
+    )
+    parser_test.add_argument(
+        "--judge-options",
+        type=str,
+        default=None,
+        help="Judge options, typically the name of the LLM to use as a judge",
+    )
+    parser_test.add_argument(
+        "--resume-file",
+        type=str,
+        default=None,
+        help="Path to a results JSONL file to resume from. Only works with a single dataset.",
+    )
+    parser_test.add_argument(
+        "--throttle",
+        type=float,
+        default=0,
+        help="Time in seconds to wait between requests per thread",
+    )
+    parser_test.add_argument(
+        "--attack",
+        default=None,
+        help='Name of the attack module (from the "attacks" folder) to use if standard attempts fail',
+    )
+    parser_test.add_argument(
+        "--attack-iterations",
+        type=int,
+        default=10,
+        help="Number of attack iterations per dataset entry (if --attack is provided)",
+    )
+    parser_test.add_argument(
+        "--attack-options",
+        default=None,
+        help='Options to pass to the attack module (e.g., "mode-X")',
+    )
+    parser_test.add_argument(
+        "--attack-only",
+        action="store_true",
+        help="Only run the attack module without standard attempts",
+    )
+    parser_test.add_argument(
+        "--tag", default=None, help="Include a tag at the end of the results filename"
+    )
+    parser_test.add_argument(
+        "--sample",
+        type=float,
+        default=None,
+        help="Sample a percentage of the dataset (e.g., 0.15 for 15%%)",
+    )
+    parser_test.add_argument(
+        "--sample-seed",
+        default="42",
+        help='Seed for sampling (default: 42, or use "random" for random seed)',
+    )
+    group_resume = parser_test.add_mutually_exclusive_group()
+    group_resume.add_argument(
+        "--auto-resume",
+        action="store_true",
+        help="Silently pick the latest matching results file if present",
+    )
+    group_resume.add_argument(
+        "--no-auto-resume",
+        action="store_true",
+        help="Create new results file, do not attempt to resume",
+    )
 
     # === [RESULTS] Sub-command ================================================
-    parser_results = subparsers.add_parser('results', help='Analyze or convert results')
-    subparsers_results = parser_results.add_subparsers(dest='results_command',
-                                                       help='Results sub-commands')
+    parser_results = subparsers.add_parser("results", help="Analyze or convert results")
+    subparsers_results = parser_results.add_subparsers(
+        dest="results_command", help="Results sub-commands"
+    )
 
     # --- analyze
-    parser_analyze = subparsers_results.add_parser('analyze', help='Analyze the results JSONL file')
-    parser_analyze.add_argument('--result-file', type=str, required=True,
-                                help='Path to the results JSONL file')
-    parser_analyze.add_argument('--false-positive-checks', type=str, default=None,
-                                help='Path to a JSONL file with benign prompts for false positive analysis')
-    parser_analyze.add_argument('--output-format', choices=['console', 'html'], default='console',
-                                help='Output format: console (default) or html')
+    parser_analyze = subparsers_results.add_parser(
+        "analyze", help="Analyze the results JSONL file"
+    )
+    parser_analyze.add_argument(
+        "--result-file", type=str, action="append", help="Path to a results JSONL file"
+    )
+    parser_analyze.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
+    )
+    parser_analyze.add_argument(
+        "--false-positive-checks",
+        type=str,
+        default=None,
+        help="Path to a JSONL file with benign prompts for false positive analysis. Only works with a single dataset.",
+    )
+    parser_analyze.add_argument(
+        "--output-format",
+        choices=["console", "html"],
+        default="console",
+        help="Output format: console (default) or html",
+    )
+    parser_analyze.add_argument(
+        "--overview",
+        action="store_true",
+        help="Only output the general statistics of results files.",
+    )
+    parser_analyze.add_argument(
+        "--combine",
+        action="store_true",
+        help="Combine results from multiple files into a single analysis.",
+    )
 
     # --- rejudge
-    parser_rejudge = subparsers_results.add_parser('rejudge', help='Re-judge an offline results JSONL file')
-    parser_rejudge.add_argument('--result-file', type=str, action='append', required=True, help='Path to the results JSONL file')
-    parser_rejudge.add_argument('--judge-options', type=str, default=None, help='Judge options, typically the name of the LLM to use as a judge')
-    parser_rejudge.add_argument('--resume', action='store_true',
-                                help='This will attempt to resume a re-judge the most recent results file. (Requires filename to be unmodified and in the same folder.)')
+    parser_rejudge = subparsers_results.add_parser(
+        "rejudge", help="Re-judge an offline results JSONL file"
+    )
+    parser_rejudge.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to a results JSONL file",
+    )
+    parser_rejudge.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
+    )
+    parser_rejudge.add_argument(
+        "--judge-options",
+        type=str,
+        default=None,
+        help="Judge options, typically the name of the LLM to use as a judge",
+    )
+    parser_rejudge.add_argument(
+        "--resume",
+        action="store_true",
+        help="This will attempt to resume a re-judge the most recent results file. (Requires filename to be unmodified and in the same folder.)",
+    )
+
+    # --- extract
+    parser_extract = subparsers_results.add_parser(
+        "extract", help="Extract categories of prompts from results JSONL files."
+    )
+    parser_extract.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to a results JSONL file",
+    )
+    parser_extract.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files",
+    )
+    parser_extract.add_argument(
+        "--category",
+        choices=["success", "failure", "error", "guardrail", "no-guardrail", "custom"],
+        default="success",
+        help="Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom",
+    )
+    parser_extract.add_argument(
+        "--custom-search",
+        type=str,
+        default=None,
+        help="Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match",
+    )
+    parser_extract.add_argument(
+        "--tag", default=None, help="Include a tag at the end of the results filename"
+    )
+
+    # -- dataset-comparison
+    parser_dataset_comparison = subparsers_results.add_parser(
+        "dataset-comparison", help="Compare a dataset's results across multiple targets"
+    )
+    parser_dataset_comparison.add_argument(
+        "--dataset",
+        type=str,
+        required=True,
+        help="Path to the dataset JSONL file",
+    )
+    parser_dataset_comparison.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to an results JSONL file, generated using the dataset",
+    )
+    parser_dataset_comparison.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files, generated using the dataset",
+    )
+    parser_dataset_comparison.add_argument(
+        "--success-threshold",
+        type=float,
+        default=0.8,
+        help="Success threshold for entries (default: 0.8). Success rate is defined as successes / no. datasets",
+    )
+    parser_dataset_comparison.add_argument(
+        "--success-definition",
+        choices=["gt", "lt"],
+        default="gt",
+        help="Definition of success threshold: gt (greater than, default) or lt (less than)",
+    )
+    parser_dataset_comparison.add_argument(
+        "-n",
+        "--number",
+        type=int,
+        default="-1",
+        help="Number of top entries to include in the comparison (default: all entries)",
+    )
+    parser_dataset_comparison.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip validation of dataset entries against results files",
+    )
+    parser_dataset_comparison.add_argument(
+        "--tag", default=None, help="Include a tag at the end of the results filename"
+    )
+
+    # === [Viewer] Sub-command ================================================
+    parser_viewer = subparsers.add_parser("viewer", help="Launch local web viewers")
+    subparsers_viewer = parser_viewer.add_subparsers(
+        dest="viewer_command", help="Viewer sub-commands"
+    )
+    parser_viewer.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address for the prompt viewer (default: 127.0.0.1)",
+    )
+    parser_viewer.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8080,
+        help="Port number for the prompt viewer (default: 8080)",
+    )
+    parser_viewer.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Run the viewer in debug mode with hot-reloading (default: False)",
+    )
+    parser_viewer.add_argument(
+        "--truncate",
+        type=int,
+        default=500,
+        help="Truncate long prompt entries in the viewer for better performance (default: 500 characters, set to 0 to disable truncation)",
+    )
+
+    parser_result_viewer = subparsers_viewer.add_parser(
+        "results", help="Launch a local result viewer, for results JSONL files"
+    )
+    parser_result_viewer.add_argument(
+        "--result-file",
+        type=str,
+        action="append",
+        help="Path to an results JSONL file, generated using the dataset",
+    )
+    parser_result_viewer.add_argument(
+        "--result-folder",
+        type=str,
+        action="append",
+        help="Path to a results folder containing multiple JSONL files, generated using the dataset",
+    )
+    parser_result_viewer.add_argument(
+        "--allow-ast",
+        action="store_true",
+        help="Allow AST parsing in the result viewer (use with caution)",
+    )
 
     # --- convert-to-excel
-    parser_convert_to_excel = subparsers_results.add_parser('convert-to-excel',
-                                                            help='Convert results JSONL file to Excel')
-    parser_convert_to_excel.add_argument('--result-file', type=str, required=True,
-                                         help='Path to the results JSONL file')
+    parser_convert_to_excel = subparsers_results.add_parser(
+        "convert-to-excel", help="Convert results JSONL file to Excel"
+    )
+    parser_convert_to_excel.add_argument(
+        "--result-file", type=str, required=True, help="Path to the results JSONL file"
+    )
 
     # === [LIST] Sub-command ================================================
-    parser_list = subparsers.add_parser('list', help='List seeds, datasets, targets, or plugins')
-    list_subparsers = parser_list.add_subparsers(dest='list_command', help='What to list')
-    list_subparsers.add_parser('seeds', help='List available seed folders')
-    list_subparsers.add_parser('datasets', help='List available dataset .jsonl files')
-    list_subparsers.add_parser('judges', help='List available judges')
-    list_subparsers.add_parser('targets', help='List available targets')
-    list_subparsers.add_parser('plugins', help='List available plugins')
-    list_subparsers.add_parser('attacks', help='List available attack scripts')
+    parser_list = subparsers.add_parser(
+        "list",
+        help="List seeds, datasets, judges, targets, plugins, attacks, or providers",
+    )
+    list_subparsers = parser_list.add_subparsers(
+        dest="list_command", help="What to list"
+    )
+
+    list_subparsers.add_parser("seeds", help="List available seed folders")
+    list_subparsers.add_parser("datasets", help="List available dataset .jsonl files")
+
+    for subparser in [
+        list_subparsers.add_parser("targets", help="List available targets"),
+        list_subparsers.add_parser("judges", help="List available judges"),
+        list_subparsers.add_parser("plugins", help="List available plugins"),
+        list_subparsers.add_parser("attacks", help="List available attack scripts"),
+        list_subparsers.add_parser("providers", help="List available providers"),
+    ]:
+        subparser.add_argument(
+            "-d",
+            "--description",
+            action="store_true",
+            help="Include descriptions of modules where available",
+        )
 
     args = convert_to_new_args(parser.parse_args())
 
-    if args.command == 'init':
-        init_workspace(force=args.force, include_builtin=args.include_builtin)
+    # Print banner and info unless quiet mode is enabled
+    if not getattr(args, "quiet", False):
+        print(banner)
+        print("SPIKEE - Simple Prompt Injection Kit for Evaluation and Exploitation")
+        print(f"Version: {__version__}\n")
+        print("Author: Reversec (reversec.com)\n")
 
-    elif args.command == 'generate':
-        generate_dataset(args)
-    elif args.command == 'test':
+    if args.command == "init":
+        init_workspace(
+            force=args.force,
+            include_builtin=args.include_builtin,
+            include_viewer=args.include_viewer,
+        )
+
+    elif args.command == "generate":
+        if args.generate_command == "plugin":
+            generate_plugin(args)
+        else:
+            generate_dataset(args)
+    elif args.command == "test":
         test_dataset(args)
-    elif args.command == 'results':
-        if args.results_command == 'analyze':
+    elif args.command == "results":
+        if args.results_command == "analyze":
             analyze_results(args)
-        elif args.results_command == 'rejudge':
+        elif args.results_command == "rejudge":
             rejudge_results(args)
-        elif args.results_command == 'convert-to-excel':
+        elif args.results_command == "extract":
+            extract_results(args)
+        elif args.results_command == "dataset-comparison":
+            dataset_comparison(args)
+        elif args.results_command == "convert-to-excel":
             convert_results_to_excel(args)
         else:
             parser_results.print_help()
-    elif args.command == 'list':
-        if args.list_command == 'seeds':
+
+    elif args.command == "viewer":
+        if args.viewer_command == "results":
+            viewer = ResultsViewer(args)
+            viewer.run_viewer(args)
+        else:
+            parser_viewer.print_help()
+
+    elif args.command == "list":
+        if args.list_command == "seeds":
             list_seeds(args)
-        elif args.list_command == 'datasets':
+        elif args.list_command == "datasets":
             list_datasets(args)
-        elif args.list_command == 'judges':
+        elif args.list_command == "judges":
             list_judges(args)
-        elif args.list_command == 'targets':
+        elif args.list_command == "targets":
             list_targets(args)
-        elif args.list_command == 'plugins':
+        elif args.list_command == "plugins":
             list_plugins(args)
-        elif args.list_command == 'attacks':
+        elif args.list_command == "attacks":
             list_attacks(args)
+        elif args.list_command == "providers":
+            list_providers(args)
         else:
             parser_list.print_help()
     else:
@@ -226,7 +659,7 @@ def main():
         sys.exit(1)
 
 
-def init_workspace(force=False, include_builtin='none'):
+def init_workspace(force=False, include_builtin="none", include_viewer=False):
     """
     Copy the entire 'data/workspace' directory from the installed package
     into the user's current working directory. This sets up the local spikee workspace
@@ -244,6 +677,9 @@ def init_workspace(force=False, include_builtin='none'):
     # We'll do this by manually copying sub-items, skipping if they exist.
     for item in src_folder.iterdir():
         destination = workspace_dest / item.name
+
+        if item.name == "viewer" and not include_viewer:
+            continue
 
         if destination.exists() and not force:
             print(f"[init] '{destination}' already exists. Use --force to overwrite.")
@@ -268,7 +704,7 @@ def init_workspace(force=False, include_builtin='none'):
     print("[init] Local spikee workspace has been initialized.")
 
     # Handle copying built-in modules if requested
-    if include_builtin != 'none':
+    if include_builtin != "none":
         copy_builtin_modules(include_builtin, force)
 
 
@@ -283,9 +719,9 @@ def copy_builtin_modules(include_option, force=False):
     spikee_path = Path(spikee.__file__).parent
 
     # Determine which module types to copy
-    if include_option == 'all':
-        module_types = ['plugins', 'judges', 'targets', 'attacks']
-    elif include_option in ['plugins', 'targets', 'attacks']:
+    if include_option == "all":
+        module_types = ["plugins", "judges", "targets", "attacks"]
+    elif include_option in ["plugins", "targets", "attacks"]:
         module_types = [include_option]
     else:
         module_types = []
@@ -297,7 +733,9 @@ def copy_builtin_modules(include_option, force=False):
 
             # Ensure the module directory exists in the package
             if not module_dir.is_dir():
-                print(f"[init] Warning: Built-in {module_type} directory not found at {module_dir}")
+                print(
+                    f"[init] Warning: Built-in {module_type} directory not found at {module_dir}"
+                )
                 continue
 
             # Ensure local directory exists
@@ -313,18 +751,24 @@ def copy_builtin_modules(include_option, force=False):
                 dest_file = local_dir / file_path.name
 
                 if dest_file.exists() and not force:
-                    print(f"[init] '{dest_file}' already exists. Use --force to overwrite.")
+                    print(
+                        f"[init] '{dest_file}' already exists. Use --force to overwrite."
+                    )
                     continue
 
                 try:
                     shutil.copy2(file_path, dest_file)
                     modules_copied += 1
-                    print(f"[init] Copied built-in {module_type}/{file_path.name} to local workspace")
+                    print(
+                        f"[init] Copied built-in {module_type}/{file_path.name} to local workspace"
+                    )
                 except Exception as e:
                     print(f"[init] Error copying {module_type}/{file_path.name}: {e}")
 
             if modules_copied > 0:
-                print(f"[init] Copied {modules_copied} built-in {module_type} to local workspace")
+                print(
+                    f"[init] Copied {modules_copied} built-in {module_type} to local workspace"
+                )
             else:
                 print(f"[init] No built-in {module_type} were copied")
 

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="content" class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 d-flex flex-column">
+            <h5>Analysis of Results File: <strong>{{selected_files}}</strong></h5>
+            <pre>{{ loaded_result_processor|safe }}</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

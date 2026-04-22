@@ -12,7 +12,11 @@ permissions:
   contents: write  # needed to push commit + tag
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yaml
+
   release:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +35,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+
+      - name: Install linters
+        run: pip install ruff
+
+      - name: Auto-format, sort imports, and fix lint
+        shell: bash
+        run: |
+          ruff format .
+          ruff check --fix .
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "style: auto-format & lint via ruff"
+            git push
+          fi
 
       - name: Install tools
         run: pip install toml
@@ -54,20 +74,31 @@ jobs:
               print("pyproject.toml missing [project].version", file=sys.stderr)
               sys.exit(1)
 
-          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current)
+          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-(dev))?", current)
           if not m:
-              print(f"Current version not simple x.y.z: {current}", file=sys.stderr)
+              print(f"Current version not simple x.y.z or x.y.z-dev: {current}", file=sys.stderr)
               sys.exit(1)
 
-          major, minor, patch = map(int, m.groups())
-          if release_type == "major":
-              major, minor, patch = major + 1, 0, 0
-          elif release_type == "minor":
-              minor, patch = minor + 1, 0
-          else:  # patch
-              patch += 1
+          major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
+          is_dev = bool(m.group(4))
+
+          if is_dev:
+              if release_type == "major":
+                  major, minor, patch = major + 1, 0, 0
+              elif release_type == "minor":
+                  minor, patch = minor + 1, 0
+              else:  # patch
+                  pass # drop -dev
+          else:
+              if release_type == "major":
+                  major, minor, patch = major + 1, 0, 0
+              elif release_type == "minor":
+                  minor, patch = minor + 1, 0
+              else:  # patch
+                  patch += 1
 
           new_version = f"{major}.{minor}.{patch}"
+          next_dev_version = f"{major}.{minor}.{patch + 1}-dev"
 
           # --- Write back pyproject.toml
           data["project"]["version"] = new_version
@@ -81,7 +112,7 @@ jobs:
           readme = root / "README.md"
           if readme.exists():
               txt = readme.read_text()
-              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+)(\s*_)",
+              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
                                    rf"\g<1>{new_version}\3", txt, count=1)
               if n:
                   readme.write_text(new_txt)
@@ -94,18 +125,98 @@ jobs:
           # Output for later steps
           print(f"current={current}")
           print(f"new={new_version}")
+          print(f"next_dev={next_dev_version}")
           (root / "NEW_VERSION.txt").write_text(new_version)
+          (root / "NEXT_DEV_VERSION.txt").write_text(next_dev_version)
           PY
 
           echo "new_version=$(cat NEW_VERSION.txt)" >> $GITHUB_OUTPUT
+          echo "next_dev_version=$(cat NEXT_DEV_VERSION.txt)" >> $GITHUB_OUTPUT
 
+      - name: Prepend release section to CHANGELOG.md
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          release_date="$(date -u +%Y-%m-%d)"
+
+          # Determine previous tag if any
+          if prev_tag=$(git describe --tags --abbrev=0 2>/dev/null); then
+            range="${prev_tag}..HEAD"
+          else
+            range="HEAD"
+          fi
+
+          # Collect commit subjects excluding merges
+          mapfile -t COMMITS < <(git log --no-merges --pretty=format:%s "$range" || true)
+
+          # Classify commits by prefix
+          FEATURES=()
+          FIXES=()
+          CHANGES=()
+          DATASETS=()
+          for s in "${COMMITS[@]:-}"; do
+            case "$s" in
+              feat:*|feature:*)  FEATURES+=("${s#*: }") ;;
+              fix:*|bug:*|bugfix:*)  FIXES+=("${s#*: }") ;;
+              change:*)  CHANGES+=("${s#*: }") ;;
+              dataset:*) DATASETS+=("${s#*: }") ;;
+              *) ;; # ignore dev:, docs:, chore:, etc.
+            esac
+          done
+
+          # Ensure CHANGELOG.md exists with header
+          if [ ! -f CHANGELOG.md ]; then
+            printf '%s\n\n%s\n\n' \
+              '# Changelog' \
+              'All notable changes to this project will be documented in this file.' \
+              > CHANGELOG.md
+          fi
+
+          # Build new section
+          section_file="$(mktemp)"
+          {
+            printf '## [%s] - %s\n\n' "$VERSION" "$release_date"
+            if [ "${#FEATURES[@]}" -gt 0 ]; then
+              printf '### Features\n\n'
+              for s in "${FEATURES[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#FIXES[@]}" -gt 0 ]; then
+              printf '### Fixes\n\n'
+              for s in "${FIXES[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#CHANGES[@]}" -gt 0 ]; then
+              printf '### Changes\n\n'
+              for s in "${CHANGES[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+            if [ "${#DATASETS[@]}" -gt 0 ]; then
+              printf '### Datasets\n\n'
+              for s in "${DATASETS[@]}"; do printf -- '- %s\n' "$s"; done
+              printf '\n'
+            fi
+          } > "$section_file"
+
+          # Prepend new section after header (3 lines)
+          new_file="$(mktemp)"
+          {
+            head -n 3 CHANGELOG.md 2>/dev/null || true
+            cat "$section_file"
+            if [ -f CHANGELOG.md ]; then
+              tail -n +4 CHANGELOG.md
+            fi
+          } > "$new_file"
+          mv "$new_file" CHANGELOG.md
+      
       - name: Commit and tag
         shell: bash
         run: |
           VERSION="${{ steps.bump.outputs.new_version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml spikee/__init__.py README.md || true
+          git add pyproject.toml spikee/__init__.py README.md CHANGELOG.md || true
           git commit -m "Release ${VERSION}" || echo "No changes to commit."
           git tag "v${VERSION}"
           git push origin HEAD --tags
@@ -120,3 +231,40 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Bump to next dev version
+        shell: bash
+        run: |
+          NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
+          python - <<EOF
+          import toml, pathlib, re
+          root = pathlib.Path(".")
+          
+          # pyproject.toml
+          pp = root / "pyproject.toml"
+          data = toml.load(pp.open())
+          data["project"]["version"] = "${NEXT_DEV}"
+          pp.write_text(toml.dumps(data))
+          
+          # __init__.py
+          initp = root / "spikee" / "__init__.py"
+          initp.write_text('__version__ = "${NEXT_DEV}"\n')
+
+          # README.md
+          readme = root / "README.md"
+          if readme.exists():
+              txt = readme.read_text()
+              new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
+                                   rf"\g<1>${NEXT_DEV}\3", txt, count=1)
+              if n:
+                  readme.write_text(new_txt)
+                  print("Updated README.md to next dev version.")
+              else:
+                  print("NOTE: README.md version pattern not found; left unchanged.")
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml spikee/__init__.py README.md
+          git commit -m "chore: bump version to ${NEXT_DEV}"
+          git push origin HEAD

@@ -1,33 +1,38 @@
-# Spikee Documentation - Table of Contents
+# Spikee Documentation
 
-This page provides an index of all detailed guides for Spikee.
+## Guides
+- **[Quick Start Guide](../README.md#a-quick-start-guide-to-using-spikee)** - A concise walkthrough of the core Spikee workflow, from installation to results analysis.
+- **[How to Spikee](./how-to-spikee/README.md)** - A step-by-step tutorial, covering using Spikee for testing, and developing custom modules.
 
-1.  **[Built-in Seeds and Datasets](./01_builtin_seeds_and_datasets.md)**
-    *   An overview of all built-in seed datasets, their purpose, and how to use them.
+## Reference Pages
+- **[Cheatsheet](./01_cheatsheet.md)** - A reference for all Spikee CLI commands, flags, and arguments.
+- **[Built-in Seeds and Modules](./02_builtin.md)** - A reference for all built-in seeds, targets, plugins, attacks, and judges.
+- **[LLM Providers](./03_llm_providers.md)** - An overview of the built-in LLM utility, and provider modules.
+  
+## Generation and Testing Workflows
+- **[Dataset Generation](./04_dataset_generation.md)** - A reference for `spikee generate`, explaining how to generate datasets and utilise arguments to modify datasets.
+  
+- **[Testing](./05_testing.md)** - A reference for `spikee test`, explaining how to test an LLM, application or guardrail and utilise arguments to modify testing behavior.
 
-2.  **[Dataset Generation Options](./02_dataset_generation_options.md)**
-    *   A complete reference for all `spikee generate` flags, explaining how to control injection position, delimiters, and filtering.
+- **[Testing Guardrails Using Spikee](./10_guardrail_testing.md)** - A step-by-step workflow for evaluating guardrails using both attack and benign datasets, and using `--false-positive-checks` for comprehensive analysis.
 
-3.  **[Creating Custom Targets](./03_custom_targets.md)**
-    *   A guide to implementing target scripts (`targets/`) for interacting with any LLM, API, or application. Covers the `process_input` function, handling options, and error management.
+- **[Spikee Results](./11_results.md)** - A guide to understanding the results analysis tools available in Spikee including `analyze` and `extract`. Explains core metrics, multi-file analysis, and various result commands.
+  
+## Custom Modules and Development
+- **[Creating Custom Targets](./06_custom_targets.md)** - A guide to implementing target modules for interacting with any LLM, application or guardrail.
+  
+- **[Creating Custom Plugins](./07_custom_plugins.md)** - A guide to implementing plugin modules for transforming payloads during dataset generation.
+    
+- **[Creating Dynamic Attack Scripts](./08_dynamic_attacks.md)** - A guide to implementing dynamic attack modules, for real-time generation of attack payloads.
+  
+- **[Judges](./09_judges.md)** - An introduction to judge modules, used to evaluate target responses. Covers basic and LLM judges, their implementation and usage.
 
-4.  **[Developing Custom Plugins](./04_custom_plugins.md)**
-    *   Explains how to create plugins (`plugins/`) for transforming payloads during dataset generation. Covers the `transform` function and handling `exclude_patterns`.
+- **[Creating Provider Modules](./03_llm_providers.md#creating-custom-provider-modules)** - A guide to implementing provider modules for integrating any LLM with Spikee's.
+  
 
-5.  **[Writing Dynamic Attack Scripts](./05_dynamic_attacks.md)**
-    *   Details how to build iterative attack scripts (`attacks/`). Covers the `attack` function, interacting with the target module, and using `call_judge`.
-
-6.  **[Judges: Evaluating Attack Success](./06_judges.md)**
-    *   An explanation of the judge system for evaluating test outcomes. Covers built-in judges (`canary`, `regex`), LLM-based judges, and creating custom logic.
-
-7.  **[Testing Guardrails](./07_guardrail_testing.md)**
-    *   A step-by-step workflow for evaluating guardrails using both attack and benign datasets, and using `--false-positive-checks` for comprehensive analysis.
-
-8.  **[Interpreting Spikee Results](./08_interpreting_results.md)**
-    *   A guide to understanding the output of `spikee results analyze`. Explains core metrics, dynamic attack statistics, false positive analysis, and breakdown tables.
-
-9.  **[Generating Custom Datasets with an LLM](./09_llm_dataset_generation.md)**
-    *   Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_user_inputs.jsonl` and custom `instructions.jsonl` files.
-
-10. **[Adaptive Random Suffix Attack](./10_adaptive_rsa.md)**
-    *   A comprehensive guide to the Adaptive Random Suffix Attack, including configuration options, dual optimization features, and guardrail testing workflows.
+## Additional Resources
+- **[Installing Spikee in an Isolated Environment](./12_installing_spikee_in_isolated_environments.md)** - A step-by-step guide on how to install Spikee in a test environment that has limited / no internet access.
+  
+- **[Generating Custom Datasets with an LLM](./13_llm_dataset_generation.md)** - Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_user_inputs.jsonl` and custom `instructions.jsonl` files.
+  
+- **[Functional Testing Guide](./14_functional_testing.md)** - Run the end-to-end CLI regression suite locally using pytest.

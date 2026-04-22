@@ -1,51 +1,142 @@
 import os
 import re
-import json
 import time
-import importlib
 import random
+import asyncio
 import threading
 import inspect
 import traceback
+import sys
+import multiprocessing
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
+from datetime import datetime
+from InquirerPy import inquirer
+from typing import Any, Tuple, Union
+
+from spikee.templates.target import Target
 
 from .judge import annotate_judge_options, call_judge
+from .utilities.enums import Turn
+from .utilities.files import (
+    read_jsonl_file,
+    write_jsonl_file,
+    append_jsonl_entry,
+    process_jsonl_input_files,
+    extract_resource_name,
+    build_resource_name,
+    prepare_output_file,
+    does_resource_name_match,
+)
+from .utilities.modules import load_module_from_path, get_default_option
+from .utilities.tags import validate_and_get_tag
+
+
+class GuardrailTrigger(Exception):
+    """Exception raised when a guardrail is triggered."""
+
+    def __init__(self, message, categories={}):
+        super().__init__(message)
+        self.categories = categories
+
+
+class RetryableError(Exception):
+    """Exception raised for errors that are retryable, such as 429 errors."""
+
+    def __init__(self, message, retry_period=None):
+        super().__init__(message)
+        self.retry_period = retry_period
+
+
+class MultiTurnSkip(Exception):
+    """Exception raised to skip multi-turn entries being processed as single-turn."""
+
+    pass
 
 
 class AdvancedTargetWrapper:
     """
     A wrapper for a target module's process_input method that incorporates both:
-      - A loop for a given number of independent attempts (num_attempts), and
       - A retry strategy for handling 429 errors (max_retries) with throttling.
+      - Transparent forwarding of only the kwargs the wrapped target supports.
 
     This is designed to be passed to the attack() function so that each call to process_input()
-    will try up to num_attempts times (each with up to max_retries on quota errors) before failing.
+    will try up to max_retries times before failing.
 
     Parameters:
       target_module: The original target module that provides process_input(input_text, system_message[, logprobs]).
       target_options: Target options, typically a string representing the name of the llm to call
-      num_attempts (int): Number of independent attempts to call process_input per invocation.
       max_retries (int): Maximum number of retries per attempt (e.g. on 429 errors).
       throttle (float): Number of seconds to wait after a successful call.
+
+    KWARGS (if supported):
+      target_options (str): User requested options to pass to the target.
+      logprobs (bool): Whether to request logprobs from the target.
+      input_id (str): Input identifier of current entry.
+      output_file (str): Output results file path.
+
+      spikee_session_id (str): Spikee session identifier - Multi-Turn.
+      backtrack (bool): Whether to backtrack the last turn - Multi-Turn.
     """
 
-    def __init__(self, target_module, target_options=None, max_retries=3, throttle=0):
-        self.target_module = target_module
-        self.target_options = target_options
-        self.max_retries = max_retries
-        self.throttle = throttle
+    def __init__(
+        self, target_module: Target, target_options="", max_retries=3, throttle=0
+    ):
+        self.target_module: Target = target_module
+        self.target_options: str = target_options
+        self.max_retries: int = max_retries
+        self.throttle: float = throttle
+
+        if not hasattr(self.target_module, "config"):
+            self.config = {
+                "single-turn": True,
+                "multi-turn": False,
+                "backtrack": False,
+            }
+            self.target_module.config = self.config
+        else:
+            self.config = self.target_module.config
 
         sig = inspect.signature(self.target_module.process_input)
         params = sig.parameters
-        # detect optional parameters that were only added in newer Spikee versions
-        self.supports_options = 'target_options' in params
-        self.supports_logprobs = 'logprobs' in params
-        self.supports_n_logprobs = 'n_logprobs' in params
+        # Detect support for optional features using available parameters and target config
+        self.supports_options = "target_options" in params
+        self.supports_logprobs = "logprobs" in params
+        self.supports_input_id = "input_id" in params
+        self.supports_output_file = "output_file" in params
 
-    def process_input(self, input_text, system_message=None, logprobs=False, n_logprobs=0):
-        last_error = None
+        self.supports_spikee_session_id = "spikee_session_id" in params
+        self.supports_backtrack = "backtrack" in params
+
+    @classmethod
+    def create_target_wrapper(cls, target_name, target_options, max_retries, throttle):
+        """Static method to create an AdvancedTargetWrapper for a given target name."""
+        target_mod = load_module_from_path(target_name, "targets")
+
+        # Wrap the target module with AdvancedTargetWrapper
+        return cls(
+            target_mod,
+            max_retries=max_retries,
+            throttle=throttle,
+            target_options=target_options,
+        )
+
+    def get_target(self):
+        """Returns the underlying target module."""
+        return self.target_module
+
+    def process_input(
+        self,
+        input_text,
+        system_message=None,
+        logprobs=False,
+        input_id=None,
+        output_file=None,
+        spikee_session_id=None,
+        backtrack=False,
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+        last_error: Union[Exception, None] = None
         retries = 0
 
         while retries < self.max_retries:
@@ -54,32 +145,74 @@ class AdvancedTargetWrapper:
                 # Older targets without these parameters will simply be called without them.
                 kwargs = {}
                 if self.supports_options and self.target_options is not None:
-                    kwargs['target_options'] = self.target_options
+                    kwargs["target_options"] = self.target_options
                 if self.supports_logprobs:
-                    kwargs['logprobs'] = logprobs
-                    if self.supports_n_logprobs and logprobs and n_logprobs > 0:
-                        kwargs['n_logprobs'] = n_logprobs
+                    kwargs["logprobs"] = logprobs
+                if self.supports_input_id:
+                    kwargs["input_id"] = input_id
+                if self.supports_output_file:
+                    kwargs["output_file"] = output_file
+                if self.supports_spikee_session_id:
+                    kwargs["spikee_session_id"] = spikee_session_id
+                if self.supports_backtrack:
+                    kwargs["backtrack"] = backtrack
 
-                # Delegate to the wrapped process_input
+                # Correct Multi-Turn -> Single-Turn handling
+                if isinstance(input_text, list):
+                    # input_text = "\n".join(input_text)
+                    raise MultiTurnSkip(
+                        "Multi-Turn Skip - Process via Multi-Turn capable attack."
+                    )
+
+                    # Delegate to the wrapped process_input
                 if kwargs:
-                    result = self.target_module.process_input(
-                        input_text, system_message, **kwargs
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
+                        self.target_module.process_input(
+                            input_text, system_message, **kwargs
+                        )
                     )
                 else:
-                    result = self.target_module.process_input(
-                        input_text, system_message
+                    result: Union[str, bool, Tuple[Union[str, bool], Any]] = (
+                        self.target_module.process_input(input_text, system_message)
                     )
 
-                # Unpack (response, logprobs) if tuple returned
+                # Unpack (response, meta) if tuple returned
+                response: Union[str, bool]
+                meta: Any = None
                 if isinstance(result, tuple) and len(result) == 2:
-                    response, lp = result
+                    response, meta = result
+                elif isinstance(result, str) or isinstance(result, bool):
+                    response = result
                 else:
-                    response, lp = result, None
-
+                    raise ValueError(
+                        "Invalid return type from target's process_input. Expected str, (str, meta), or bool.",
+                        str(type(result)),
+                    )
                 if self.throttle > 0:
                     time.sleep(self.throttle)
 
-                return response, lp
+                return response, meta
+
+            except GuardrailTrigger as gt:
+                last_error = gt
+                retries += 1
+
+            except RetryableError as e:
+                last_error = e
+                if retries < self.max_retries - 1:
+                    wait_time = (
+                        e.retry_period
+                        if e.retry_period is not None
+                        else random.randint(30, 120)
+                    )
+                    time.sleep(wait_time)
+                    retries += 1
+                else:
+                    break
+
+            except MultiTurnSkip as e:
+                last_error = e
+                break
 
             except Exception as e:
                 last_error = e
@@ -91,145 +224,224 @@ class AdvancedTargetWrapper:
                     break
 
         # All retries exhausted
+
+        if last_error is None:
+            last_error = Exception("Unknown error in AdvancedTargetWrapper.")
         raise last_error
 
 
-def validate_tag(tag):
+# region resource_utilities
+def _build_target_name(target, target_options):
     """
-    Validates that a tag is safe to use in a filename.
-
-    Args:
-        tag (str): The tag to validate
-
-    Returns:
-        tuple: (is_valid, error_message)
-            - is_valid (bool): True if tag is valid, False otherwise
-            - error_message (str): Reason for validation failure or None if valid
+    Builds a target's name, returning "target-target_options".
+    If no target_options provided, attempts to get default option from target module.
     """
-    if tag is None:
-        return True, None
 
-    # Check for empty string after stripping whitespace
-    if len(tag.strip()) == 0:
-        return False, "Tag cannot be empty or whitespace only"
+    # Matches Invalid Windows Characters
+    regex_pattern = r'(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'
 
-    # Check length (reasonable max length for filename component)
-    MAX_LENGTH = 50
-    if len(tag) > MAX_LENGTH:
-        return False, f"Tag exceeds maximum length of {MAX_LENGTH} characters"
+    def replacer(match):
+        if match.group(1) or match.group(2):  # If at start/end of string, just remove
+            return ""
+        else:  # If in middle of string, replace with '~'
+            return "~"
 
-    # Check for valid characters - alphanumeric, dash and underscore only
-    pattern = re.compile(r'^[a-zA-Z0-9_-]+$')
-    if not pattern.match(tag):
-        return False, "Tag can only contain letters, numbers, dash (-) and underscore (_)"
-
-    return True, None
-
-
-def extract_dataset_name(file_name):
-    file_name = os.path.basename(file_name)
-    file_name = re.sub(r'^\d+-', '', file_name)
-    file_name = re.sub(r'.jsonl$', '', file_name)
-    if file_name.startswith("seeds-"):
-        file_name = file_name[len("seeds-"):]
-    return file_name
-
-
-def read_jsonl_file(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return [json.loads(line) for line in f]
-
-
-def write_jsonl_file(output_file, data):
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for entry in data:
-            json.dump(entry, f, ensure_ascii=False)
-            f.write('\n')
-
-
-def append_jsonl_entry(output_file, entry, file_lock):
-    """Appends a single entry to a JSONL file in a thread-safe manner."""
-    with file_lock:
-        with open(output_file, 'a', encoding='utf-8') as f:
-            json.dump(entry, f, ensure_ascii=False)
-            f.write('\n')
-
-
-def check_canary_in_response(response, canary):
-    if not canary:
-        return False
-    return canary in response
-
-
-def load_module_from_path(path, module_name):
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec and spec.loader:
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod
-    raise ImportError(f"Could not load module {module_name} from {path}")
-
-
-def _load_raw_target_module(target_name):
-    """Load target module without wrapping. Returns None if not found."""
-    local_path = os.path.join(os.getcwd(), 'targets', f"{target_name}.py")
-    if os.path.isfile(local_path):
-        return load_module_from_path(local_path, target_name)
-    else:
+    # If no target options provided, try to get default module option
+    if target_options is None:
         try:
-            return importlib.import_module(f"spikee.targets.{target_name}")
-        except ModuleNotFoundError:
-            return None
-
-
-def load_target_module(target_name, target_options, max_retries, throttle):
-    target_mod = _load_raw_target_module(target_name)
-    if target_mod is None:
-        raise ValueError(f"Target '{target_name}' not found locally or in spikee.targets/")
-
-    # Wrap the target module with AdvancedTargetWrapper
-    return AdvancedTargetWrapper(target_mod, max_retries=max_retries, throttle=throttle, target_options=target_options)
-
-
-def load_attack_by_name(attack_name):
-    """
-    Loads an attack module from a new "attacks" folder or from built-in package data.
-    """
-    local_attack_path = Path(os.getcwd()) / "attacks" / f"{attack_name}.py"
-    if local_attack_path.is_file():
-        spec = importlib.util.spec_from_file_location(attack_name, local_attack_path)
-        attack_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(attack_module)
-        return attack_module
-    try:
-        return importlib.import_module(f"spikee.attacks.{attack_name}")
-    except ModuleNotFoundError:
-        raise ValueError(f"Attack '{attack_name}' not found locally or in spikee.attacks")
-
-
-def _get_effective_attack_options(attack_module, provided_options):
-    """Get effective attack options, using default if none provided and attack supports options."""
-    if provided_options is not None:
-        return provided_options
-
-    # Try to get default option if none provided
-    if attack_module and hasattr(attack_module, 'get_available_option_values'):
-        try:
-            available = attack_module.get_available_option_values()
-            if available:
-                return available[0]  # First option is default
+            mod = load_module_from_path(target, "targets")
+            target_options = get_default_option(mod)
         except Exception:
             pass
+
+    if target_options is None:
+        return target
+
+    target_options = re.sub(
+        regex_pattern, replacer, target_options
+    )  # Remove Invalid Windows Characters
+    return f"{target}-{target_options}"
+
+
+def _load_results_file(resume_file, attack_module, attack_iters):
+    completed_ids, results, already_done = set(), [], 0
+
+    # Load Resume File, if selected.
+    if resume_file and os.path.exists(resume_file):
+        results = read_jsonl_file(resume_file)
+        completed_ids = {r["id"] for r in results}
+        print(
+            f"[Resume] Found {len(completed_ids)} completed entries in {resume_file}."
+        )
+
+        # Identify attack results
+        no_attack = sum(1 for r in results if r.get("attack_name") == "None")
+        with_attack = len(results) - no_attack
+        already_done = no_attack + with_attack * attack_iters
+    return completed_ids, results, already_done
+
+
+# endregion
+
+
+# region entry_processing
+def _apply_sampling(dataset, sample_percent, sample_seed):
+    """Apply random sampling to the dataset based on sample_percent and sample_seed."""
+    if sample_seed == "random":  # apply random seed
+        seed = random.randint(0, 2**32 - 1)
+        print(f"[Info] Using random seed for sampling: {seed}")
+
+    else:  # apply user-defined seed
+        seed = int(sample_seed)
+        print(f"[Info] Using seed for sampling: {seed}")
+
+    # Obtain random sample
+    random.seed(seed)
+    size = round(len(dataset) * sample_percent)
+    print(
+        f"[Info] Sampled {size} entries from {len(dataset)} total entries ({sample_percent:.1%})"
+    )
+    return random.sample(dataset, size)
+
+
+def _calculate_total_attempts(
+    n_entries, attempts, attack_iters, attack_only, already_done, has_attack
+):
+    per_item = attempts * (
+        (attack_iters if has_attack else 0) + (0 if attack_only else 1)
+    )
+    return n_entries * per_item + already_done
+
+
+# endregion
+
+
+# region resume_handling
+def _determine_resume_file(args, dataset, is_tty: bool) -> str | None:
+    """
+    Determine resume behaviour depending on tty status and resume flags.
+    Returns a result file path, or 'None' to create a new results file.
+    """
+    # Use explicit --resume-file
+    if getattr(args, "resume_file", None):
+        return args.resume_file
+
+    # --no-auto-resume flag - create new results file
+    if getattr(args, "no_auto_resume", False):
+        return None
+
+    # Identify previous results files
+    target_name_full = _build_target_name(args.target, args.target_options)
+    candidates = _find_resume_candidates("results", target_name_full, dataset, args.tag)
+
+    if not candidates:
+        return None
+
+    # --auto-resume flag, silently pick latest results file
+    if getattr(args, "auto_resume", False):
+        print(f"[Auto-Resume] Using latest: {candidates[0].name}")
+        return str(candidates[0])
+
+    # ---- TTY behavior: user select prompt ----
+    if is_tty:
+        picked = _select_resume_file_interactive(candidates, preselect_index=0)
+        return str(picked) if picked else None
 
     return None
 
 
-def _do_single_request(entry, input_text, target_module, num_attempt,
-                       attempts_bar, global_lock):
+def _find_resume_candidates(
+    results_dir: str | Path, target_name_full: str, dataset_path: str, tag: str | None
+) -> list[Path]:
+    """Identify potential resume candidates within the results_dir using the same resource name"""
+    # Load results directory
+    results_dir = Path(results_dir)
+    if not results_dir.exists():
+        return []
+
+    # Get resource name
+    resource_name = build_resource_name(
+        "results", target_name_full, extract_resource_name(dataset_path), tag
+    )
+
+    # Only accept exact matches for the requested tag (or lack of tag).
+    # No fallback to untagged files when a tag is specified.
+    candidates = [
+        p
+        for p in results_dir.glob(f"{resource_name}_*.jsonl")
+        if does_resource_name_match(p, resource_name)
+    ]
+
+    return sorted(
+        candidates,
+        key=_parse_timestamp_from_filename,
+        reverse=True,
+    )
+
+
+def _select_resume_file_interactive(
+    cands: list[Path], preselect_index: int = 0
+) -> Path | None:
+    """Interactive Results Prompt"""
+    items = ["Start fresh (do not resume)"] + [_format_candidate_line(p) for p in cands]
+
+    result = inquirer.select(
+        message="Resume from which results file? (Enter = Start fresh)",
+        choices=items,
+        default=items[0],  # default to Start fresh
+        pointer="➤ ",
+    ).execute()
+
+    if result == items[0]:  # "Start fresh" selected
+        return None
+
+    # Find which candidate was selected
+    idx = items.index(result) - 1
+    return cands[idx]
+
+
+def _format_candidate_line(p: Path) -> str:
+    ts = _parse_timestamp_from_filename(p)
+    dt = datetime.fromtimestamp(ts)
+    age_sec = max(0, int((datetime.now() - dt).total_seconds()))
+    # compact age display
+    if age_sec < 90:
+        age = f"{age_sec}s"
+    elif age_sec < 90 * 60:
+        age = f"{age_sec // 60}m"
+    elif age_sec < 48 * 3600:
+        age = f"{age_sec // 3600}h"
+    else:
+        age = f"{age_sec // 86400}d"
+    return f"[{dt.strftime('%Y-%m-%d %H:%M')}] {p.name}  (age {age})"
+
+
+def _parse_timestamp_from_filename(p: Path) -> int:
+    # Expect ..._<ts>.jsonl at the end; fall back to mtime if parse fails
+    name = p.name
+    try:
+        ts_str = name.rsplit("_", 1)[-1].removesuffix(".jsonl")
+        return int(ts_str)
+    except Exception:
+        return int(p.stat().st_mtime)
+
+
+# endregion
+
+
+def _do_single_request(
+    entry,
+    input_text,
+    target_module,
+    output_file,
+    num_attempt,
+    attempts_bar,
+    global_lock,
+):
     """
     Executes one request against the target by calling its process_input() method.
     The target_module is assumed to be an instance of AdvancedTargetWrapper that
-    already implements retries and throttling. 
+    already implements retries and throttling.
 
     Parameters:
       entry (dict): The dataset entry.
@@ -243,6 +455,7 @@ def _do_single_request(entry, input_text, target_module, num_attempt,
       tuple: (result_dict, success)
     """
     # Extract metadata from the entry.
+    entry_id = entry.get("id", None)
     task_type = entry.get("task_type", None)
     jailbreak_type = entry.get("jailbreak_type", None)
     instruction_type = entry.get("instruction_type", None)
@@ -251,18 +464,50 @@ def _do_single_request(entry, input_text, target_module, num_attempt,
     spotlighting_data_markers = entry.get("spotlighting_data_markers", None)
     injection_delimiters = entry.get("injection_delimiters", None)
     suffix_id = entry.get("suffix_id", None)
-    lang = entry.get("lang", 'en')
+    lang = entry.get("lang", "en")
     system_message = entry.get("system_message", None)
     plugin = entry.get("plugin", None)
 
+    # Guardrail Specific Errors
+    guardrail = False
+    guardrail_categories = {}
+
+    # Meta
+    meta = None
+
     try:
         start_time = time.time()
-        response, _ = target_module.process_input(input_text, system_message)
+        response, meta = target_module.process_input(
+            input_text, system_message, False, entry_id, output_file
+        )
+        if isinstance(response, bool) is False:
+            response = str(response)
+
         end_time = time.time()
         response_time = end_time - start_time
         success = call_judge(entry, response)
-        response_str = response if isinstance(response, str) else ""
+        response_str = response
         error_message = None
+
+    except GuardrailTrigger as gt:
+        error_message = str(gt)
+        response_str = ""
+        response_time = time.time() - start_time
+        success = False
+        guardrail = True
+        if hasattr(gt, "categories"):
+            guardrail_categories = gt.categories
+        # print("[Guardrail Triggered] {}: {}".format(entry["id"], error_message))
+
+    except MultiTurnSkip as ms:
+        error_message = str(ms)
+        response_str = ""
+        response_time = None
+        success = False
+
+    except ImportError as ie:
+        raise ie
+
     except Exception as e:
         error_message = str(e)
         response_str = ""
@@ -297,14 +542,33 @@ def _do_single_request(entry, input_text, target_module, num_attempt,
         "system_message": system_message,
         "plugin": plugin,
         "attack_name": "None",
-        "error": error_message
+        "error": error_message,
     }
+
+    # Add guardrail info if triggered
+    if guardrail:
+        result_dict["guardrail"] = True
+        result_dict["guardrail_categories"] = guardrail_categories
+
+    if meta:
+        result_dict["meta"] = meta
+
     return result_dict, success
 
 
-def process_entry(entry, target_module, attempts=1,
-                  attack_module=None, attack_iterations=0, attack_options=None,
-                  attempts_bar=None, global_lock=None):
+def process_entry(
+    entry,
+    target_module,
+    attempts=1,
+    attack_name="",
+    attack_module=None,
+    attack_iterations=0,
+    attack_options=None,
+    attack_only=False,
+    output_file=None,
+    attempts_bar=None,
+    global_lock=None,
+):
     """
     Processes one dataset entry.
 
@@ -323,50 +587,102 @@ def process_entry(entry, target_module, attempts=1,
     std_result = None
     std_success = False
 
-    for attempt_num in range(1, attempts + 1):
-        std_result, success_now = _do_single_request(
-            entry, original_input, target_module,
-            attempt_num, attempts_bar, global_lock
-        )
-        if success_now:
-            std_success = True
-            break
+    # Attempt Logic
+    if not attack_only:
+        request_attempts = 0
+        for attempt_num in range(1, attempts + 1):
+            request_attempts += 1
+            std_result, success_now = _do_single_request(
+                entry,
+                original_input,
+                target_module,
+                output_file,
+                attempt_num,
+                attempts_bar,
+                global_lock,
+            )
+            if success_now:
+                std_success = True
+                break
 
-    results_list = [std_result]
+        results_list = [std_result]
 
-    if std_success and attack_module:
-        # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
-        with global_lock:
-            attempts_bar.total = attempts_bar.total - attack_iterations
+        if std_success:
+            # Remove all the attempts that we are not going to do any longer as we are skipping the dynamic attacks
+            with global_lock:
+                attempts_bar.total = (
+                    attempts_bar.total
+                    - (attempts - request_attempts)
+                    - (attack_iterations * attempts if attack_module else 0)
+                )
+
+    else:
+        std_success = False
+        results_list = []
 
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
     if (not std_success) and attack_module:
+        attack_input = None  # Ensure attack_input is always defined
+
         try:
             start_time = time.time()
-
-            effective_attack_options = _get_effective_attack_options(attack_module, attack_options)
+            effective_attack_options = (
+                attack_options if attack_options else get_default_option(attack_module)
+            )
 
             # Check if attack function accepts attack_options parameter
             sig = inspect.signature(attack_module.attack)
             params = sig.parameters
 
-            if 'attack_option' in params:
-                attack_attempts, attack_success, attack_input, attack_response = attack_module.attack(
-                    entry, target_module, call_judge, attack_iterations, attempts_bar, global_lock, attack_options
-                )
-            else:
-                # Backward compatibility for attacks without attack_option support
-                attack_attempts, attack_success, attack_input, attack_response = attack_module.attack(
-                    entry, target_module, call_judge, attack_iterations, attempts_bar, global_lock
-                )
+            attack_success = False
+            request_attempts = 0
+
+            for attempt_num in range(1, attempts + 1):
+                if "attack_option" in params:
+                    attack_attempts, attack_success, attack_input, attack_response = (
+                        attack_module.attack(
+                            entry,
+                            target_module,
+                            call_judge,
+                            attack_iterations,
+                            attempts_bar,
+                            global_lock,
+                            attack_options,
+                        )
+                    )
+                else:
+                    # Backward compatibility for attacks without attack_option support
+                    attack_attempts, attack_success, attack_input, attack_response = (
+                        attack_module.attack(
+                            entry,
+                            target_module,
+                            call_judge,
+                            attack_iterations,
+                            attempts_bar,
+                            global_lock,
+                        )
+                    )
+
+                request_attempts += attack_attempts
+
+                if attack_success:
+                    break
+
+            if attack_success:
+                with global_lock:
+                    attempts_bar.total = attempts_bar.total - (
+                        attempts * attack_iterations - attack_attempts
+                    )
 
             end_time = time.time()
             response_time = end_time - start_time
 
             attack_result = {
                 "id": f"{entry['id']}-attack",
-                "long_id": entry["long_id"] + "-" + attack_module.__name__,
-                "input": attack_input,
+                "long_id": entry["long_id"] + "-" + attack_name,
+                "input": attack_input["input"]
+                if isinstance(attack_input, dict)
+                else attack_input,
                 "response": attack_response,
                 "response_time": response_time,
                 "success": attack_success,
@@ -379,22 +695,38 @@ def process_entry(entry, target_module, attempts=1,
                 "instruction_type": entry.get("instruction_type", None),
                 "document_id": entry.get("document_id", None),
                 "position": entry.get("position", None),
-                "spotlighting_data_markers": entry.get("spotlighting_data_markers", None),
+                "spotlighting_data_markers": entry.get(
+                    "spotlighting_data_markers", None
+                ),
                 "injection_delimiters": entry.get("injection_delimiters", None),
                 "suffix_id": entry.get("suffix_id", None),
-                "lang": entry.get("lang", 'en'),
+                "lang": entry.get("lang", "en"),
                 "system_message": entry.get("system_message", None),
                 "plugin": entry.get("plugin", None),
                 "error": None,
-                "attack_name": attack_module.__name__,
-                "attack_options": effective_attack_options
+                "attack_name": attack_name,
+                "attack_options": effective_attack_options,
             }
+
+            if isinstance(attack_input, dict) and "conversation" in attack_input:
+                attack_result["conversation"] = attack_input["conversation"]
+
+            if isinstance(attack_input, dict) and "objective" in attack_input:
+                attack_result["objective"] = attack_input["objective"]
+
             results_list.append(attack_result)
         except Exception as e:
+            if attack_input is None:
+                attack_input_str = original_input
+            elif isinstance(attack_input, dict):
+                attack_input_str = attack_input.get("input", attack_input)
+            else:
+                attack_input_str = attack_input
+
             error_result = {
                 "id": f"{entry['id']}-attack",
-                "long_id": entry["long_id"] + "-" + attack_module.__name__ + "-ERROR",
-                "input": original_input,
+                "long_id": entry["long_id"] + "-" + attack_name + "-ERROR",
+                "input": attack_input_str,
                 "response": "",
                 "success": False,
                 "judge_name": entry["judge_name"],
@@ -406,145 +738,97 @@ def process_entry(entry, target_module, attempts=1,
                 "instruction_type": entry.get("instruction_type", None),
                 "document_id": entry.get("document_id", None),
                 "position": entry.get("position", None),
-                "spotlighting_data_markers": entry.get("spotlighting_data_markers", None),
+                "spotlighting_data_markers": entry.get(
+                    "spotlighting_data_markers", None
+                ),
                 "injection_delimiters": entry.get("injection_delimiters", None),
                 "suffix_id": entry.get("suffix_id", None),
-                "lang": entry.get("lang", 'en'),
+                "lang": entry.get("lang", "en"),
                 "system_message": entry.get("system_message", None),
                 "plugin": entry.get("plugin", None),
                 "error": str(e),
-                "attack_name": attack_module.__name__,
-                "attack_options": effective_attack_options
+                "attack_name": attack_name,
+                "attack_options": effective_attack_options,
             }
+
+            if (
+                attack_input is not None
+                and isinstance(attack_input, dict)
+                and "conversation" in attack_input
+            ):
+                error_result["conversation"] = attack_input["conversation"]
+
+            if (
+                attack_input is not None
+                and isinstance(attack_input, dict)
+                and "objective" in attack_input
+            ):
+                error_result["objective"] = attack_input["objective"]
+
             results_list.append(error_result)
 
     return results_list
 
 
-def _validate_and_get_tag(tag):
-    if not tag:
-        return None
-    valid, err = validate_tag(tag)
-    if not valid:
-        print(f"Error: Invalid tag: {err}")
-        exit(1)
-    return tag
-
-
-def _load_attack(attack_name):
-    if not attack_name:
-        return None
-    return load_attack_by_name(attack_name)
-
-
-def _apply_sampling(dataset, pct, seed_arg):
-    if pct is None:
-        return dataset
-    if seed_arg == 'random':
-        seed = random.randint(0, 2**32 - 1)
-        print(f"[Info] Using random seed for sampling: {seed}")
-    else:
-        seed = int(seed_arg)
-        print(f"[Info] Using seed for sampling: {seed}")
-    random.seed(seed)
-    size = round(len(dataset) * pct)
-    print(f"[Info] Sampled {size} entries from {len(dataset)} total entries ({pct:.1%})")
-    return random.sample(dataset, size)
-
-
-def _load_resume(resume_file, attack_module, attack_iters):
-    completed, results = set(), []
-    already_done = 0
-    if resume_file and os.path.exists(resume_file):
-        existing = read_jsonl_file(resume_file)
-        completed = {r['id'] for r in existing}
-        results = existing
-        print(f"[Resume] Found {len(completed)} completed entries in {resume_file}.")
-        no_attack = sum(1 for r in existing if r.get('attack_name') == 'None')
-        with_attack = len(existing) - no_attack
-        already_done = no_attack + with_attack * attack_iters
-    return completed, results, already_done
-
-
-def _filter_entries(dataset, completed_ids):
-    return [e for e in dataset if e['id'] not in completed_ids]
-
-
-def _build_target_name(name, opts):
-    """Build target name, using default option if opts is None and target supports options."""
-
-    regex_pattern = '(^[<>:"/\|?*]+)|([<>:"/\|?*]+$)|([<>:"/\|?*]+)'  # Matches Invalid Windows Characters,
-
-    def replacer(match):
-        if match.group(1) or match.group(2):  # If at start/end of string, just remove
-            return ""
-        else:  # If in middle of string, replace with '~'
-            return "~"
-
-    if opts is not None:
-        opts = re.sub(regex_pattern, replacer, opts)  # Remove Invalid Windows Characters
-        return f"{name}-{opts}"
-
-    # Try to get default option if none provided
-    try:
-        mod = _load_raw_target_module(name)
-        if mod and hasattr(mod, 'get_available_option_values'):
-            available = mod.get_available_option_values()
-            if available:
-                opts = re.sub(regex_pattern, replacer, available[0])  # Remove Invalid Windows Characters
-                return f"{name}-{opts}"
-    except Exception:
-        pass
-
-    return name
-
-
-def _prepare_output_file(results_dir, target_name_full, dataset_path, tag):
-    ts = int(time.time())
-    base = extract_dataset_name(dataset_path)
-    parts = [f"results_{target_name_full}", base]
-    if tag:
-        parts.append(tag)
-    parts.append(str(ts))
-    filename = "_".join(parts) + ".jsonl"
-    os.makedirs(results_dir, exist_ok=True)
-    return os.path.join(results_dir, filename)
-
-
-def _write_initial_results(path, results):
-    with open(path, 'w', encoding='utf-8') as f:
-        for r in results:
-            json.dump(r, f, ensure_ascii=False)
-            f.write('\n')
-
-
-def _calculate_total_attempts(n_entries, attempts, attack_iters, already_done, has_attack):
-    per_item = attempts + (attack_iters if has_attack else 0)
-    return n_entries * per_item + already_done
-
-
-def _print_info(n_new, threads, output_file):
-    print(f"[Info] Testing {n_new} new entries (threads={threads}).")
-    print(f"[Info] Output will be saved to: {output_file}")
-
-
 def _run_threaded(
-    entries, target_module, attempts, attack_module, attack_iters, attack_options,
-    num_threads, total_attempts, initial_attempts, output_file,
-    total_dataset_size, initial_processed, initial_success
+    entries,
+    target_module,
+    attempts,
+    attack_name,
+    attack_module,
+    attack_iters,
+    attack_options,
+    attack_only,
+    num_threads,
+    total_attempts,
+    initial_attempts,
+    output_file,
+    total_dataset_size,
+    initial_processed,
+    initial_success,
+    initial_guardrail,
 ):
     lock = threading.Lock()
-    bar_all = tqdm(total=total_attempts, desc="All attempts", position=1, initial=initial_attempts)
-    bar_entries = tqdm(total=total_dataset_size, desc="Processing entries", position=0, initial=initial_processed)
-    bar_entries.set_postfix(success=initial_success)
-    executor = ThreadPoolExecutor(max_workers=num_threads)
+    bar_all = tqdm(
+        total=total_attempts, desc="All attempts", position=1, initial=initial_attempts
+    )
+    bar_entries = tqdm(
+        total=total_dataset_size,
+        desc="Processing entries",
+        position=0,
+        initial=initial_processed,
+    )
+    if initial_guardrail > 0:
+        bar_entries.set_postfix(success=initial_success, guardrails=initial_guardrail)
+    else:
+        bar_entries.set_postfix(success=initial_success)
+
+    def _thread_init():
+        """Give each worker thread its own asyncio event loop so that
+        libraries using run_async_in_sync (e.g. any_llm / httpx) can
+        clean up connections without 'Event loop is closed' errors."""
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+    executor = ThreadPoolExecutor(max_workers=num_threads, initializer=_thread_init)
     futures = {
-        executor.submit(process_entry, entry, target_module,
-                        attempts, attack_module, attack_iters, attack_options,
-                        bar_all, lock): entry
+        executor.submit(
+            process_entry,
+            entry,
+            target_module,
+            attempts,
+            attack_name,
+            attack_module,
+            attack_iters,
+            attack_options,
+            attack_only,
+            output_file,
+            bar_all,
+            lock,
+        ): entry
         for entry in entries
     }
     success = initial_success
+    guardrail = initial_guardrail
     try:
         for fut in as_completed(futures):
             entry = futures[fut]
@@ -552,13 +836,29 @@ def _run_threaded(
                 res = fut.result()
                 if isinstance(res, list):
                     for r in res:
-                        success += int(r.get('success', False))
+                        success += int(r.get("success", False))
+                        guardrail += int(r.get("guardrail", False))
                         append_jsonl_entry(output_file, r, lock)
                 else:
-                    success += int(res.get('success', False))
+                    success += int(res.get("success", False))
+                    guardrail += int(res.get("guardrail", False))
                     append_jsonl_entry(output_file, res, lock)
                 bar_entries.update(1)
-                bar_entries.set_postfix(success=success)
+
+                if guardrail > 0:
+                    bar_entries.set_postfix(success=success, guardrails=guardrail)
+                else:
+                    bar_entries.set_postfix(success=success)
+
+            except ImportError as ie:
+                bar_all.close()
+                bar_entries.close()
+                print(f"Import Error Entry ID {entry['id']}: {ie}")
+                print(
+                    "Exiting early due to ImportError in attack module. Please import required dependencies and re-run."
+                )
+                exit(1)
+
             except Exception as e:
                 print(f"[Error] Entry ID {entry['id']}: {e}")
                 traceback.print_exc()
@@ -575,53 +875,166 @@ def test_dataset(args):
     """
     Orchestrate testing of a dataset against a target.
     """
-    # 1. Validate inputs and prepare
-    tag = _validate_and_get_tag(args.tag)
-    attack_module = _load_attack(args.attack)
-    target_module = load_target_module(
-        args.target,
-        args.target_options,
-        args.max_retries,
-        args.throttle,
-    )
-    dataset = read_jsonl_file(args.dataset)
-    dataset = _apply_sampling(dataset, args.sample, args.sample_seed)
+    # 1. Validate and process args, load modules and datasets
+    tag = validate_and_get_tag(args.tag)
 
-    completed_ids, results, already_done = _load_resume(args.resume_file, attack_module, args.attack_iterations)
-    to_process = _filter_entries(dataset, completed_ids)
-    to_process = annotate_judge_options(to_process, args.judge_options)
+    # Load Attack module if specified
+    attack_name = args.attack if args.attack else ""
+    try:
+        attack_module = (
+            load_module_from_path(args.attack, "attacks") if args.attack else None
+        )
 
-    target_name_full = _build_target_name(args.target, args.target_options)
+        # Load Target module, with AdvancedTargetWrapper
+        target_module = AdvancedTargetWrapper.create_target_wrapper(
+            args.target,
+            args.target_options,
+            args.max_retries,
+            args.throttle,
+        )
+    except ImportError as e:
+        print(e)
+        exit(1)
 
-    output_file = _prepare_output_file(
-        'results',
-        target_name_full,
-        args.dataset,
-        tag,
-    )
-    _write_initial_results(output_file, results)
+    # Validate multi-turn capability
+    if (
+        attack_module
+        and hasattr(attack_module, "turn_type")
+        and attack_module.turn_type == Turn.MULTI
+    ):
+        # Validate target supports multi-turn
+        if target_module.config.get("multi-turn", False):
+            print(
+                f"[Info] Performing a multi-turn attack using '{attack_name}' on target '{args.target}'."
+            )
 
-    # 2. Run tests
-    total_attempts = _calculate_total_attempts(
-        len(to_process), args.attempts, args.attack_iterations, already_done, bool(attack_module)
-    )
-    _print_info(len(to_process), args.threads, output_file)
+        else:
+            print(
+                f"[Error] The selected attack '{attack_name}' requires multi-turn support, but the target '{args.target}' does not support multi-turn testing."
+            )
+            exit(1)
 
-    success_count = sum(1 for r in results if r.get('success'))
-    _run_threaded(
-        to_process,
-        target_module,
-        args.attempts,
-        attack_module,
-        args.attack_iterations,
-        args.attack_options,
-        args.threads,
-        total_attempts,
-        already_done,
-        output_file,
-        len(dataset),
-        len(completed_ids),
-        success_count
-    )
+    else:
+        # Validate target supports single-turn
+        if not target_module.config.get("single-turn", False):
+            print(
+                f"[Error] The selected target '{args.target}' does not support single-turn testing."
+            )
+            exit(1)
 
-    print(f"[Done] Testing finished. Results saved to {output_file}")
+        print(
+            f"[Info] Performing a single-turn attack using '{attack_name}' on target '{args.target}'."
+            if attack_module
+            else f"[Info] Performing single-turn testing on target '{args.target}'."
+        )
+
+    if hasattr(target_module.get_target(), "add_managed_dicts"):
+        manager = multiprocessing.Manager()
+        target_data = manager.dict()
+        target_module.get_target().add_managed_dicts(target_data)
+
+    # Obtain datasets and ensure resume-file is only used with single dataset
+    datasets = process_jsonl_input_files(args.dataset, args.dataset_folder)
+
+    # Prevent single dataset flags from being used with multiple datasets
+    if len(datasets) > 1 and args.resume_file is not None:
+        print(
+            f"[Error] --resume-file cannot be used when testing multiple datasets. Currently selected {len(datasets)} datasets."
+        )
+        exit(1)
+
+    # Print overview of datasets
+    print("[Overview] Testing the following dataset(s): ")
+    print("\n - " + "\n - ".join(datasets))
+
+    # Print information about alternative resume flags
+    tty = sys.stdin.isatty() and sys.stdout.isatty()
+    if not args.auto_resume and not args.no_auto_resume and tty:
+        print(
+            "\n[Info] Spikee supports the following resume flags, instead of the interactive prompt:\n  --auto-resume ~ silently pick the latest matching results file.\n  --no-auto-resume ~ create a new results file."
+        )
+
+    # 2. Prep datasets
+    for dataset in datasets:
+        print(
+            f" \n[Start] Initiating testing of '{dataset.split(os.sep)[-1]}' against target '{args.target}'"
+        )
+
+        dataset_json = read_jsonl_file(dataset)
+        dataset_json = (
+            _apply_sampling(dataset_json, args.sample, args.sample_seed)
+            if args.sample
+            else dataset_json
+        )
+
+        # Determine resume action / file
+        current_resume_file = args.resume_file
+        picked = _determine_resume_file(args, dataset, tty)
+        if picked:
+            current_resume_file = picked
+
+        # Load resume data if any has been selected
+        completed_ids, results, already_done = _load_results_file(
+            current_resume_file, attack_module, args.attack_iterations
+        )
+
+        # Identify unprocessed entries
+        to_process = [
+            entry for entry in dataset_json if entry["id"] not in completed_ids
+        ]
+        to_process = annotate_judge_options(to_process, args.judge_options)
+
+        # Print if results completed, and skip
+        if len(to_process) == 0:
+            print(
+                f"[Done] All entries have already been processed for dataset '{dataset}'. Skipping, please use `--no-auto-resume` to re-test."
+            )
+            continue
+
+        # Create new results file and for resume, write existing results
+        target_name_full = _build_target_name(args.target, args.target_options)
+        output_file = prepare_output_file(
+            "results",
+            "results",
+            target_name_full,
+            dataset,
+            tag,
+        )
+        write_jsonl_file(output_file, results)
+
+        # 3. Run tests
+        total_attempts = _calculate_total_attempts(
+            len(to_process),
+            args.attempts,
+            args.attack_iterations,
+            args.attack_only,
+            already_done,
+            bool(attack_module),
+        )
+        print(f"[Info] Testing {len(to_process)} new entries (threads={args.threads}).")
+        print(f"[Info] Output will be saved to: {output_file}")
+
+        success_count = sum(1 for r in results if r.get("success"))
+        guardrail_count = sum(1 for r in results if r.get("guardrail"))
+
+        _run_threaded(
+            to_process,
+            target_module,
+            args.attempts,
+            attack_name,
+            attack_module,
+            args.attack_iterations,
+            args.attack_options,
+            args.attack_only,
+            args.threads,
+            total_attempts,
+            already_done,
+            output_file,
+            len(dataset_json),
+            len(completed_ids),
+            success_count,
+            guardrail_count,
+        )
+
+        print(f"[Done] Testing finished. Results saved to {output_file}")
+    print(f"[Overview] Tested {len(datasets)} dataset(s).")

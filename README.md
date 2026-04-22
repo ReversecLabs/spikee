@@ -8,43 +8,63 @@
   </a>
   <br>
   <h1>Simple Prompt Injection Kit for Evaluation and Exploitation</h1>
+
+  <p align="center">
+    <a href="https://spikee.ai" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+      <img src="images/link.svg" width="20" height="20" alt="Website" style="vertical-align:middle;">
+      &nbsp;Website
+    </a>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href="https://reversec.com" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+      <img src="images/link.svg" width="20" height="20" alt="Reversec" style="vertical-align:middle;">
+      &nbsp;Reversec
+    </a>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href="https://discord.gg/hweNfZw5pr" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+      <img src="images/discord.svg" width="20" height="20" alt="Discord" style="vertical-align:middle;">
+      &nbsp;Discord
+    </a>
+  </p>
 </div>
 
-_Version: 0.4.1_
+_Version: 0.7.3-dev_
 
 
 Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience of LLMs, guardrails, and applications against prompt injection and jailbreaking. Spikee's strength is its modular design, which allows for easy customization of every part of the testing process.
 
----
+> **Architecture Update:** Spikee has migrated away from LangChain in favor of `any-llm`. This decision was made to significantly reduce dependency bloat. Now, by default, `spikee` installs only the bare minimum required to support providers with OpenAI-compatible API endpoints (e.g., OpenAI, DeepSeek, Google, TogetherAI, OpenRouter). Providers for which spikee relies on native SDKs (like AWS Bedrock, Azure, Ollama, or Groq) are supported through lightweight optional dependencies (e.g. `spikee[all]`), ensuring users only install the heavy SDKs they actually need.
+
 
 ## Table of Contents
-
 - [Spikee Use Cases](#spikee-use-cases)
 - [The Spikee Architecture](#the-spikee-architecture)
-- [Documentation](#documentation)
-- [Installation](#1-installation)
-  - [Local Installation (From Source)](#12-local-installation-from-source)
-  - [Local Inference Dependencies](#13-local-inference-dependencies)
-- [Core Workflow: A Practical Guide](#2-core-workflow-a-practical-guide)
-  - [Step 1: Initialize a Workspace](#step-1-initialize-a-workspace)
-  - [Step 2: Explore Available Components](#step-2-explore-available-components)
-  - [Step 3: Choose a Scenario and Generate a Dataset](#step-3-choose-a-scenario-and-generate-a-dataset)
-    - [Scenario A: Testing a Standalone LLM](#scenario-a-testing-a-standalone-llm)
-    - [Scenario B: Testing an LLM Application](#scenario-b-testing-an-llm-application)
-    - [Bonus: Including standalone attacks](#bonus-including-standalone-attacks)
-  - [Step 4: Test a Target](#step-4-test-a-target)
-    - [A. Basic LLM Test](#a-basic-llm-test)
-    - [B. Testing a Custom LLM Application](#b-testing-a-custom-llm-application)
-    - [C. Enhancing Tests with Attacks](#c-enhancing-tests-with-attacks)
-    - [C. Testing a Sample of a Large Dataset](#c-testing-a-sample-of-a-large-dataset)
-    - [D. Evaluating Guardrails](#d-evaluating-guardrails)
-  - [Step 5: Analyze the Results](#step-5-analyze-the-results)
-- [Contributing](#3-contributing)
-  - [Questions or Feedback?](#questions-or-feedback)
+- [A Quick-Start Guide to Using Spikee](#a-quick-start-guide-to-using-spikee)
+  - [1. Installation](#1-installation)
+  - [2. Your Workspace](#2-your-workspace)
+  - [3. Available Modules: `spikee list`](#3-available-modules-spikee-list)
+  - [4. Generating a Dataset: `spikee generate`](#4-generating-a-dataset-spikee-generate)
+  - [5. Testing a Target: `spikee test`](#5-testing-a-target-spikee-test)
+  - [6. Analysing the Results: `spikee results`](#6-analysing-the-results-spikee-results)
+- [Contributing](#contributing)
+- [Questions or Feedback?](#questions-or-feedback)
+
+## Documentation
+- [Guides](./docs/README.md#guides)
+- [Reference Pages](./docs/README.md#reference-pages)
+- [Generation and Testing Workflows](./docs/README.md#generation-and-testing-workflows)
+- [Custom Modules and Development](./docs/README.md#custom-modules-and-development)
+- [Additional Resources](./docs/README.md#additional-resources)
 
 ---
 
 ## Spikee Use Cases
+
+Spikee can be used to test
+
+- LLMs in isolation (traditional "LLM red teaming")
+- GenAI features within LLM applications/agents (such as chatbots, RAG systems, etc.)
+- LLM guardrails
+
 <div align="center">
     <img src="docs/spikee-usecases.png" width="700px">
 </div>
@@ -57,32 +77,23 @@ Spikee operates in two stages: generating a test dataset, and executing tests ag
     <img src="docs/spikee-architecture.png" width="700px">
 </div>
 
-## Documentation
 
-This README provides a practical guide to the core workflow. For advanced topics, see the detailed documentation:
-
-1.  **[Built-in Seeds and Datasets](./docs/01_builtin_seeds_and_datasets.md)**: An overview of all built-in datasets.
-2.  **[Dataset Generation Options](./docs/02_dataset_generation_options.md)**: A reference for all `spikee generate` flags.
-3.  **[Creating Custom Targets](./docs/03_custom_targets.md)**: Interact with any LLM, API, or guardrail.
-4.  **[Developing Custom Plugins](./docs/04_custom_plugins.md)**: Statically transform and obfuscate payloads.
-5.  **[Writing Dynamic Attack Scripts](./docs/05_dynamic_attacks.md)**: Create iterative, adaptive attack logic.
-6.  **[Judges: Evaluating Attack Success](./docs/06_judges.md)**: Define custom success criteria for tests.
-7.  **[Testing Guardrails](./docs/07_guardrail_testing.md)**: Evaluate guardrail effectiveness and false positive rates.
-8.  **[Interpreting Spikee Results](./docs/08_interpreting_results.md)**: Understand test reports and performance metrics.
-9.  **[Generating Custom Datasets with an LLM](./docs/09_llm_dataset_generation.md)**: Create tailored datasets for specific use cases.
 ---
+
+# A Quick-Start Guide to Using Spikee
 
 ## 1. Installation
 
-Install `spikee` directly from PyPI.
+### 1.1 Install `spikee` directly from PyPI.
 
 ```bash
 pip install spikee
 ```
 
-To ensure a clean installation when upgrading, use the `--force-reinstall` flag (*this helps a lot removing deprecated files/datasets that would otherwise persist*):
+*Note: To keep the installation lightweight, this command only installs the base dependencies required to connect to OpenAI-compatible API endpoints (which covers OpenAI, DeepSeek, OpenRouter, TogetherAI, Google, etc). If you plan to use providers for which spikee relies on native SDKs (like Bedrock, Azure, Ollama, or Groq), install the necessary extras:*
 ```bash
-pip install --upgrade --force-reinstall spikee
+pip install "spikee[all]"
+# Or choose specific providers, e.g., "spikee[bedrock,azure,ollama,groq]"
 ```
 
 ### 1.2 Local Installation (From Source)
@@ -92,213 +103,266 @@ git clone https://github.com/ReversecLabs/spikee.git
 cd spikee
 python3 -m venv env
 source env/bin/activate
-pip install .
+pip install ".[all]"
 ```
 
-### 1.3 Local Inference Dependencies
+**Development Guidance:** `pip install -e ".[all]"` will create a symlink within the venv, allowing you to make changes to the codebase without needing to reinstall after each change.
 
-For targets requiring local model inference:
+
+### 1.3 Optional Plugin & Target Dependencies
+
+Spikee features several sample plugins and targets that require specific third-party libraries. Instead of cluttering the global installation, these can be installed as needed:
+
+- **Local Inference** (`torch`, `transformers`, `sentencepiece`): Required for local models and the OPUS-MT translation plugin.
+- **Google Translate** (`googletrans`): Required for the Google Translate plugin.
+- **PDF Generation** (`fpdf2`): Required for the sample PDF target.
 
 ```bash
-pip install -r requirements-local-inference.txt
+pip install "spikee[local-inference]"
+pip install "spikee[google-translate]"
+pip install "spikee[pdf]"
 ```
 
----
 
-## 2. Core Workflow: A Practical Guide
-
-### Step 1: Initialize a Workspace
-
-Create a project directory and initialize it. This sets up the folder structure and dataset files.
+## 2. Your Workspace
+Spikee requires a workspace to store datasets, results and local modules (targets, plugins, attacks, judges). Create a folder called `workspace` and run the `spikee init` command to populate it with built-in datasets and sample modules.
 
 ```bash
-mkdir my-spikee-project
-cd my-spikee-project
+mkdir workspace
+cd workspace
 spikee init
 ```
 
-### Step 2: Explore Available Components
+See [`spikee init` documentation](./docs/01_cheatsheet.md#spikee-init) for information on `--include` flags (e.g., Spikee Viewer). 
 
-Use `spikee list` to see what seeds, targets, plugins, and attacks are available in your workspace (both local and built-in).
+## 3. Available Modules: `spikee list`
+
+Use `spikee list` to see what seeds, datasets, judges, targets, plugins and attacks are available in your workspace (both local and built-in).
 
 ```bash
-spikee list seeds 
+spikee list seeds
+spikee list datasets
+spikee list judges
+spikee list targets
 spikee list plugins
-spikee list judges     
-spikee list datasets     
-spikee list targets    
-spikee list attacks    
+spikee list attacks
+spikee list providers --description
 ```
 
-### Step 3: Choose a Scenario and Generate a Dataset
+(NB, use `--description` to get a brief description of each module - not supported on seeds or datasets).
 
-Your testing scenario determines what kind of testing dataset you need to generate.
 
-#### Scenario A: Testing a Standalone LLM
-When you test an LLM directly, you control the entire prompt. This is ideal for assessing a model's general resilience to jailbreaks and harmful instructions.
+## 4. Generating a Dataset: `spikee generate`
+`spikee generate` is used to create custom datasets from **seed folders**, including options to apply transformations through plugins and formatting modifiers to tailor the dataset to specific targets. **Your testing scenario will determine what datasets you need to generate.**
+
+> A list of built-in datasets and plugins is available within the **[Built-in Datasets](./docs/02_builtin.md#built-in-seeds)** and **[Built-in Plugins](./docs/02_builtin.md#built-in-plugins)** documentation and a complete list of dataset generation options is available in the **[Dataset Generation](./docs/04_dataset_generation.md)** documentation.
+
+### 4.1. Choosing a Dataset Generation Format
+**Scenario A: Testing an LLM Application**  
+When testing an application (e.g., chatbot or email summarisation tool), you don't typically control the entire input to the LLM, tha is the system message and/or instructions the application is passing to the LLM. You only control the *user input* (e.g., chat message or document) which the application passes as a parameter to the prompt templates.
+
+*   **What to Generate:** Just a *user prompt* or *document* with the payload.
+*   **How to Generate:** Use `--format user-input` **(you can omit this flag as it is the default)**.
+
+```bash
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --format user-input
+```
+
+This will generate the dataset in JSONL format: `datasets/cybersec-2026-01-document-dataset-<TIMESTAMP>.jsonl`.
+
+**Scenario B: Testing a Standalone LLM**  
+When testing an LLM directly, you control the entire prompt fed to the LLM. This is ideal for assessing a model's general resilience to jailbreaks and harmful instructions.
 
 *   **What to Generate:** A *full prompt*, which includes a task (like "Summarize this: <data>"), the data containing the prompt injection or jailbreak, and optionally a system message.
-*   **How to Generate:** Use `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2025-04` folder provides a great starting point with diverse jailbreaks and attack instructions.
+*   **How to Generate:** Use `--format full-prompt` and optionally `--include-system-message`. The `datasets/seeds-cybersec-2026-01` folder provides a great starting point with diverse jailbreaks and attack instructions.
 
 ```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format full-prompt
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 --format full-prompt
 ```
 
-This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-full-prompt-dataset-TIMESTAMP.jsonl`.
+This will generate the dataset in JSONL format: `datasets/cybersec-2026-01-full-prompt-dataset-<TIMESTAMP>.jsonl`.
 
-#### Scenario B: Testing an LLM Application 
-When you test an application (like a chatbot or an email summarizer), the application itself builds the final prompt. Your input is just one part of it, which could be a prompt or data (such as documents/emails).
+### 4.2. Generating Standalone Attacks
+Spikee typically uses composable datasets, that combine permutations of user inputs, jailbreaks and instructions. However, it also supports **Standalone Inputs** which are ready-to-use prompts, without any additional formatting or composition. This is useful for quickly testing specific prompts, or using publicly sourced datasets that contain ready-to-use attack prompts, such as `seeds-simsonsun-high-quality-jailbreaks`.
 
-*   **What to Generate:** Just the *user prompt* or *document* with the attack payload (e.g., the body of an email containing a prompt injection).
-*   **How to Generate:** Use `--format user-input` (you can omit as this is the default from v0.4.1).
-
-```bash
-spikee generate --seed-folder datasets/seeds-cybersec-2025-04 --format user-input
-```
-
-This will generate the dataset in JSONL format: `datasets/cybersec-2025-04-document-dataset-TIMESTAMP.jsonl`.
-
-#### Bonus: Including standalone attacks
-The `generate` command we saw before composes a dataset by combining documents with jailbreaks and instructions. However, some datasets - such as `seeds-simsonsun-high-quality-jailbreaks` and `in-the-wild-jailbreak-prompts` - contain a static list of ready-to-use attack prompts. To include those in the generated dataset, we use `--standalone-attacks`:
+To include those in the generated dataset, we use `--include-standalone-inputs`:
 
 ```bash
 spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
                 --include-standalone-inputs \
 ```
 
+### 4.3. Transformations using Plugins
+Datasets can be enhanced using Plugins, which apply transformations to payloads *at the time the dataset is generated* (this is in contrast to Attacks, which are applied dynamically at the time of testing). This allows you to assess transformation-based jailbreak techniques. 
 
-### Step 4: Test a Target
+See **[Built-in Plugins](./docs/02_builtin.md#built-in-plugins)** for a list of available plugins and **[Creating Custom Plugins](./docs/07_custom_plugins.md)** for guidance on writing your own.
 
-`spikee test` runs your dataset against a target. First, rename `.env-example` to `.env` and add any necessary API keys.
-
-#### A. Basic LLM Test
-This command tests gpt-4o-mini via the OpenAI API using the dataset generated in Scenario A (require `OPENAI_API_KEY` in `.env`).
-
+**Usage**
 ```bash
-spikee test --dataset datasets/cybersec-2025-04-full-prompt-dataset-*.jsonl \
-            --target openai_api \
-            --target-options gpt-4o-mini
+# 1337 (leetspeak) plugin
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin 1337
 ```
 
-> **How is attack success determined? With Judges.**
->
-> The `cybersec-2025-04` dataset contains attacks whose success can be verified automatically by searching for specific "canary" words or matching regular expressions in the response (such as the presence of a *Markdown image*).
->
-> For more complex goals, like checking for harmful content or policy violations, Spikee can use more complex **Judges**. These are Python modules that evaluate the target's response. We include simple LLM-based judges that can assess if a response meets a given criteria. See the **[Judges documentation](./docs/06_judges.md)** to learn more.
-
-#### B. Testing a Custom LLM Application
-To test an LLM application, you must create a custom **Target script**. This Python script, placed in the `targets/` directory in your workspace, tells Spikee how to send data to the application and receive its response. For details, see the **[Creating Custom Targets](./docs/03_custom_targets.md)** guide.
-
 ```bash
-# Test a custom email application using malicious documents and your custom target
-spikee test --dataset datasets/llm-mailbox-document-dataset-*.jsonl \
-            --target llm_mailbox
+# Best of N plugin, with 50 variants per entry
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin best_of_n \
+                --plugin-options "best_of_n:variants=50"
 ```
 
-> Especially when testing LLM applications, it's useful to create a custom dataset tailored to the specific use case. In the sample case of the LLM Webmail application, we create a custom dataset stating from `cybersec-2025-04`, that only focusses on testing exfiltration of confidential information via mardown images. Check this tutorial for more information: https://labs.reversec.com/posts/2025/01/spikee-testing-llm-applications-for-prompt-injection
+```bash
+# Plugin Piping, pipe the output of splat into base64 for a combined obfuscation effect
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugin "splat|base64"
+```
 
-#### C. Enhancing Tests with Attacks
-If static prompts fail, use `--attack` to run iterative scripts that modifies the prompt/documents until they succeed (or run out of iterations).
+## 5. Testing a Target: `spikee test`
+
+`spikee test` is used to assess a target against a dataset (i.e. taking each entry of the dataset and submitting it to a target, then reading the responses and judging whether the specific attack was successful).  
+
+> A list of built-in targets is available within the **[Built-in Targets](./docs/02_builtin.md#built-in-targets)** documentation, and information on creating custom targets can be found in the **[Creating Custom Targets](./docs/06_custom_targets.md)** documentation.
+
+### 5.1. Running `spikee test`
+This example, assess the OpenAI `gpt-4o-mini` model against the `cybersec-2026-01` dataset. (`openai_api` requires the `OPENAI_API_KEY` in `workspace/.env`).
 
 ```bash
-# Best of N attack
+spikee test --dataset datasets/cybersec-2026-01-full-prompt-dataset-*.jsonl \
+            --target llm_provider \
+            --target-options "openai/gpt-4o-mini"
+```
+
+**Multiple Datasets**
+
+`--datasets` and `--dataset-folder` can be used multiple times to specify multiple datasets, which `spikee test` will assess sequentially against the target. `--dataset` will point to a single dataset file, while `--dataset-folder` will point to a folder containing multiple dataset files. At least one of `--dataset` or `--dataset-folder` is **required** to run a test.
+
+```bash
+spikee test --dataset datasets/cybersec-2026-01.jsonl \
+            --dataset datasets/simsonsun.jsonl \
+            --dataset-folder datasets/cyber_datasets/ \
+            --target llm_provider \
+            --target-options "openai/gpt-4o-mini"
+```
+
+### 5.2. Target Modules
+To assess an LLM, LLM application or guardrail, you'll need to create a custom Target module that acts as a bridge between Spikee and what you're testing. 
+
+The Target module accepts a prompt (and other parameters as required) and returns the system's response, abstracting the system's specific API, authentication and logic from Spikee. 
+
+Spikee contains several [built-in targets](./docs/02_builtin.md#built-in-targets) for common LLM providers, however see [Creating Custom Targets](./docs/06_custom_targets.md) for guidance on writing custom targets for the specific system you're testing. This is typically step one of most engagements you'll do.
+
+### 5.3. Judging Attack Success
+To determine whether an attack was successful, Spikee uses Judge modules. 
+
+There are two types:
+- **Basic Judges**: Evaluates target responses based on simple criteria, such as keyword searching or regex matching. (e.g., `canary`, `regex`). This can be executed *locally*.
+- **LLM Judges**: Use a LLM agent to evaluate the target's response against natural language criteria.(e.g., `llm_judge_harmful`, `llm_judge_output_criteria`).
+
+See [Built-in Judges](./docs/02_builtin.md#built-in-judges) for a list of available judges and **[Creating Custom Judges](./docs/09_judges.md)** for guidance on writing your own.
+
+`cybersec-2026-01` uses basic judges searching for specific 'canary' words, such as XSS payloads or markdown image tags, to determine whether an attack was successful. `simsonsum-high-quality-jailbreaks` contains jailbreak and harmful content prompts, as such requires an LLM judge to evaluate the semantics of a response.
+
+**Usage**
+```bash
+# simsonsum-high-quality-jailbreaks uses llm_judge_harmful, set the model with --judge-options
+spikee test --dataset datasets/simsonsum-high-quality-jailbreaks.jsonl \
+            --target llm_provider \
+            --target-options "openai/gpt-4o-mini" \
+            --judge-options "bedrock/claude45-haiku"
+```
+
+### 5.4. Dynamic Attacks
+Spikee supports dynamic attack modules, which generate iterative transformations or derivations of a dataset entry during a test. This also allows you to implement adaptive attack strategies based on the target's responses.
+
+**Attacks are only executed if the original entry in the dataset fails, use `--attack-only` to run attacks without static prompts.**
+
+**Usage**
+```bash
+# Best of N Attack
 spikee test --dataset datasets/dataset-name.jsonl \
-            --target openai_api \
+            --target llm_provider \
+            --target-options "bedrock/claude45-sonnet" \
             --attack best_of_n --attack-iterations 25
 ```
-
-```bash
-# Anti spotlighting attack
-spikee test --dataset datasets/dataset-name.jsonl \
-            --target openai_api \
-            --attack anti_spotlighting --attack-iterations 50
-```
-
-Some attacks, like `prompt decompositoion` support options, such as whih LLM to use to generate attack prompt variations:
+Some attacks, like `prompt decomposition` support options, such as which LLM to use to generate attack prompt variations:
 ```bash
 spikee test --dataset datasets/dataset-name.jsonl \
-            --target openai_api \
-            --attack prompt_decomposition --attack-iterations 50 -attack-options 'mode=ollama-llama3.2'
+            --target llm_provider \
+            --target-options "bedrock/claude45-sonnet" \
+            --attack prompt_decomposition \
+            --attack-iterations 50 \
+            --attack-options 'prompt_decomposition:variants=15,model=bedrock-deepseek-v3'
 ```
 
-#### C. Testing a Sample of a Large Dataset
-For large datasets, or when operating under time and cost constraints, you can test a random subset of the dataset using the `--sample` flag.
+See [Built-in Attacks](./docs/02_builtin.md#built-in-attacks) for a list of built-in attacks and their options, and **[Creating Dynamic Attack Scripts](./docs/07_dynamic_attacks.md)** for information on writing your own attacks.
 
-By default, Spikee uses a static seed for sampling. This means that running the same command multiple times will always select the **same random sample**, ensuring your tests are reproducible. This is useful for regression testing.
+### 5.5. Multi-Turn Testing
+Spikee includes support for multi-turn testing, through the following extended components:
+- **[Multi-turn Datasets](./docs/04_dataset_generation.md#multi-turn-datasets)**: Static and instructional multi-turn datasets.
+- **[Multi-turn Targets](./docs/06_custom_targets.md#multi-turn-dynamic-targets)**: Added support for conversational memory and backtracking.
+- **[Multi-turn Attacks](./docs/08_dynamic_attacks.md#multi-turn-dynamic-attacks)**: Added support for conversational memory and backtracking.
+
+Built-in multi-turn datasets and attacks can be found in the [Built-in Datasets](./docs/02_builtin.md#built-in-seeds) and [Built-in Attacks](./docs/02_builtin.md#built-in-attacks) documentation, respectively.
+
+**Usage**
+```bash
+spikee test --dataset datasets/dataset-name.jsonl \
+            --target demo_llm_application \
+            --attack crescendo \
+            --attack-options 'max-turns=5,model=bedrock/deepseek-v3' \
+            --attack-only
+```
 
 ```bash
-# Test a reproducible 15% sample of a large dataset.
-# This will select the same 15% of entries every time you run it.
-spikee test --dataset datasets/large-dataset.jsonl \
-            --target openai_api \
-            --sample 0.15
+spikee test --dataset datasets/dataset-name.jsonl \
+            --target demo_llm_application \
+            --attack goat \
+            --attack-options 'model=bedrock/deepseek-v3' \
+            --attack-only
 ```
 
-If you need a different sample for each run, or want to use your own seed for reproducibility across different machines or setups, you can use the `--sample-seed` flag.
+### 5.6. Useful Arguments
+- `--threads`: Number of concurrent threads assessing prompts (Default, 4)
+- `--attempts`: Number of retries per prompt until a successful response is received (Default, 1)
+- `--throttle`: Time (in seconds) to wait between requests, useful for managing rate limits (Default, 0)
+- `--sample`: Proportion of the dataset to test, between 0 and 1 (e.g., `--sample 0.1` for 10%) (Default, 1)
 
-```bash
-# Use a custom seed for a different reproducible sample
-spikee test --dataset datasets/large-dataset.jsonl \
-            --target openai_api \
-            --sample 0.1 \
-            --sample-seed 123
+### 5.7. Global Timeouts (`SPIKEE_API_TIMEOUT`)
+See [_LLM Providers (`SPIKEE_API_TIMEOUT`)_](./docs/03_llm_providers.md#global-timeouts) for information on extending request timeouts, particularly useful when running heavy local models (`llama.cpp`, `ollama`) or complex multi-turn evaluations.
 
-# Use a truly random sample on each run
-spikee test --dataset datasets/large-dataset.jsonl \
-            --target openai_api \
-            --sample 0.1 \
-            --sample-seed random
-```
+## 6. Analysing the Results: `spikee results`
 
-#### D. Evaluating Guardrails
-When you're testing an LLM application, you're automatically testing any guardrail that the developers of the application have applied. Howeer, sometimes you might want to test individual guardrails in isolation.
+`spikee results` includes several tools to aid in the analysis of test results. 
+- `spikee results analyze` provides an overview of an attack's success and detailed breakdowns by for several categories (e.g., attacks, plugins, dataset-specific metadata)
+  ```bash
+  spikee results analyze --result-file ./results/results_llm_provider-openai_gpt-4o-mini.jsonl
 
-**1. Testing a Prompt Injection Guardrail:**
-To test a guardrail's ability to block general jailbreaks, you could use a broad dataset like `in-the-wild-jailbreak-prompts`, or a more high-quality, focussed one like `seeds-simsonsun-high-quality-jailbreaks`.
+  # --overview: only output the general statistics of an analysis.
+  # --combine: combine multiple results files into a single analysis.
+  spikee results analyze --result-folder ./results/ --overview --combine
+  ```
 
-```bash
-# Test Meta's Prompt Guard against jailbreaks
-spikee generate --seed-folder datasets/seeds-simsonsun-high-quality-jailbreaks \
-                --include-standalone-inputs \
+- `spikee results extract` Extracts user-defined categories of results from results files for further analysis.
+  ```bash
+  # Extract all successful attacks to a new dataset file for further analysis
+  spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
+                        --category success
+  ```
 
-spikee test --dataset datasets/simsonsun-high-quality-jailbreaks-*.jsonl \
-            --target prompt_guard_jailbreak
-```
+`spikee viewer results` launches a web viewer for interactively exploring results files, with filtering and searching capabilities.
+  ``` bash
+  spikee viewer results --result-folder .\results\
+  ```
 
-The output of this will tell you whether a particular prompt in the dataset bypassed the guardrial. *This doesn't mean the jailbreak would succeed against an LLM, but simply that it would not be blocked by a guardrail*.
 
-**2. Testing a Topical Guardrail:**
-To test a guardrail that blocks specific topics (like financial advice), use a purpose-built dataset, like the sample one that can be generated from these seeds: `seeds-investment-advice`.
+Further information on analyzing results can be found in the **[Spikee Results](./docs/11_results.md)** documentation.
 
-```bash
-spikee generate --seed-folder datasets/seeds-investment-advice \
-                --include-standalone-inputs \
-                --include-system-message \
-```
-
-Notice that here we use `--format document`, as we just want to generate the raw prompts/queries from the seed folder, we don't want to add additional prompts. Also notice that we use `--include-system-message`, as the topical guardrail will use this to determine whether the input aligns wit hthe system_message rules.
-
-```bash
-spikee test --dataset datasets/investment-advice-document-sys-dataset-TIMESTAMP.jsonl \
-            --target nvidia_nemoguard_topic_control
-```
-
-### Step 5: Analyze the Results
-
-Use `spikee results analyze` to get a statistical summary of the test run.
-
-```bash
-# Analyze the most recent results file for the openai_api target
-spikee results analyze --result-file results/results_openai_api-gpt-4o-mini_*.jsonl
-```
-This command provides an overview of the success rate and detailed breakdowns by attack type, helping you identify specific weaknesses.
-
----
-
-## 3. Contributing
+# Contributing
 
 Contributions are welcome. Please feel free to submit bug fixes, new modules (Targets, Plugins, Attacks, Judges), or dataset seeds via GitHub pull requests.
 
-### Questions or Feedback?
+See [Contribution Rules](./CONTRIBUTION_RULES.md) for guidelines on contributing to the project.
 
-File an issue on the [GitHub repository](https://github.com/ReversecLabs/spikee).
+# Questions or Feedback?
+
+File an issue on the [GitHub repository](https://github.com/ReversecLabs/spikee) or come to talk to us on [Discord](https://discord.gg/hweNfZw5pr).

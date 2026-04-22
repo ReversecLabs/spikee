@@ -1,0 +1,2 @@
+{"id":"doc-en","document":"This is the base document used for all functional tests.","ideal_summary":"Summary for functional test document.","question":"Q: What language is this document?","ideal_answer":"The document is written in English."}
+{"id":"doc-it","document":"Documento to base per i test funzionali test.","ideal_summary":"Riassunto del documento di base","question":"Q: In che lingua e' il documento?","ideal_answer":"Il documento e' in italiano.", "lang": "it"}

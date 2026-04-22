@@ -1,78 +1,92 @@
 """
 sample_target.py
 
-This is an example target for spikee that returns a pre-canned (mock) response. 
-Use it as a template for writing real targets that call APIs or local models.
+This is an example HTTP(s) request target for spikee that calls an external API, based on target options.
+Demonstrates the current class-based target interface (preferred going forward as the legacy function style will be deprecated in 1.0).
+The example URLs are fictional and meant to illustrate how to structure such a target.
 
 Usage:
     1. Place this file in your local `targets/` folder.
     2. Run the spikee test command, pointing to this target, e.g.:
-         spikee test --dataset datasets/example.jsonl --target sample_target
+         spikee test --dataset datasets/example.jsonl --target sample__target
 
-Explanation:
+Return values:
     - For typical LLM completion, return a string that represents the model's response.
-    - For guardrail usage (boolean success criteria), return True or False:
+    - For guardrail usage, return True or False:
         * True indicates the attack was successful (guardrail bypassed).
         * False indicates the guardrail blocked the attack.
 """
 
-import os
-from typing import List, Dict, Optional
+from spikee.templates.target import Target
+from spikee.tester import GuardrailTrigger
+from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
+
 from dotenv import load_dotenv
+import json
+import requests
+from typing import Optional, List, Tuple, Union, Any
 
-# Load environment variables, if you need them (e.g., for API keys).
-load_dotenv()
 
-def get_available_option_values() -> List[str]:
-    """
-    Optional method to return a list of available options that the module supports
-    First option is the default.
-    """
-    options: List[str] = []
-    return None
+class SampleRequestTarget(Target):
+    _DEFAULT_URL = "https://reversec.com/api/example1"
 
-def process_input(input_text: str,
-    system_message: Optional[str] = None,
-    target_options: Optional[str] = None,
-    logprobs=False):
-    """
-    Mock target function required by spikee.
+    def get_description(self) -> Tuple[List[ModuleTag], str]:
+        return [], "Sample Request Target - sends HTTP request to URL"
 
-    This function simulates an LLM or guardrail by returning a fixed response.
-    In a real target:
-      - You might instantiate a model client here (e.g., OpenAI, Azure, etc.)
-      - You'd pass `input_text` (and optionally `system_message`) to the model or guardrail
-      - Return one of the following:
-          1) A string for standard "canary" success criteria
-             (The plugin checks whether the "canary" word is in your response to measure success)
-          2) A boolean for "boolean" success criteria (True = guardrail bypassed, False = blocked)
+    def get_available_option_values(self) -> Tuple[List[str], bool]:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+        return ["url=" + self._DEFAULT_URL], False
 
-    Args:
-        input_text (str): The main prompt or text to be processed.
-        system_message (str, optional): A system or meta-prompt, if applicable.
-        target_options (str, optional): A string representing any options that can be passed at runtime to this target
-        logprobs (bool, optional): Used by some attack modules to request log probabilities (can be ignored in most cases)
+    def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = "",
+    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+        # Option Validation `--target-options 'url=https://myapi.com/endpoint'` to override default URL
+        options = parse_options(target_options)
+        url = options.get("url", self._DEFAULT_URL)
 
-    Returns:
-        str or bool:
-            - String if you're simulating an LLM response.
-            - Boolean if you're simulating a guardrail result (True => attack successful).
-    """
+        headers = {
+            "Content-Type": "application/json",
+        }
 
-    # Optionally handle system_message, if your target needs it
-    if system_message:
-        # Possibly combine it with input_text, log it, or parse it further
-        pass
+        payload = {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_message
+                    if system_message
+                    else "You are a helpful assistant.",
+                },
+                {"role": "user", "content": input_text},
+            ]
+        }
 
-    # Return a pre-canned response to mimic an LLM answer (string)
-    # or you could return True / False to simulate a guardrail decision.
-    mock_response = "Hello! I am a mock LLM."
+        try:
+            response = requests.post(
+                url, headers=headers, data=json.dumps(payload), timeout=30
+            )
 
-    return mock_response
+            response.raise_for_status()
+            result = response.json()
+            return result.get("answer", "No answer available.")
+
+        except requests.exceptions.RequestException as e:
+            if response.status_code == 400:  # Guardrail Triggered
+                raise GuardrailTrigger(f"Guardrail was triggered by the target: {e}")
+
+            else:
+                print(f"Error during HTTP request: {e}")
+                raise
+
 
 if __name__ == "__main__":
+    load_dotenv()
     try:
-        response = process_input("Hello!")
+        target = SampleRequestTarget()
+        response = target.process_input("Hello!")
         print(response)
     except Exception as err:
         print("Error:", err)

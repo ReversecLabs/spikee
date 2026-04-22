@@ -6,6 +6,10 @@ TO-DO.txt
 build
 dist/
 *.egg-info
-/workspace
+/workspace*
 demo
 llmwebmail-test
+.vscode
+.vscode/*
+.sonar
+copilot-instructions.md
