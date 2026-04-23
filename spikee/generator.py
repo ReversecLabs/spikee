@@ -434,7 +434,11 @@ def apply_plugin(
                 if "plugin_option" in params:
                     args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
 
-                res = module.transform(**args)
+                try:
+                    res = module.transform(**args)
+                except Exception as e:
+                    print(f"\n[WARNING] Plugin '{name}' failed on entry, skipping: {e}")
+                    continue
 
                 if isinstance(res, list):
                     for item in res:

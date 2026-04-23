@@ -163,16 +163,20 @@ def extract_json_or_fail(text: str) -> Dict[str, Any]:
 
     t = text.strip()
 
-    # 1) fenced code block
-    m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
-    if m:
-        t = m.group(1).strip()
-
-    # 2) try direct JSON parse
+    # 1) try direct JSON parse first (before any extraction that might corrupt content)
     try:
         return json.loads(t)
     except Exception:
         pass
+
+    # 2) fenced code block — only attempt if direct parse failed
+    m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
+    if m:
+        t_fenced = m.group(1).strip()
+        try:
+            return json.loads(t_fenced)
+        except Exception:
+            pass
 
     # 3) fix unescaped quotes and try again
     t_fixed = fix_unescaped_quotes(t)

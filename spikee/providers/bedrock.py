@@ -73,17 +73,25 @@ class AnyLLMBedrockProvider(Provider):
             llm_kwargs["timeout"] = timeout
 
         try:
-            if os.getenv("AWS_PROFILE"):  # Extract Keys for AWS Profiles
+            # Extract credentials from AWS Profile (SSO) if configured
+            if os.getenv("AWS_PROFILE"):
                 import boto3
                 session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
                 frozen = session.get_credentials().get_frozen_credentials()
 
-                # Inject as env vars so awscrt picks them up via the default chain
+                # Inject as env vars so both boto3 and any-llm can use them
                 os.environ["AWS_ACCESS_KEY_ID"] = frozen.access_key
                 os.environ["AWS_SECRET_ACCESS_KEY"] = frozen.secret_key
                 if frozen.token:
                     os.environ["AWS_SESSION_TOKEN"] = frozen.token
+            
+            # Ensure region is set - boto3 needs this for Bedrock
+            if not os.getenv("AWS_REGION") and not os.getenv("AWS_DEFAULT_REGION"):
+                # Default to us-east-1 if no region specified
+                os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
+            # Create the AnyLLM client - it will auto-detect AWS credentials from env vars
+            # DO NOT set AWS_BEARER_TOKEN_BEDROCK as it interferes with credential detection
             self.llm = AnyLLM.create("bedrock", **llm_kwargs)
             any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
