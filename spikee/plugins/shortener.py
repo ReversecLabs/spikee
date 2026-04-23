@@ -34,7 +34,7 @@ You should rephrase or summarize the text to make it shorter. Input and output t
 
 
 class Shortener(Plugin):
-    DEFAULT_MODEL = "bedrock-qwen.qwen3-coder-30b-a3b-v1:0"
+    DEFAULT_MODEL = "qwen3-next-80b"
     DEFAULT_LENGTH = 254
     DEFAULT_ATTEMPTS = 5
 
