@@ -2,11 +2,13 @@ import os
 import inspect
 import json
 import time
+import asyncio
 from collections import defaultdict
 from typing import Union, List
 from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from spikee.utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
 from spikee.utilities.modules import load_module_from_path
@@ -473,127 +475,226 @@ def parse_exclude_patterns(jailbreak, instruction):
 
     return list(exclude_patterns) if exclude_patterns else None
 
-
 # endregion
 
-
-def process_standalone_attacks(
-    standalone_attacks,
-    dataset,
-    entry_id,
-    adv_prefixes=[None],
-    adv_suffixes=[None],
-    plugins=None,
-    plugin_options_map=None,
-    plugin_only=False,
-):
+def _process_permutation_worker(perm, plugin_options_map, system_message_config, output_format, entry_id_start):
     """
-    Processes standalone attacks and appends them to the dataset.
-    If plugins are provided, applies them to each standalone attack.
-    Returns the updated dataset and the next entry_id.
+    Worker function to process a single permutation (base_doc, jailbreak, instruction combination).
+    Each thread gets its own asyncio event loop for async LLM operations.
+    
+    Returns a list of Entry objects for this permutation.
     """
-
-    if plugin_only:
-        plugins = (
-            [] + plugins if plugins else []
-        )  # Only include plugin variations, no base attack
-
-    else:
-        plugins = (
-            [(None, None)] + plugins if plugins else [(None, None)]
-        )  # [(plugin name, plugin module)] with a dummy entry for no plugin
-
-    prefixes = adv_prefixes
-    suffixes = adv_suffixes
-
-    # Obtain plugin options and calculate total variants
-    plugin_variants = {}
-    if plugins:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    
+    entries = []
+    
+    try:
+        # Unpack permutation
+        base_doc = perm['base_doc']
+        jailbreak = perm['jailbreak']
+        instruction = perm['instruction']
+        plugins = perm['plugins']
+        prefixes = perm['prefixes']
+        suffixes = perm['suffixes']
+        positions = perm['positions']
+        injection_delimiters = perm['injection_delimiters']
+        spotlighting_data_markers_list = perm['spotlighting_data_markers_list']
+        match_languages = perm['match_languages']
+        
+        # Extract base document info
+        base_id = base_doc["id"]
+        document = base_doc["document"]
+        placeholder = base_doc.get("placeholder", "")
+        question = base_doc.get("question", "")
+        ideal_answer = base_doc.get("ideal_answer", "")
+        ideal_summary = base_doc.get("ideal_summary", "")
+        
+        entry_text = {}
+        if question:
+            entry_text["question"] = question
+        if ideal_answer:
+            entry_text["ideal_answer"] = ideal_answer
+        if ideal_summary:
+            entry_text["ideal_summary"] = ideal_summary
+        
+        # Extract jailbreak info
+        jailbreak_id = jailbreak["id"]
+        jailbreak_text = jailbreak["text"]
+        jailbreak_type = jailbreak.get("jailbreak_type", "")
+        jailbreak_lang = jailbreak.get("lang", "en")
+        
+        # Extract instruction info
+        instruction_id = instruction["id"]
+        instruction_content_type = instruction.get("content_type", "text")
+        instruction_content = content_factory(instruction["instruction"], instruction_content_type)
+        instruction_type = instruction.get("instruction_type", "")
+        instruction_lang = instruction.get("lang", "en")
+        judge_name = instruction.get("judge_name", "canary")
+        judge_args = instruction.get("judge_args", instruction.get("canary", ""))
+        
+        # Check language matching
+        if match_languages and jailbreak_lang != instruction_lang:
+            return []
+        
+        # Combine jailbreak and instruction
+        combined_base = content_factory(
+            jailbreak_text.replace("<INSTRUCTION>", str(get_content(instruction_content))),
+            get_content_type(instruction_content)
+        )
+        lang = instruction_lang
+        
+        # Create plugin / transformation regex exclusion lists
+        local_exclude = parse_exclude_patterns(jailbreak, instruction)
+        
+        # Apply plugins and create combined texts
+        combined_texts = []
+        fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
+        
         for plugin_name, plugin_module in plugins:
-            if plugin_name is None:
-                plugin_variants[plugin_name] = 1
-
-            elif "~" in plugin_name and plugin_module:  # Plugin Pipe
-                sub_plugins = plugin_name.split("~")
-                total_variants = 1
-                for sub_plugin, sub_module in zip(sub_plugins, plugin_module):
-                    sub_plugin_option = (
-                        plugin_options_map.get(sub_plugin)
-                        if plugin_options_map
-                        else None
+            plugin_texts: List[Content] = (
+                apply_plugin(plugin_name, plugin_module, combined_base, local_exclude, plugin_options_map)
+                if plugin_name
+                else [combined_base]
+            )
+            
+            for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
+                for prefix, suffix in fix_permutations:
+                    prefix_lang = prefix.get("lang", None) if prefix else None
+                    suffix_lang = suffix.get("lang", None) if suffix else None
+                    
+                    if match_languages and ((prefix_lang and prefix_lang != lang) or (suffix_lang and suffix_lang != lang)):
+                        continue
+                    
+                    prefix_text = prefix.get("prefix", "") + " " if prefix else ""
+                    suffix_text = " " + suffix.get("suffix", "") if suffix else ""
+                    text = content_factory(
+                        prefix_text + get_content(plugin_text) + suffix_text,
+                        get_content_type(plugin_text)
                     )
-                    variants = get_plugin_variants(sub_module, sub_plugin_option)
-                    total_variants *= variants
-                plugin_variants[plugin_name] = total_variants
+                    
+                    combined_texts.append({
+                        "text": text,
+                        "prefix_id": prefix.get("id", None) if prefix else None,
+                        "suffix_id": suffix.get("id", None) if suffix else None,
+                        "plugin_name": plugin_name,
+                        "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else "",
+                    })
+        
+        # Generate entries for each combined text
+        insert_positions = ["fixed"] if placeholder else positions
+        entry_id = entry_id_start
+        
+        for combined_text in combined_texts:
+            for position in insert_positions:
+                for injection_pattern in injection_delimiters:
+                    injected_doc = insert_jailbreak(
+                        document,
+                        combined_text["text"],
+                        position,
+                        injection_pattern,
+                        placeholder,
+                    )
+                    
+                    for entry_type in output_format:
+                        if entry_type == "burp":
+                            burp_payload_encoded = json.dumps(get_content(injected_doc))[1:-1]
+                            entries.append(burp_payload_encoded)
+                        else:
+                            for spotlighting_data_marker in spotlighting_data_markers_list:
+                                system_message = get_system_message(system_message_config, spotlighting_data_marker)
+                                
+                                final_injected_doc = injected_doc
+                                if entry_type == EntryType.DOCUMENT:
+                                    if spotlighting_data_marker != "none" and isinstance(get_content(injected_doc), str):
+                                        final_injected_doc = content_factory(
+                                            spotlighting_data_marker.replace("DOCUMENT", get_content(injected_doc)),
+                                            get_content_type(injected_doc)
+                                        )
+                                
+                                entry = Entry(
+                                    entry_type=entry_type,
+                                    entry_id=entry_id,
+                                    base_id=base_id,
+                                    jailbreak_id=jailbreak_id,
+                                    instruction_id=instruction_id,
+                                    prefix_id=combined_text.get("prefix_id", None),
+                                    suffix_id=combined_text.get("suffix_id", None),
+                                    content=final_injected_doc,
+                                    entry_text=entry_text,
+                                    system_message=system_message,
+                                    payload=combined_text.get("text", None),
+                                    lang=lang,
+                                    plugin_suffix=combined_text.get("plugin_suffix", ""),
+                                    plugin_name=combined_text.get("plugin_name", None),
+                                    judge_args=judge_args,
+                                    judge_name=judge_name,
+                                    position=position,
+                                    jailbreak_type=jailbreak_type,
+                                    instruction_type=instruction_type,
+                                    injection_pattern=injection_pattern,
+                                    spotlighting_data_markers=spotlighting_data_marker,
+                                    exclude_from_transformations_regex=local_exclude,
+                                ).to_entry()
+                                entries.append(entry)
+                                entry_id += 1
+    
+    except Exception as e:
+        print(f"\n[ERROR] Processing permutation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+    
+    return entries
 
-            else:  # Standalone Plugin
-                plugin_option = (
-                    plugin_options_map.get(plugin_name) if plugin_options_map else None
-                )
-                plugin_variants[plugin_name] = get_plugin_variants(
-                    plugin_module, plugin_option
-                )
 
-    # Calculate total entries for progress bar
-    total_entries = len(standalone_attacks) * (
-        sum(plugin_variants.values() or [1]) + (1 if not plugin_only else 0)
-    )
-    bar_standalone = tqdm(total=total_entries, desc="Standalone Attacks", initial=1)
+def _process_standalone_worker(perm, plugin_options_map, entry_id_start):
+    """
+    Worker function to process a single standalone attack permutation.
+    Each thread gets its own asyncio event loop for async LLM operations.
 
-    for attack in standalone_attacks:
-        # If no judge_name, fallback
-        if "judge_name" not in attack:
-            attack["judge_name"] = "canary"
-        if "judge_args" not in attack:
-            attack["judge_args"] = attack.get("canary", "")
+    Returns a list of entry dicts for this standalone attack.
+    """
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
-        # Get the base attack text and exclude patterns
+    entries = []
+
+    try:
+        attack = perm['attack']
+        plugins = perm['plugins']
+        prefixes = perm['prefixes']
+        suffixes = perm['suffixes']
+
         attack_type = attack.get("content_type", "text")
         attack_content = content_factory(attack.get("content", attack.get("text", "")), attack_type)
-
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
-        # Get permutations for prefixes and suffixes
-        combined_texts = []  # Stored all permutations of prefixes/suffixes and plugin outputs for an attack entry.
-        fix_permutations = [
-            (prefix, suffix) for prefix in prefixes for suffix in suffixes
-        ]
+        fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
 
-        # Apply plugins to the base attack text
+        combined_texts = []
         for plugin_name, plugin_module in plugins:
             plugin_content: List[Content] = (
-                apply_plugin(
-                    plugin_name,
-                    plugin_module,
-                    attack_content,
-                    exclude_patterns,
-                    plugin_options_map,
-                )
+                apply_plugin(plugin_name, plugin_module, attack_content, exclude_patterns, plugin_options_map)
                 if plugin_name
                 else [attack_content]
             )
 
-            # Combine each plugin variation with each prefix/suffix permutation and add to combined_texts
             for plugin_index, plugin_text in enumerate(plugin_content, start=1):
                 for prefix, suffix in fix_permutations:
-
                     prefix_text = prefix.get("prefix", "") + " " if prefix else ""
                     suffix_text = " " + suffix.get("suffix", "") if suffix else ""
-                    # TODO: Should this only apply to text content?
-                    text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
-
-                    combined_texts.append(
-                        {
-                            "text": text,
-                            "prefix_id": prefix.get("id", None) if prefix else None,
-                            "suffix_id": suffix.get("id", None) if suffix else None,
-                            "plugin_name": plugin_name,
-                            "plugin_suffix": f"_{plugin_name}-{plugin_index}"
-                            if plugin_name
-                            else "",
-                        }
+                    text = content_factory(
+                        prefix_text + get_content(plugin_text) + suffix_text,
+                        get_content_type(plugin_text)
                     )
+                    combined_texts.append({
+                        "text": text,
+                        "prefix_id": prefix.get("id", None) if prefix else None,
+                        "suffix_id": suffix.get("id", None) if suffix else None,
+                        "plugin_name": plugin_name,
+                        "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else "",
+                    })
 
+        entry_id = entry_id_start
         for combined_text in combined_texts:
             entry = Entry(
                 entry_type=EntryType.ATTACK,
@@ -620,12 +721,106 @@ def process_standalone_attacks(
                 exclude_from_transformations_regex=exclude_patterns,
                 steering_keywords=attack.get("steering_keywords", None),
             ).to_attack()
-
-            dataset.append(entry)
+            entries.append(entry)
             entry_id += 1
-            bar_standalone.update(1)
 
-    bar_standalone.close()
+    except Exception as e:
+        print(f"\n[ERROR] Processing standalone attack failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+    return entries
+
+
+def process_standalone_attacks(
+    standalone_attacks,
+    dataset,
+    entry_id,
+    adv_prefixes=[None],
+    adv_suffixes=[None],
+    plugins=None,
+    plugin_options_map=None,
+    plugin_only=False,
+    num_threads=1,
+):
+    """
+    Processes standalone attacks and appends them to the dataset.
+    If plugins are provided, applies them to each standalone attack.
+    Returns the updated dataset and the next entry_id.
+    """
+
+    if plugin_only:
+        plugins = [] + plugins if plugins else []
+    else:
+        plugins = [(None, None)] + plugins if plugins else [(None, None)]
+
+    prefixes = adv_prefixes
+    suffixes = adv_suffixes
+
+    # Normalise judge fields and build permutation list
+    permutations = []
+    for attack in standalone_attacks:
+        if "judge_name" not in attack:
+            attack["judge_name"] = "canary"
+        if "judge_args" not in attack:
+            attack["judge_args"] = attack.get("canary", "")
+
+        permutations.append({
+            'attack': attack,
+            'plugins': plugins,
+            'prefixes': prefixes,
+            'suffixes': suffixes,
+        })
+
+    print(f"[Info] Processing {len(permutations)} standalone attack(s) with {num_threads} thread(s)")
+
+    new_entries = []
+
+    if num_threads > 1:
+        def thread_init():
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
+        with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
+            futures = {}
+            current_entry_id = entry_id
+            for perm in permutations:
+                future = executor.submit(
+                    _process_standalone_worker,
+                    perm,
+                    plugin_options_map,
+                    current_entry_id,
+                )
+                futures[future] = perm
+                current_entry_id += 100  # Placeholder; reassigned after collection
+
+            bar = tqdm(total=len(permutations), desc="Standalone Attacks")
+            for future in as_completed(futures):
+                try:
+                    entries = future.result()
+                    new_entries.extend(entries)
+                except Exception as e:
+                    perm = futures[future]
+                    print(f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}")
+                bar.update(1)
+            bar.close()
+
+        # Reassign sequential entry IDs
+        for i, entry in enumerate(new_entries, start=entry_id):
+            if isinstance(entry, dict):
+                entry['id'] = i
+        entry_id += len(new_entries)
+
+    else:
+        bar = tqdm(total=len(permutations), desc="Standalone Attacks")
+        for perm in permutations:
+            entries = _process_standalone_worker(perm, plugin_options_map, entry_id)
+            new_entries.extend(entries)
+            entry_id += len(entries)
+            bar.update(1)
+        bar.close()
+
+    dataset.extend(new_entries)
     return dataset, entry_id
 
 
@@ -644,283 +839,130 @@ def generate_variations(
     system_message_config=None,
     plugin_options_map=None,
     plugin_only=False,
+    num_threads=1,
 ):
     """
     Generates dataset variations from the given base documents, jailbreaks,
     instructions, injection positions, delimiters, data markers, and plugins.
     Returns the dataset and the last used entry_id.
+    
+    When num_threads > 1, creates all permutations first and processes them in parallel.
     """
-    dataset = []
-    entry_id = 1
-
+    
     if plugin_only:
-        plugins = (
-            [] + plugins if plugins else []
-        )  # Only include plugin variations, no base attack
-
+        plugins = [] + plugins if plugins else []
     else:
-        plugins = (
-            [(None, None)] + plugins if plugins else [(None, None)]
-        )  # [(plugin name, plugin module)] with a dummy entry for no plugin
-
+        plugins = [(None, None)] + plugins if plugins else [(None, None)]
+    
     prefixes = adv_prefixes
     suffixes = adv_suffixes
-
+    
     # Define output format specific entry types
     match output_format:
         case "full-prompt":
-            output_format = [EntryType.SUMMARY, EntryType.QA]
-
+            output_format_types = [EntryType.SUMMARY, EntryType.QA]
         case "user-input":
-            output_format = [EntryType.DOCUMENT]
-
+            output_format_types = [EntryType.DOCUMENT]
         case _:
-            output_format = ["burp"]
-
-    # Obtain plugin options and calculate total variants for progress bar
-    plugin_variants = {}
-    if plugins:
-        for plugin_name, plugin_module in plugins:
-            if plugin_name is None:
-                plugin_variants[plugin_name] = 1
-
-            elif "~" in plugin_name and plugin_module:  # Plugin Pipe
-                sub_plugins = plugin_name.split("~")
-                total_variants = 1
-                for sub_plugin, sub_module in zip(sub_plugins, plugin_module):
-                    sub_plugin_option = (
-                        plugin_options_map.get(sub_plugin)
-                        if plugin_options_map
-                        else None
-                    )
-                    variants = get_plugin_variants(sub_module, sub_plugin_option)
-                    total_variants *= variants
-                plugin_variants[plugin_name] = total_variants
-
-            else:  # Standalone Plugin
-                plugin_option = (
-                    plugin_options_map.get(plugin_name) if plugin_options_map else None
-                )
-                plugin_variants[plugin_name] = get_plugin_variants(
-                    plugin_module, plugin_option
-                )
-
-    # Calculate total entries for progress bar
-    total_entries = (
-        len(base_docs)
-        * len(jailbreaks)
-        * len(instructions)
-        * len(positions)
-        * len(injection_delimiters)
-        * len(spotlighting_data_markers_list)
-        * len(suffixes)
-        * sum(plugin_variants.values() or [1])
-        + 1
-        if not plugin_only
-        else 0
-    )
-    bar_variations = tqdm(total=total_entries, desc="Variations", initial=0)
-
+            output_format_types = ["burp"]
+    
+    # Build list of all permutations (base_doc, jailbreak, instruction)
+    print(f"[Info] Building composable permutations: {len(base_docs)} docs × {len(jailbreaks)} jailbreaks × {len(instructions)} instructions")
+    
+    permutations = []
+    
     for base_doc in base_docs:
-        base_id = base_doc["id"]
-        document = base_doc["document"]
-        placeholder = base_doc.get("placeholder", "")
-
-        # Define entry type specific text
-        question = base_doc.get("question", "")
-        ideal_answer = base_doc.get("ideal_answer", "")
-        ideal_summary = base_doc.get("ideal_summary", "")
-        entry_text = {}
-        if question != "":
-            entry_text["question"] = question
-
-        if ideal_answer != "":
-            entry_text["ideal_answer"] = ideal_answer
-
-        if ideal_summary != "":
-            entry_text["ideal_summary"] = ideal_summary
-
-        # If the current document has a placeholder attribute, it means the user
-        # want the payload to be inserted into a fixed location, so we override
-        # the inject positions for this document
-        insert_positions = ["fixed"] if placeholder else positions
-
         for jailbreak in jailbreaks:
-            jailbreak_id = jailbreak["id"]
-            jailbreak_text = jailbreak["text"]
-            jailbreak_type = jailbreak.get("jailbreak_type", "")
-            jailbreak_lang = jailbreak.get("lang", "en")
-
             for instruction in instructions:
-                instruction_id = instruction["id"]
-                instruction_content_type = instruction.get("content_type", "text")
-                instruction_content = content_factory(instruction["instruction"], instruction_content_type)
-                instruction_type = instruction.get("instruction_type", "")
-                instruction_lang = instruction.get("lang", "en")
-                # instruction_steering_keywords = instruction.get("steering_keywords", None)
-
-                if instruction_content_type != "text":
-                    print(
-                        f"Skipping instruction {instruction_id} for jailbreak {jailbreak_id} because instruction content type '{instruction_content_type}' is not supported yet."
-                    )
-                    continue
-
-                judge_name = instruction.get("judge_name", "canary")
-                judge_args = instruction.get(
-                    "judge_args", instruction.get("canary", "")
+                # Pre-check language matching to skip invalid combinations
+                if match_languages:
+                    jailbreak_lang = jailbreak.get("lang", "en")
+                    instruction_lang = instruction.get("lang", "en")
+                    if jailbreak_lang != instruction_lang:
+                        continue
+                
+                permutations.append({
+                    'base_doc': base_doc,
+                    'jailbreak': jailbreak,
+                    'instruction': instruction,
+                    'plugins': plugins,
+                    'prefixes': prefixes,
+                    'suffixes': suffixes,
+                    'positions': ["fixed"] if base_doc.get("placeholder", "") else positions,
+                    'injection_delimiters': injection_delimiters,
+                    'spotlighting_data_markers_list': spotlighting_data_markers_list,
+                    'match_languages': match_languages,
+                })
+    
+    print(f"[Info] Processing {len(permutations)} composable permutations with {num_threads} thread(s)")
+    
+    # Process permutations
+    dataset = []
+    entry_id = 1
+    
+    if num_threads > 1:
+        # Parallel processing
+        def thread_init():
+            """Each worker thread gets its own asyncio event loop."""
+            asyncio.set_event_loop(asyncio.new_event_loop())
+        
+        with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
+            # Submit all permutations
+            futures = {}
+            current_entry_id = entry_id
+            
+            for perm in permutations:
+                future = executor.submit(
+                    _process_permutation_worker,
+                    perm,
+                    plugin_options_map,
+                    system_message_config,
+                    output_format_types,
+                    current_entry_id
                 )
-
-                # If match_languages is enabled, skip if jailbreak and instruction languages do not match
-                if match_languages and jailbreak_lang != instruction_lang:
-                    total_entries -= (
-                        len(positions)
-                        * len(injection_delimiters)
-                        * len(spotlighting_data_markers_list)
-                        * len(suffixes)
-                        * sum(plugin_variants.values() or [1])
-                    )
-                    bar_variations.total = total_entries
-                    bar_variations.refresh()
-                    continue
-
-                # Combines jailbreak and instruction texts
-                # Instruction is placed into jailbreak at <INSTRUCTION> placeholder
-                combined_base = content_factory(jailbreak_text.replace(
-                    "<INSTRUCTION>", str(get_content(instruction_content))
-                ), get_content_type(instruction_content))
-                lang = instruction_lang
-
-                # Create plugin / transformation regex exclusion lists
-                local_exclude = parse_exclude_patterns(jailbreak, instruction)
-
-                # Apply all plugin, prefix and suffix combinations for the combined_base text (jailbreak + instruction)
-                # Applied with --plugins, --include-prefixes and --include-suffixes, by default None
-                combined_texts = []
-                fix_permutations = [
-                    (prefix, suffix) for prefix in prefixes for suffix in suffixes
-                ]
-
-                for plugin_name, plugin_module in plugins:
-                    plugin_texts: List[Content] = (
-                        apply_plugin(
-                            plugin_name,
-                            plugin_module,
-                            combined_base,
-                            local_exclude,
-                            plugin_options_map,
-                        )
-                        if plugin_name
-                        else [combined_base]
-                    )
-
-                    for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
-                        for prefix, suffix in fix_permutations:
-                            prefix_lang = prefix.get("lang", None) if prefix else None
-                            suffix_lang = suffix.get("lang", None) if suffix else None
-
-                            if match_languages and (
-                                (prefix_lang and prefix_lang != lang)
-                                or (suffix_lang and suffix_lang != lang)
-                            ):
-                                continue
-
-                            prefix_text = prefix.get("prefix", "") + " " if prefix else ""
-                            suffix_text = " " + suffix.get("suffix", "") if suffix else ""
-                            text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
-
-                            combined_texts.append(
-                                {
-                                    "text": text,
-                                    "prefix_id": prefix.get("id", None) if prefix else None,
-                                    "suffix_id": suffix.get("id", None) if suffix else None,
-                                    "plugin_name": plugin_name,
-                                    "plugin_suffix": f"_{plugin_name}-{plugin_index}"
-                                    if plugin_name
-                                    else "",
-                                }
-                            )
-
-                for combined_text in combined_texts:
-                    # Applied with --positions, by default ['end']
-                    for position in insert_positions:
-                        # Applied with --injection-delimiters, by default "\nINJECTION_PAYLOAD\n"
-                        for injection_pattern in injection_delimiters:
-                            # Combine document with suffix_combined_text (jailbreak + instruction + suffix)
-                            # suffix_combined_text is inserted into the injection_pattern at 'INJECTION_PAYLOAD' placeholder
-                            # Document Placeholder: Injection is placed into document placeholder
-                            # Otherwise: Injection is placed into document at position (start, middle, end)
-                            injected_doc = insert_jailbreak(
-                                document,
-                                combined_text["text"],
-                                position,
-                                injection_pattern,
-                                placeholder,
-                            )
-
-                            for entry_type in output_format:
-                                if entry_type == "burp":
-                                    burp_payload_encoded = json.dumps(get_content(injected_doc))[
-                                        1:-1
-                                    ]
-                                    dataset.append(burp_payload_encoded)
-
-                                else:
-                                    # Applied with --spotlighting-data-markers, by default "\nDOCUMENT\n"
-                                    for (
-                                        spotlighting_data_marker
-                                    ) in spotlighting_data_markers_list:
-                                        # Applied with --include-system-message flag - gets system message associated with spotlighting data marker
-                                        system_message = get_system_message(
-                                            system_message_config,
-                                            spotlighting_data_marker,
-                                        )
-
-                                        # Combines injected document with spotlighting data marker, for full-prompt entries
-                                        if entry_type == EntryType.DOCUMENT:
-                                            injected_doc = (
-                                                content_factory(spotlighting_data_marker.replace(
-                                                    "DOCUMENT", get_content(injected_doc)
-                                                ), get_content_type(injected_doc))
-                                                if spotlighting_data_marker != "none" and isinstance(get_content(injected_doc), str)
-                                                else injected_doc
-                                            )
-
-                                        entry = Entry(
-                                            entry_type=entry_type,
-                                            entry_id=entry_id,
-                                            base_id=base_id,
-                                            jailbreak_id=jailbreak_id,
-                                            instruction_id=instruction_id,
-                                            prefix_id=combined_text.get(
-                                                "prefix_id", None
-                                            ),
-                                            suffix_id=combined_text.get(
-                                                "suffix_id", None
-                                            ),
-                                            content=injected_doc,
-                                            entry_text=entry_text,
-                                            system_message=system_message,
-                                            payload=combined_text.get("text", None),
-                                            lang=lang,
-                                            plugin_suffix=combined_text.get(
-                                                "plugin_suffix", ""
-                                            ),
-                                            plugin_name=combined_text.get(
-                                                "plugin_name", None
-                                            ),
-                                            judge_args=judge_args,
-                                            judge_name=judge_name,
-                                            position=position,
-                                            jailbreak_type=jailbreak_type,
-                                            instruction_type=instruction_type,
-                                            injection_pattern=injection_pattern,
-                                            spotlighting_data_markers=spotlighting_data_marker,
-                                            exclude_from_transformations_regex=local_exclude,
-                                        ).to_entry()
-                                        dataset.append(entry)
-                                        entry_id += 1
-                                        bar_variations.update(1)
-
+                futures[future] = perm
+                # Estimate entry count for this permutation (rough approximation)
+                # This will be corrected as we process results
+                current_entry_id += 100  # Placeholder increment
+            
+            # Collect results with progress bar
+            bar = tqdm(total=len(permutations), desc="Processing permutations")
+            
+            for future in as_completed(futures):
+                try:
+                    entries = future.result()
+                    dataset.extend(entries)
+                    bar.update(1)
+                except Exception as e:
+                    perm = futures[future]
+                    print(f"\n[ERROR] Permutation failed (doc={perm['base_doc']['id']}, jb={perm['jailbreak']['id']}, instr={perm['instruction']['id']}): {e}")
+            
+            bar.close()
+        
+        # Reassign entry IDs sequentially
+        for i, entry in enumerate(dataset, start=1):
+            if isinstance(entry, dict):
+                entry['id'] = i
+        entry_id = len(dataset) + 1
+    
+    else:
+        # Sequential processing (original logic)
+        bar = tqdm(total=len(permutations), desc="Processing permutations")
+        
+        for perm in permutations:
+            entries = _process_permutation_worker(
+                perm,
+                plugin_options_map,
+                system_message_config,
+                output_format_types,
+                entry_id
+            )
+            dataset.extend(entries)
+            entry_id += len(entries)
+            bar.update(1)
+        
+        bar.close()
+    
     return dataset, entry_id
 
 
@@ -1133,6 +1175,7 @@ def generate_dataset(args):
             system_message_config=system_message_config,
             plugin_options_map=plugin_options_map,
             plugin_only=args.plugin_only,
+            num_threads=getattr(args, 'threads', 1),
         )
 
         # Generate Standalone Attacks
@@ -1149,6 +1192,7 @@ def generate_dataset(args):
                 plugins=plugins if args.plugins else None,
                 plugin_options_map=plugin_options_map,
                 plugin_only=args.plugin_only,
+                num_threads=getattr(args, 'threads', 1),
             )
     except ImportError as e:
         print(f"Missing dependency: {e}")
