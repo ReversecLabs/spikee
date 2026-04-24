@@ -5,7 +5,6 @@ import os
 import sys
 import shutil
 import argparse
-import argcomplete
 from . import __version__
 from dotenv import load_dotenv
 from pathlib import Path
@@ -29,7 +28,6 @@ from .list import (
     list_providers,
 )
 from .viewers.results import ResultsViewer
-from .docs import docs_command
 
 banner = r"""
    _____ _____ _____ _  ________ ______
@@ -607,64 +605,6 @@ def main():
             help="Include descriptions of modules where available",
         )
 
-    # === [DOCS] Sub-command ================================================
-    parser_docs = subparsers.add_parser(
-        "docs",
-        help="Generate spikee commands or explain spikee commands"
-    )
-    
-    # Create subparsers for docs command
-    docs_subparsers = parser_docs.add_subparsers(
-        dest="subcommand",
-        help="Subcommands for docs"
-    )
-    
-    # docs generate subcommand
-    parser_docs_generate = docs_subparsers.add_parser(
-        "generate",
-        help="Generate spikee commands using natural language queries"
-    )
-    parser_docs_generate.add_argument(
-        "query",
-        type=str,
-        nargs="+",
-        help="Natural language description of desired spikee command"
-    )
-    parser_docs_generate.add_argument(
-        "--model",
-        type=str,
-        default=None,
-        help="LLM model to use for generation (default: openai/gpt-4o)"
-    )
-    parser_docs_generate.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show debug information (classification, context size)"
-    )
-    
-    # docs explain subcommand
-    parser_docs_explain = docs_subparsers.add_parser(
-        "explain",
-        help="Explain spikee commands or provide information about them"
-    )
-    parser_docs_explain.add_argument(
-        "query",
-        type=str,
-        nargs="+",
-        help="Query about spikee commands to explain"
-    )
-    parser_docs_explain.add_argument(
-        "--model",
-        type=str,
-        default=None,
-        help="LLM model to use for explanation (default: openai/gpt-4o)"
-    )
-    parser_docs_explain.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show debug information (classification, context size)"
-    )
-
     args = convert_to_new_args(parser.parse_args())
 
     # Print banner and info unless quiet mode is enabled
@@ -726,8 +666,6 @@ def main():
             list_providers(args)
         else:
             parser_list.print_help()
-    elif args.command == "docs":
-        docs_command(args)
     else:
         parser.print_help()
         sys.exit(1)
