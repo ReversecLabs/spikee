@@ -2,12 +2,13 @@ from typing import List, Union
 
 from spikee.utilities.modules import load_module_from_path
 from spikee.templates.provider import Provider
-from spikee.list import list_modules
+from spikee.utilities.modules import collect_modules
 
 
 def get_supported_providers() -> List[str]:
     """Return a list of supported LLM providers."""
-    return list_modules("providers")
+    modules, _, _ = collect_modules("providers")
+    return modules
 
 
 def validate_llm_provider(option: str) -> bool:
