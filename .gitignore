@@ -13,3 +13,5 @@ llmwebmail-test
 .vscode/*
 .sonar
 copilot-instructions.md
+.kilo
+.kilo/*
