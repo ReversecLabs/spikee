@@ -19,7 +19,7 @@
     {% endif %}
 
     {% if entry.conversation %}
-        {{ process_conversation(entry.conversation, truncated=truncated) | safe }}
+        {{ process_standardised_conversation(entry.conversation, truncated=truncated) | safe }}
 
     {% elif entry.input is mapping %}
         <ol class="ps-3 mt-2">
