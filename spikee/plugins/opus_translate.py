@@ -117,7 +117,7 @@ class OpusTranslator(Plugin):
         # Detect GPU availability
         try:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            print(f"[OpusTranslator] Using device: {self.device}")
+            #print(f"[OpusTranslator] Using device: {self.device}")
         except ImportError:
             self.device = "cpu"
 
