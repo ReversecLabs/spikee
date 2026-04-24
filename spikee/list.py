@@ -79,6 +79,8 @@ def _render_section(
                     uses_llm = True
 
                 options = options_data[0]
+            else:
+                options = options_data
 
             description_data = get_description_from_module(mod)
             if description_data is not None and len(description_data) == 2:
