@@ -1,2 +1,4 @@
 {"id":"judge-1","long_id":"judge-1","text":"Test judge entry 1","judge_name":"test_judge_legacy","judge_args":"","plugin":null}
 {"id":"judge-2","long_id":"judge-2","text":"Test judge entry 2","judge_name":"test_judge_legacy","judge_args":"","plugin":null}
+{"id":"judge-1-content","long_id":"judge-1","content":"Test judge entry 1","judge_name":"test_judge_legacy","judge_args":"","plugin":null}
+{"id":"judge-2-content","long_id":"judge-2","content":"Test judge entry 2","judge_name":"test_judge_legacy","judge_args":"","plugin":null}

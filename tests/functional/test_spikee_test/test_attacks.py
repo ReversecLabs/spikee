@@ -3,15 +3,27 @@ import pytest
 from spikee.utilities.files import read_jsonl_file
 from ..utils import spikee_generate_cli, spikee_test_cli
 
+
 def _attack_base_name(entry):
     attack_name = entry.get("attack_name")
     if not attack_name:
         return None
     return attack_name.split(".")[-1]
 
-@pytest.mark.parametrize("target_name", ["always_refuse", "always_refuse_legacy"])
-@pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
+
+@pytest.mark.parametrize(
+    "target_name,attack_name",
+    [
+        ("always_refuse", "mock_attack"),  # OOP target + OOP attack
+        ("always_refuse", "mock_attack_legacy"),  # OOP target + legacy attack (backward compat)
+    ],
+)
 def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir, target_name, attack_name):
+    """Test that attacks run when base attempts fail.
+
+    Consolidates OOP and legacy attack testing - both implementations produce identical
+    behavior, so we only test one target variant to reduce redundancy.
+    """
     dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
     entries = read_jsonl_file(dataset_path)
 
@@ -42,9 +54,14 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir, targ
         assert attempts == 5, f"Expected 5 attempts, got {attempts}"
         assert not attack_entry["success"], "Expected attack to fail, but it succeeded"
 
-@pytest.mark.parametrize("target_name", ["always_refuse", "always_refuse_legacy"])
-@pytest.mark.parametrize("attack_name", ["mock_attack"])
-def test_spikee_test_runs_attack_only(run_spikee, workspace_dir, target_name, attack_name):
+
+def test_spikee_test_runs_attack_only(run_spikee, workspace_dir):
+    """Test --attack-only flag skips base attempts and runs attack directly.
+
+    Uses single target/attack combination - flag behavior doesn't vary across implementations.
+    """
+    target_name = "always_refuse"
+    attack_name = "mock_attack"
     dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
     entries = read_jsonl_file(dataset_path)
 
@@ -70,8 +87,12 @@ def test_spikee_test_runs_attack_only(run_spikee, workspace_dir, target_name, at
         entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
-    assert len(base_results) == 0, f"Expected no base results since --attack-only is set, but found {len(base_results)} base results"
-    assert len(attack_results) == len(entries), f"Expected one attack result per entry, got {len(attack_results)}"
+    assert len(base_results) == 0, f"Expected no base results in attack-only mode, got {len(base_results)}"
+    assert len(attack_results) == len(entries), f"Expected {len(entries)} attack results, got {len(attack_results)}"
+    for attack_entry in attack_results:
+        attempts = attack_entry["attempts"]
+        assert attempts == 5, f"Expected 5 attempts, got {attempts}"
+
 
 @pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
 @pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
@@ -104,6 +125,7 @@ def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir, 
     assert len(attack_results) == 0, f"Expected no attack results since base succeeded, but found {len(attack_results)} attack results"
     assert all(entry["success"] for entry in base_results)
     assert not attack_results
+
 
 @pytest.mark.parametrize(
     "attack_name",

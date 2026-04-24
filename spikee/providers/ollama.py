@@ -1,11 +1,12 @@
-from spikee.templates.provider import Provider
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
-
 from any_llm import AnyLLM
-from typing import List, Tuple, Dict, Union, Any
+from typing import Union, Any, Dict, Sequence
 import os
 import requests
+
+from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
 
 class AnyLLMOllamaProvider(Provider):
@@ -41,7 +42,7 @@ class AnyLLMOllamaProvider(Provider):
             data = response.json()
             return {model["model"]: model["model"] for model in data["models"]}
 
-        except Exception as e:
+        except Exception:
             return {"error": "Unable to fetch models from Ollama API."}
 
     def setup(
@@ -76,19 +77,17 @@ class AnyLLMOllamaProvider(Provider):
 
         self.options = options_kwargs
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for Ollama models via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM Ollama LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(
-            model=self.model, messages=formatted_messages, **self.options
-        )
+        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
 
         return AIMessage(
             content=response.choices[0].message.content, original_response=response

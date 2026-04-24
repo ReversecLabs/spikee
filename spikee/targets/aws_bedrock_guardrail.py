@@ -1,11 +1,12 @@
-from spikee.templates.target import Target
-from spikee.utilities.modules import parse_options
-from spikee.utilities.enums import ModuleTag
-
 from dotenv import load_dotenv
-from typing import List, Optional, Tuple
+from typing import Optional
 import os
 import boto3
+
+from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
 
 
 class AWSBedrockGuardrailTarget(Target):
@@ -14,15 +15,15 @@ class AWSBedrockGuardrailTarget(Target):
         self.bedrock_runtime = boto3.client("bedrock-runtime", region_name="us-east-1")
         self.guardrail_id = os.getenv("AWS_GUARDRAIL_ID")
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Guardrail Target for AWS Bedrock, testing prompt injection detection and blocking. (Requires library 'boto3')",
         )
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Guardrail targets typically don't have configurable options."""
-        return ["version=DRAFT"]
+        return ["version=DRAFT"], False
 
     def detect_prompt_injection_result(self, input_text, version):
         """Detect if prompt injection was blocked by AWS Bedrock guardrail."""

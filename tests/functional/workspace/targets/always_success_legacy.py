@@ -14,4 +14,4 @@ def process_input(
     target_options: Optional[str] = None,
     logprobs: bool = False,
 ):
-    return CANARY_RESPONSES
+    return str(CANARY_RESPONSES)

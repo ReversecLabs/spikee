@@ -9,8 +9,10 @@ Usage:
 """
 
 import random
+from typing import List, Optional, Union
+
 from spikee.templates.plugin import Plugin
-from typing import List, Tuple, Union
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -92,13 +94,13 @@ class LLMMultiLanguageJailbreaker(Plugin):
     DEFAULT_MODEL = "openai/gpt-4o"
     VARIANTS = 5
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.TRANSLATION, ModuleTag.LLM, ModuleTag.ATTACK_BASED],
             "Generates jailbreak attack prompts using an LLM and multi language techniques.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["enforce-lang=chinese(zh-ch)"], True
 
@@ -123,6 +125,9 @@ class LLMMultiLanguageJailbreaker(Plugin):
         # call the model via .invoke
         response = llm.invoke([prompt]).content.strip()
 
+        if not isinstance(response, str):
+            raise RuntimeError("LLM response is not a string as expected.")
+
         obj = extract_json_or_fail(response)
         attack_prompt = obj.get("attack_prompt", "")
         if not attack_prompt:
@@ -130,7 +135,10 @@ class LLMMultiLanguageJailbreaker(Plugin):
         return attack_prompt.strip()
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> Union[str, List[str]]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)
@@ -152,7 +160,7 @@ class LLMMultiLanguageJailbreaker(Plugin):
             try:
                 attack_prompts.append(
                     self._generate_multi_language_jailbreak_attack(
-                        llm, text, lang, list(used_langs)
+                        llm, content, lang, list(used_langs)
                     )
                 )
             except Exception as e:

@@ -18,16 +18,18 @@ Options:
 
 """
 
-from typing import List, Tuple, Union
+from typing import List, Optional, Union
 import json
+import random
+import string
 
 from spikee.templates.plugin import Plugin
+from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
 from spikee.utilities.modules import parse_options, extract_json_or_fail
-import random
-import string
 
 MASK_PROMPT = """
 You are a cybersecurity system that identifies high-risk words within a prompt. You will be provided with
@@ -48,12 +50,12 @@ to be associated with prompt injection attacks or high-risk topics (e.g., violen
 
 
 class Shortener(Plugin):
-    DEFAULT_MODEL = "bedrock-qwen.qwen3-coder-30b-a3b-v1:0"
+    DEFAULT_MODEL = "bedrock/qwen3-next-80b"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.OBFUSCATION, ModuleTag.LLM], "Masks high-risk words in prompts."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["advanced=false", "advanced-split=6"], True
 
@@ -61,7 +63,10 @@ class Shortener(Plugin):
         return "[" + "".join(random.choices(string.ascii_letters, k=3)).upper() + "]"
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
@@ -71,8 +76,11 @@ class Shortener(Plugin):
 
         llm = get_llm(llm_model, temperature=1, max_tokens=1000)
 
+        if not isinstance(llm, Provider):
+            raise RuntimeError("[Mask] LLM provider is required for this plugin.")
+
         # Detect high-risk words
-        payload = {"prompt": text}
+        payload = {"prompt": content}
 
         response = llm.invoke(
             [
@@ -81,6 +89,9 @@ class Shortener(Plugin):
             ]
         ).content
 
+        if not isinstance(response, str):
+            raise RuntimeError("[Mask] LLM response is not a string.")
+
         risk_words = {}
         suffix = ""
 
@@ -88,7 +99,7 @@ class Shortener(Plugin):
             response = extract_json_or_fail(response)
 
             for word in response.get("risk_words", []):
-                if word in text:
+                if word in content:
                     if advanced:
                         num_masks = (
                             len(word) // advanced_split + 1
@@ -97,9 +108,9 @@ class Shortener(Plugin):
                         masks = [self.generate_mask() for _ in range(num_masks)]
                         chunk_size = len(word) // num_masks
                         chunks = [
-                            word[i * chunk_size : (i + 1) * chunk_size]
+                            word[i * chunk_size: (i + 1) * chunk_size]
                             if i < num_masks - 1
-                            else word[i * chunk_size :]
+                            else word[i * chunk_size:]
                             for i in range(num_masks)
                         ]
 
@@ -112,7 +123,7 @@ class Shortener(Plugin):
                         risk_words[word] = self.generate_mask()
                         suffix += f"{risk_words[word]}={word}"
 
-                    text = text.replace(word, risk_words[word])
+                    content = content.replace(word, risk_words[word])
 
                 else:
                     suffix += (
@@ -122,4 +133,4 @@ class Shortener(Plugin):
         except Exception:
             raise RuntimeError("[Mask] Failed to extract risk words from LLM response.")
 
-        return text + " " + suffix.strip()
+        return content + " " + suffix.strip()

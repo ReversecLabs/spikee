@@ -2,6 +2,8 @@ import json
 
 
 class StandardisedConversation:
+    """A class to manage a conversation graph with a root message and child messages, allowing for multiple attempts and tracking of conversation paths."""
+
     def __init__(self, root_data=None):
         self._next_id = 1  # root is defined as 0
         self._attempts = 0
@@ -121,15 +123,3 @@ class StandardisedConversation:
 
     def __str__(self):
         return json.dumps(self.conversation)
-
-
-class StandardisedMessage:
-    def __init__(self, role: str, content: str):
-        self.role = role
-        self.content = content
-
-    def to_dict(self):
-        return {"role": self.role, "content": self.content}
-
-    def __str__(self):
-        return json.dumps(self.to_dict())

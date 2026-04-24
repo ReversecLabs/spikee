@@ -11,9 +11,11 @@ Returns:
   (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
 """
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Callable, Dict, List
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -90,13 +92,13 @@ Ensure the entire attack_prompt is less than 500 characters, this is a limitatio
 class RAGPoisoner(Attack):
     DEFAULT_MODEL = "openai/gpt-4o"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.LLM,
             ModuleTag.SINGLE,
         ], "Generates RAG Poisoner attack prompts using an LLM."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], True
 
@@ -134,14 +136,14 @@ class RAGPoisoner(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> AttackResponseHint:
         """
         Executes a RAG Poisoner attack.
         For each iteration, it creates a new attack prompt with fake RAG context
@@ -152,7 +154,10 @@ class RAGPoisoner(Attack):
         model_name = opts.get("model", self.DEFAULT_MODEL)
 
         # Get the objective from the entry
-        objective = entry.get("text", "")
+        objective = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("RAGPoisoner Attack only supports text content type.")
+
         if not objective:
             return 0, False, "", "No objective provided in entry"
 
@@ -173,16 +178,10 @@ class RAGPoisoner(Attack):
                 )
 
                 # Send the attack prompt to the target
-                response = target_module.process_input(
+                last_response = process_target_content(target_module.process_input(
                     attack_prompt,
                     entry.get("system_message", None),
-                )
-
-                # Handle different return types from process_input
-                if isinstance(response, tuple):
-                    last_response = str(response[0])
-                else:
-                    last_response = str(response)
+                ))
 
                 previous_attempts.append(
                     {"attack_prompt": attack_prompt, "response": last_response}

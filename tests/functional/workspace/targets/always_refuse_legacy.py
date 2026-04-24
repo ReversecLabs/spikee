@@ -11,4 +11,4 @@ def process_input(
     target_options: Optional[str] = None,
     logprobs: bool = False,
 ):
-    return "Sorry, I can't answer that."
+    return str("Sorry, I can't answer that.")

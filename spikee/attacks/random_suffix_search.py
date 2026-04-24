@@ -40,9 +40,11 @@ Returns:
 import random
 import numpy as np
 import tiktoken
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
@@ -51,13 +53,13 @@ class RandomSuffixSearch(Attack):
     n_tokens_adv = 25  # Number of tokens in the adversarial suffix.
     n_tokens_change = 4  # Maximum tokens to change per iteration.
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.OBFUSCATION, ModuleTag.SINGLE],
             "Performs a random suffix search attack by modifying token sequences appended to the input.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -75,20 +77,24 @@ class RandomSuffixSearch(Attack):
                     document[: idx + len(payload)]
                     + " "
                     + adv_string
-                    + document[idx + len(payload) :]
+                    + document[idx + len(payload):]
                 )
         return document + "\n" + adv_string
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
-        original_text = entry.get("text", "")
+        attack_option: str = "",
+    ) -> AttackResponseHint:
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("RandomSuffixSearch Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         payload_field = entry.get("payload", "")
 
@@ -121,7 +127,7 @@ class RandomSuffixSearch(Attack):
             ).tolist()
             # Replace the selected tokens in adv_tokens.
             adv_tokens[
-                substitute_pos_start : substitute_pos_start + self.n_tokens_change
+                substitute_pos_start: substitute_pos_start + self.n_tokens_change
             ] = substitution_tokens
 
             # Decode the modified token sequence into text.
@@ -133,12 +139,9 @@ class RandomSuffixSearch(Attack):
 
             try:
                 # Call process_input. The wrapper guarantees a tuple is returned.
-                response = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate, system_message, logprobs=False
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
+                ))
 
                 success = call_judge(entry, response)
             except Exception as e:

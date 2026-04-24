@@ -1,12 +1,14 @@
-from spikee.templates.target import Target
-from spikee.utilities.enums import ModuleTag
-from typing import List, Optional, Tuple
+from typing import Optional
 import os
 from dotenv import load_dotenv
 from azure.ai.contentsafety import ContentSafetyClient
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 from azure.ai.contentsafety.models import AnalyzeTextOptions, TextCategory
+
+from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.enums import ModuleTag
 
 
 class AzureAIContentSafetyHarmfulTarget(Target):
@@ -24,15 +26,15 @@ class AzureAIContentSafetyHarmfulTarget(Target):
             self.endpoint, AzureKeyCredential(self.api_key)
         )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Guardrail Target for Azure AI Content Safety, testing harmful content detection. (Requires library 'azure-ai-content-safety')",
         )
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """No configurable options for this target."""
-        return []
+        return [], False
 
     def process_input(
         self,

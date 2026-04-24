@@ -29,8 +29,9 @@ Every attack is a Python module located in the `attacks/` directory of your work
 ```python
 from spikee.templates.attack import Attack
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, Content
 from spikee.utilities.modules import parse_options
-from typing import List
+from typing import List, Dict, Any, Callable, Tuple, Optional
 
 class SampleAttack(Attack):
     OPTIONS_MAP = {
@@ -41,11 +42,11 @@ class SampleAttack(Attack):
         "strategy": "random",
     }
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the attack."""
         return [], "A brief description of what this attack does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         options = ["strategy=" + self.OPTIONS_MAP[DEFAULT_KEY]]
         options.extend(
@@ -66,24 +67,24 @@ class SampleAttack(Attack):
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option="",
-    ) -> Tuple[int, bool, object, str]:
+        attack_options=None,
+    ) -> AttackResponseHint:
         """
         Executes a dynamic attack on the given entry.
 
         Args:
-            entry (dict): The dataset entry. Expected keys: "text", optionally "payload" and "exclude_from_transformations_regex".
+            entry (dict): The dataset entry. Expected keys: "content" + "content_type" (or legacy "text"), optionally "payload" and "exclude_from_transformations_regex".
             target_module (module): The target module (must implement process_input(input_text, system_message)).
             call_judge (function): A function that accepts (entry, llm_response) and returns True if the attack is successful.
             max_iterations (int): The maximum number of attack iterations to try.
             attempts_bar (tqdm, optional): A progress bar to update for each iteration.
-            attack_option (str, optional): Configuration option like "strategy=aggressive".
+            attack_options (str, optional): Configuration option like "strategy=aggressive".
 
         Returns:
-            tuple: (iterations_attempted, success_flag, modified_input (str, dict), last_response)
+            tuple: (iterations_attempted, success_flag, modified_input (Content | dict), last_response)
         """
-        # Parse attack option
-        options = parse_options(attack_option)
+        # Parse attack options
+        options = parse_options(attack_options or "")
         strategy = options.get("strategy", self.DEFAULT_KEY)
 
         if strategy in self.OPTIONS_MAP:
@@ -116,7 +117,7 @@ This is the core of every dynamic attack script. It contains the logic for gener
 *   `attempts_bar` and `bar_lock`: 
     `tqdm` progress bar objects for updating the UI. For each attempt inside your loop, call `with bar_lock: attempts_bar.update(1)`.
 
-*   `attack_option: Optional[str]`: 
+*   `attack_options: Optional[str]`: 
     A single string passed from the command line via `--attack-options` (e.g., `"mode=aggressive"`).
 
 ### Return Value
@@ -124,12 +125,12 @@ This is the core of every dynamic attack script. It contains the logic for gener
 The `attack` function must return a tuple containing four elements:
 1.  `int`: The total number of iterations that were attempted.
 2.  `bool`: The final success flag (`True` if any iteration succeeded).
-3.  `str`: The payload of the **last** attempted iteration.
-4.  `str`: The response from the **last** attempted iteration.
+3.  `Content`: The payload of the **last** attempted iteration.
+4.  `Content`: The response from the **last** attempted iteration.
 
 ## Implementation Guidelines
 
-1.  **Modify the Payload**: It is best practice to modify the `entry['payload']` and substitute it back into `entry['text']`. This focuses the attack on the malicious part while preserving the surrounding document structure.
+1.  **Modify the Payload**: It is best practice to modify the `entry['payload']` and substitute it back into `entry.get('content', entry.get('text'))`. This focuses the attack on the malicious part while preserving the surrounding document structure.
 2.  **Respect `max_iterations`**: Your main loop must not exceed this value.
 3.  **Update Progress Bar**: Call `attempts_bar.update(1)` inside the `bar_lock` for every iteration to keep the UI in sync.
 4.  **Handle Early Exit**: If an attack succeeds, break the loop. Before returning, you should adjust the progress bar's total to reflect the skipped iterations. This keeps the ETA accurate.
@@ -155,11 +156,11 @@ class SampleMultiTurnAttack(Attack):
         # turn_type defines an attack's multi-turn capability, either Turn.SINGLE (Default) or Turn.MULTI
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the attack."""
         return [ModuleTag.MULTI], "A brief description of what this attack does."
     
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -171,21 +172,21 @@ class SampleMultiTurnAttack(Attack):
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = "",
-    ) -> Tuple[int, bool, object, str]:
+        attack_options=None,
+    ) -> AttackResponseHint:
         """
         Executes a dynamic multi-turn attack on a given entry.
 
         Args:
-            entry (dict): The dataset entry. Expected keys: "text", optionally "payload" and "exclude_from_transformations_regex".
+            entry (dict): The dataset entry. Expected keys: "content" + "content_type" (or legacy "text"), optionally "payload" and "exclude_from_transformations_regex".
             target_module (module): The target module (must implement process_input(input_text, system_message)).
             call_judge (function): A function that accepts (entry, llm_response) and returns True if the attack is successful.
             max_iterations (int): The maximum number of attack iterations to try.
             attempts_bar (tqdm, optional): A progress bar to update for each iteration.
-            attack_option (str, optional): Configuration option like "strategy=aggressive".
+            attack_options (str, optional): Configuration option like "strategy=aggressive".
 
         Returns:
-            tuple: (iterations_used:int, success:bool, {"objective": str, "conversation": List[Dict]}, last_response:str)
+            tuple: (iterations_used:int, success:bool, {"objective": str, "conversation": List[Dict]}, last_response:Content)
         """
 
         session_id = str(uuid.uuid4()) # Unique session ID for multi-turn context
@@ -223,13 +224,14 @@ class SampleMultiTurnAttack(Attack):
             if backtrack:
                 last_message_id = prompt_message_id
 
+        content = entry.get("content", entry.get("text"))
         return (
-            len(entry["text"]), 
+            standardised_conversation.get_message_total(), 
             success, 
             Attack.standardised_input_return(
-                input=entry["text"],
+                input=content,
                 conversation=standardised_conversation, # Optional, for multi-turn attacks
-                objective=entry["text"] # Optional, for instructional multi-turn attacks
+                objective=content # Optional, for instructional multi-turn attacks
             ),
             response
         )

@@ -20,21 +20,21 @@ Usage:
 """
 
 from dotenv import load_dotenv
-from typing import Tuple, List
 
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.hinting import ModuleDescriptionHint
 
 
 class LLMJudgeOutputCriteria(LLMJudge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Judges whether an LLM's output meets a specified criteria using an LLM Judge.",
         )
 
-    def judge(self, llm_input, llm_output, judge_args="", judge_options="") -> bool:
+    def judge(self, llm_input: str, llm_output: str, judge_args="", judge_options="") -> bool:
         """
         Args:
             llm_input (str): The text/prompt that was originally given to the model (not required here, but included).
@@ -72,7 +72,11 @@ class LLMJudgeOutputCriteria(LLMJudge):
         messages = [SystemMessage(system_message), HumanMessage(user_prompt)]
 
         try:
-            response = llm.invoke(messages).content.strip()
+            response = llm.invoke(messages).content
+
+            if not isinstance(response, str):
+                raise ValueError(f"[LLMJudgeOutputCriteria] LLM response is not a string as expected, got {type(response)}.")
+
             return token not in response
         except Exception as e:
             print(f"Error during LLM judging: {e}")

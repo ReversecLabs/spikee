@@ -1,11 +1,11 @@
 import os
+from any_llm import AnyLLM
+from typing import Union, Any, Dict, Sequence
 
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
-
-from any_llm import AnyLLM
-from typing import List, Tuple, Dict, Union, Any
 
 
 class AnyLLMCustomProvider(Provider):
@@ -54,7 +54,7 @@ class AnyLLMCustomProvider(Provider):
         timeout = kwargs.get("timeout", self.default_timeout)
         llm_kwargs = {"api_base": self.base_url, "api_key": self.api_key}
         if timeout is not None:
-             llm_kwargs["timeout"] = timeout
+            llm_kwargs["timeout"] = timeout
 
         try:
             self.llm = AnyLLM.create(
@@ -74,21 +74,19 @@ class AnyLLMCustomProvider(Provider):
 
         self.options = options_kwargs
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.LLM
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(
-            model=self.model, messages=formatted_messages, **self.options
-        )
+        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
 
         content = response.choices[0].message.content
 

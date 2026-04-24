@@ -1,11 +1,12 @@
-from typing import List, Optional
+from typing import Optional
 
 from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 class AlwaysRefuseTarget(Target):
-    def get_available_option_values(self) -> List[str]:
-        return []
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return [], False
 
     def process_input(
         self,
@@ -14,4 +15,4 @@ class AlwaysRefuseTarget(Target):
         target_options: Optional[str] = None,
         logprobs: bool = False,
     ) -> str:
-        return "Sorry, I can't answer that."
+        return str("Sorry, I can't answer that.")

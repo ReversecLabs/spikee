@@ -26,10 +26,11 @@ Returns:
 
 import re
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable
 
-
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
@@ -39,26 +40,30 @@ class BestOfNAttack(Attack):
     CAPITALIZATION_PROB = 0.6
     NOISE_PROB = 0.06
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.OBFUSCATION, ModuleTag.SINGLE],
             "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
-        original_text = entry.get("text", "")
+        attack_option: str = "",
+    ) -> AttackResponseHint:
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Best-Of-N Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         # Use the payload field (if present) to restrict transformation.
         payload_field = entry.get("payload", "")
@@ -77,13 +82,9 @@ class BestOfNAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response, _ = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate_text, system_message
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
-
+                ))
                 last_response = response
                 success = call_judge(entry, response)
             except Exception as e:
@@ -118,7 +119,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload) :]
+            + original_text[idx + len(payload):]
         )
 
     def _generate_variant(self, text, exclusions):

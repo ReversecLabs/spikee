@@ -16,25 +16,24 @@ Return values:
         * True indicates the attack was successful (guardrail bypassed).
         * False indicates the guardrail blocked the attack.
 """
+from dotenv import load_dotenv
+import json
+import requests
+from typing import Optional
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
 from spikee.utilities.modules import parse_options
-from spikee.utilities.enums import ModuleTag
-
-from dotenv import load_dotenv
-import json
-import requests
-from typing import Optional, List, Tuple, Union, Any
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class SampleRequestTarget(Target):
     _DEFAULT_URL = "https://reversec.com/api/example1"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Sample Request Target - sends HTTP request to URL"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["url=" + self._DEFAULT_URL], False
 
@@ -43,7 +42,8 @@ class SampleRequestTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = "",
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> TargetResponseHint:
+
         # Option Validation `--target-options 'url=https://myapi.com/endpoint'` to override default URL
         options = parse_options(target_options)
         url = options.get("url", self._DEFAULT_URL)

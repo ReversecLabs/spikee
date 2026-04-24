@@ -8,21 +8,20 @@ partial matches, capturing groups, etc.).
 """
 
 import re
-from typing import Tuple, List
 
 from spikee.templates.judge import Judge
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 
 class RegexJudge(Judge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Checks if a specified regex pattern matches the model's output."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
-    def judge(self, llm_input, llm_output, judge_args, judge_options=None) -> bool:
+    def judge(self, llm_input: str, llm_output: str, judge_args, judge_options=None) -> bool:
         """
         Args:
             llm_input (str): The original text/prompt sent to the model (optional for logic here).

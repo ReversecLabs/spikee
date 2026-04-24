@@ -1,9 +1,12 @@
-from spikee.templates.target import Target
-from spikee.utilities.enums import ModuleTag
-from typing import List, Optional, Tuple
+from typing import Optional
 import os
 import requests
 from dotenv import load_dotenv
+
+
+from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.enums import ModuleTag
 
 
 class AzurePromptShieldsPromptAnalysisTarget(Target):
@@ -18,15 +21,15 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
             )
         self.api_version = "2024-09-01"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Guardrail Target for Azure Prompt Shields Prompt Analysis, testing prompt analysis for harmful content.",
         )
 
-    def get_available_option_values(self) -> List[str]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """No configurable options for this target."""
-        return []
+        return [], False
 
     def process_input(
         self,
@@ -50,6 +53,7 @@ class AzurePromptShieldsPromptAnalysisTarget(Target):
             ValueError: If Azure credentials are not set
             RuntimeError: If the API request fails
         """
+
         headers = {
             "Content-Type": "application/json",
             "Ocp-Apim-Subscription-Key": self.subscription_key,

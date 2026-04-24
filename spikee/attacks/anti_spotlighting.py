@@ -29,32 +29,35 @@ Returns:
 """
 
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable, List
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 
 
 class AntiSpotlightingAttack(Attack):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.FORMATTING, ModuleTag.SINGLE],
             "Attempts to bypass spotlighting delimiters using various wrapping techniques.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         """
         Executes the anti-spotlighting attack by sequentially trying different
         delimiter-based attacks until success or max_iterations is reached.
@@ -70,7 +73,9 @@ class AntiSpotlightingAttack(Attack):
         Returns:
             (iterations_attempted, success_flag, last_payload, last_response)
         """
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Anti-Spotlighting Attack only supports text content type.")
         payload = entry.get("payload", None)
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs
@@ -96,12 +101,9 @@ class AntiSpotlightingAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response, _ = target_module.process_input(
+                response = process_target_content(target_module.process_input(
                     candidate_text, system_message
-                )
-                response = str(
-                    response[0] if isinstance(response, (tuple, list)) else response
-                )
+                ))
 
                 last_response = response
                 success = call_judge(entry, response)

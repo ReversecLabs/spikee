@@ -112,8 +112,16 @@ def _collect_local(module_type: str):
                 else:
                     tags, description = [], ""
 
-            except Exception:
-                opts = ["<error>"]
+            except (ModuleNotFoundError, ImportError):
+                opts = ["<import error - check module for dependencies>"]
+                util_llm = False
+                tags = []
+                description = ""
+
+            except Exception as e:
+                error = e if len(str(e)) < 70 else str(e)[:70] + "..."
+
+                opts = [f"<error - {error}>"]
                 util_llm = False
                 tags = []
                 description = ""
@@ -152,8 +160,16 @@ def _collect_builtin(pkg: str, module_type: str):
                 else:
                     tags, description = [], ""
 
-            except Exception:
-                opts = ["<error>"]
+            except (ModuleNotFoundError, ImportError):
+                opts = ["<import error - check module for dependencies>"]
+                util_llm = False
+                tags = []
+                description = ""
+
+            except Exception as e:
+                error = e if len(str(e)) < 70 else str(e)[:70] + "..."
+
+                opts = [f"<error - {error}>"]
                 util_llm = False
                 tags = []
                 description = ""
@@ -190,7 +206,6 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
             )
         )
 
-
     def print_section(entries, label):
         if not entries:
             console.print(f"\n[bold]{title} ({label})[/bold]")
@@ -223,8 +238,8 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 
             # Options
             if module.options is not None and len(module.options) > 0:
-                if module.options == ["<error>"]:
-                    opts_str = "[red]<error>[/red]"
+                if module.options[0].startswith("<error - ") or module.options == ["<import error - check module for dependencies>"]:
+                    opts_str = f"[red]{module.options[0]}[/red]"
                 else:
                     opt_parts = (
                         [f"{module.options[0]} [bold][white](default)[/white][/bold]"]

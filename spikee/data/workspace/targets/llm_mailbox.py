@@ -1,16 +1,16 @@
 from spikee.templates.target import Target
-from spikee.utilities.enums import ModuleTag
 
 import requests
 import json
-from typing import Any, List, Optional, Tuple, Union
+from typing import Optional
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class LLMMailboxTarget(Target):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "LLM Mailbox Target"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -19,7 +19,7 @@ class LLMMailboxTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> TargetResponseHint:
         url = "http://llmwebmail:5000/api/summarize"
         headers = {
             "Content-Type": "application/json",

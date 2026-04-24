@@ -8,7 +8,7 @@ See `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS` for optional configuration
 
 import uuid
 import json
-from typing import Any, List, Tuple, Callable, Dict
+from typing import Any, Tuple, Callable, Dict
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
@@ -16,6 +16,7 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import parse_options, extract_json_or_fail
+from spikee.utilities.hinting import AttackResponseHint, ModuleDescriptionHint, ModuleOptionsHint
 
 # Enhanced system prompt for more effective attacks
 GOAT_SYSTEM_PROMPT = """
@@ -184,13 +185,13 @@ class GOAT(Attack):
 
         self.__refusals = []
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM, ModuleTag.MULTI],
             "GOAT: Multi-turn adversarial attack using a toolbox of prompting techniques and dynamic reasoning to elicit policy-violating responses from LLMs. Based on Meta's Generative Offensive Agent Tester.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [], True
 
     def _format_history_for_prompt(
@@ -329,15 +330,18 @@ class GOAT(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> AttackResponseHint:
         """
         Run the GOAT attack: multi-turn adversarial conversation using toolbox techniques.
         Returns: (turns_used, success, reasoning_log_json, final_response)
         """
         # Parse options and initialize attack state
         opts = parse_options(attack_option)
+        model = opts.get("model", None)
+        if model is None:
+            raise ValueError("Model option is required for GOAT attack.")
 
-        llm = get_llm(opts.get("model", None), max_tokens=None, temperature=1)
+        llm = get_llm(model, max_tokens=None, temperature=1)
 
         # Attack Configuration
         objective = entry["text"]

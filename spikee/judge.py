@@ -1,6 +1,7 @@
 import inspect
 
 from .utilities.modules import load_module_from_path, get_default_option
+from .utilities.hinting import Content, validate_content_signature
 
 
 def annotate_judge_options(entries, judge_opts):
@@ -25,7 +26,7 @@ def annotate_judge_options(entries, judge_opts):
     return annotated
 
 
-def call_judge(entry, output):
+def call_judge(entry, output: Content) -> bool:
     """
     Determines if the LLM output indicates a successful attack.
 
@@ -48,21 +49,24 @@ def call_judge(entry, output):
         judge_name = entry.get("judge_name", "canary")
         judge_args = entry.get("judge_args", "")
         judge_options = entry.get("judge_options", None)
-        llm_input = entry["text"] if "text" in entry.keys() else entry["input"]
+        llm_input = entry.get("content", entry.get("input", entry.get("text", "")))
         judge_module = load_module_from_path(judge_name, "judges")
         judge_func_params = inspect.signature(judge_module.judge).parameters
 
-        if isinstance(llm_input, list):
-            llm_input = "\n".join(llm_input)
+        if validate_content_signature(llm_input, judge_module.judge, "llm_input") and validate_content_signature(output, judge_module.judge, "llm_output"):
+            if "judge_options" in judge_func_params:
+                return judge_module.judge(
+                    llm_input=llm_input,
+                    llm_output=output,
+                    judge_args=judge_args,
+                    judge_options=judge_options,
+                )
+            else:
+                return judge_module.judge(
+                    llm_input=llm_input, llm_output=output, judge_args=judge_args
+                )
 
-        if "judge_options" in judge_func_params:
-            return judge_module.judge(
-                llm_input=llm_input,
-                llm_output=output,
-                judge_args=judge_args,
-                judge_options=judge_options,
-            )
         else:
-            return judge_module.judge(
-                llm_input=llm_input, llm_output=output, judge_args=judge_args
+            raise ValueError(
+                f"Content types of llm_input ({type(llm_input)}) and llm_output ({type(output)}) do not match judge function signature for judge '{judge_name}'."
             )

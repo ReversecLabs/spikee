@@ -73,27 +73,28 @@ from typing import List, Tuple
 
 from spikee.templates.judge import Judge
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content
 
 class SampleJudge(Judge):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the judge."""
         return [], "A brief description of what this judge does."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
-        return None, False
+        return [], False
 
     def judge(
         self,
-        llm_input,
-        llm_output,
+        llm_input: Content,
+        llm_output: Content,
         judge_args,
         judge_options=""
     ) -> bool:
         """
         Args:
-            llm_input (str): The user prompt sent to the target.
-            llm_output (str): The target's response.
+            llm_input (Content): The user prompt sent to the target.
+            llm_output (Content): The target's response.
             judge_args (str | list[str]): Judge specific arguments.
             judge_options (str, optional): Judge specific options.
 
@@ -109,17 +110,18 @@ from typing import List, Tuple
 
 from spikee.templates.llm_judge import LLMJudge
 from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 
 class SampleLLMJudge(LLMJudge):
     # get_available_option_values is handled by LLMJudge to select an LLM model for judging, do not redefine.
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         """Returns the type and a short description of the judge."""
         return [ModuleTag.LLM], "A brief description of what this judge does."
 
     def judge(
         self,
-        llm_input,
-        llm_output,
+        llm_input: Content,
+        llm_output: Content,
         judge_args="",
         judge_options=""
     ) -> bool:

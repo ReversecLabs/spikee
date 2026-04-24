@@ -1,33 +1,42 @@
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Sequence
+
+from spikee.utilities.hinting import Content, get_content_type, get_content
 
 
 class Message:
-    def __init__(self, role: str, content: str):
+    def __init__(self, role: str, content: Content):
         self.role = role
-        self.content = content
+        self.content: Content = content
         self.metadata = {}
 
     @property
-    def contents(self):
+    def content_type(self) -> str:
+        return get_content_type(self.content)
+
+    @property
+    def contents(self) -> List[Content]:
         """For compatibility with list representation of contents"""
         return [self.content]
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Union[str, Content]]:
         return {"role": self.role, "content": self.content}
+
+    def formatted_dict(self) -> Dict[str, str]:
+        return {"role": self.role, "content": get_content(self.content)}
 
 
 class SystemMessage(Message):
-    def __init__(self, content: str):
+    def __init__(self, content: Content):
         super().__init__("system", content)
 
 
 class HumanMessage(Message):
-    def __init__(self, content: str):
+    def __init__(self, content: Content):
         super().__init__("user", content)
 
 
 class AIMessage(Message):
-    def __init__(self, content: str, **kwargs):
+    def __init__(self, content: Content, **kwargs):
         super().__init__("assistant", content)
 
         for key, value in kwargs.items():
@@ -39,8 +48,9 @@ class AIMessage(Message):
 
 
 def format_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str]]],
-) -> List[Dict[str, str]]:
+    messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+    bedrock_format: bool = False,
+) -> List[Dict[str, Union[str, List[str]]]]:
     """Convert various message formats (string, dict, tuple, Message objects) into a standardized list of dicts with 'role' and 'content' keys."""
     formatted_messages = []
     if isinstance(messages, str):
@@ -67,11 +77,11 @@ def format_messages(
                 or isinstance(msg, HumanMessage)
                 or isinstance(msg, AIMessage)
             ):
-                formatted_messages.append(msg.to_dict())
+                formatted_messages.append(msg.formatted_dict())
 
-            elif isinstance(msg, str):
-                # Assume it's a user message if only a string is provided
-                formatted_messages.append({"role": "user", "content": msg})
+            elif isinstance(msg, Content):
+                # If a Content object is provided without a role, assume it's a user message
+                formatted_messages.append({"role": "user", "content": get_content(msg)})
 
             else:
                 raise ValueError(f"Unsupported message format type: {type(msg)}.")
@@ -79,11 +89,17 @@ def format_messages(
     else:
         raise ValueError(f"Unsupported messages format type: {type(messages)}.")
 
+    if bedrock_format:
+        # Bedrock expects messages in the format: {"role": "user", "content": ["message content"]}
+        for msg in formatted_messages:
+            if isinstance(msg["content"], Content):
+                msg["content"] = [{"text": get_content(msg["content"])}]
+
     return formatted_messages
 
 
 def upgrade_messages(
-    messages: Union[str, List[Union[Message, dict, tuple, str]]],
+    messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
 ) -> List[Message]:
     """Upgrade various message formats (string, dict, tuple, Message objects) into a standardized list of Message objects."""
     upgraded_messages = []
@@ -115,8 +131,7 @@ def upgrade_messages(
             ):
                 upgraded_messages.append(msg)
 
-            elif isinstance(msg, str):
-                # Assume it's a user message if only a string is provided
+            elif isinstance(msg, Content):
                 upgraded_messages.append(Message(role="user", content=msg))
 
             else:
@@ -126,3 +141,29 @@ def upgrade_messages(
         raise ValueError(f"Unsupported messages format type: {type(messages)}.")
 
     return upgraded_messages
+
+
+def single_message(messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], system_prompt: bool = False):
+    """Utility function to extract a single Message object from various input formats. Raises an error if multiple messages are provided."""
+    upgraded = upgrade_messages(messages)
+
+    count = 2 if system_prompt else 1
+
+    if len(upgraded) > count:
+        raise ValueError(f"Expected at most {count} messages, but got {len(upgraded)}.")
+
+    user_message = None
+    system_prompt_message = None
+    for msg in upgraded:
+        if isinstance(msg, SystemMessage) and system_prompt and not system_prompt_message:
+            system_prompt_message = msg
+        elif isinstance(msg, HumanMessage) and not user_message:
+            user_message = msg
+
+    if not user_message:
+        raise ValueError("User message is required but not found in messages.")
+
+    if system_prompt:
+        return user_message, system_prompt_message
+    else:
+        return user_message, None

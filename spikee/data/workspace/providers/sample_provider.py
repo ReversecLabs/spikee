@@ -1,12 +1,11 @@
+from typing import Dict, Union, Any, Sequence
+
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import (
-    Message,
-    AIMessage,
-)
+from spikee.utilities.llm_message import Message, AIMessage
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 
 from agent_framework.openai import OpenAIChatClient, OpenAIChatOptions
-from typing import List, Tuple, Dict, Union, Any
 
 BASE_URL = "https://example.com/openai/v1"
 
@@ -48,11 +47,11 @@ class AnyLLMSampleProvider(Provider):
 
         self.options: OpenAIChatOptions = OpenAIChatOptions(**options_kwargs)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "Sample provider for OpenAI API based AnyLLM providers."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Return Mock Message"""
 

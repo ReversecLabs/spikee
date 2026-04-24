@@ -1,14 +1,15 @@
-from typing import List, Optional
+from typing import Optional
 
 from spikee.templates.target import Target
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 CANARY_RESPONSES = "EN-CHECK IT-CHECK restricted-check"
 
 
 class AlwaysSuccessTarget(Target):
-    def get_available_option_values(self) -> List[str]:
-        return []
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return [], False
 
     def process_input(
         self,
@@ -17,4 +18,4 @@ class AlwaysSuccessTarget(Target):
         target_options: Optional[str] = None,
         logprobs: bool = False,
     ) -> str:
-        return CANARY_RESPONSES
+        return str(CANARY_RESPONSES)

@@ -1,4 +1,3 @@
-from enum import Enum
 import os
 import inspect
 import json
@@ -9,16 +8,11 @@ from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
 
-from .utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
-from .utilities.modules import load_module_from_path
-from .utilities.tags import validate_tag
-
-
-class EntryType(Enum):
-    DOCUMENT = "document"
-    SUMMARY = "summarization"
-    QA = "qna"
-    ATTACK = "attack"
+from spikee.utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
+from spikee.utilities.modules import load_module_from_path
+from spikee.utilities.tags import validate_tag
+from spikee.utilities.enums import EntryType
+from spikee.utilities.hinting import Content, content_factory, get_content, get_content_type, validate_content_annotation
 
 
 class Entry:
@@ -26,17 +20,17 @@ class Entry:
 
     def __init__(
         self,
-        entry_type: EntryType,
+        entry_type: Union[EntryType, str],
         entry_id,
         base_id,
         jailbreak_id,
         instruction_id,
         prefix_id,
         suffix_id,
-        text,
+        content: Content,
         entry_text,
         system_message,
-        payload,
+        payload: Content,
         lang,
         plugin_suffix,
         plugin_name,
@@ -51,6 +45,14 @@ class Entry:
         # Extras
         steering_keywords=None,
     ):
+        # Validate entry type and convert from string if necessary
+        if isinstance(entry_type, str):
+            try:
+                entry_type = EntryType(entry_type.lower())
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid entry type: {entry_type}. Must be one of {[e.value for e in EntryType]}"
+                ) from e
         self.entry_type = entry_type
 
         self.id = entry_id
@@ -60,7 +62,8 @@ class Entry:
         self.prefix_id = prefix_id
         self.suffix_id = suffix_id
 
-        self.text = text
+        self.original_content = content  # Keep original content for reference
+        self.content = get_content(content)  # This may be modified by plugins or injection
         self.entry_text = entry_text
         self.system_message = system_message
         self.payload = payload
@@ -88,10 +91,10 @@ class Entry:
 
         match self.entry_type:
             case EntryType.SUMMARY:
-                self.text = f"Summarize the following document:\n{self.text}"
+                self.content = f"Summarize the following document:\n{self.content}"
 
             case EntryType.QA:
-                self.text = f"Given this document:\n{self.text}\nAnswer the following question: {self.entry_text.get('question', '')}"
+                self.content = f"Given this document:\n{self.content}\nAnswer the following question: {self.entry_text.get('question', '')}"
 
         # Extras
         self.steering_keywords = steering_keywords
@@ -101,7 +104,8 @@ class Entry:
         entry = {
             "id": self.id,
             "long_id": self.long_id,
-            "text": self.text,
+            "content": self.content,
+            "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -117,7 +121,7 @@ class Entry:
             "suffix_id": self.suffix_id,
             "system_message": self.system_message,
             "plugin": self.plugin_name,
-            "payload": self.payload,
+            "payload": get_content(self.payload),
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
 
@@ -145,7 +149,8 @@ class Entry:
         attack = {
             "id": self.long_id,
             "long_id": self.long_id,
-            "text": self.text,
+            "content": self.content,
+            "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
             "judge_args": self.judge_args,
             "injected": "true",
@@ -159,7 +164,7 @@ class Entry:
             "lang": self.lang,
             "prefix_id": self.prefix_id,
             "suffix_id": self.suffix_id,
-            "payload": self.payload,
+            "payload": get_content(self.payload),
             "plugin": self.plugin_name,
             "exclude_from_transformations_regex": self.exclude_from_transformations_regex,
         }
@@ -228,7 +233,7 @@ def resolve_standalone_inputs_path(seed_folder: str):
 
 
 # region dataset builders
-def insert_jailbreak(document, combined_text, position, injection_pattern, placeholder):
+def insert_jailbreak(document, combined_text: Content, position, injection_pattern, placeholder) -> Content:
     """
     Inserts the combined_text into the document at the specified position
     using the provided injection_pattern. The pattern must contain the
@@ -238,26 +243,29 @@ def insert_jailbreak(document, combined_text, position, injection_pattern, place
         raise ValueError(
             "Injection pattern must contain 'INJECTION_PAYLOAD' placeholder."
         )
-    injected_text = injection_pattern.replace("INJECTION_PAYLOAD", combined_text)
+    injected_text = injection_pattern.replace("INJECTION_PAYLOAD", get_content(combined_text))
 
     # if there is an explicit placeholder, replace it with the injected text
     # and ignore any explicit position
     if placeholder:
-        return document.replace(placeholder, injected_text)
+        jailbreak = document.replace(placeholder, injected_text)
 
-    if position == "start":
-        return f"{injected_text}{document}"
-    elif position == "middle":
-        mid_point = len(document) // 2
-        insert_index = find_nearest_whitespace(document, mid_point)
-        return f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
-    elif position == "end":
-        return f"{document}{injected_text}"
     else:
-        raise ValueError(f"Invalid position: {position}")
+        if position == "start":
+            jailbreak = f"{injected_text}{document}"
+        elif position == "middle":
+            mid_point = len(document) // 2
+            insert_index = find_nearest_whitespace(document, mid_point)
+            jailbreak = f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
+        elif position == "end":
+            jailbreak = f"{document}{injected_text}"
+        else:
+            raise ValueError(f"Invalid position: {position}")
+
+    return content_factory(jailbreak, get_content_type(combined_text))
 
 
-def find_nearest_whitespace(text, index):
+def find_nearest_whitespace(text, index) -> int:
     """
     Finds the nearest whitespace character to the given index in the text.
     Returns the index of that whitespace character (or original index if none found).
@@ -279,7 +287,7 @@ def find_nearest_whitespace(text, index):
         )
 
 
-def get_system_message(system_message_config, spotlighting_data_marker=None):
+def get_system_message(system_message_config, spotlighting_data_marker=None) -> Union[str, None]:
     """
     Retrieves the appropriate system message from the system_message_config
     based on a given spotlighting data marker. Falls back to 'default' if no
@@ -323,7 +331,7 @@ def load_plugins(plugin_names):
                 print(e)
                 exit(1)
 
-        else:  # If it's a plugin pipe, load each sub-plugin and store as a list
+        elif name is not None:  # If it's a plugin pipe, load each sub-plugin and store as a list
             plugin_pipe = []
             for sub_name in name:
                 try:
@@ -385,10 +393,10 @@ def get_plugin_variants(plugin_module, plugin_option):
 
 
 def apply_plugin(
-    plugin_name, plugin_module, text, exclude_patterns=None, plugin_option_map=None
-):
+    plugin_name, plugin_module, init_content: Content, exclude_patterns=None, plugin_option_map=None
+) -> List[Content]:
     """
-    Applies a plugin module's transform function to the given text if available.
+    Applies a plugin module's transform function to the given content if available.
     """
 
     plugins = []
@@ -398,38 +406,54 @@ def apply_plugin(
     else:
         plugins.append((plugin_name, plugin_module))
 
-    text = [text]
+    contents: List[Content] = [init_content]
 
     for name, module in plugins:
-        new_text = []
+        new_content: List[Content] = []
         if hasattr(module, "transform"):
             # Check if the plugin's transform function accepts plugin_option parameter
-
             sig = inspect.signature(module.transform)
             params = sig.parameters
 
-            for t in text:
-                if "plugin_option" in params:
-                    res = module.transform(
-                        t,
-                        exclude_patterns,
-                        plugin_option_map.get(name) if plugin_option_map else None,
-                    )
+            for content in contents:
+
+                args = {}
+
+                if "content" in params and validate_content_annotation(content, params["content"].annotation):
+                    args["content"] = get_content(content)
+
+                elif "text" in params and validate_content_annotation(content, params["text"].annotation):
+                    args["text"] = get_content(content)
+
                 else:
-                    # Older plugin without plugin_option support
-                    res = module.transform(t, exclude_patterns)
+                    raise ValueError(
+                        f"Plugin '{name}' transform function must have a parameter annotated to accept the content type '{get_content_type(content)}'."
+                    )
+                args["exclude_patterns"] = exclude_patterns
 
-                if isinstance(res, str):
-                    new_text.append(res)
-                elif isinstance(res, list):
-                    new_text.extend(res)
+                if "plugin_option" in params:
+                    args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
 
-            text = new_text
+                try:
+                    res = module.transform(**args)
+                except Exception as e:
+                    print(f"\n[WARNING] Plugin '{name}' failed on entry, skipping: {e}")
+                    continue
+
+                if isinstance(res, list):
+                    for item in res:
+                        if isinstance(item, Content):
+                            new_content.append(item)
+                else:
+                    if isinstance(res, Content):
+                        new_content.append(res)
+
+            contents = new_content
 
         else:
             print(f"Plugin '{plugin_name}' does not have a 'transform' function.")
 
-    return text
+    return contents
 
 
 def parse_exclude_patterns(jailbreak, instruction):
@@ -457,8 +481,8 @@ def process_standalone_attacks(
     standalone_attacks,
     dataset,
     entry_id,
-    adv_prefixes=None,
-    adv_suffixes=None,
+    adv_prefixes=[None],
+    adv_suffixes=[None],
     plugins=None,
     plugin_options_map=None,
     plugin_only=False,
@@ -489,16 +513,16 @@ def process_standalone_attacks(
             if plugin_name is None:
                 plugin_variants[plugin_name] = 1
 
-            elif "~" in plugin_name:  # Plugin Pipe
+            elif "~" in plugin_name and plugin_module:  # Plugin Pipe
                 sub_plugins = plugin_name.split("~")
                 total_variants = 1
-                for sub_plugin in sub_plugins:
+                for sub_plugin, sub_module in zip(sub_plugins, plugin_module):
                     sub_plugin_option = (
                         plugin_options_map.get(sub_plugin)
                         if plugin_options_map
                         else None
                     )
-                    variants = get_plugin_variants(plugin_module[1], sub_plugin_option)
+                    variants = get_plugin_variants(sub_module, sub_plugin_option)
                     total_variants *= variants
                 plugin_variants[plugin_name] = total_variants
 
@@ -524,7 +548,9 @@ def process_standalone_attacks(
             attack["judge_args"] = attack.get("canary", "")
 
         # Get the base attack text and exclude patterns
-        attack_text = attack["text"]
+        attack_type = attack.get("content_type", "text")
+        attack_content = content_factory(attack.get("content", attack.get("text", "")), attack_type)
+
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
         # Get permutations for prefixes and suffixes
@@ -535,30 +561,30 @@ def process_standalone_attacks(
 
         # Apply plugins to the base attack text
         for plugin_name, plugin_module in plugins:
-            plugin_texts = (
+            plugin_content: List[Content] = (
                 apply_plugin(
                     plugin_name,
                     plugin_module,
-                    attack_text,
+                    attack_content,
                     exclude_patterns,
                     plugin_options_map,
                 )
                 if plugin_name
-                else attack_text
+                else [attack_content]
             )
 
-            # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
-            if not isinstance(plugin_texts, list):
-                plugin_texts = [plugin_texts]
-
             # Combine each plugin variation with each prefix/suffix permutation and add to combined_texts
-            for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
+            for plugin_index, plugin_text in enumerate(plugin_content, start=1):
                 for prefix, suffix in fix_permutations:
+
+                    prefix_text = prefix.get("prefix", "") + " " if prefix else ""
+                    suffix_text = " " + suffix.get("suffix", "") if suffix else ""
+                    # TODO: Should this only apply to text content?
+                    text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
+
                     combined_texts.append(
                         {
-                            "text": (prefix.get("prefix", "") + " " if prefix else "")
-                            + plugin_text
-                            + (" " + suffix.get("suffix", "") if suffix else ""),
+                            "text": text,
                             "prefix_id": prefix.get("id", None) if prefix else None,
                             "suffix_id": suffix.get("id", None) if suffix else None,
                             "plugin_name": plugin_name,
@@ -577,7 +603,7 @@ def process_standalone_attacks(
                 instruction_id=None,
                 prefix_id=combined_text.get("prefix_id", None),
                 suffix_id=combined_text.get("suffix_id", None),
-                text=combined_text["text"],
+                content=combined_text["text"],
                 entry_text={},
                 system_message=None,
                 payload=combined_text["text"],
@@ -611,8 +637,8 @@ def generate_variations(
     injection_delimiters,
     spotlighting_data_markers_list,
     plugins,
-    adv_prefixes=None,
-    adv_suffixes=None,
+    adv_prefixes=[None],
+    adv_suffixes=[None],
     output_format="full-prompt",
     match_languages=False,
     system_message_config=None,
@@ -658,16 +684,16 @@ def generate_variations(
             if plugin_name is None:
                 plugin_variants[plugin_name] = 1
 
-            elif "~" in plugin_name:  # Plugin Pipe
+            elif "~" in plugin_name and plugin_module:  # Plugin Pipe
                 sub_plugins = plugin_name.split("~")
                 total_variants = 1
-                for sub_plugin in sub_plugins:
+                for sub_plugin, sub_module in zip(sub_plugins, plugin_module):
                     sub_plugin_option = (
                         plugin_options_map.get(sub_plugin)
                         if plugin_options_map
                         else None
                     )
-                    variants = get_plugin_variants(plugin_module[1], sub_plugin_option)
+                    variants = get_plugin_variants(sub_module, sub_plugin_option)
                     total_variants *= variants
                 plugin_variants[plugin_name] = total_variants
 
@@ -727,10 +753,17 @@ def generate_variations(
 
             for instruction in instructions:
                 instruction_id = instruction["id"]
-                instruction_text = instruction["instruction"]
+                instruction_content_type = instruction.get("content_type", "text")
+                instruction_content = content_factory(instruction["instruction"], instruction_content_type)
                 instruction_type = instruction.get("instruction_type", "")
                 instruction_lang = instruction.get("lang", "en")
                 # instruction_steering_keywords = instruction.get("steering_keywords", None)
+
+                if instruction_content_type != "text":
+                    print(
+                        f"Skipping instruction {instruction_id} for jailbreak {jailbreak_id} because instruction content type '{instruction_content_type}' is not supported yet."
+                    )
+                    continue
 
                 judge_name = instruction.get("judge_name", "canary")
                 judge_args = instruction.get(
@@ -752,9 +785,9 @@ def generate_variations(
 
                 # Combines jailbreak and instruction texts
                 # Instruction is placed into jailbreak at <INSTRUCTION> placeholder
-                combined_base = jailbreak_text.replace(
-                    "<INSTRUCTION>", instruction_text
-                )
+                combined_base = content_factory(jailbreak_text.replace(
+                    "<INSTRUCTION>", str(get_content(instruction_content))
+                ), get_content_type(instruction_content))
                 lang = instruction_lang
 
                 # Create plugin / transformation regex exclusion lists
@@ -768,7 +801,7 @@ def generate_variations(
                 ]
 
                 for plugin_name, plugin_module in plugins:
-                    plugin_texts = (
+                    plugin_texts: List[Content] = (
                         apply_plugin(
                             plugin_name,
                             plugin_module,
@@ -777,12 +810,8 @@ def generate_variations(
                             plugin_options_map,
                         )
                         if plugin_name
-                        else combined_base
+                        else [combined_base]
                     )
-
-                    # Ensure plugin_texts is a list of variations. If it's a single string, convert it to a list with one element.
-                    if not isinstance(plugin_texts, list):
-                        plugin_texts = [plugin_texts]
 
                     for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
                         for prefix, suffix in fix_permutations:
@@ -795,21 +824,15 @@ def generate_variations(
                             ):
                                 continue
 
+                            prefix_text = prefix.get("prefix", "") + " " if prefix else ""
+                            suffix_text = " " + suffix.get("suffix", "") if suffix else ""
+                            text = content_factory(prefix_text + get_content(plugin_text) + suffix_text, get_content_type(plugin_text))
+
                             combined_texts.append(
                                 {
-                                    "text": (
-                                        prefix.get("prefix", "") + " " if prefix else ""
-                                    )
-                                    + plugin_text
-                                    + (
-                                        " " + suffix.get("suffix", "") if suffix else ""
-                                    ),
-                                    "prefix_id": prefix.get("id", None)
-                                    if prefix
-                                    else None,
-                                    "suffix_id": suffix.get("id", None)
-                                    if suffix
-                                    else None,
+                                    "text": text,
+                                    "prefix_id": prefix.get("id", None) if prefix else None,
+                                    "suffix_id": suffix.get("id", None) if suffix else None,
                                     "plugin_name": plugin_name,
                                     "plugin_suffix": f"_{plugin_name}-{plugin_index}"
                                     if plugin_name
@@ -836,7 +859,7 @@ def generate_variations(
 
                             for entry_type in output_format:
                                 if entry_type == "burp":
-                                    burp_payload_encoded = json.dumps(injected_doc)[
+                                    burp_payload_encoded = json.dumps(get_content(injected_doc))[
                                         1:-1
                                     ]
                                     dataset.append(burp_payload_encoded)
@@ -853,13 +876,14 @@ def generate_variations(
                                         )
 
                                         # Combines injected document with spotlighting data marker, for full-prompt entries
-                                        wrapped_document = (
-                                            injected_doc
-                                            if spotlighting_data_marker == "none"
-                                            else spotlighting_data_marker.replace(
-                                                "DOCUMENT", injected_doc
+                                        if entry_type == EntryType.DOCUMENT:
+                                            injected_doc = (
+                                                content_factory(spotlighting_data_marker.replace(
+                                                    "DOCUMENT", get_content(injected_doc)
+                                                ), get_content_type(injected_doc))
+                                                if spotlighting_data_marker != "none" and isinstance(get_content(injected_doc), str)
+                                                else injected_doc
                                             )
-                                        )
 
                                         entry = Entry(
                                             entry_type=entry_type,
@@ -873,9 +897,7 @@ def generate_variations(
                                             suffix_id=combined_text.get(
                                                 "suffix_id", None
                                             ),
-                                            text=injected_doc
-                                            if entry_type == EntryType.DOCUMENT
-                                            else wrapped_document,
+                                            content=injected_doc,
                                             entry_text=entry_text,
                                             system_message=system_message,
                                             payload=combined_text.get("text", None),
@@ -907,6 +929,7 @@ def generate_dataset(args):
     Main entry point for generating the dataset. Loads files, filters content,
     generates variations, writes results to disk, and prints stats.
     """
+
     seed_folder = resolve_seed_folder(args.seed_folder)
     output_format = args.format
     include_system_message = args.include_system_message
@@ -1113,6 +1136,7 @@ def generate_dataset(args):
         )
 
         # Generate Standalone Attacks
+        # TODO: Validate that burp format works on standalone attacks
         if getattr(args, "include_standalone_inputs", False):
             standalone_file = resolve_standalone_inputs_path(seed_folder)
             standalone_inputs = read_jsonl_file(str(standalone_file))

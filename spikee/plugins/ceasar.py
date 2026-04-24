@@ -15,19 +15,20 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
-from typing import List, Tuple
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
 class CeasarPlugin(Plugin):
     DEFAULT_SHIFT = 3
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.ENCODING], "Transforms text using a Caesar cipher encryption."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "shift=3",
@@ -66,7 +67,10 @@ class CeasarPlugin(Plugin):
         return "".join(result)
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> str:
         """
         Transforms the input text using the Caesar cipher.
@@ -80,4 +84,4 @@ class CeasarPlugin(Plugin):
         """
         shift = self._parse_shift_option(plugin_option)
 
-        return self.caesar_cipher(text, shift)
+        return self.caesar_cipher(content, shift)

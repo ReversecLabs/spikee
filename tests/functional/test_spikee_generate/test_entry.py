@@ -2,6 +2,8 @@
 
 from spikee.generator import Entry, EntryType
 
+from spikee.utilities.hinting import Audio, get_content
+
 
 class TestEntryInitialization:
     """Test Entry object initialization and basic properties."""
@@ -16,7 +18,7 @@ class TestEntryInitialization:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            text="This is a document",
+            content="This is a document",
             entry_text={},
             system_message=None,
             payload="jailbreak_text",
@@ -31,11 +33,11 @@ class TestEntryInitialization:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         assert entry.id == "doc_001"
         assert entry.base_id == "base_001"
         assert entry.lang == "en"
-        assert entry.text == "This is a document"
+        assert get_content(entry.content) == "This is a document"
         assert entry.entry_type == EntryType.DOCUMENT
 
     def test_entry_initialization_with_all_optional_fields(self):
@@ -48,7 +50,7 @@ class TestEntryInitialization:
             instruction_id="instr_002",
             prefix_id="prefix_123",
             suffix_id="suffix_456",
-            text="Document with all fields",
+            content="Document with all fields",
             entry_text={},
             system_message="You are a helpful assistant",
             payload="full_jailbreak",
@@ -65,7 +67,7 @@ class TestEntryInitialization:
             exclude_from_transformations_regex=["pattern1", "pattern2"],
             steering_keywords=["keyword1", "keyword2"],
         )
-        
+
         assert entry.prefix_id == "prefix_123"
         assert entry.suffix_id == "suffix_456"
         assert entry.system_message == "You are a helpful assistant"
@@ -86,7 +88,7 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            text="test",
+            content="test",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -101,7 +103,7 @@ class TestEntryLongIdGeneration:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         # long_id format: {entry_type}_{base_id}_{jailbreak_id}_{instruction_id}_{position}{plugin_suffix}
         assert entry.long_id == "document_base_001_jb_001_instr_001_start"
 
@@ -115,7 +117,7 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_002",
             prefix_id=None,
             suffix_id=None,
-            text="document text",
+            content="document text",
             entry_text={"ideal_summary": "summary"},
             system_message=None,
             payload="payload",
@@ -130,10 +132,10 @@ class TestEntryLongIdGeneration:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         assert entry.long_id == "summarization_base_002_jb_002_instr_002_end"
         # SUMMARY entries should prepend "Summarize..." to text
-        assert entry.text.startswith("Summarize the following document:")
+        assert get_content(entry.content).startswith("Summarize the following document:")
 
     def test_long_id_qa_entry(self):
         """Test long_id format and text transformation for QA entries."""
@@ -145,7 +147,7 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_003",
             prefix_id=None,
             suffix_id=None,
-            text="document text",
+            content="document text",
             entry_text={"question": "What is the answer?", "ideal_answer": "42"},
             system_message=None,
             payload="payload",
@@ -160,11 +162,11 @@ class TestEntryLongIdGeneration:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         assert entry.long_id == "qna_base_003_jb_003_instr_003_middle"
         # QA entries should include question in text
-        assert "What is the answer?" in entry.text
-        assert entry.text.startswith("Given this document:")
+        assert "What is the answer?" in get_content(entry.content)
+        assert get_content(entry.content).startswith("Given this document:")
 
     def test_long_id_attack_entry(self):
         """Test long_id format for ATTACK entries."""
@@ -176,7 +178,7 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_001",
             prefix_id=None,
             suffix_id=None,
-            text="attack text",
+            content="attack text",
             entry_text={},
             system_message=None,
             payload="attack_payload",
@@ -191,7 +193,7 @@ class TestEntryLongIdGeneration:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         # ATTACK entries have different long_id: {base_id}{plugin_suffix}
         assert entry.long_id == "attack_base_123-custom"
 
@@ -205,7 +207,7 @@ class TestEntryLongIdGeneration:
             instruction_id="instr_004",
             prefix_id="001",
             suffix_id="002",
-            text="test",
+            content="test",
             entry_text={},
             system_message="system prompt",
             payload="payload",
@@ -222,7 +224,7 @@ class TestEntryLongIdGeneration:
         )
 
         output = entry.to_entry()
-        
+
         # long_id should include -p{prefix}, -s{suffix}, -sys suffixes
         assert "-p001" in output["long_id"]
         assert "-s002" in output["long_id"]
@@ -242,7 +244,7 @@ class TestEntryToEntry:
             instruction_id="instr_005",
             prefix_id=None,
             suffix_id=None,
-            text="Test document",
+            content="Test document",
             entry_text={},
             system_message=None,
             payload="test_payload",
@@ -257,13 +259,14 @@ class TestEntryToEntry:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         output = entry.to_entry()
-        
+
         # Check required fields
         assert output["id"] == "doc_005"
         assert output["long_id"] == entry.long_id
-        assert output["text"] == "Test document"
+        assert output["content"] == "Test document"
+        assert output["content_type"] == "text"
         assert output["judge_name"] == "regex"
         assert output["judge_args"] == "test_arg"
         assert output["task_type"] == "document"
@@ -286,7 +289,7 @@ class TestEntryToEntry:
             instruction_id="instr_006",
             prefix_id=None,
             suffix_id=None,
-            text="Transformed text",
+            content="Transformed text",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -301,9 +304,9 @@ class TestEntryToEntry:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         output = entry.to_entry()
-        
+
         assert output["plugin"] == "reverse"
 
     def test_to_entry_summary_includes_ideal_summary(self):
@@ -316,7 +319,7 @@ class TestEntryToEntry:
             instruction_id="instr_007",
             prefix_id=None,
             suffix_id=None,
-            text="long document",
+            content="long document",
             entry_text={"ideal_summary": "concise summary"},
             system_message=None,
             payload="payload",
@@ -331,9 +334,9 @@ class TestEntryToEntry:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         output = entry.to_entry()
-        
+
         assert output["ideal_summary"] == "concise summary"
 
     def test_to_entry_qa_includes_ideal_answer(self):
@@ -346,7 +349,7 @@ class TestEntryToEntry:
             instruction_id="instr_008",
             prefix_id=None,
             suffix_id=None,
-            text="document",
+            content="document",
             entry_text={"question": "Q?", "ideal_answer": "Answer"},
             system_message=None,
             payload="payload",
@@ -361,9 +364,9 @@ class TestEntryToEntry:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         output = entry.to_entry()
-        
+
         assert output["ideal_answer"] == "Answer"
 
     def test_to_entry_with_steering_keywords(self):
@@ -376,7 +379,7 @@ class TestEntryToEntry:
             instruction_id="instr_009",
             prefix_id=None,
             suffix_id=None,
-            text="test",
+            content="test",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -392,10 +395,59 @@ class TestEntryToEntry:
             spotlighting_data_markers=None,
             steering_keywords=["keyword1", "keyword2"],
         )
-        
+
         output = entry.to_entry()
-        
+
         assert output["steering_keywords"] == ["keyword1", "keyword2"]
+
+
+class TestEntryToEntryContentTypes:
+    """Test to_entry() serializes Content wrapper types correctly."""
+
+    def _make_attack_entry(self, content, payload):
+        return Entry(
+            entry_type=EntryType.ATTACK,
+            entry_id="e1",
+            base_id="b1",
+            jailbreak_id="jb1",
+            instruction_id="inst1",
+            prefix_id=None,
+            suffix_id=None,
+            content=content,
+            entry_text=None,
+            system_message=None,
+            payload=payload,
+            lang="en",
+            plugin_suffix="",
+            plugin_name=None,
+            judge_name="canary",
+            judge_args="FLAG",
+            position="start",
+            jailbreak_type=None,
+            instruction_type=None,
+            injection_pattern=None,
+            spotlighting_data_markers=None,
+        )
+
+    def test_text_content_serializes_correctly(self):
+        """to_entry() with str content: content field is str, content_type is 'text'."""
+        output = self._make_attack_entry("plain text", "payload").to_entry()
+        assert output["content"] == "plain text"
+        assert output["content_type"] == "text"
+
+    def test_audio_content_serializes_correctly(self):
+        """to_entry() with Audio content: content is raw string, content_type is 'audio'."""
+        from spikee.utilities.hinting import Audio
+        output = self._make_attack_entry(Audio("base64audio"), Audio("jailbreak")).to_entry()
+        assert output["content"] == "base64audio"
+        assert output["content_type"] == "audio"
+
+    def test_image_content_serializes_correctly(self):
+        """to_entry() with Image content: content is raw string, content_type is 'image'."""
+        from spikee.utilities.hinting import Image
+        output = self._make_attack_entry(Image("base64image"), Image("jailbreak")).to_entry()
+        assert output["content"] == "base64image"
+        assert output["content_type"] == "image"
 
 
 class TestEntryToAttack:
@@ -411,7 +463,7 @@ class TestEntryToAttack:
             instruction_id="instr_010",
             prefix_id="p_010",
             suffix_id="s_010",
-            text="Attack payload",
+            content="Attack payload",
             entry_text={},
             system_message="attack system",
             payload="attack_payload",
@@ -426,12 +478,13 @@ class TestEntryToAttack:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         output = entry.to_attack()
-        
+
         # ATTACK format differs from entry format
         assert output["id"] == entry.long_id
-        assert output["text"] == "Attack payload"
+        assert output["content"] == "Attack payload"
+        assert output["content_type"] == "text"
         assert output["judge_name"] == "regex"
         assert output["judge_args"] == "attack_check"
         # These should be None for attacks
@@ -456,7 +509,7 @@ class TestEntryToAttack:
             instruction_id="instr_011",
             prefix_id=None,
             suffix_id=None,
-            text="Attack",
+            content="Attack",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -472,9 +525,9 @@ class TestEntryToAttack:
             spotlighting_data_markers=None,
             steering_keywords=["attack", "keyword"],
         )
-        
+
         output = entry.to_attack()
-        
+
         assert output["steering_keywords"] == ["attack", "keyword"]
 
 
@@ -491,7 +544,7 @@ class TestEntryEdgeCases:
             instruction_id="instr_012",
             prefix_id=None,
             suffix_id=None,
-            text="test",
+            content="test",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -506,7 +559,7 @@ class TestEntryEdgeCases:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         assert entry.lang == "en"
 
     def test_entry_with_custom_lang(self):
@@ -519,7 +572,7 @@ class TestEntryEdgeCases:
             instruction_id="instr_013",
             prefix_id=None,
             suffix_id=None,
-            text="test",
+            content="test",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -534,7 +587,7 @@ class TestEntryEdgeCases:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         assert entry.lang == "fr"
 
     def test_entry_qa_with_missing_question(self):
@@ -547,7 +600,7 @@ class TestEntryEdgeCases:
             instruction_id="instr_014",
             prefix_id=None,
             suffix_id=None,
-            text="document",
+            content="document",
             entry_text={},  # Missing 'question' key
             system_message=None,
             payload="payload",
@@ -562,9 +615,9 @@ class TestEntryEdgeCases:
             injection_pattern="INJECTION_PAYLOAD",
             spotlighting_data_markers=None,
         )
-        
+
         # Should not raise error, but include empty string
-        assert "Answer the following question:" in entry.text
+        assert "Answer the following question:" in get_content(entry.content)
 
     def test_entry_exclude_from_transformations_regex(self):
         """Test entry preserves exclude_from_transformations_regex."""
@@ -577,7 +630,7 @@ class TestEntryEdgeCases:
             instruction_id="instr_015",
             prefix_id=None,
             suffix_id=None,
-            text="test",
+            content="test",
             entry_text={},
             system_message=None,
             payload="payload",
@@ -593,6 +646,36 @@ class TestEntryEdgeCases:
             spotlighting_data_markers=None,
             exclude_from_transformations_regex=patterns,
         )
-        
+
         output = entry.to_entry()
         assert output["exclude_from_transformations_regex"] == patterns
+
+    def test_entry_with_audio_content(self):
+        """Test entry initialization with Audio content."""
+        entry = Entry(
+            entry_type=EntryType.DOCUMENT,
+            entry_id="doc_016",
+            base_id="base_016",
+            jailbreak_id="jb_016",
+            instruction_id="instr_016",
+            prefix_id=None,
+            suffix_id=None,
+            content=Audio("test_audio"),
+            entry_text={},
+            system_message=None,
+            payload=Audio("payload"),
+            lang="en",
+            plugin_suffix="",
+            plugin_name=None,
+            judge_name="regex",
+            judge_args="test",
+            position="start",
+            jailbreak_type="test",
+            instruction_type="EN-CHECK",
+            injection_pattern="INJECTION_PAYLOAD",
+            spotlighting_data_markers=None,
+        )
+
+        output = entry.to_entry()
+        assert output["content"] == "test_audio"
+        assert output["content_type"] == "audio"

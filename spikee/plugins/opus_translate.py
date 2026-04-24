@@ -33,21 +33,25 @@ Requirements:
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu<version>
 """
 
+from spikee.utilities.modules import parse_options
+from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
+from spikee.templates.plugin import Plugin
+from transformers import MarianMTModel, MarianTokenizer
+import torch
 import logging
 import os
 import warnings
-from typing import List, Tuple, Union, Optional
+from typing import List, Union, Optional
 
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-from transformers import MarianMTModel, MarianTokenizer
-import torch
 
-from spikee.templates.plugin import Plugin
-from spikee.utilities.enums import ModuleTag
-from spikee.utilities.modules import parse_options
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
 class OpusTranslator(Plugin):
@@ -117,13 +121,13 @@ class OpusTranslator(Plugin):
         except ImportError:
             self.device = "cpu"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.ML, ModuleTag.TRANSLATION],
             'Translates text to any language(s) using local OPUS-MT models. (Requires: `pip install "spikee[local-inference]"`)',
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported options; Tuple[options (default is first), llm_required]"""
         return [
             "source=en,targets=zh",
@@ -202,7 +206,10 @@ class OpusTranslator(Plugin):
             )
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> Union[str, List[str]]:
         """
         Translates input text to target language(s).
@@ -237,7 +244,7 @@ class OpusTranslator(Plugin):
 
         for target_spec in target_specs:
             try:
-                result = text
+                result = content
 
                 # Handle language chains (e.g., "en:fr" or "en:fr:de:es")
                 if ":" in target_spec:
@@ -251,7 +258,7 @@ class OpusTranslator(Plugin):
                 else:
                     # Simple translation
                     result = self._translate(
-                        text, source_lang, target_spec, cache_dir, num_beams, device
+                        content, source_lang, target_spec, cache_dir, num_beams, device
                     )
 
                 translations.append(result)
@@ -260,7 +267,7 @@ class OpusTranslator(Plugin):
 
         if len(translations) == 1:
             return translations[0]
-        return translations if translations else text
+        return translations if translations else content
 
 
 if __name__ == "__main__":

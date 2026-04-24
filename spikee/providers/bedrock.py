@@ -1,16 +1,30 @@
+import os
+import logging
+from any_llm import AnyLLM
+from any_llm.logging import logger as any_llm_logger
+from typing import Union, Any, Dict, Sequence
+
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleDescriptionHint, Content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import format_messages, Message, AIMessage
 
-import logging
-
-from any_llm import AnyLLM
-from any_llm.logging import logger as any_llm_logger
-from typing import List, Tuple, Dict, Union, Any
-
 
 class AnyLLMBedrockProvider(Provider):
-    """AnyLLM provider for Bedrock models"""
+    """
+    AnyLLM provider for Bedrock models
+
+    AWS Authentication, can be performed via the following methods:
+    - AWS Keys: Set the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION` environment variables.
+    - AWS Profiles: Configure an AWS profile and set the `AWS_PROFILE` and `AWS_REGION` environment variables.
+        - https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
+        - SSO Configuration:
+            1. Ensure you have installed AWS CLI: https://aws.amazon.com/cli/
+            2. Using `aws configure sso` configure your AWS profile, setting a profile name.
+            3. Using `aws sso login --profile <profile_name>` log in to your AWS account via SSO. (Also for revalidating expired credentials)
+            4. Validate profile using `aws sts get-caller-identity --profile <profile_name>`.
+            5. Set the `AWS_PROFILE` environment variable to your profile name, and `AWS_DEFAULT_REGION` to your desired region (e.g. `us-east-2`).
+    """
 
     @property
     def default_model(self) -> str:
@@ -59,6 +73,25 @@ class AnyLLMBedrockProvider(Provider):
             llm_kwargs["timeout"] = timeout
 
         try:
+            # Extract credentials from AWS Profile (SSO) if configured
+            if os.getenv("AWS_PROFILE"):
+                import boto3
+                session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
+                frozen = session.get_credentials().get_frozen_credentials()
+
+                # Inject as env vars so both boto3 and any-llm can use them
+                os.environ["AWS_ACCESS_KEY_ID"] = frozen.access_key
+                os.environ["AWS_SECRET_ACCESS_KEY"] = frozen.secret_key
+                if frozen.token:
+                    os.environ["AWS_SESSION_TOKEN"] = frozen.token
+            
+            # Ensure region is set - boto3 needs this for Bedrock
+            if not os.getenv("AWS_REGION") and not os.getenv("AWS_DEFAULT_REGION"):
+                # Default to us-east-1 if no region specified
+                os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
+            # Create the AnyLLM client - it will auto-detect AWS credentials from env vars
+            # DO NOT set AWS_BEARER_TOKEN_BEDROCK as it interferes with credential detection
             self.llm = AnyLLM.create("bedrock", **llm_kwargs)
             any_llm_logger.setLevel(logging.ERROR)
         except ImportError:
@@ -75,19 +108,17 @@ class AnyLLMBedrockProvider(Provider):
 
         self.options = options_kwargs
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via any-llm."
 
     def invoke(
-        self, messages: Union[str, List[Union[Message, dict, tuple, str]]]
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
     ) -> AIMessage:
         """Invoke AnyLLM Bedrock LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
 
-        response = self.llm.completion(
-            model=self.model, messages=formatted_messages, **self.options
-        )
+        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
 
         return AIMessage(
             content=response.choices[0].message.content, original_response=response

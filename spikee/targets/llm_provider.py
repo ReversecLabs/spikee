@@ -1,21 +1,168 @@
-from spikee.templates.provider_target import ProviderTarget
+from typing import Optional, Union
+
+from spikee.templates.target import Target
+from spikee.templates.provider import Provider
+from spikee.utilities.llm import get_llm
+from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, get_content, TargetResponseHint
 from spikee.utilities.enums import ModuleTag
-
-from dotenv import load_dotenv
-from typing import List, Tuple
+from spikee.utilities.modules import parse_options
 
 
-class LLMProviderTargetModule(ProviderTarget):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+class LLMProvider(Target):
+    def __init__(
+        self,
+        provider=None,
+        default_model: Union[str, None] = None,
+        models: Union[dict, list, None] = None,
+    ):
+        super().__init__()
+        self._provider_name = provider
+
+        self._default_model = default_model
+        self._models = models
+
+        if self._provider_name is not None and (
+            self._default_model is None or self._models is None
+        ):
+            self.set_defaults()
+
+    def set_defaults(self):
+        if self._provider_name is not None:
+            provider = get_llm(f"{self._provider_name}/")
+
+            if self._default_model is None and isinstance(provider, Provider):
+                self._default_model = f"{self._provider_name}/{provider.default_model}"
+
+            if self._models is None and isinstance(provider, Provider):
+                self._models = provider.models
+
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.LLM],
             "Generic LLM target for supported LLM providers - see 'spikee list providers' => '--target-options \"model=<provider>/<model>\"'.",
         )
 
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        """Return supported attack options; Tuple[options (default is first), llm_required]"""
+
+        if isinstance(self._models, dict):
+            options = [key for key, value in self._models.items()]
+            return options, True
+
+        elif isinstance(self._models, list):
+            return self._models, True
+
+        return [], True
+
+    def process_input(
+        self,
+        input_text: str,
+        system_message: Optional[str] = None,
+        target_options: Optional[str] = None,
+        logprobs: bool = False,
+    ) -> TargetResponseHint:
+        """
+        Send messages to a provider model by key.
+
+        Raises:
+            ValueError if target_options is provided but invalid.
+        """
+        options = parse_options(target_options)
+
+        if len(options) == 0 and target_options is not None and len(target_options) > 0:
+            print(
+                f"Warning: target_options missing key 'model='. Attempting 'model={target_options}'"
+            )
+            options["model"] = target_options
+
+        model_id = options.get("model", None)
+        max_tokens = options.get("max_tokens", None)
+        temperature = options.get("temperature", 0.7)
+
+        if max_tokens is not None:
+            max_tokens = int(max_tokens)
+
+        if temperature is not None:
+            temperature = float(temperature)
+
+        if self._provider_name is None:
+            if model_id is not None and "/" in model_id:
+                self._provider_name, model = model_id.split("/", 1)
+
+                if model is None or model == "":
+                    self.set_defaults()
+
+            else:
+                raise ValueError(
+                    "LLMProvider requires a provider name to be specified in the model option (e.g. 'model=bedrock/claude45-sonnet') or as a default provider with model mappings."
+                )
+
+        if model_id is None:
+            if self._default_model is not None:
+                model_id = self._default_model
+
+            elif self._models is not None:
+                if isinstance(self._models, dict):
+                    model_id = f"{self._provider_name}/{list(self._models.keys())[0]}"
+
+                elif isinstance(self._models, list):
+                    model_id = f"{self._provider_name}/{self._models[0]}"
+
+            else:
+                raise ValueError(
+                    "LLMProvider requires a 'model' option to specify which provider/model to use."
+                )
+
+        if model_id is None:
+            raise ValueError(
+                "Unable to determine model_id. Please provide a valid model option."
+            )
+
+        if "/" not in model_id:
+            model_id = f"{self._provider_name}/{model_id}"
+
+        # Initialize provider client
+        llm = get_llm(model_id, max_tokens=max_tokens, temperature=temperature)
+
+        if not isinstance(llm, Provider):
+            raise ValueError(
+                f"Specified model '{model_id}' does not correspond to a valid Provider instance. Please check your provider and model options."
+            )
+
+        if ModuleTag.LLM not in llm.get_description()[0]:
+            raise ValueError(
+                f"Specified model '{model_id}' is not a valid LLM provider model. Please check the available models for this provider and ensure it is an LLM."
+            )
+
+        # Build messages
+        messages = []
+        if system_message:
+            messages.append(SystemMessage(system_message))
+        messages.append(HumanMessage(input_text))
+
+        # Invoke model
+        try:
+            response = llm.invoke(messages)
+
+        except Exception as e:
+            print(f"Error during provider model completion ({model_id}): {e}")
+            raise
+
+        response_content = get_content(response.content)
+
+        if "logprobs" in response.metadata and logprobs:
+            return response_content, response.metadata["logprobs"]
+
+        else:
+            return response_content
+
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
     load_dotenv()
-    target = LLMProviderTargetModule()
+
+    target = LLMProvider()
     print("Supported provider keys:", target.get_available_option_values())
     try:
         print(

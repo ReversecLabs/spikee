@@ -1,12 +1,14 @@
 import traceback
 import uuid
-from typing import List, Tuple, Optional, Dict, Any, Callable
+from typing import List, Optional, Callable, Tuple, Dict, Any
 import threading
 import re
 import json
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -106,13 +108,13 @@ class Crescendo(Attack):
         """Define multi-turn capabilities for Crescendo attack."""
         super().__init__(turn_type=Turn.MULTI)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.SOCIAL_ENGINEERING, ModuleTag.MULTI, ModuleTag.LLM],
             "Leverages an LLM Agent to generate seemingly benign prompts, which gradually escalates a conversation by referencing target replies leading to a successful jailbreak.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["max-turns=5"], True
 
@@ -163,7 +165,7 @@ class Crescendo(Attack):
                     if depth > 0:
                         depth -= 1
                         if depth == 0 and start != -1:
-                            candidate = quoted[start : i + 1]
+                            candidate = quoted[start: i + 1]
                             try:
                                 return json.loads(candidate)
                             except Exception:
@@ -190,7 +192,7 @@ class Crescendo(Attack):
                 if depth > 0:
                     depth -= 1
                     if depth == 0 and start != -1:
-                        candidate = t[start : i + 1]
+                        candidate = t[start: i + 1]
                         try:
                             return json.loads(candidate)
                         except Exception:
@@ -264,7 +266,7 @@ class Crescendo(Attack):
         session_id: str,
         conversation: StandardisedConversation,
         last_message_id: int,
-    ) -> Tuple[int, bool, List[Dict[str, str]], str]:
+    ) -> Tuple[int, StandardisedConversation, int, str]:
         """
         Run a single conversation attempt.
         - max_iterations: the maximum number of calls allowed for this attempt (cannot exceed global budget).
@@ -274,7 +276,7 @@ class Crescendo(Attack):
         - max_turns counts only non-backtrack turns appended to chat_history.
         """
         # Extract objective and system message
-        objective = entry["text"]
+        objective = entry.get("content", entry.get("text", ""))
         system_message = entry.get("system_message")
 
         # Variables
@@ -316,13 +318,12 @@ class Crescendo(Attack):
             )
 
             # call target; each call consumes budget immediately
-            resp = target_module.process_input(
+            response_text = process_target_content(target_module.process_input(
                 prompt,
                 system_message,
                 spikee_session_id=session_id,
                 backtrack=is_refuse,
-            )
-            response_text = str(resp[0] if isinstance(resp, (tuple, list)) else resp)
+            ))
 
             last_message_id = conversation.add_message(
                 last_message_id,
@@ -376,13 +377,13 @@ class Crescendo(Attack):
     def attack(
         self,
         entry: dict,
-        target_module: object,
-        call_judge: Callable,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> AttackResponseHint:
         """
         Attack entry point.
 
@@ -393,17 +394,25 @@ class Crescendo(Attack):
         - max_iterations is treated as the global budget of calls (prompts).
         - conversation is the chat history list (may be empty).
         """
+        if "content" not in entry and "text" not in entry:
+            raise ValueError("entry must contain 'content' or 'text' (the jailbreak objective)")
 
-        if "text" not in entry:
-            raise ValueError("entry must contain 'text' (the jailbreak objective)")
+        objective = entry.get("content", entry.get("text", ""))
+
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("Crescendo Attack only supports text content type.")
 
         # Parse options
         opts = parse_options(attack_option)
         max_turns = self._parse_max_turns(opts)
-        llm = get_llm(opts.get("model", None), max_tokens=None)
+        model = opts.get("model", None)
+        if not model:
+            raise ValueError("Crescendo attack requires an LLM model specified in options, e.g. 'model=gpt-4'")
+
+        llm = get_llm(model, max_tokens=None)
 
         # Variables
-        conversation = StandardisedConversation({"objective": entry["text"]})
+        conversation = StandardisedConversation({"objective": objective})
         last_message_id = conversation.get_root_id()  # last message id
         last_response = ""  # last LLM response
 
@@ -436,9 +445,9 @@ class Crescendo(Attack):
                     conversation.get_attempt_total(),
                     False,
                     Crescendo.standardised_input_return(
-                        input=entry["text"],
+                        input=objective,
                         conversation=conversation,
-                        objective=entry["text"],
+                        objective=objective,
                     ),
                     str(e),
                 )
@@ -460,9 +469,9 @@ class Crescendo(Attack):
                     conversation.get_attempt_total(),
                     True,
                     Crescendo.standardised_input_return(
-                        input=entry["text"],
+                        input=objective,
                         conversation=conversation,
-                        objective=entry["text"],
+                        objective=objective,
                     ),
                     last_response,
                 )
@@ -474,7 +483,7 @@ class Crescendo(Attack):
             conversation.get_attempt_total(),
             False,
             Crescendo.standardised_input_return(
-                input=entry["text"], conversation=conversation, objective=entry["text"]
+                input=objective, conversation=conversation, objective=objective
             ),
             last_response,
         )

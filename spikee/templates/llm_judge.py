@@ -1,8 +1,9 @@
-from typing import Tuple, List, Union
+from typing import Union
 
 from .judge import Judge
 from spikee.utilities.llm import get_llm
 from spikee.templates.provider import Provider
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 class LLMJudge(Judge):
@@ -12,7 +13,7 @@ class LLMJudge(Judge):
         super().__init__()
         self.max_tokens = max_tokens
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """
         Returns the list of supported judge_options; first option is default.
         """

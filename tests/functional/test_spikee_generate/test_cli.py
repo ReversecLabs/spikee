@@ -109,15 +109,15 @@ class TestFormattingArguments:
         # Summarization entries: text starts with "Summarize..." and have ideal_summary
         summarization_entries = [e for e in dataset if e.get("task_type") == "summarization"]
         for entry in summarization_entries:
-            assert entry["text"].startswith("Summarize the following document:"), \
-                f"Summarization text should start with 'Summarize the following document:', got: {entry['text'][:60]}"
+            assert entry["content"].startswith("Summarize the following document:"), \
+                f"Summarization text should start with 'Summarize the following document:', got: {entry['content'][:60]}"
             assert "ideal_summary" in entry, "Summarization entry missing 'ideal_summary' field"
 
         # QnA entries: text starts with "Given this document:" and have ideal_answer
         qna_entries = [e for e in dataset if e.get("task_type") == "qna"]
         for entry in qna_entries:
-            assert entry["text"].startswith("Given this document:"), \
-                f"QnA text should start with 'Given this document:', got: {entry['text'][:60]}"
+            assert entry["content"].startswith("Given this document:"), \
+                f"QnA text should start with 'Given this document:', got: {entry['content'][:60]}"
             assert "ideal_answer" in entry, "QnA entry missing 'ideal_answer' field"
 
         # system_message should be None without --include-system-message
@@ -161,10 +161,10 @@ class TestFormattingArguments:
         positions = {e.get("position") for e in dataset}
         assert positions == {"start"}, f"Expected position 'start', got {positions}"
 
-        # At 'start', the payload appears before the document text in 'text'
+        # At 'start', the payload appears before the document text in 'content'
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             doc_snippet = "This is the base document" if "This is the base document" in text \
                           else "Documento to base"
             assert text.index(payload) < text.index(doc_snippet), \
@@ -188,7 +188,7 @@ class TestFormattingArguments:
         # At 'end', the payload appears after the document text in 'text'
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             doc_pos = text.find("This is the base document") if "This is the base document" in text \
                 else text.find("Documento to base")
             assert text.index(payload) > doc_pos, \
@@ -212,7 +212,7 @@ class TestFormattingArguments:
         # At 'middle', the payload appears between parts of the document
         for entry in dataset:
             payload = entry["payload"]
-            text = entry["text"]
+            text = entry["content"]
             assert payload in text, "Expected payload in text for position 'middle'"
 
     def test_placeholder_position(self, run_spikee, workspace_dir):
@@ -234,7 +234,7 @@ class TestFormattingArguments:
         # The payload should be injected where <PLACEHOLDER> was in the source document
         # Source: "User start <PLACEHOLDER> user end"
         for entry in dataset:
-            text = entry["text"]
+            text = entry["content"]
             payload = entry["payload"]
             assert "User start" in text, "Expected 'User start' in text"
             assert "user end" in text, "Expected 'user end' in text"
@@ -270,7 +270,7 @@ class TestFormattingArguments:
         # Verify the delimiter actually wraps the payload in the generated text:
         # '<<<' should appear immediately before the payload, '>>>' immediately after
         for entry in dataset:
-            text = entry["text"]
+            text = entry["content"]
             payload = entry["payload"]
             assert f"<<<{payload}>>>" in text, \
                 f"Expected payload wrapped in '<<<...>>>' in text, but got: {text[:120]}"
@@ -526,168 +526,41 @@ class TestFilteringArguments:
 
 
 class TestPlugins:
-    """Test cases for plugin application arguments: --plugins, --plugin-options and --plugin-only"""
+    """CLI smoke tests for plugin application.
 
-    def test_plugins_individual(self, run_spikee, workspace_dir):
-        """Test --plugins with three individual plugins (test_upper, base64, 1337).
+    Comprehensive plugin behavior testing is in test_plugins.py.
+    These tests verify basic CLI integration only.
+    """
 
-        Each plugin is applied independently to each base entry. With 6 base combos
-        and 3 plugins, the dataset has 6 base entries + 6×3 plugin entries = 24 total.
+    def test_plugins_basic_application(self, run_spikee, workspace_dir):
+        """Smoke test: --plugins flag applies transformations via CLI.
+
+        Verifies plugin CLI integration works. Detailed plugin behavior 
+        is tested in test_plugins.py.
         """
         output_file = spikee_generate_cli(
             run_spikee,
             workspace_dir,
-            additional_args=["--plugins", "test_upper", "base64", "1337"],
+            additional_args=["--plugins", "test_upper"],
         )
 
         dataset = read_jsonl_file(output_file)
 
-        assert len(dataset) == 24, f"Expected 24 entries (6 base + 6×3 plugin), got {len(dataset)}"
+        # Should have base entries + plugin entries
+        assert len(dataset) == 12, f"Expected 12 entries (6 base + 6 plugin), got {len(dataset)}"
 
-        # Check each plugin is represented
-        plugin_names = {e.get("plugin") for e in dataset}
-        assert None in plugin_names, "Expected base entries (plugin=None)"
-        assert "test_upper" in plugin_names, "Expected test_upper plugin entries"
-        assert "base64" in plugin_names, "Expected base64 plugin entries"
-        assert "1337" in plugin_names, "Expected 1337 plugin entries"
-
-        # test_upper entries should have uppercased payload
+        # Plugin entries should exist and have uppercase payloads
         upper_entries = [e for e in dataset if e.get("plugin") == "test_upper"]
         assert len(upper_entries) == 6, f"Expected 6 test_upper entries, got {len(upper_entries)}"
         for entry in upper_entries:
             assert entry["payload"] == entry["payload"].upper(), \
-                f"Expected uppercase payload for test_upper plugin, got: {entry['payload'][:60]}"
+                "Plugin transformation should uppercase payload"
 
-        # Plugin name appears in long_id via plugin_suffix
-        upper_long_ids = [e["long_id"] for e in upper_entries]
-        assert all("_test_upper-1" in lid for lid in upper_long_ids), \
-            "Expected '_test_upper-1' in all test_upper long_ids"
+    def test_plugin_only_flag(self, run_spikee, workspace_dir):
+        """Smoke test: --plugin-only suppresses base entries.
 
-        base64_long_ids = [e["long_id"] for e in dataset if e.get("plugin") == "base64"]
-        assert all("_base64-1" in lid for lid in base64_long_ids), \
-            "Expected '_base64-1' in all base64 long_ids"
-
-        leet_long_ids = [e["long_id"] for e in dataset if e.get("plugin") == "1337"]
-        assert all("_1337-1" in lid for lid in leet_long_ids), \
-            "Expected '_1337-1' in all 1337 long_ids"
-
-    def test_piped_plugins(self, run_spikee, workspace_dir):
-        """Test --plugins with a piped chain test_upper|base64|1337.
-
-        Piped plugins are applied sequentially as a single combined plugin.
-        With 6 base combos and 1 piped plugin, the dataset has 6 base + 6 piped = 12 entries.
-        The piped plugin name in the dataset uses '~' as the separator.
-        """
-        output_file = spikee_generate_cli(
-            run_spikee,
-            workspace_dir,
-            additional_args=["--plugins", "test_upper|base64|1337"],
-        )
-
-        dataset = read_jsonl_file(output_file)
-
-        assert len(dataset) == 12, f"Expected 12 entries (6 base + 6 piped), got {len(dataset)}"
-
-        # Piped plugin entries should use '~' as separator in plugin name
-        piped_entries = [e for e in dataset if e.get("plugin") is not None]
-        assert len(piped_entries) == 6, f"Expected 6 piped plugin entries, got {len(piped_entries)}"
-        piped_plugin_names = {e.get("plugin") for e in piped_entries}
-        assert piped_plugin_names == {"test_upper~base64~1337"}, \
-            f"Expected piped plugin name 'test_upper~base64~1337', got {piped_plugin_names}"
-
-        # long_id should embed the piped plugin name
-        for entry in piped_entries:
-            assert "test_upper~base64~1337" in entry["long_id"], \
-                f"Expected 'test_upper~base64~1337' in long_id, got: {entry['long_id']}"
-
-    def test_plugin_options_repeat(self, run_spikee, workspace_dir):
-        """Test --plugin-options with test_repeat and n_variants=3.
-
-        test_repeat with n_variants=3 produces 3 variants per base combo.
-        With 6 base combos: 6 base + 3×6 plugin = 24 total entries.
-        Variant long_ids are suffixed _test_repeat-1, _test_repeat-2, _test_repeat-3.
-        """
-        output_file = spikee_generate_cli(
-            run_spikee,
-            workspace_dir,
-            additional_args=[
-                "--plugins", "test_repeat",
-                "--plugin-options", "test_repeat:n_variants=3",
-            ],
-        )
-
-        dataset = read_jsonl_file(output_file)
-
-        assert len(dataset) == 24, f"Expected 24 entries (6 base + 3×6 plugin), got {len(dataset)}"
-
-        repeat_entries = [e for e in dataset if e.get("plugin") == "test_repeat"]
-        assert len(repeat_entries) == 18, f"Expected 18 test_repeat entries, got {len(repeat_entries)}"
-
-        # All three variant indices must be present
-        repeat_long_ids = [e["long_id"] for e in repeat_entries]
-        assert any("_test_repeat-1" in lid for lid in repeat_long_ids), "Missing _test_repeat-1 variant"
-        assert any("_test_repeat-2" in lid for lid in repeat_long_ids), "Missing _test_repeat-2 variant"
-        assert any("_test_repeat-3" in lid for lid in repeat_long_ids), "Missing _test_repeat-3 variant"
-
-        # Second variant payload should contain the default suffix '-repeat'
-        variant2_entries = [e for e in repeat_entries if "_test_repeat-2" in e["long_id"]]
-        for entry in variant2_entries:
-            assert entry["payload"].endswith("-repeat"), \
-                f"Expected payload ending in '-repeat' for variant 2, got: {entry['payload']}"
-
-    def test_inference_plugin_invalid_model(self, run_spikee, workspace_dir):
-        """Test test_inference plugin with an invalid model name fails gracefully."""
-        with pytest.raises(Exception):
-            spikee_generate_cli(
-                run_spikee,
-                workspace_dir,
-                additional_args=[
-                    "--plugins", "test_inference",
-                    "--plugin-options", "test_inference:model=openai/nonexistent-model-xyz",
-                    "--plugin-only",
-                    "--languages", "en",
-                ],
-            )
-
-    def test_legacy_plugins(self, run_spikee, workspace_dir):
-        """Test that legacy function-based plugins (test_upper_legacy, test_repeat_legacy) still work.
-
-        Legacy plugins produce the same output as their OOP equivalents.
-        """
-        output_file = spikee_generate_cli(
-            run_spikee,
-            workspace_dir,
-            additional_args=["--plugins", "test_upper_legacy", "test_repeat_legacy"],
-        )
-
-        dataset = read_jsonl_file(output_file)
-
-        # 6 base + 6 test_upper_legacy (1 var) + 12 test_repeat_legacy (2 var default) = 24
-        assert len(dataset) == 24, f"Expected 24 entries, got {len(dataset)}"
-
-        # Legacy test_upper: payload must be uppercase
-        upper_legacy_entries = [e for e in dataset if e.get("plugin") == "test_upper_legacy"]
-        assert len(upper_legacy_entries) == 6, \
-            f"Expected 6 test_upper_legacy entries, got {len(upper_legacy_entries)}"
-        for entry in upper_legacy_entries:
-            assert entry["payload"] == entry["payload"].upper(), \
-                f"Expected uppercase payload for test_upper_legacy, got: {entry['payload'][:60]}"
-
-        # Legacy test_repeat: 2 variants per combo (default n_variants=2)
-        repeat_legacy_entries = [e for e in dataset if e.get("plugin") == "test_repeat_legacy"]
-        assert len(repeat_legacy_entries) == 12, \
-            f"Expected 12 test_repeat_legacy entries, got {len(repeat_legacy_entries)}"
-        variant2_entries = [e for e in repeat_legacy_entries if "_test_repeat_legacy-2" in e["long_id"]]
-        assert len(variant2_entries) == 6, f"Expected 6 variant-2 entries, got {len(variant2_entries)}"
-        for entry in variant2_entries:
-            assert entry["payload"].endswith("-repeat"), \
-                f"Expected payload ending in '-repeat' for legacy repeat variant 2, got: {entry['payload']}"
-
-    def test_plugin_only(self, run_spikee, workspace_dir):
-        """Test --plugin-only suppresses base entries and outputs only plugin-transformed entries.
-
-        With --plugins test_upper (1 variant per combo) and 6 base combos,
-        --plugin-only produces exactly 6 entries and no base (un-transformed) entries.
+        Verifies plugin-only flag works via CLI. Detailed flag behavior 
+        is tested in test_plugins.py.
         """
         output_file = spikee_generate_cli(
             run_spikee,
@@ -697,15 +570,36 @@ class TestPlugins:
 
         dataset = read_jsonl_file(output_file)
 
+        # Should have ONLY plugin entries, no base entries
         assert len(dataset) == 6, f"Expected 6 plugin-only entries, got {len(dataset)}"
-
-        # All entries must be plugin entries — no base (plugin=None) entries
         assert all(e.get("plugin") is not None for e in dataset), \
-            "Expected no base entries with --plugin-only"
-        assert all(e.get("plugin") == "test_upper" for e in dataset), \
-            "Expected all entries to have plugin 'test_upper'"
+            "All entries should be plugin entries with --plugin-only"
 
-        # All payloads should be uppercased
-        for entry in dataset:
-            assert entry["payload"] == entry["payload"].upper(), \
-                f"Expected uppercase payload in plugin-only mode, got: {entry['payload'][:60]}"
+
+class TestContent:
+    def test_content_audio(self, run_spikee, workspace_dir):
+        """Test that entries with audio content have the expected fields."""
+        output_file = spikee_generate_cli(
+            run_spikee,
+            workspace_dir,
+            seed_folder="datasets/seeds-functional-audio",
+            additional_args=["--include-standalone-inputs"],
+        )
+
+        assert output_file.exists(), f"Expected dataset file at {output_file}"
+
+        dataset = read_jsonl_file(output_file)
+
+        assert len(dataset) == 3, "Generated dataset contains no entries"
+        assert sum(1 for e in dataset if e.get("content_type") == "audio") == 2, \
+            f"Expected 2 audio entries, got {sum(1 for e in dataset if e.get('content_type') == 'audio')}"
+
+    def test_invalid_content_type(self, run_spikee, workspace_dir):
+        """Test that an invalid content type in the seed document is handled gracefully."""
+        with pytest.raises(Exception):
+            spikee_generate_cli(
+                run_spikee,
+                workspace_dir,
+                seed_folder="datasets/seeds-functional-audio",
+                additional_args=["--include-standalone-inputs", "--plugins", "base64"],
+            )

@@ -36,21 +36,37 @@ Your target script in `targets/` must return `True` for allowed/bypassed prompts
 **Example Guardrail Target Snippet:**
 ```python
 # ./targets/my_guardrail_target.py
+from spikee.templates.target import Target
+from spikee.utilities.hinting import Content, TargetResponseHint, ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.enums import ModuleTag
+from typing import Optional
 
-def process_input(input_text, system_message=None, target_options=None, logprobs=False) -> bool:
-    try:
-        # This function calls your guardrail API or logic
-        guardrail_decision = call_my_guardrail_system(input_text) # e.g., returns "ALLOWED" or "BLOCKED"
+class MyGuardrailTarget(Target):
+    def get_description(self) -> ModuleDescriptionHint:
+        return [ModuleTag.SINGLE], "Example guardrail target"
 
-        # Convert the guardrail's decision to Spikee's required boolean format.
-        # True = Allowed/Bypassed (This is an "attack success" from Spikee's perspective).
-        # False = Blocked (This is an "attack failure" from Spikee's perspective).
-        is_allowed = guardrail_decision == "ALLOWED"
-        return is_allowed
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return [], False
 
-    except Exception as e:
-        print(f"Error processing guardrail: {e}")
-        raise # Let Spikee handle retries and errors
+    def process_input(
+        self,
+        input_text: Content,
+        system_message: Optional[Content] = None,
+        target_options: Optional[str] = None,
+    ) -> TargetResponseHint:
+        try:
+            # This function calls your guardrail API or logic
+            guardrail_decision = call_my_guardrail_system(input_text) # e.g., returns "ALLOWED" or "BLOCKED"
+
+            # Convert the guardrail's decision to Spikee's required boolean format.
+            # True = Allowed/Bypassed (This is an "attack success" from Spikee's perspective).
+            # False = Blocked (This is an "attack failure" from Spikee's perspective).
+            is_allowed = guardrail_decision == "ALLOWED"
+            return is_allowed
+
+        except Exception as e:
+            print(f"Error processing guardrail: {e}")
+            raise # Let Spikee handle retries and errors
 ```
 
 ## Step 4 & 5: Run the Tests

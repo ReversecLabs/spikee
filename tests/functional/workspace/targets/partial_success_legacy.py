@@ -19,5 +19,5 @@ def process_input(
     global _CALL_COUNT
     _CALL_COUNT += 1
     if _CALL_COUNT <= _SUCCESS_THRESHOLD:
-        return CANARY_RESPONSES
-    return "Sorry, I can't answer that."
+        return str(CANARY_RESPONSES)
+    return str("Sorry, I can't answer that.")

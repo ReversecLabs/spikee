@@ -1,7 +1,8 @@
 import re
-from typing import List, Tuple
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -16,14 +17,17 @@ class FlipPlugin(Plugin):
             - FCS: Flip Chars in Sentence
     """
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.OBFUSCATION], "Transforms text using the flip attack."
 
-    def get_available_option_values(self) -> List[str]:
-        return ["mode=FWO,resp_exc=false", "mode=... (FCW, FCS)"]
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return ["mode=FWO,resp_exc=false", "mode=... (FCW, FCS)"], False
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> str:
         opts = parse_options(plugin_option)
 
@@ -32,7 +36,7 @@ class FlipPlugin(Plugin):
 
         if respect_exclude:
             combined_pattern = "(" + "|".join(exclude_patterns) + ")"
-            chunks = re.split(combined_pattern, text)
+            chunks = re.split(combined_pattern, content)
             transformed_chunks = []
             for i, chunk in enumerate(chunks):
                 if i % 2 == 0:
@@ -43,7 +47,7 @@ class FlipPlugin(Plugin):
             return "".join(transformed_chunks)
 
         else:
-            return self._apply_flip(text, mode)
+            return self._apply_flip(content, mode)
 
     def _apply_flip(self, text: str, mode: str) -> str:
         if mode == "FWO":

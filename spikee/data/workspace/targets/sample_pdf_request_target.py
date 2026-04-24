@@ -13,12 +13,12 @@ Usage:
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 from dotenv import load_dotenv
 import json
 import requests
-from typing import Any, Optional, List, Tuple, Union
+from typing import Optional
 
 try:
     from fpdf import FPDF
@@ -29,10 +29,10 @@ except ImportError as e:
 
 
 class SamplePDFRequestTarget(Target):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], 'Sample PDF Request Target. (Requires: `pip install "spikee[pdf]"`)'
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
@@ -41,7 +41,8 @@ class SamplePDFRequestTarget(Target):
         input_text: str,
         system_message: Optional[str] = None,
         target_options: Optional[str] = None,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> TargetResponseHint:
+
         url = "https://reversec.com/api/upload_pdf"
 
         pdf = FPDF()
@@ -64,7 +65,7 @@ class SamplePDFRequestTarget(Target):
         }
 
         try:
-            response = requests.post(
+            response: requests.Response = requests.post(
                 url, files=files, data={"payload": json.dumps(payload)}, timeout=30
             )
 
@@ -85,7 +86,6 @@ if __name__ == "__main__":
     load_dotenv()
     try:
         target = SamplePDFRequestTarget()
-        response = target.process_input("Hello!")
-        print(response)
+        print(target.process_input("Hello!"))
     except Exception as err:
         print("Error:", err)

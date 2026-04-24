@@ -14,9 +14,11 @@ Usage:
 
 import json
 import random
-from typing import Callable, List, Dict, Any, Tuple
+from typing import Callable, List
 
+from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -26,13 +28,13 @@ class PromptDecompositionAttack(Attack):
     # Default mode
     DEFAULT_MODE = "dumb"
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.FORMATTING, ModuleTag.SINGLE, ModuleTag.LLM],
             "Generates prompt reformulations by decomposing into labeled chunks and shuffling them.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return ["mode=dumb", "mode=<utility-llm-model>"], True
 
@@ -210,19 +212,22 @@ class PromptDecompositionAttack(Attack):
 
     def attack(
         self,
-        entry: Dict[str, Any],
-        target_module: Any,
-        call_judge: Callable,
+        entry: dict,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable[[dict, str], bool],
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-    ) -> Tuple[int, bool, str, str]:
+    ) -> AttackResponseHint:
         """
         Executes the prompt decomposition attack by sequentially trying different
         reformulations until success or max_iterations is reached.
         """
-        original_text = entry.get("text", "")
+        original_text = entry.get("content", entry.get("text", ""))
+        if entry.get("content_type", "text") != "text":
+            raise ValueError("PromptDecomposition Attack only supports text content type.")
+
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs
         last_response = ""
@@ -252,12 +257,9 @@ class PromptDecompositionAttack(Attack):
                 last_payload = candidate_text
 
                 try:
-                    response = target_module.process_input(
+                    response = process_target_content(target_module.process_input(
                         candidate_text, system_message
-                    )
-                    response = str(
-                        response[0] if isinstance(response, (tuple, list)) else response
-                    )
+                    ))
 
                     last_response = response
                     success = call_judge(entry, response)

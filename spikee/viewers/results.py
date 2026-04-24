@@ -7,7 +7,7 @@ from spikee.utilities.files import (
     extract_resource_name,
 )
 from spikee.utilities.results import ResultProcessor, generate_query, extract_entries
-from spikee.utilities.enums import ModuleTag
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.judge import call_judge
 
 from flask import render_template, request, redirect, abort
@@ -17,7 +17,7 @@ import hashlib
 import html
 import json
 import re
-from typing import Dict, Any, Tuple, Union, List
+from typing import Dict, Any, Tuple, Union
 
 
 class ResultsViewer(Viewer):
@@ -48,10 +48,10 @@ class ResultsViewer(Viewer):
 
         self.update_result_data(resource=self.selected_files)
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Viewer for analyzing and rejudging Spikee results."
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         return [], False
 
     # region Results Processing

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import time
 
 from spikee.utilities.files import read_jsonl_file, write_jsonl_file
@@ -148,6 +149,7 @@ class TestResume:
 
         # 4. Assertions
         stdout = result.stdout
+        stderr = result.stderr
         results = read_jsonl_file(results_files[0])
 
         assert len(results_files) == 1, f"Expected 1 results file after resuming, got {len(results_files)}"
@@ -158,6 +160,28 @@ class TestResume:
         for r in results[:2]:
             assert r["success"], "Expected resumed entries to be marked as success"
             assert r["response"] == "canary response", "Expected resumed entries to have the canary response"
+
+        # Regression test: Verify progress bar shows correct total count (not reduced by processed count)
+        # The progress bar should show the FULL dataset count, not (full_count - processed_count)
+        processing_bar_lines = [
+            line for line in stderr.splitlines() if "Processing entries" in line
+        ]
+        proc_totals = []
+        for line in processing_bar_lines:
+            match = re.search(r"/(\d+)", line)
+            if match:
+                proc_totals.append(int(match.group(1)))
+        
+        # Should find the full count in progress bar, not the buggy reduced count
+        full_count = len(entries)
+        processed_count = 2
+        buggy_count = full_count - processed_count
+        
+        has_full_count = any(t == full_count for t in proc_totals)
+        has_buggy_count = any(t == buggy_count for t in proc_totals)
+        
+        assert not has_buggy_count or has_full_count, \
+            f"Progress bar shows buggy total {buggy_count} instead of correct total {full_count}"
 
     def test_single_dataset_resume_file(self, run_spikee, workspace_dir):
         """Test that --result-file can be used to specify a resume file for a single dataset."""

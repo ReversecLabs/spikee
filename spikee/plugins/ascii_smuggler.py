@@ -26,21 +26,20 @@ Returns:
     str: The encoded text.
 """
 
-from typing import List, Tuple
-
 from spikee.templates.basic_plugin import BasicPlugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
 
 class AsciiSmuggler(BasicPlugin):
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.ENCODING],
             "Transforms ASCII text into Unicode tags using the ASCII Smuggler technique.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 

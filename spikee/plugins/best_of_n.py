@@ -21,9 +21,10 @@ This plugin supports configurable number of samples via options.
 
 import re
 import random
-from typing import List, Tuple
+from typing import List, Optional
 
 from spikee.templates.plugin import Plugin
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.utilities.enums import ModuleTag
 
 
@@ -35,13 +36,13 @@ class BestOfN(Plugin):
     # Default number of samples
     DEFAULT_SAMPLES = 50
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return (
             [ModuleTag.OBFUSCATION, ModuleTag.ATTACK_BASED],
             "Generates augmented samples from the input text using character scrambling, random capitalization, and character noising.",
         )
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "variants=50",
@@ -64,7 +65,10 @@ class BestOfN(Plugin):
         return self._parse_samples_option(plugin_option)
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = [], plugin_option: str = ""
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = ""
     ) -> List[str]:
         """
         Generates a configurable number of augmented samples from the input text.
@@ -81,10 +85,10 @@ class BestOfN(Plugin):
 
         samples = []
         for _ in range(num_samples):
-            samples.append(self._scramble_text(text, exclude_patterns))
+            samples.append(self._scramble_text(content, exclude_patterns))
         return samples
 
-    def _scramble_text(self, text: str, exclude_patterns: List[str] = []) -> str:
+    def _scramble_text(self, text: str, exclude_patterns: Optional[List[str]] = None) -> str:
         """
         Processes the input text by splitting it into chunks based on the user‐supplied
         exclusion patterns. Any chunk that exactly matches the compound exclusion regex

@@ -18,34 +18,41 @@ Usage within Spikee:
 This sample plugin simply transforms the input text to uppercase.
 """
 
-from typing import List, Union, Tuple
+from typing import List, Union, Optional
 import re
 
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 from spikee.templates.plugin import Plugin
 
 
 class SamplePlugin(Plugin):
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_description(self) -> ModuleDescriptionHint:
+        return [], "A sample plugin that transforms text to uppercase, preserving excluded patterns."
+
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
     def transform(
-        self, text: str, exclude_patterns: List[str] = []
+        self,
+        content: str,  # specify specific content types using Text, Audio, Image subclasses of Content
+        exclude_patterns: Optional[List[str]] = None,
     ) -> Union[str, List[str]]:
         """
         Transforms the input text to uppercase, preserving any substrings that match the given exclusion patterns.
 
         Args:
-            text (str): The input prompt to transform.
+            content (str): The input prompt to transform.
             exclude_patterns (List[str], optional): Regex patterns for substrings to preserve.
 
         Returns:
             str: The transformed text in uppercase.
         """
+
         if exclude_patterns:
             compound = "(" + "|".join(exclude_patterns) + ")"
             compound_re = re.compile(compound)
-            chunks = re.split(compound, text)
+            chunks = re.split(compound, content)
 
             result_chunks = []
             for chunk in chunks:
@@ -55,4 +62,4 @@ class SamplePlugin(Plugin):
                     result_chunks.append(chunk.upper())
             return "".join(result_chunks)
         else:
-            return text.upper()
+            return content.upper()

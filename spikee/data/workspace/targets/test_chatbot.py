@@ -23,19 +23,17 @@ References:
     - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
     - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
-
-import traceback
-from spikee.templates.simple_multi_target import SimpleMultiTarget
-from spikee.utilities.enums import Turn
-from spikee.utilities.modules import parse_options
-from spikee.utilities.enums import ModuleTag
-
 import json
 import uuid
 import requests
-from typing import Any, Optional, List, Tuple, Union
-
+from typing import Optional
 from dotenv import load_dotenv
+import traceback
+
+from spikee.templates.simple_multi_target import SimpleMultiTarget
+from spikee.utilities.enums import Turn
+from spikee.utilities.modules import parse_options
+from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
 
 
 class SimpleTestChatbotTarget(SimpleMultiTarget):
@@ -48,10 +46,10 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
             backtrack=True,  # Does the target + target application support backtracking
         )
 
-    def get_description(self) -> Tuple[List[ModuleTag], str]:
+    def get_description(self) -> ModuleDescriptionHint:
         return [], "Sample Chatbot Target"
 
-    def get_available_option_values(self) -> Tuple[List[str], bool]:
+    def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [
             "url=http://localhost:8000",
@@ -188,7 +186,8 @@ class SimpleTestChatbotTarget(SimpleMultiTarget):
         target_options: Optional[str] = None,
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
-    ) -> Union[str, bool, Tuple[Union[str, bool], Any]]:
+    ) -> TargetResponseHint:
+
         # ---- Determine the URL, model, and guardrail based on target options ----
         opts = parse_options(target_options)
         if "url" in opts:

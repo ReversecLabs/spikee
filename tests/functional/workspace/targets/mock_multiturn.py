@@ -1,7 +1,8 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 from spikee.templates.multi_target import MultiTarget
 from spikee.utilities.enums import Turn
+from spikee.utilities.hinting import ModuleOptionsHint
 
 
 class MockMultiTurnTarget(MultiTarget):
@@ -10,8 +11,8 @@ class MockMultiTurnTarget(MultiTarget):
         # Initialize internal dicts for standalone functional testing
         self.add_managed_dicts({}, {})
 
-    def get_available_option_values(self) -> List[str]:
-        return ["default"]
+    def get_available_option_values(self) -> ModuleOptionsHint:
+        return ["default"], False
 
     def process_input(
         self,
@@ -21,6 +22,8 @@ class MockMultiTurnTarget(MultiTarget):
         spikee_session_id: Optional[str] = None,
         backtrack: Optional[bool] = False,
     ) -> str:
+        # Extract string from str object
+
         # Retrieve current session state
         if spikee_session_id is not None:
             session_state = self._get_target_data(spikee_session_id)
@@ -68,4 +71,4 @@ class MockMultiTurnTarget(MultiTarget):
             session_state["history"] = history
             self._update_target_data(spikee_session_id, session_state)
 
-        return response
+        return str(response)

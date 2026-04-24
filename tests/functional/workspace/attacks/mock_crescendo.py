@@ -1,10 +1,12 @@
-from typing import Tuple
+from typing import Callable
 import threading
 from collections import defaultdict
 import spikee.attacks.crescendo
 from spikee.attacks.crescendo import Crescendo
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.modules import parse_options
+from spikee.utilities.hinting import AttackResponseHint
+from spikee.tester import AdvancedTargetWrapper
 
 
 # 1. Mock the LLM object used by Crescendo
@@ -41,19 +43,26 @@ class MockCrescendoAttack(Crescendo):
     def attack(
         self,
         entry: dict,
-        target_module: object,
-        call_judge: callable,
+        target_module: AdvancedTargetWrapper,
+        call_judge: Callable,
         max_iterations: int,
         attempts_bar=None,
         bar_lock=None,
-        attack_option: str = None,
-    ) -> Tuple[int, bool, str, str]:
+        attack_option: str = "",
+    ) -> AttackResponseHint:
         # Parse scenario
         opts = parse_options(attack_option)
         # Store scenario in thread-local because attack() sets it for the duration of the call
         if not hasattr(self._thread_local, "scenario"):
             self._thread_local.scenario = "success"
         self._thread_local.scenario = opts.get("scenario", "success")
+
+        # Inject a mock model option if not present (Crescendo requires model= option)
+        if "model" not in opts:
+            if attack_option:
+                attack_option += ",model=mock-llm"
+            else:
+                attack_option = "model=mock-llm"
 
         return super().attack(
             entry,
