@@ -209,19 +209,12 @@ def main():
         default=None,
         help="Include a tag at the end of the generated dataset filename",
     )
-    def positive_int(value):
-        ivalue = int(value)
-        if ivalue < 1:
-            raise argparse.ArgumentTypeError(f"--threads must be a positive integer, got {value}")
-        return ivalue
-
     parser_generate.add_argument(
         "--threads",
-        type=positive_int,
+        type=int,
         default=1,
         help="Number of threads for parallel plugin processing (default: 1)",
     )
-
     parser_plugin = subparsers_generate.add_parser(
         "plugin", help="Apply a plugin transformation to a string"
     )

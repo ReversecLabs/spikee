@@ -85,12 +85,6 @@ class Entry:
 
         self.exclude_from_transformations_regex = exclude_from_transformations_regex
 
-        if self.entry_type == EntryType.ATTACK:
-            self.long_id = f"{base_id}" + self.plugin_suffix
-
-        else:
-            self.long_id = f"{self.entry_type.value}_{base_id}_{jailbreak_id}_{instruction_id}_{position}{plugin_suffix}"
-
         match self.entry_type:
             case EntryType.SUMMARY:
                 self.content = f"Summarize the following document:\n{self.content}"
@@ -105,7 +99,7 @@ class Entry:
         """Converts the Entry object to a dictionary format suitable for output."""
         entry = {
             "id": self.id,
-            "long_id": self.long_id,
+            "long_id": f"{self.entry_type.value}_{self.base_id}_{self.jailbreak_id}_{self.instruction_id}_{self.position}{self.plugin_suffix}",
             "content": self.content,
             "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
@@ -149,8 +143,8 @@ class Entry:
     def to_attack(self):
         """Converts the Entry object to a dictionary format suitable for standalone attacks."""
         attack = {
-            "id": self.long_id,
-            "long_id": self.long_id,
+            "id": self.id,
+            "long_id": f"{self.base_id}" + self.plugin_suffix,
             "content": self.content,
             "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
@@ -477,7 +471,7 @@ def parse_exclude_patterns(jailbreak, instruction):
 
 # endregion
 
-def _process_permutation_worker(perm, plugin_options_map, system_message_config, output_format, entry_id_start):
+def _process_permutation_worker(perm, plugin_options_map, system_message_config, output_format) -> List[Entry]:
     """
     Worker function to process a single permutation (base_doc, jailbreak, instruction combination).
     Each thread gets its own asyncio event loop for async LLM operations.
@@ -582,8 +576,7 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
         
         # Generate entries for each combined text
         insert_positions = ["fixed"] if placeholder else positions
-        entry_id = entry_id_start
-        
+
         for combined_text in combined_texts:
             for position in insert_positions:
                 for injection_pattern in injection_delimiters:
@@ -613,7 +606,7 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                                 
                                 entry = Entry(
                                     entry_type=entry_type,
-                                    entry_id=entry_id,
+                                    entry_id=1,
                                     base_id=base_id,
                                     jailbreak_id=jailbreak_id,
                                     instruction_id=instruction_id,
@@ -634,10 +627,8 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                                     injection_pattern=injection_pattern,
                                     spotlighting_data_markers=spotlighting_data_marker,
                                     exclude_from_transformations_regex=local_exclude,
-                                ).to_entry()
-                                entries.append(entry)
-                                entry_id += 1
-    
+                                )
+                                entries.append(entry)    
     except Exception as e:
         print(f"\n[ERROR] Processing permutation failed: {e}")
         import traceback
@@ -647,7 +638,7 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
     return entries
 
 
-def _process_standalone_worker(perm, plugin_options_map, entry_id_start):
+def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
     """
     Worker function to process a single standalone attack permutation.
     Each thread gets its own asyncio event loop for async LLM operations.
@@ -694,11 +685,10 @@ def _process_standalone_worker(perm, plugin_options_map, entry_id_start):
                         "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else "",
                     })
 
-        entry_id = entry_id_start
         for combined_text in combined_texts:
             entry = Entry(
                 entry_type=EntryType.ATTACK,
-                entry_id=entry_id,
+                entry_id=1,
                 base_id=attack["id"],
                 jailbreak_id=None,
                 instruction_id=None,
@@ -720,9 +710,8 @@ def _process_standalone_worker(perm, plugin_options_map, entry_id_start):
                 spotlighting_data_markers=None,
                 exclude_from_transformations_regex=exclude_patterns,
                 steering_keywords=attack.get("steering_keywords", None),
-            ).to_attack()
+            )
             entries.append(entry)
-            entry_id += 1
 
     except Exception as e:
         print(f"\n[ERROR] Processing standalone attack failed: {e}")
@@ -783,44 +772,51 @@ def process_standalone_attacks(
 
         with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
             futures = {}
-            current_entry_id = entry_id
             for perm in permutations:
                 future = executor.submit(
                     _process_standalone_worker,
                     perm,
                     plugin_options_map,
-                    current_entry_id,
                 )
                 futures[future] = perm
-                current_entry_id += 100  # Placeholder; reassigned after collection
 
             bar = tqdm(total=len(permutations), desc="Standalone Attacks")
-            for future in as_completed(futures):
-                try:
-                    entries = future.result()
-                    new_entries.extend(entries)
-                except Exception as e:
-                    perm = futures[future]
-                    print(f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}")
-                bar.update(1)
-            bar.close()
 
-        # Reassign sequential entry IDs
-        for i, entry in enumerate(new_entries, start=entry_id):
-            if isinstance(entry, dict):
-                entry['id'] = i
-        entry_id += len(new_entries)
+            try:
+                for future in as_completed(futures):
+                    try:
+                        entries = future.result()
+                        new_entries.extend(entries)
+                    except Exception as e:
+                        perm = futures[future]
+                        print(f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}")
+                    bar.update(1)
+                bar.close()
+            except KeyboardInterrupt:
+                print("\n[Interrupt] CTRL+C pressed. Cancelling...")
+                executor.shutdown(wait=False, cancel_futures=True)
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
+                bar.close()
 
     else:
         bar = tqdm(total=len(permutations), desc="Standalone Attacks")
         for perm in permutations:
-            entries = _process_standalone_worker(perm, plugin_options_map, entry_id)
+            entries = _process_standalone_worker(perm, plugin_options_map)
             new_entries.extend(entries)
-            entry_id += len(entries)
             bar.update(1)
         bar.close()
 
-    dataset.extend(new_entries)
+    # Reassign sequential entry IDs
+    dataset_entries = []
+    for i, entry in enumerate(new_entries, start=entry_id):
+        if isinstance(entry, Entry):
+            entry.id = i
+
+            dataset_entries.append(entry.to_attack())
+    entry_id += len(dataset_entries)
+
+    dataset.extend(dataset_entries)
     return dataset, entry_id
 
 
@@ -909,7 +905,6 @@ def generate_variations(
         with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
             # Submit all permutations
             futures = {}
-            current_entry_id = entry_id
             
             for perm in permutations:
                 future = executor.submit(
@@ -918,32 +913,27 @@ def generate_variations(
                     plugin_options_map,
                     system_message_config,
                     output_format_types,
-                    current_entry_id
                 )
                 futures[future] = perm
-                # Estimate entry count for this permutation (rough approximation)
-                # This will be corrected as we process results
-                current_entry_id += 100  # Placeholder increment
             
             # Collect results with progress bar
             bar = tqdm(total=len(permutations), desc="Processing permutations")
             
-            for future in as_completed(futures):
-                try:
-                    entries = future.result()
-                    dataset.extend(entries)
-                    bar.update(1)
-                except Exception as e:
-                    perm = futures[future]
-                    print(f"\n[ERROR] Permutation failed (doc={perm['base_doc']['id']}, jb={perm['jailbreak']['id']}, instr={perm['instruction']['id']}): {e}")
-            
-            bar.close()
-        
-        # Reassign entry IDs sequentially
-        for i, entry in enumerate(dataset, start=1):
-            if isinstance(entry, dict):
-                entry['id'] = i
-        entry_id = len(dataset) + 1
+            try:
+                for future in as_completed(futures):
+                    try:
+                        entries = future.result()
+                        dataset.extend(entries)
+                        bar.update(1)
+                    except Exception as e:
+                        perm = futures[future]
+                        print(f"\n[ERROR] Permutation failed (doc={perm['base_doc']['id']}, jb={perm['jailbreak']['id']}, instr={perm['instruction']['id']}): {e}")
+            except KeyboardInterrupt:
+                print("\n[Interrupt] CTRL+C pressed. Cancelling...")
+                executor.shutdown(wait=False, cancel_futures=True)
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
+                bar.close()
     
     else:
         # Sequential processing (original logic)
@@ -955,14 +945,23 @@ def generate_variations(
                 plugin_options_map,
                 system_message_config,
                 output_format_types,
-                entry_id
             )
             dataset.extend(entries)
-            entry_id += len(entries)
             bar.update(1)
         
         bar.close()
     
+    # Reassign entry IDs sequentially
+    dataset_entries = []
+    for i, entry in enumerate(dataset, start=1):
+        if isinstance(entry, Entry):
+            entry.id = i
+
+            dataset_entries.append(entry.to_entry())
+
+    dataset = dataset_entries
+    entry_id = len(dataset) + 1
+
     return dataset, entry_id
 
 
