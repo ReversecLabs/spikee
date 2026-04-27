@@ -105,7 +105,7 @@ class AdvancedTargetWrapper:
         # Detect support for optional features using available parameters and target config
         self.supports_options = "target_options" in params
         self.supports_logprobs = "logprobs" in params
-        self.supports_input_id = "input_id" in params
+        self.supports_entry = "entry" in params
         self.supports_output_file = "output_file" in params
 
         self.supports_spikee_session_id = "spikee_session_id" in params
@@ -133,7 +133,7 @@ class AdvancedTargetWrapper:
         input_text: Content,
         system_message: Optional[Content] = None,
         logprobs=False,
-        input_id=None,
+        entry=None,
         output_file=None,
         spikee_session_id=None,
         backtrack=False,
@@ -150,8 +150,8 @@ class AdvancedTargetWrapper:
                     kwargs["target_options"] = self.target_options
                 if self.supports_logprobs:
                     kwargs["logprobs"] = logprobs
-                if self.supports_input_id:
-                    kwargs["input_id"] = input_id
+                if self.supports_entry:
+                    kwargs["entry"] = entry
                 if self.supports_output_file:
                     kwargs["output_file"] = output_file
                 if self.supports_spikee_session_id:
@@ -440,7 +440,7 @@ def _parse_timestamp_from_filename(p: Path) -> int:
 def _do_single_request(
     entry,
     input_text,
-    target_module,
+    target_module: AdvancedTargetWrapper,
     output_file,
     num_attempt,
     attempts_bar,
@@ -485,9 +485,18 @@ def _do_single_request(
 
     try:
         start_time = time.time()
-        response, meta = target_module.process_input(
-            input_text, system_message, False, entry_id, output_file
+        raw_response = target_module.process_input(
+            input_text=input_text, 
+            system_message=system_message, 
+            logprobs=False,
+            entry=entry,
+            output_file=output_file
         )
+        if isinstance(raw_response, tuple):
+            response, meta = raw_response
+        else:
+            response = raw_response
+
         # Don't convert Content types to string - preserve wrapper objects for judge
         # Only convert to str if it's not bool and not a Content type
         if not isinstance(response, bool) and not isinstance(response, Content):
@@ -495,7 +504,7 @@ def _do_single_request(
 
         end_time = time.time()
         response_time = end_time - start_time
-        success = call_judge(entry, response)
+        success = call_judge(entry, response) if not isinstance(response, bool) else response
         response_str = response
         error_message = None
 
