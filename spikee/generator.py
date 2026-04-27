@@ -95,11 +95,23 @@ class Entry:
         # Extras
         self.steering_keywords = steering_keywords
 
+    @property
+    def long_id(self) -> str:
+        """Returns the long identifier for this entry.
+
+        For ATTACK entries this is ``{base_id}{plugin_suffix}``.
+        For all other entry types it is
+        ``{entry_type}_{base_id}_{jailbreak_id}_{instruction_id}_{position}{plugin_suffix}``.
+        """
+        if self.entry_type == EntryType.ATTACK:
+            return f"{self.base_id}{self.plugin_suffix}"
+        return f"{self.entry_type.value}_{self.base_id}_{self.jailbreak_id}_{self.instruction_id}_{self.position}{self.plugin_suffix}"
+
     def to_entry(self):
         """Converts the Entry object to a dictionary format suitable for output."""
         entry = {
             "id": self.id,
-            "long_id": f"{self.entry_type.value}_{self.base_id}_{self.jailbreak_id}_{self.instruction_id}_{self.position}{self.plugin_suffix}",
+            "long_id": self.long_id,
             "content": self.content,
             "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
@@ -143,8 +155,8 @@ class Entry:
     def to_attack(self):
         """Converts the Entry object to a dictionary format suitable for standalone attacks."""
         attack = {
-            "id": self.id,
-            "long_id": f"{self.base_id}" + self.plugin_suffix,
+            "id": self.long_id,
+            "long_id": self.long_id,
             "content": self.content,
             "content_type": get_content_type(self.original_content),
             "judge_name": self.judge_name,
@@ -629,6 +641,8 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                                     exclude_from_transformations_regex=local_exclude,
                                 )
                                 entries.append(entry)    
+    except ValueError:
+        raise
     except Exception as e:
         print(f"\n[ERROR] Processing permutation failed: {e}")
         import traceback
@@ -713,6 +727,8 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
             )
             entries.append(entry)
 
+    except ValueError:
+        raise
     except Exception as e:
         print(f"\n[ERROR] Processing standalone attack failed: {e}")
         import traceback
@@ -790,6 +806,8 @@ def process_standalone_attacks(
                     except Exception as e:
                         perm = futures[future]
                         print(f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}")
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        exit(1)
                     bar.update(1)
                 bar.close()
             except KeyboardInterrupt:

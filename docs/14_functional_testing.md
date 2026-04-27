@@ -36,6 +36,10 @@ Spikee ships with an end-to-end functional suite that exercises the CLI exactly 
    - Bootstrap a scratch workspace (`spikee init`) and overlay the fixtures under `tests/functional/fixtures`.
    - Execute the relevant `spikee` CLI commands (currently `spikee generate` and `spikee test`) and assert the outputs.
 
+   Optionally, run the functional suite from your workspace `pytest ../tests/functional` to use enviromental variables from your workspace .env file:
+   - `SPIKEE_TESTS_USE_ISOLATED_VENV=1` - Uses current environment instead of creating a new one for each test session. This is useful if you have already installed spikee in your current environment and want to speed up the tests by skipping the installation step.
+   - Uses LLM provider inference keys.
+
 4. **Run a single test** (useful while debugging):
 
    ```bash
