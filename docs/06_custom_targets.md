@@ -95,6 +95,21 @@ The `process_input` function's return type depends on what you are testing.
     *   `True` signifies the guardrail was **bypassed** (an attack success). 
     *   `False` signifies the payload was **blocked** (an attack failure). This is essential for calculating performance metrics.
 
+## Accessing the Full Dataset Entry
+
+Add an `entry: Optional[Dict[str, Any]] = None` parameter to `process_input` to receive the full dataset entry dict. Spikee detects this automatically — no other configuration is needed.
+
+```python
+def process_input(
+    self,
+    input_text: Content,
+    system_message: Optional[Content] = None,
+    target_options: Optional[str] = None,
+    entry: Optional[Dict[str, Any]] = None,
+) -> TargetResponseHint:
+    task_type = entry.get("task_type") if entry else None
+```
+
 ## Supporting Target Options
 To make your target more flexible, you can advertise its supported `target_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
 
