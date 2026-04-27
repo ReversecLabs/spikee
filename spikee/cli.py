@@ -209,7 +209,12 @@ def main():
         default=None,
         help="Include a tag at the end of the generated dataset filename",
     )
-
+    parser_generate.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="Number of threads for parallel plugin processing (default: 1)",
+    )
     parser_plugin = subparsers_generate.add_parser(
         "plugin", help="Apply a plugin transformation to a string"
     )
