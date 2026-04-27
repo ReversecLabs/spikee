@@ -4,7 +4,7 @@ import importlib
 import importlib.util
 import pkgutil
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -12,38 +12,22 @@ from rich.panel import Panel
 from rich.rule import Rule
 import rich.box
 
+from spikee.templates import module
 from spikee.utilities.enums import ModuleTag, module_tag_to_colour, formatting_priority
 from spikee.utilities.modules import (
+    load_module_from_path,  
     get_options_from_module,
     get_description_from_module,
+    collect_seeds,
+    collect_datasets,
+    collect_modules,
 )
 
 console = Console()
 
 
 def list_seeds(args):
-    base = Path(os.getcwd(), "datasets")
-    if not base.is_dir():
-        console.print(
-            Panel("No 'datasets/' folder found", title="[seeds]", style="red")
-        )
-        return
-
-    want = {
-        "base_user_inputs.jsonl",
-        "base_documents.jsonl",
-        "standalone_user_inputs.jsonl",
-        "standalone_attacks.jsonl",
-    }
-
-    seeds = sorted(
-        {
-            d.name
-            for d in base.iterdir()
-            if d.is_dir() and any((d / fn).is_file() for fn in want)
-        }
-    )
-
+    seeds = collect_seeds()
     console.print(
         Panel(
             "\n".join(seeds) if seeds else "(none)", title="[seeds] Local", style="cyan"
@@ -52,17 +36,12 @@ def list_seeds(args):
 
 
 def list_datasets(args):
-    base = Path(os.getcwd(), "datasets")
-    if not base.is_dir():
-        console.print(
-            Panel("No 'datasets/' folder found", title="[datasets]", style="red")
+    files = collect_datasets()
+    console.print(
+        Panel(
+            "\n".join(files) if files else "(none)", title="[datasets] Local", style="cyan"
         )
-        return
-    files = [f.name for f in base.glob("*.jsonl")]
-    panel = Panel(
-        "\n".join(files) if files else "(none)", title="[datasets] Local", style="cyan"
     )
-    console.print(panel)
 
 
 # --- Helpers ---
@@ -71,136 +50,78 @@ def list_datasets(args):
 @dataclass
 class Module:
     name: str
-    options: list
-    util_llm: bool = False
-    tags: List[ModuleTag] = None
-    description: str = ""
-
-
-def _load_module(name, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def _collect_local(module_type: str):
-    entries = []
-    any_util_llm = False
-
-    path = Path(os.getcwd()) / module_type
-    if path.is_dir():
-        for p in sorted(path.glob("*.py")):
-            if p.name == "__init__.py":
-                continue
-            name = p.stem
-            opts = None
-            try:
-                mod = _load_module(f"{module_type}.{name}", p)
-                opts = get_options_from_module(mod, module_type)
-                description = get_description_from_module(mod, module_type)
-
-                if opts is not None and isinstance(opts, tuple) and len(opts) == 2:
-                    util_llm = opts[1]
-                    opts = opts[0]
-                else:
-                    util_llm = False
-
-                # Get classification
-                if description is not None and len(description) == 2:
-                    tags, description = description
-                else:
-                    tags, description = [], ""
-
-            except (ModuleNotFoundError, ImportError):
-                opts = ["<import error - check module for dependencies>"]
-                util_llm = False
-                tags = []
-                description = ""
-
-            except Exception as e:
-                error = e if len(str(e)) < 70 else str(e)[:70] + "..."
-
-                opts = [f"<error - {error}>"]
-                util_llm = False
-                tags = []
-                description = ""
-
-            entries.append(Module(name, opts, util_llm, tags, description))
-            if util_llm:
-                any_util_llm = True
-
-    return entries, any_util_llm
-
-
-def _collect_builtin(pkg: str, module_type: str):
-    entries = []
-    any_util_llm = False
-
-    try:
-        pkg_mod = importlib.import_module(pkg)
-        for _, name, is_pkg in pkgutil.iter_modules(pkg_mod.__path__):
-            if name == "__init__" or is_pkg:
-                continue
-            opts = None
-            try:
-                mod = importlib.import_module(f"{pkg}.{name}")
-                opts = get_options_from_module(mod, module_type)
-                description = get_description_from_module(mod, module_type)
-
-                if opts is not None and isinstance(opts, tuple) and len(opts) == 2:
-                    util_llm = opts[1]
-                    opts = opts[0]
-                else:
-                    util_llm = False
-
-                # Get classification
-                if description is not None and len(description) == 2:
-                    tags, description = description
-                else:
-                    tags, description = [], ""
-
-            except (ModuleNotFoundError, ImportError):
-                opts = ["<import error - check module for dependencies>"]
-                util_llm = False
-                tags = []
-                description = ""
-
-            except Exception as e:
-                error = e if len(str(e)) < 70 else str(e)[:70] + "..."
-
-                opts = [f"<error - {error}>"]
-                util_llm = False
-                tags = []
-                description = ""
-
-                # traceback.print_exc()
-
-            entries.append(Module(name, opts, util_llm, tags, description))
-            if util_llm:
-                any_util_llm = True
-    except ModuleNotFoundError:
-        pass
-    return entries, any_util_llm
-
+    options: Optional[List[str]] = None
+    tags: Optional[List[ModuleTag]] = None
+    description: Optional[str] = ""
 
 def _render_section(
-    title: str,
-    local_entries,
-    builtin_entries,
-    util_llm: bool = False,
-    description: bool = False,
+    module_type: str,
+    local,
+    builtin,
+    add_description: bool = False,
     tag_line: str = "Available options",
 ):
-    console.print(Rule(f"[bold]{title}[/bold]"))
+    console.print(Rule(f"[bold]{module_type.capitalize()}[/bold]"))
+
+    uses_llm = False
+    local_entries = []
+    builtin_entries = []
+
+    def collect_module_data(module):
+        uses_llm = False
+
+        try:
+            mod = load_module_from_path(module, module_type)
+
+            options_data = get_options_from_module(mod)
+            if options_data is not None and isinstance(options_data, tuple) and len(options_data) == 2:
+                if options_data[1]:
+                    uses_llm = True
+
+                options = options_data[0]
+            else:
+                options = options_data
+
+            description_data = get_description_from_module(mod)
+            if description_data is not None and len(description_data) == 2:
+                tags, description = description_data
+            else:
+                tags, description = [], ""
+        
+        except Exception as e:
+            error = e if len(str(e)) < 70 else str(e)[:70] + "..."
+            options = [f"<error - {error}>"]
+            tags = []
+            description = ""
+        
+        module_data = Module(
+            name=module,
+            options=options,
+            tags=tags,
+            description=description,
+        )
+        return module_data, uses_llm
+
+    for local_module in local:
+        module, mod_uses_llm = collect_module_data(local_module)
+        local_entries.append(module)
+        if mod_uses_llm:
+            uses_llm = True
+
+    for builtin_module in builtin:
+        module, mod_uses_llm = collect_module_data(builtin_module)
+        builtin_entries.append(module)
+        if mod_uses_llm:
+            uses_llm = True
 
     # If any module in this section uses the built-in LLM service, show a note about LLM options
-    if util_llm:
+    if uses_llm:
+        providers, _, _ = collect_modules("providers")
         console.print(
             Panel(
                 f"""[yellow]Note:[/yellow] Modules with a [yellow][LLM][/yellow] tag, use the built-in LLM service.
 The LLM options are available, using 'model=<option>':
-Supported Providers (use 'spikee list providers' for more): {", ".join(list_modules("providers"))} 
+Supported Providers (use 'spikee list providers' for more): {", ".join(providers) if providers else "(none)"} 
 """,
                 style="yellow",
             )
@@ -208,15 +129,15 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 
     def print_section(entries, label):
         if not entries:
-            console.print(f"\n[bold]{title} ({label})[/bold]")
+            console.print(f"\n[bold]{module_type.capitalize()} ({label})[/bold]")
             console.print("  (none)")
             return
 
-        table = Table(title=f"{title} ({label})", box=rich.box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
+        table = Table(title=f"{module_type.capitalize()} ({label})", box=rich.box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
         table.add_column("Name", style="bold cyan", no_wrap=True)
         table.add_column("Tags")
         table.add_column(tag_line)
-        if description:
+        if add_description:
             table.add_column("Description")
 
         def _module_sort_key(m):
@@ -250,7 +171,7 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
                 opts_str = ""
 
             row = [module.name, tags_str, opts_str]
-            if description:
+            if add_description:
                 row.append(module.description or "")
 
             table.add_row(*row)
@@ -265,69 +186,57 @@ Supported Providers (use 'spikee list providers' for more): {", ".join(list_modu
 # --- Commands ---
 
 
-def list_modules(module_type: str) -> List[str]:
-    local, _ = _collect_local(module_type)
-    builtin, _ = _collect_builtin(f"spikee.{module_type}", module_type)
-
-    return [m.name for m in local + builtin]
-
-
 def list_judges(args):
-    local, any_util_llm_local = _collect_local("judges")
-    builtin, any_util_llm_builtin = _collect_builtin("spikee.judges", "judges")
+    _, local, builtin = collect_modules("judges")
+
     _render_section(
-        "Judges",
-        local,
-        builtin,
-        (any_util_llm_local or any_util_llm_builtin),
-        args.description,
+        module_type="judges",
+        local=local,
+        builtin=builtin,
+        add_description=args.description,
     )
 
 
 def list_targets(args):
-    local, any_util_llm_local = _collect_local("targets")
-    builtin, any_util_llm_builtin = _collect_builtin("spikee.targets", "targets")
+    _, local, builtin = collect_modules("targets")
+
     _render_section(
-        "Targets",
-        local,
-        builtin,
-        (any_util_llm_local or any_util_llm_builtin),
-        args.description,
+        module_type="targets",
+        local=local,
+        builtin=builtin,
+        add_description=args.description,
     )
 
 
 def list_plugins(args):
-    local, any_util_llm_local = _collect_local("plugins")
-    builtin, any_util_llm_builtin = _collect_builtin("spikee.plugins", "plugins")
+    _, local, builtin = collect_modules("plugins")
+
     _render_section(
-        "Plugins",
-        local,
-        builtin,
-        (any_util_llm_local or any_util_llm_builtin),
-        args.description,
+        module_type="plugins",
+        local=local,
+        builtin=builtin,
+        add_description=args.description,
     )
 
 
 def list_attacks(args):
-    local, any_util_llm_local = _collect_local("attacks")
-    builtin, any_util_llm_builtin = _collect_builtin("spikee.attacks", "attacks")
+    _, local, builtin = collect_modules("attacks")
+
     _render_section(
-        "Attacks",
-        local,
-        builtin,
-        (any_util_llm_local or any_util_llm_builtin),
-        args.description,
+        module_type="attacks",
+        local=local,
+        builtin=builtin,
+        add_description=args.description,
     )
 
 
 def list_providers(args):
-    local, any_util_llm_local = _collect_local("providers")
-    builtin, any_util_llm_builtin = _collect_builtin("spikee.providers", "providers")
+    _, local, builtin = collect_modules("providers")
+
     _render_section(
-        "Providers",
-        local,
-        builtin,
-        (any_util_llm_local or any_util_llm_builtin),
-        args.description,
-        "Known supported models",
+        module_type="providers",
+        local=local,
+        builtin=builtin,
+        add_description=args.description,
+        tag_line="Known supported models",
     )
