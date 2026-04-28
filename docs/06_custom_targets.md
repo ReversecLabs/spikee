@@ -111,7 +111,7 @@ def process_input(
 ```
 
 ## Supporting Target Options
-To make your target more flexible, you can advertise its supported `target_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
+To make your target more flexible, you can advertise its supported `target_options` by implementing the `get_available_option_values` function. This function should return a tuple of the form `(List[str], bool)` where the first element is a list of option strings (the first item is treated as the default) and the second element is a boolean indicating whether an LLM/provider is required. By default, modules may return an empty list and `False` (for example `([], False)`) to indicate no options are supported.
 
 ```python
 # Basic Implementation

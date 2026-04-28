@@ -102,7 +102,7 @@ This is the core function of every plugin. It receives a payload string and retu
 *   `List[str]`: Return a list of transformed strings. Spikee will create a separate test case for **each string in the list**, allowing you to test multiple variations at once.
 
 ### Signature with Options Support
-For more advanced plugins, you can accept a configuration string and advertise the available options. This must be implemented as a class method — standalone functions are not supported in the current OOP API.
+For more advanced plugins, you can accept a configuration string and advertise the available options. This may be implemented either as a class method (recommended for the OOP API) or as a legacy module-level function — both are supported for backward compatibility. The function should return a tuple `(List[str], bool)` where the first element is a list of option strings (the first item is treated as the default) and the second element is a boolean indicating whether an LLM/provider is required. By default, modules may return an empty list and `False` (for example `([], False)`) to indicate no options are supported.
 ```python
 from typing import List, Union, Optional
 from spikee.utilities.hinting import Content, ModuleOptionsHint
@@ -117,7 +117,7 @@ def transform(self, content: Content, exclude_patterns: Optional[List[str]] = No
 ```
 
 ## Supporting Plugin Options
-For more advanced plugins, you can support `plugin_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
+For more advanced plugins, you can support `plugin_options` by implementing the `get_available_option_values` function. The function should return a tuple `(List[str], bool)` as described above; by default, modules may return `([], False)` to indicate no options are supported. The class-based OOP form is recommended for new plugins, but module-level legacy functions remain supported for compatibility.
 
 ```python
 from spikee.templates.plugin import Plugin
