@@ -3,8 +3,9 @@ Atbash Plugin
 
 This basic plugin transforms the input text with the Atbash transformation, which swaps letters
 with their counterpart on the other side of the alphabet. A becomes Z, B becomes Y, etc.,
-until Y becomes B and Z becomes A. Case of the original letter is preserved.
-This is done with a fixed dictionary.
+until Y becomes B and Z becomes A. 
+Case of the original letter is preserved.
+
 
 Usage:
     spikee generate --plugins atbash
