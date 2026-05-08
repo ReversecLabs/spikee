@@ -15,3 +15,6 @@ llmwebmail-test
 copilot-instructions.md
 .kilo
 .kilo/*
+spikee/plugins/vowel_repeat_best_of_n.py
+spikee/eval_plugin.py
+spikee/attacks/noisy_vowel_repetition.py
