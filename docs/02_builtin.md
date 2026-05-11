@@ -123,10 +123,14 @@ The following list provides an overview of each build-in plugin, further informa
 |--------|------|-------------|---------|
 | `1337` | Encoding | Transforms text into "leet speak" by replacing certain letters with numbers or symbols. | N/A |
 | `ascii_smuggler` | Encoding | Transforms ASCII text into a series of Unicode rags that are generally invisible to most UI elements (bypassing content filters). | N/A |
+| `atbash` | Encoding | Transforms the input text with the Atbash cipher. Maps each letter to its counterpart on the other end of the alphabet (A <->Z, B<->Y, etc.), preserving case. | `hint` (show the literal plaintext string `atbash` in the encoded output, default true)  |
 | `base64` | Encoding | Encodes text using Base64 encoding. | N/A |
-| `ceasar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
+| `binary_in_ascii` | Encoding | Encodes text as space-separated ASCII/Unicode binary codepoint values (8 bits each).| N/A  |
+| `caesar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
+| `decimal` | Encoding | Encodes text as space-separated ASCII/Unicode decimal codepoint values. | `hint` (show the literal plaintext string `decimal` in the encoded output, default true) |
 | `hex` | Encoding | Encodes text into its hexadecimal representation. | N/A |
 | `morse` | Encoding | Encodes text into Morse code. | N/A |
+| `octal` | Encoding | Encodes text as space-separated ASCII/Unicode octal codepoint values. | `hint` (show the literal plaintext string `octal` in the encoded output, default true) |
 | `best_of_n` | Obfuscation, Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
 | `flip` | Obfuscation | Applies a flip attack to obfuscate text:<br> - FWO: Flip Word Order<br> - FCW: Flip Chars in Word<br> - FCS: Flip Chars in Sentence | `mode` (the flip mode to apply, default: `FWO`) |
 | `mask` | Obfuscation, LLM | Masks high-risk words in the text with random character sequences, while providing a suffix that maps the masks back to the original words. | `advanced` (if true, creates multiple masks for longer words)<br> `advanced-split` (the number of characters per mask chunk for the advanced option, default: 6) |
