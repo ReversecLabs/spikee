@@ -125,7 +125,7 @@ The following list provides an overview of each build-in plugin, further informa
 | `ascii_smuggler` | Encoding | Transforms ASCII text into a series of Unicode rags that are generally invisible to most UI elements (bypassing content filters). | N/A |
 | `atbash` | Encoding | Transforms the input text with the Atbash cipher. Maps each letter to its counterpart on the other end of the alphabet (A <->Z, B<->Y, etc.), preserving case. | `hint` (show the literal plaintext string `atbash` in the encoded output, default true)  |
 | `base64` | Encoding | Encodes text using Base64 encoding. | N/A |
-| `binary_in_ascii` | Encoding | Encodes text as space-separated ASCII/Unicode binary codepoint values (8 bits each).| N/A  |
+| `binary` | Encoding | Encodes text as space-separated ASCII/Unicode binary codepoint values (8 bits each).| N/A  |
 | `caesar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
 | `decimal` | Encoding | Encodes text as space-separated ASCII/Unicode decimal codepoint values. | `hint` (show the literal plaintext string `decimal` in the encoded output, default true) |
 | `hex` | Encoding | Encodes text into its hexadecimal representation. | N/A |

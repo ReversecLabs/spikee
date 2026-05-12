@@ -1,12 +1,12 @@
 """
-BinaryInAscii Plugin
+Binary Plugin
 
 Encodes text as space-separated ASCII/Unicode binary codepoint values (8 bits each).
 "Spikee plugin" > "01010011 01110000 01101001 01101011 01100101 01100101 00100000
 01110000 01101100 01110101 01100111 01101001 01101110"
 
 Usage:
-    spikee generate --plugins binary_in_ascii
+    spikee generate --plugins binary
 
 Parameters:
     text (str): Input string to transform.
@@ -22,7 +22,7 @@ from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint
 
 
-class BinaryInAsciiPlugin(BasicPlugin):
+class BinaryPlugin(BasicPlugin):
     def get_description(self) -> ModuleDescriptionHint:
         return [
             ModuleTag.ENCODING
