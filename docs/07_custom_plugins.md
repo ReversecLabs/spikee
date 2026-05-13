@@ -102,7 +102,7 @@ This is the core function of every plugin. It receives a payload string and retu
 *   `List[str]`: Return a list of transformed strings. Spikee will create a separate test case for **each string in the list**, allowing you to test multiple variations at once.
 
 ### Signature with Options Support
-For more advanced plugins, you can accept a configuration string and advertise the available options. This must be implemented as a class method — standalone functions are not supported in the current OOP API.
+For more advanced plugins, you can accept a configuration string and advertise the available options. This may be implemented as a class method (recommended) or as a legacy module-level function — both are supported for backward compatibility.
 ```python
 from typing import List, Union, Optional
 from spikee.utilities.hinting import Content, ModuleOptionsHint
@@ -117,25 +117,69 @@ def transform(self, content: Content, exclude_patterns: Optional[List[str]] = No
 ```
 
 ## Supporting Plugin Options
-For more advanced plugins, you can support `plugin_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
+
+For more advanced plugins you can support runtime configuration via the `--plugin-options` CLI flag. Options are passed into your plugin's `transform` (or `plugin_transform`) method as the `plugin_option` string, and you parse that string yourself using the `parse_options` utility.
+
+### Advertising Available Options
+
+Implement `get_available_option_values` to tell Spikee which options your plugin accepts. This function must return a `Tuple[List[str], bool]` where:
+
+*   The **first element** is a list of option strings. The first item is treated as the default value shown by `spikee list plugins`.
+*   The **second element** is a boolean — `True` if the plugin requires an LLM/provider to operate, `False` otherwise.
+
+Return `([], False)` to indicate the plugin has no configurable options.
 
 ```python
 from spikee.templates.plugin import Plugin
-from typing import List, Union
+from spikee.utilities.modules import parse_options
+from spikee.utilities.hinting import Content, ModuleOptionsHint
+from typing import List, Union, Optional
 
 class SamplePlugin(Plugin):
     def get_available_option_values(self) -> ModuleOptionsHint:
-        """Return supported attack options; Tuple[options (default is first), llm_required]"""
-        return ["mode=strict", "mode=full"], False # "mode=strict" is the default
+        # First entry is the default; advertised by `spikee list plugins`
+        return ["mode=strict,variants=1", "mode=full,variants=5"], False
 
     def transform(
-        self, 
-        content: Content, 
+        self,
+        content: Content,
         exclude_patterns: Optional[List[str]] = None,
         plugin_option: str = "",
     ) -> Union[Content, List[Content]]:
+        opts = parse_options(plugin_option)          # {"mode": "strict", "variants": "1"}
+        mode = opts.get("mode", "strict")
+        variants = int(opts.get("variants", 1))
         # Your implementation here...
 ```
+
+### Passing Options from the CLI
+
+Options are supplied with `--plugin-options` using the format `plugin_name:key=value,key2=value2`.
+
+```bash
+# Single plugin with two options
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+    --plugins my_plugin \
+    --plugin-options "my_plugin:mode=full,variants=5"
+```
+
+### Multiple Plugins with Individual Options
+
+When running multiple plugins at once, separate each plugin's options with a semicolon (`;`):
+
+```bash
+# Two plugins, each with their own independent options
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+    --plugins plugin_a plugin_b \
+    --plugin-options "plugin_a:mode=strict;plugin_b:variants=10"
+
+# Three plugins — only one needs options
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+    --plugins base64 splat best_of_n \
+    --plugin-options "best_of_n:variants=5"
+```
+
+The option string delivered to each plugin contains only that plugin's own key-value pairs (i.e., what appears after the `plugin_name:` prefix). Plugins that are listed under `--plugins` but have no entry in `--plugin-options` receive an empty string for `plugin_option`.
 
 ## Handling Exclude Patterns
 Correctly handling `exclude_patterns` is the most important part of writing a robust plugin. You must leave the excluded parts of the string completely untouched. The recommended way to do this is with `re.split` as implemnted within the `BasicPlugin`.

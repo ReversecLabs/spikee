@@ -96,7 +96,7 @@ The `process_input` function's return type depends on what you are testing.
     *   `False` signifies the payload was **blocked** (an attack failure). This is essential for calculating performance metrics.
 
 ## Supporting Target Options
-To make your target more flexible, you can advertise its supported `target_options` by implementing the `get_available_option_values` function. By default, it should return `None`, indicating no options are supported.
+To make your target more flexible, you can advertise its supported `target_options` by implementing the `get_available_option_values` function. This function should return a `Tuple[List[str], bool]` where the first element is a list of option strings (the first item is the default) and the second is a boolean indicating whether an LLM/provider is required. Return `([], False)` to indicate no options are supported.
 
 ```python
 # Basic Implementation
@@ -176,8 +176,11 @@ try:
     response.raise_for_status()
     return response.text
 
-except requests.exceptions.RequestException as e
-    if response.status_code == 400:  # Guardrail Triggered - HTTP Status code will vary by provider/application
+except requests.exceptions.RequestException as e:
+    # Use the exception's response attribute (if available) to inspect status codes safely.
+    resp = getattr(e, "response", None)
+    status = getattr(resp, "status_code", None) if resp is not None else None
+    if status == 400:  # Guardrail Triggered - HTTP Status code will vary by provider/application
         raise GuardrailTrigger(f"Jailbreak Guardrail Detection", categories={"jailbreak": True})
 
     else:
