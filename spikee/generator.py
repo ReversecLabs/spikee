@@ -549,7 +549,11 @@ def process_standalone_attacks(
 
         # Get the base attack text and exclude patterns
         attack_type = attack.get("content_type", "text")
-        attack_content = content_factory(attack.get("content", attack.get("text", "")), attack_type)
+        raw = attack.get("content", attack.get("text", ""))
+        original_raw = raw  # Keep the original (may be a list for multi-turn entries)
+        if isinstance(raw, list):
+            raw = json.dumps(raw)  # Stringify for plugin transforms only
+        attack_content = content_factory(raw, attack_type)
 
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
@@ -620,6 +624,12 @@ def process_standalone_attacks(
                 exclude_from_transformations_regex=exclude_patterns,
                 steering_keywords=attack.get("steering_keywords", None),
             ).to_attack()
+
+            # If the original seed entry was a multi-turn list, store it as a list in the
+            # output JSONL rather than as a stringified representation.
+            if isinstance(original_raw, list):
+                entry["content"] = original_raw
+                entry["payload"] = original_raw
 
             dataset.append(entry)
             entry_id += 1
