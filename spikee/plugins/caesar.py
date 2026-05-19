@@ -17,7 +17,6 @@ Returns:
     str: The encrypted text using the Caesar cipher.
 """
 
-from typing import List, Optional
 
 from spikee.templates.basic_plugin import BasicPlugin
 from spikee.utilities.enums import ModuleTag

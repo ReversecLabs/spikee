@@ -8,7 +8,6 @@ Tests verify that:
 5. Errors are handled gracefully in parallel mode
 """
 
-import pytest
 import time
 from spikee.utilities.files import read_jsonl_file
 from ..utils import spikee_generate_cli

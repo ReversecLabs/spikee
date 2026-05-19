@@ -1,8 +1,3 @@
-import os
-from pathlib import Path
-import importlib
-import importlib.util
-import pkgutil
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -12,7 +7,6 @@ from rich.panel import Panel
 from rich.rule import Rule
 import rich.box
 
-from spikee.templates import module
 from spikee.utilities.enums import ModuleTag, module_tag_to_colour, formatting_priority
 from spikee.utilities.modules import (
     load_module_from_path,  
