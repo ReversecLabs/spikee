@@ -1,4 +1,5 @@
 """Judge that validates content types."""
+
 from typing import Union, List, Optional
 
 from spikee.templates.judge import Judge
@@ -16,7 +17,7 @@ class ContentTypeJudge(Judge):
         llm_input: Content,
         llm_output: Content,
         judge_args: Union[str, List[str]],
-        judge_options: Optional[str] = None
+        judge_options: Optional[str] = None,
     ) -> bool:
         """Check if output contains the expected type marker from judge_args."""
 

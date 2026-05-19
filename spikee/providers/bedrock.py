@@ -76,6 +76,7 @@ class AnyLLMBedrockProvider(Provider):
             # Extract credentials from AWS Profile (SSO) if configured
             if os.getenv("AWS_PROFILE"):
                 import boto3
+
                 session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
                 frozen = session.get_credentials().get_frozen_credentials()
 
@@ -84,7 +85,7 @@ class AnyLLMBedrockProvider(Provider):
                 os.environ["AWS_SECRET_ACCESS_KEY"] = frozen.secret_key
                 if frozen.token:
                     os.environ["AWS_SESSION_TOKEN"] = frozen.token
-            
+
             # Ensure region is set - boto3 needs this for Bedrock
             if not os.getenv("AWS_REGION") and not os.getenv("AWS_DEFAULT_REGION"):
                 # Default to us-east-1 if no region specified
@@ -118,7 +119,12 @@ class AnyLLMBedrockProvider(Provider):
 
         formatted_messages = format_messages(messages)
 
-        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
+        response = self.async_call(
+            self.llm.acompletion,
+            model=self.model,
+            messages=formatted_messages,
+            **self.options,
+        )
 
         return AIMessage(
             content=response.choices[0].message.content, original_response=response

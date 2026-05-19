@@ -95,12 +95,15 @@ def load_module_from_path(name, module_type):
 
     return mod
 
+
 def collect_seeds() -> List[str]:
     """Collects available seeds from workspace"""
 
     path = Path(os.getcwd(), "datasets")
     if not path.is_dir():
-        print("[red]No 'datasets' directory found in current workspace for seeds.[/red]")
+        print(
+            "[red]No 'datasets' directory found in current workspace for seeds.[/red]"
+        )
         return []
 
     want = {
@@ -119,21 +122,24 @@ def collect_seeds() -> List[str]:
     )
     return seeds
 
+
 def collect_datasets() -> List[str]:
     """Collects available datasets from workspace"""
 
     path = Path(os.getcwd(), "datasets")
     if not path.is_dir():
-        print("[red]No 'datasets' directory found in current workspace for datasets.[/red]")
+        print(
+            "[red]No 'datasets' directory found in current workspace for datasets.[/red]"
+        )
         return []
 
     datasets = sorted([f.name for f in path.glob("*.jsonl")])
     return datasets
 
+
 def collect_modules(module_type: str) -> Tuple[List[str], List[str], List[str]]:
     """Collects available module names from both local and built-in sources."""
 
-    
     # 1) Collect from local directory
     local_modules = set()
     path = Path(os.getcwd()) / module_type
@@ -141,7 +147,7 @@ def collect_modules(module_type: str) -> Tuple[List[str], List[str], List[str]]:
         for file in sorted(path.glob("*.py")):
             if file.suffix == ".py" and not file.stem.startswith("_"):
                 local_modules.add(file.stem)
-    
+
     # 2) Collect from built-in package
     built_in_modules = set()
     try:
@@ -155,7 +161,9 @@ def collect_modules(module_type: str) -> Tuple[List[str], List[str], List[str]]:
     # 3) Check for duplicates
     duplicates = local_modules.intersection(built_in_modules)
     if duplicates:
-        print(f"Warning: Duplicate module names found in both local and built-in {module_type}: {', '.join(duplicates)}. Local versions will take precedence.")
+        print(
+            f"Warning: Duplicate module names found in both local and built-in {module_type}: {', '.join(duplicates)}. Local versions will take precedence."
+        )
 
     # 4) Combine and return sorted list
     all_modules = sorted(local_modules.union(built_in_modules))

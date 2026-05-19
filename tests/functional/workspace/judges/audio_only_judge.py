@@ -1,4 +1,5 @@
 """Judge that only accepts Audio content."""
+
 from typing import Union, List, Optional
 
 from spikee.templates.judge import Judge
@@ -16,7 +17,7 @@ class AudioOnlyJudge(Judge):
         llm_input: Audio,
         llm_output: Audio,
         judge_args: Union[str, List[str]],
-        judge_options: Optional[str] = None
+        judge_options: Optional[str] = None,
     ) -> bool:
         """Check if audio output contains expected content."""
         from spikee.utilities.hinting import get_content

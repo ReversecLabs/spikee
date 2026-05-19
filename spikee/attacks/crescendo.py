@@ -8,7 +8,12 @@ import json
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -165,7 +170,7 @@ class Crescendo(Attack):
                     if depth > 0:
                         depth -= 1
                         if depth == 0 and start != -1:
-                            candidate = quoted[start: i + 1]
+                            candidate = quoted[start : i + 1]
                             try:
                                 return json.loads(candidate)
                             except Exception:
@@ -192,7 +197,7 @@ class Crescendo(Attack):
                 if depth > 0:
                     depth -= 1
                     if depth == 0 and start != -1:
-                        candidate = t[start: i + 1]
+                        candidate = t[start : i + 1]
                         try:
                             return json.loads(candidate)
                         except Exception:
@@ -318,12 +323,14 @@ class Crescendo(Attack):
             )
 
             # call target; each call consumes budget immediately
-            response_text = process_target_content(target_module.process_input(
-                prompt,
-                system_message,
-                spikee_session_id=session_id,
-                backtrack=is_refuse,
-            ))
+            response_text = process_target_content(
+                target_module.process_input(
+                    prompt,
+                    system_message,
+                    spikee_session_id=session_id,
+                    backtrack=is_refuse,
+                )
+            )
 
             last_message_id = conversation.add_message(
                 last_message_id,
@@ -395,7 +402,9 @@ class Crescendo(Attack):
         - conversation is the chat history list (may be empty).
         """
         if "content" not in entry and "text" not in entry:
-            raise ValueError("entry must contain 'content' or 'text' (the jailbreak objective)")
+            raise ValueError(
+                "entry must contain 'content' or 'text' (the jailbreak objective)"
+            )
 
         objective = entry.get("content", entry.get("text", ""))
 
@@ -407,7 +416,9 @@ class Crescendo(Attack):
         max_turns = self._parse_max_turns(opts)
         model = opts.get("model", None)
         if not model:
-            raise ValueError("Crescendo attack requires an LLM model specified in options, e.g. 'model=gpt-4'")
+            raise ValueError(
+                "Crescendo attack requires an LLM model specified in options, e.g. 'model=gpt-4'"
+            )
 
         llm = get_llm(model, max_tokens=None)
 

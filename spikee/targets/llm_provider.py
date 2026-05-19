@@ -4,7 +4,12 @@ from spikee.templates.target import Target
 from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, get_content, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    get_content,
+    TargetResponseHint,
+)
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.modules import parse_options
 
@@ -160,6 +165,7 @@ class LLMProvider(Target):
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     target = LLMProvider()

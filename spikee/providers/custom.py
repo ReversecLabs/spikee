@@ -57,9 +57,7 @@ class AnyLLMCustomProvider(Provider):
             llm_kwargs["timeout"] = timeout
 
         try:
-            self.llm = AnyLLM.create(
-                "openai", **llm_kwargs
-            )
+            self.llm = AnyLLM.create("openai", **llm_kwargs)
         except ImportError:
             raise ImportError(
                 f"[Import Error] Provider Module '{self.name}' is missing required packages for OpenAI compatible APIs. Please run `pip install spikee[openai]` to install them."
@@ -86,7 +84,12 @@ class AnyLLMCustomProvider(Provider):
 
         formatted_messages = format_messages(messages)
 
-        response = self.async_call(self.llm.acompletion, model=self.model, messages=formatted_messages, **self.options)
+        response = self.async_call(
+            self.llm.acompletion,
+            model=self.model,
+            messages=formatted_messages,
+            **self.options,
+        )
 
         content = response.choices[0].message.content
 

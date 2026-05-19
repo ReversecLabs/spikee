@@ -4,6 +4,7 @@ OpenAI Speech-to-Text provider module for Spikee.
 Additional Args:
 
 """
+
 import base64
 from io import BytesIO
 import os
@@ -13,7 +14,12 @@ from typing import Union, Dict, Sequence
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 
 
 class OpenAISTTProvider(Provider):
@@ -47,6 +53,7 @@ class OpenAISTTProvider(Provider):
 
         try:
             from openai import OpenAI
+
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         except ImportError:
             raise ImportError(
@@ -55,7 +62,10 @@ class OpenAISTTProvider(Provider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for OpenAI speech-to-text models."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_STT,
+        ], "STT Provider for OpenAI speech-to-text models."
 
     def invoke(
         self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
@@ -67,7 +77,9 @@ class OpenAISTTProvider(Provider):
         content = msg.content
 
         if not isinstance(content, Audio):
-            raise ValueError("OpenAI STT Provider requires a user message containing audio content.")
+            raise ValueError(
+                "OpenAI STT Provider requires a user message containing audio content."
+            )
 
         audio_bytes = content.get_raw_audio()
         audio_format = content.format
@@ -88,14 +100,13 @@ class OpenAISTTProvider(Provider):
 
         transcribed_text = response.rstrip()
 
-        return AIMessage(
-            content=transcribed_text
-        )
+        return AIMessage(content=transcribed_text)
 
 
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     pcm_path = sys.argv[1] if len(sys.argv) > 1 else "audio_file.pcm"
     with open(pcm_path, "rb") as f:

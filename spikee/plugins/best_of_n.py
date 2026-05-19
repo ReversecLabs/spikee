@@ -68,7 +68,7 @@ class BestOfN(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> List[str]:
         """
         Generates a configurable number of augmented samples from the input text.
@@ -88,7 +88,9 @@ class BestOfN(Plugin):
             samples.append(self._scramble_text(content, exclude_patterns))
         return samples
 
-    def _scramble_text(self, text: str, exclude_patterns: Optional[List[str]] = None) -> str:
+    def _scramble_text(
+        self, text: str, exclude_patterns: Optional[List[str]] = None
+    ) -> str:
         """
         Processes the input text by splitting it into chunks based on the user‐supplied
         exclusion patterns. Any chunk that exactly matches the compound exclusion regex

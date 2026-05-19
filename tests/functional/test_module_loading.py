@@ -6,6 +6,7 @@ Focus on high-impact scenarios:
 - OOP vs legacy module precedence
 - Malformed option strings
 """
+
 import pytest
 import os
 
@@ -48,7 +49,10 @@ class BrokenTarget(Target):
 
             error_msg = str(exc_info.value)
             # Should mention the missing dependency clearly
-            assert "nonexistent_package_xyz" in error_msg or "dependency" in error_msg.lower()
+            assert (
+                "nonexistent_package_xyz" in error_msg
+                or "dependency" in error_msg.lower()
+            )
 
         finally:
             os.chdir(original_cwd)
@@ -97,7 +101,9 @@ def process_input(input_text, system_message=None):
             result = module.process_input("test input")
 
             # OOP implementation should be used
-            assert result == "OOP_RESPONSE", "OOP class should take precedence over legacy function"
+            assert result == "OOP_RESPONSE", (
+                "OOP class should take precedence over legacy function"
+            )
 
         finally:
             os.chdir(original_cwd)

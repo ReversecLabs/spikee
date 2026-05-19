@@ -191,7 +191,7 @@ class PromptDecompositionPlugin(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> Union[str, List[str]]:
         """
         Decomposes a prompt into labeled components and generates shuffled variations.

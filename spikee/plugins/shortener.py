@@ -51,7 +51,7 @@ class Shortener(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
@@ -85,7 +85,9 @@ class Shortener(Plugin):
             ).content
 
             if not isinstance(response, str):
-                raise ValueError(f"LLM response is not a string as expected, got {type(response)}.")
+                raise ValueError(
+                    f"LLM response is not a string as expected, got {type(response)}."
+                )
             try:
                 response = extract_json_or_fail(response)
                 content = response.get("text")

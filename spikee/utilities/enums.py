@@ -15,6 +15,7 @@ class Turn(enum.Enum):
 
 class ModuleTag(enum.Enum):
     """Enumeration for module tags used to categorize modules."""
+
     # Turn-based tags
     MULTI = "Multi-Turn"
     SINGLE = "Single-Turn"
@@ -42,7 +43,13 @@ class ModuleTag(enum.Enum):
 def formatting_priority(tag: ModuleTag) -> int:
     """Determine the priority of a plugin based on its tags for formatting purposes."""
     match tag:
-        case ModuleTag.ENCODING | ModuleTag.FORMATTING | ModuleTag.OBFUSCATION | ModuleTag.SOCIAL_ENGINEERING | ModuleTag.TRANSLATION:
+        case (
+            ModuleTag.ENCODING
+            | ModuleTag.FORMATTING
+            | ModuleTag.OBFUSCATION
+            | ModuleTag.SOCIAL_ENGINEERING
+            | ModuleTag.TRANSLATION
+        ):
             return 1
 
         case ModuleTag.IMAGE | ModuleTag.AUDIO:
@@ -51,7 +58,13 @@ def formatting_priority(tag: ModuleTag) -> int:
         case ModuleTag.SINGLE | ModuleTag.MULTI:
             return 3
 
-        case ModuleTag.LLM | ModuleTag.LLM_TTS | ModuleTag.LLM_STT | ModuleTag.LLM_STS | ModuleTag.ML:
+        case (
+            ModuleTag.LLM
+            | ModuleTag.LLM_TTS
+            | ModuleTag.LLM_STT
+            | ModuleTag.LLM_STS
+            | ModuleTag.ML
+        ):
             return 4
 
         case _:
@@ -62,16 +75,13 @@ def module_tag_to_colour(tag: ModuleTag) -> str:
     tag_colour_map = {
         ModuleTag.MULTI: "magenta",
         ModuleTag.SINGLE: "white",
-
         ModuleTag.LLM: "yellow",
         ModuleTag.LLM_TTS: "yellow",
         ModuleTag.LLM_STT: "yellow",
         ModuleTag.LLM_STS: "yellow",
         ModuleTag.ML: "yellow",
-
         ModuleTag.IMAGE: "bright_magenta",
         ModuleTag.AUDIO: "bright_magenta",
-
         ModuleTag.ATTACK_BASED: "red",
         ModuleTag.ENCODING: "white",
         ModuleTag.FORMATTING: "white",

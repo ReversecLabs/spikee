@@ -8,6 +8,7 @@ Tests Content flow through:
 - Generator Entry class integration
 - Tester end-to-end flow
 """
+
 import json
 import os
 from contextlib import contextmanager
@@ -88,22 +89,65 @@ class TestTargetIntegration:
         with working_directory(workspace_dir):
             audio_target = load_module_from_path("mock_audio_target", "targets")
             image_target = load_module_from_path("mock_image_target", "targets")
-            multimodal_target = load_module_from_path("mock_multimodal_target", "targets")
+            multimodal_target = load_module_from_path(
+                "mock_multimodal_target", "targets"
+            )
 
         # Audio target only accepts Audio
-        assert validate_content_signature(Audio("data"), audio_target.process_input, "input_text") is True
-        assert validate_content_signature("text", audio_target.process_input, "input_text") is False
-        assert validate_content_signature(Image("data"), audio_target.process_input, "input_text") is False
+        assert (
+            validate_content_signature(
+                Audio("data"), audio_target.process_input, "input_text"
+            )
+            is True
+        )
+        assert (
+            validate_content_signature("text", audio_target.process_input, "input_text")
+            is False
+        )
+        assert (
+            validate_content_signature(
+                Image("data"), audio_target.process_input, "input_text"
+            )
+            is False
+        )
 
         # Image target only accepts Image
-        assert validate_content_signature(Image("data"), image_target.process_input, "input_text") is True
-        assert validate_content_signature("text", image_target.process_input, "input_text") is False
-        assert validate_content_signature(Audio("data"), image_target.process_input, "input_text") is False
+        assert (
+            validate_content_signature(
+                Image("data"), image_target.process_input, "input_text"
+            )
+            is True
+        )
+        assert (
+            validate_content_signature("text", image_target.process_input, "input_text")
+            is False
+        )
+        assert (
+            validate_content_signature(
+                Audio("data"), image_target.process_input, "input_text"
+            )
+            is False
+        )
 
         # Multimodal target accepts any Content type
-        assert validate_content_signature("text", multimodal_target.process_input, "input_text") is True
-        assert validate_content_signature(Audio("data"), multimodal_target.process_input, "input_text") is True
-        assert validate_content_signature(Image("data"), multimodal_target.process_input, "input_text") is True
+        assert (
+            validate_content_signature(
+                "text", multimodal_target.process_input, "input_text"
+            )
+            is True
+        )
+        assert (
+            validate_content_signature(
+                Audio("data"), multimodal_target.process_input, "input_text"
+            )
+            is True
+        )
+        assert (
+            validate_content_signature(
+                Image("data"), multimodal_target.process_input, "input_text"
+            )
+            is True
+        )
 
     def test_plugin_transform(self, workspace_dir):
         """Plugin should transform text content correctly."""
@@ -126,12 +170,18 @@ class TestJudgeIntegration:
         assert judge.judge("input", "IMAGE_ECHO response", "IMAGE_ECHO") is True
 
         # Works with Audio input/output
-        assert judge.judge(Audio("in"), Audio("AUDIO_ECHO output"), "AUDIO_ECHO") is True
+        assert (
+            judge.judge(Audio("in"), Audio("AUDIO_ECHO output"), "AUDIO_ECHO") is True
+        )
 
         # Signature accepts all Content types
         assert validate_content_signature("text", judge.judge, "llm_input") is True
-        assert validate_content_signature(Audio("data"), judge.judge, "llm_input") is True
-        assert validate_content_signature(Image("data"), judge.judge, "llm_input") is True
+        assert (
+            validate_content_signature(Audio("data"), judge.judge, "llm_input") is True
+        )
+        assert (
+            validate_content_signature(Image("data"), judge.judge, "llm_input") is True
+        )
 
     def test_audio_only_judge_strict_typing(self, workspace_dir):
         """Audio-only judge requires Audio types and rejects all others."""
@@ -141,11 +191,17 @@ class TestJudgeIntegration:
         assert judge.judge(Audio("input"), Audio("expected_output"), "expected") is True
 
         # Signature accepts Audio only
-        assert validate_content_signature(Audio("test"), judge.judge, "llm_input") is True
-        assert validate_content_signature(Audio("test"), judge.judge, "llm_output") is True
+        assert (
+            validate_content_signature(Audio("test"), judge.judge, "llm_input") is True
+        )
+        assert (
+            validate_content_signature(Audio("test"), judge.judge, "llm_output") is True
+        )
         assert validate_content_signature("text", judge.judge, "llm_input") is False
         assert validate_content_signature("text", judge.judge, "llm_output") is False
-        assert validate_content_signature(Image("data"), judge.judge, "llm_input") is False
+        assert (
+            validate_content_signature(Image("data"), judge.judge, "llm_input") is False
+        )
 
 
 class TestGeneratorIntegration:
@@ -153,6 +209,7 @@ class TestGeneratorIntegration:
 
     def _make_entry(self, content, payload):
         from spikee.generator import Entry, EntryType
+
         return Entry(
             entry_type=EntryType.ATTACK,
             entry_id="e1",
@@ -229,7 +286,7 @@ class TestTesterIntegration:
             workspace_dir,
             target="mock_audio_target",
             datasets=[dataset_path],
-            additional_args=["--judge", "content_type_judge"]
+            additional_args=["--judge", "content_type_judge"],
         )
 
         # Verify results
@@ -237,8 +294,9 @@ class TestTesterIntegration:
         assert results, "No results recorded"
 
         # Should succeed - audio target returns Audio with AUDIO_ECHO marker
-        assert all(entry["success"] for entry in results), \
+        assert all(entry["success"] for entry in results), (
             f"Expected all to succeed, got: {[(e['long_id'], e['success']) for e in results]}"
+        )
 
     def test_tester_with_multimodal_target(self, run_spikee, workspace_dir):
         """Tester should handle multimodal target end-to-end."""
@@ -269,7 +327,7 @@ class TestTesterIntegration:
             workspace_dir,
             target="mock_multimodal_target",
             datasets=[dataset_path],
-            additional_args=["--judge", "content_type_judge"]
+            additional_args=["--judge", "content_type_judge"],
         )
 
         # Verify results
@@ -307,7 +365,7 @@ class TestTesterIntegration:
             workspace_dir,
             target="mock_image_target",
             datasets=[dataset_path],
-            additional_args=["--judge", "content_type_judge"]
+            additional_args=["--judge", "content_type_judge"],
         )
 
         # Verify results contain expected data
@@ -331,8 +389,12 @@ class TestMultiTurnIntegration:
 
         # Add messages with different content types
         msg1 = conv.add_message(parent_id=0, data="First turn text", attempt=True)
-        msg2 = conv.add_message(parent_id=msg1, data=Audio("Second turn audio"), attempt=True)
-        msg3 = conv.add_message(parent_id=msg2, data=Image("Third turn image"), attempt=True)
+        msg2 = conv.add_message(
+            parent_id=msg1, data=Audio("Second turn audio"), attempt=True
+        )
+        msg3 = conv.add_message(
+            parent_id=msg2, data=Image("Third turn image"), attempt=True
+        )
 
         # Should have 3 messages plus root
         assert len(conv.conversation) == 4  # root + 3 messages
@@ -424,14 +486,21 @@ class TestCallJudgeContent:
             "content": "plain text input",
         }
         with working_directory(workspace_dir):
-            with pytest.raises(ValueError, match="do not match judge function signature"):
+            with pytest.raises(
+                ValueError, match="do not match judge function signature"
+            ):
                 call_judge(entry, "plain text response")
 
     def test_call_judge_bool_passthrough(self, workspace_dir):
         """call_judge() with bool output bypasses judge entirely."""
         from spikee.judge import call_judge
 
-        entry = {"judge_name": "audio_only_judge", "judge_args": "x", "judge_options": None, "content": "x"}
+        entry = {
+            "judge_name": "audio_only_judge",
+            "judge_args": "x",
+            "judge_options": None,
+            "content": "x",
+        }
         with working_directory(workspace_dir):
             assert call_judge(entry, True) is True
             assert call_judge(entry, False) is False
@@ -440,6 +509,11 @@ class TestCallJudgeContent:
         """call_judge() with empty string returns False without calling judge."""
         from spikee.judge import call_judge
 
-        entry = {"judge_name": "content_type_judge", "judge_args": "x", "judge_options": None, "content": "x"}
+        entry = {
+            "judge_name": "content_type_judge",
+            "judge_args": "x",
+            "judge_options": None,
+            "content": "x",
+        }
         with working_directory(workspace_dir):
             assert call_judge(entry, "") is False

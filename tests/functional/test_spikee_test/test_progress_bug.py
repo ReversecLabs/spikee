@@ -22,7 +22,10 @@ def test_progress_bar_shows_correct_total(run_spikee, workspace_dir):
 
     # 3. Run test command
     # We use "always_success" target to ensure it runs quickly
-    result = run_spikee(["test", "--target", "always_success", "--dataset", str(dataset_rel)], cwd=workspace_dir)
+    result = run_spikee(
+        ["test", "--target", "always_success", "--dataset", str(dataset_rel)],
+        cwd=workspace_dir,
+    )
 
     # 4. Check stderr for progress bar totals
     # Tqdm progress bars output patterns like " 5/20 " or " 5/200 " or "100%|...| 5/20"

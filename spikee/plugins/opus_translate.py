@@ -117,7 +117,7 @@ class OpusTranslator(Plugin):
         # Detect GPU availability
         try:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            #print(f"[OpusTranslator] Using device: {self.device}")
+            # print(f"[OpusTranslator] Using device: {self.device}")
         except ImportError:
             self.device = "cpu"
 
@@ -161,7 +161,9 @@ class OpusTranslator(Plugin):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                tokenizer = MarianTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+                tokenizer = MarianTokenizer.from_pretrained(
+                    model_name, cache_dir=cache_dir
+                )
                 model = MarianMTModel.from_pretrained(model_name, cache_dir=cache_dir)
             # Move model to device (GPU or CPU)
             model = model.to(target_device)
@@ -209,7 +211,7 @@ class OpusTranslator(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> Union[str, List[str]]:
         """
         Translates input text to target language(s).

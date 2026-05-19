@@ -1,4 +1,5 @@
 """Mock target that accepts and returns Audio content."""
+
 from typing import Optional
 
 from spikee.templates.target import Target

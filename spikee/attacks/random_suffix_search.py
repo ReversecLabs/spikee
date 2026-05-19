@@ -44,7 +44,12 @@ from typing import Callable
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag
 
 
@@ -77,7 +82,7 @@ class RandomSuffixSearch(Attack):
                     document[: idx + len(payload)]
                     + " "
                     + adv_string
-                    + document[idx + len(payload):]
+                    + document[idx + len(payload) :]
                 )
         return document + "\n" + adv_string
 
@@ -93,7 +98,9 @@ class RandomSuffixSearch(Attack):
     ) -> AttackResponseHint:
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
-            raise ValueError("RandomSuffixSearch Attack only supports text content type.")
+            raise ValueError(
+                "RandomSuffixSearch Attack only supports text content type."
+            )
 
         system_message = entry.get("system_message", None)
         payload_field = entry.get("payload", "")
@@ -127,7 +134,7 @@ class RandomSuffixSearch(Attack):
             ).tolist()
             # Replace the selected tokens in adv_tokens.
             adv_tokens[
-                substitute_pos_start: substitute_pos_start + self.n_tokens_change
+                substitute_pos_start : substitute_pos_start + self.n_tokens_change
             ] = substitution_tokens
 
             # Decode the modified token sequence into text.
@@ -139,9 +146,11 @@ class RandomSuffixSearch(Attack):
 
             try:
                 # Call process_input. The wrapper guarantees a tuple is returned.
-                response = process_target_content(target_module.process_input(
-                    candidate, system_message, logprobs=False
-                ))
+                response = process_target_content(
+                    target_module.process_input(
+                        candidate, system_message, logprobs=False
+                    )
+                )
 
                 success = call_judge(entry, response)
             except Exception as e:

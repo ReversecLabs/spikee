@@ -30,7 +30,12 @@ from typing import Callable
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag
 
 
@@ -82,9 +87,9 @@ class BestOfNAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response = process_target_content(target_module.process_input(
-                    candidate_text, system_message
-                ))
+                response = process_target_content(
+                    target_module.process_input(candidate_text, system_message)
+                )
                 last_response = response
                 success = call_judge(entry, response)
             except Exception as e:
@@ -119,7 +124,7 @@ class BestOfNAttack(Attack):
         return (
             original_text[:idx]
             + scrambled_payload
-            + original_text[idx + len(payload):]
+            + original_text[idx + len(payload) :]
         )
 
     def _generate_variant(self, text, exclusions):

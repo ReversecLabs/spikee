@@ -57,7 +57,9 @@ def call_judge(entry, output: Content) -> bool:
         if isinstance(llm_input, list):
             llm_input = "\n".join(llm_input)
 
-        if validate_content_signature(llm_input, judge_module.judge, "llm_input") and validate_content_signature(output, judge_module.judge, "llm_output"):
+        if validate_content_signature(
+            llm_input, judge_module.judge, "llm_input"
+        ) and validate_content_signature(output, judge_module.judge, "llm_output"):
             if "judge_options" in judge_func_params:
                 return judge_module.judge(
                     llm_input=llm_input,

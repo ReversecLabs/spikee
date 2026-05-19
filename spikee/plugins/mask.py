@@ -53,7 +53,10 @@ class Shortener(Plugin):
     DEFAULT_MODEL = "bedrock/qwen3-next-80b"
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.OBFUSCATION, ModuleTag.LLM], "Masks high-risk words in prompts."
+        return [
+            ModuleTag.OBFUSCATION,
+            ModuleTag.LLM,
+        ], "Masks high-risk words in prompts."
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
@@ -66,7 +69,7 @@ class Shortener(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> Union[str, List[str]]:
 
         opts = parse_options(plugin_option)
@@ -108,9 +111,9 @@ class Shortener(Plugin):
                         masks = [self.generate_mask() for _ in range(num_masks)]
                         chunk_size = len(word) // num_masks
                         chunks = [
-                            word[i * chunk_size: (i + 1) * chunk_size]
+                            word[i * chunk_size : (i + 1) * chunk_size]
                             if i < num_masks - 1
-                            else word[i * chunk_size:]
+                            else word[i * chunk_size :]
                             for i in range(num_masks)
                         ]
 

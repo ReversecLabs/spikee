@@ -15,10 +15,15 @@ def _attack_base_name(entry):
     "target_name,attack_name",
     [
         ("always_refuse", "mock_attack"),  # OOP target + OOP attack
-        ("always_refuse", "mock_attack_legacy"),  # OOP target + legacy attack (backward compat)
+        (
+            "always_refuse",
+            "mock_attack_legacy",
+        ),  # OOP target + legacy attack (backward compat)
     ],
 )
-def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir, target_name, attack_name):
+def test_spikee_test_runs_attack_when_base_fails(
+    run_spikee, workspace_dir, target_name, attack_name
+):
     """Test that attacks run when base attempts fail.
 
     Consolidates OOP and legacy attack testing - both implementations produce identical
@@ -41,14 +46,18 @@ def test_spikee_test_runs_attack_when_base_fails(run_spikee, workspace_dir, targ
     )
 
     results = read_jsonl_file(results_file[0])
-    assert len(results) == (len(entries) * 2), f"Expected {len(entries) * 2} results entries, got {len(results)}"
+    assert len(results) == (len(entries) * 2), (
+        f"Expected {len(entries) * 2} results entries, got {len(results)}"
+    )
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
         entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
-    assert len(base_results) == len(attack_results), f"Expected same number of base and attack results, got {len(base_results)} base and {len(attack_results)} attack results"
+    assert len(base_results) == len(attack_results), (
+        f"Expected same number of base and attack results, got {len(base_results)} base and {len(attack_results)} attack results"
+    )
     for attack_entry in attack_results:
         attempts = attack_entry["attempts"]
         assert attempts == 5, f"Expected 5 attempts, got {attempts}"
@@ -80,15 +89,21 @@ def test_spikee_test_runs_attack_only(run_spikee, workspace_dir):
     )
 
     results = read_jsonl_file(results_file[0])
-    assert len(results) == len(entries), f"Expected {len(entries)} results entries, got {len(results)}"
+    assert len(results) == len(entries), (
+        f"Expected {len(entries)} results entries, got {len(results)}"
+    )
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
         entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
-    assert len(base_results) == 0, f"Expected no base results in attack-only mode, got {len(base_results)}"
-    assert len(attack_results) == len(entries), f"Expected {len(entries)} attack results, got {len(attack_results)}"
+    assert len(base_results) == 0, (
+        f"Expected no base results in attack-only mode, got {len(base_results)}"
+    )
+    assert len(attack_results) == len(entries), (
+        f"Expected {len(entries)} attack results, got {len(attack_results)}"
+    )
     for attack_entry in attack_results:
         attempts = attack_entry["attempts"]
         assert attempts == 5, f"Expected 5 attempts, got {attempts}"
@@ -96,7 +111,9 @@ def test_spikee_test_runs_attack_only(run_spikee, workspace_dir):
 
 @pytest.mark.parametrize("target_name", ["always_success", "always_success_legacy"])
 @pytest.mark.parametrize("attack_name", ["mock_attack", "mock_attack_legacy"])
-def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir, target_name, attack_name):
+def test_spikee_test_skips_attack_when_base_succeeds(
+    run_spikee, workspace_dir, target_name, attack_name
+):
     dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
     entries = read_jsonl_file(dataset_path)
 
@@ -114,15 +131,21 @@ def test_spikee_test_skips_attack_when_base_succeeds(run_spikee, workspace_dir, 
     )
 
     results = read_jsonl_file(results_file[0])
-    assert len(results) == len(entries), f"Expected {len(entries)} results entries (no attacks), got {len(results)}"
+    assert len(results) == len(entries), (
+        f"Expected {len(entries)} results entries (no attacks), got {len(results)}"
+    )
 
     base_results = [entry for entry in results if entry.get("attack_name") == "None"]
     attack_results = [
         entry for entry in results if _attack_base_name(entry) == attack_name
     ]
 
-    assert len(base_results) == len(entries), f"Expected all entries to be base results, got {len(base_results)}"
-    assert len(attack_results) == 0, f"Expected no attack results since base succeeded, but found {len(attack_results)} attack results"
+    assert len(base_results) == len(entries), (
+        f"Expected all entries to be base results, got {len(base_results)}"
+    )
+    assert len(attack_results) == 0, (
+        f"Expected no attack results since base succeeded, but found {len(attack_results)} attack results"
+    )
     assert all(entry["success"] for entry in base_results)
     assert not attack_results
 
@@ -153,12 +176,16 @@ def test_spikee_test_builtin_attacks(run_spikee, workspace_dir, attack_name):
     )
 
     results = read_jsonl_file(results_files[0])
-    assert len(results) == (len(entries) * 2), f"Expected {len(entries) * 2} results entries, got {len(results)}"
+    assert len(results) == (len(entries) * 2), (
+        f"Expected {len(entries) * 2} results entries, got {len(results)}"
+    )
 
     attack_results = [
         entry for entry in results if _attack_base_name(entry) == attack_name
     ]
-    assert len(attack_results) == len(entries), f"Expected one attack result per entry, got {len(attack_results)}"
+    assert len(attack_results) == len(entries), (
+        f"Expected one attack result per entry, got {len(attack_results)}"
+    )
 
     for entry in attack_results:
         assert 1 <= entry["attempts"] <= 4

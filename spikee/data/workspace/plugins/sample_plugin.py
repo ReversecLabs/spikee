@@ -27,7 +27,10 @@ from spikee.templates.plugin import Plugin
 
 class SamplePlugin(Plugin):
     def get_description(self) -> ModuleDescriptionHint:
-        return [], "A sample plugin that transforms text to uppercase, preserving excluded patterns."
+        return (
+            [],
+            "A sample plugin that transforms text to uppercase, preserving excluded patterns.",
+        )
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
