@@ -730,6 +730,11 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
                 exclude_from_transformations_regex=exclude_patterns,
                 steering_keywords=attack.get("steering_keywords", None),
             )
+            # If the original attack content was a multi-turn list, restore it on
+            # the entry so the output JSONL stores a list rather than a JSON string.
+            if isinstance(original_raw, list):
+                entry.content = original_raw
+                entry.payload = original_raw
             entries.append(entry)
 
     except ValueError:
@@ -784,16 +789,6 @@ def process_standalone_attacks(
         })
 
     print(f"[Info] Processing {len(permutations)} standalone attack(s) with {num_threads} thread(s)")
-    
-    # If the original seed entry was a multi-turn list, store it as a list in the
-    # output JSONL rather than as a stringified representation.
-    if isinstance(original_raw, list):
-        entry["content"] = original_raw
-        entry["payload"] = original_raw
-
-        dataset.append(entry)
-        entry_id += 1
-        bar_standalone.update(1)
 
     new_entries = []
 
