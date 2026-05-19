@@ -6,6 +6,7 @@ Tests the core content wrapper functions:
 - get_content(): Extract raw content from Content wrappers
 - get_content_type(): Determine content type
 """
+
 import base64
 import pytest
 
@@ -181,11 +182,16 @@ class TestImageBase64Inline:
 
     def test_base64_inline_format(self):
         """Should return proper data URI format."""
-        image = Image("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+        image = Image(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
         result = image.base64_inline()
 
         assert result.startswith("data:image/png;base64,")
-        assert "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" in result
+        assert (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            in result
+        )
 
     def test_base64_inline_preserves_content(self):
         """Inline format should preserve base64 content."""
@@ -200,11 +206,14 @@ class TestImageBase64Inline:
 class TestContentRoundTrip:
     """Test complete create → extract → type-detect cycle."""
 
-    @pytest.mark.parametrize("content_type,expected_type", [
-        ("text", "text"),
-        ("audio", "audio"),
-        ("image", "image"),
-    ])
+    @pytest.mark.parametrize(
+        "content_type,expected_type",
+        [
+            ("text", "text"),
+            ("audio", "audio"),
+            ("image", "image"),
+        ],
+    )
     def test_roundtrip_preserves_data(self, content_type, expected_type):
         """Content should survive create → extract → type-detect cycle."""
         original = "Sample content data"
@@ -236,41 +245,49 @@ class TestProcessTargetContent:
     def test_unwraps_str_content(self):
         """Plain str response returned as-is."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content("hello") == "hello"
 
     def test_unwraps_audio_content(self):
         """Audio response returns raw content string."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content(Audio("audio_data")) == "audio_data"
 
     def test_unwraps_image_content(self):
         """Image response returns raw content string."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content(Image("image_data")) == "image_data"
 
     def test_unwraps_tuple_str(self):
         """(str, meta) tuple unpacks and returns str."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content(("hello", {"tokens": 5})) == "hello"
 
     def test_unwraps_tuple_audio(self):
         """(Audio, meta) tuple unpacks and returns raw content."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content((Audio("audio_data"), None)) == "audio_data"
 
     def test_unwraps_tuple_image(self):
         """(Image, meta) tuple unpacks and returns raw content."""
         from spikee.utilities.hinting import process_target_content
+
         assert process_target_content((Image("image_data"), None)) == "image_data"
 
     def test_bool_response_raises(self):
         """bool response raises ValueError (guardrail mode not handled here)."""
         from spikee.utilities.hinting import process_target_content
+
         with pytest.raises((ValueError, TypeError)):
             process_target_content(True)
 
     def test_wrong_tuple_length_raises(self):
         """Tuple with != 2 elements raises ValueError."""
         from spikee.utilities.hinting import process_target_content
+
         with pytest.raises(ValueError):
             process_target_content(("a", "b", "c"))

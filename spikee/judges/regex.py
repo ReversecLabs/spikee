@@ -21,7 +21,9 @@ class RegexJudge(Judge):
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
         return [], False
 
-    def judge(self, llm_input: str, llm_output: str, judge_args, judge_options=None) -> bool:
+    def judge(
+        self, llm_input: str, llm_output: str, judge_args, judge_options=None
+    ) -> bool:
         """
         Args:
             llm_input (str): The original text/prompt sent to the model (optional for logic here).

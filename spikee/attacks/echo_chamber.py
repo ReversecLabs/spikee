@@ -9,7 +9,12 @@ import random
 from typing import List, Callable, Tuple, Union
 import uuid
 
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.templates.attack import Attack
 from spikee.templates.standardised_conversation import StandardisedConversation
@@ -593,9 +598,11 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                 + json.dumps({"keywords": keywords})
             )
 
-        response = process_target_content(target.process_input(
-            prompt, spikee_session_id=spikee_session_id, backtrack=False
-        ))
+        response = process_target_content(
+            target.process_input(
+                prompt, spikee_session_id=spikee_session_id, backtrack=False
+            )
+        )
 
         try:
             seed_sentences = extract_json_or_fail(response).get("sentences", None)
@@ -630,7 +637,9 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
             tuple: (iterations_used:int, success:bool, {"objective": str, "conversation": List[Dict]}, last_response:str)
         """
         if "text" not in entry and "content" not in entry:
-            raise ValueError("entry must contain 'text' or 'content' (the jailbreak objective)")
+            raise ValueError(
+                "entry must contain 'text' or 'content' (the jailbreak objective)"
+            )
 
         objective = entry.get("content", entry.get("text", ""))
 
@@ -644,7 +653,9 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
         self.debug = opts.get("debug", "false").lower() == "true"
         model = opts.get("model", None)
         if not model:
-            raise ValueError("Echo Chamber attack requires a 'model' option specifying the LLM to use.")
+            raise ValueError(
+                "Echo Chamber attack requires a 'model' option specifying the LLM to use."
+            )
 
         llm = get_llm(model, max_tokens=None, temperature=1)
         agent = get_llm(model, max_tokens=None, temperature=0.7)
@@ -917,11 +928,13 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                             attempt=True,
                         )
 
-                        last_response = process_target_content(target_module.process_input(
-                            prompt,
-                            spikee_session_id=spikee_session_id,
-                            backtrack=backtrack,
-                        ))
+                        last_response = process_target_content(
+                            target_module.process_input(
+                                prompt,
+                                spikee_session_id=spikee_session_id,
+                                backtrack=backtrack,
+                            )
+                        )
                         backtrack = False
 
                     except GuardrailTrigger as e:

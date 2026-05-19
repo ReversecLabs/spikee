@@ -10,7 +10,9 @@ class SimpleMultiTarget(MultiTarget, ABC):
     __SIMPLIFIED_CONVERSATION_KEY = "conversation_data"
     __SIMPLIFIED_ID_MAP_KEY = "id_map"
 
-    def __init__(self, turn_types: Optional[List[Turn]] = None, backtrack: bool = False):
+    def __init__(
+        self, turn_types: Optional[List[Turn]] = None, backtrack: bool = False
+    ):
         """Define target capabilities and initialize shared dictionary for multi-turn data."""
         if turn_types is None:
             turn_types = [Turn.MULTI]

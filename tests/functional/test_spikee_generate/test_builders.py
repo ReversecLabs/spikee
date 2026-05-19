@@ -15,7 +15,9 @@ class TestInsertJailbreak:
         document = "This is the original document."
         jailbreak = "ATTACK_TEXT"
         pattern = "INJECTION_PAYLOAD"
-        result = get_content(insert_jailbreak(document, jailbreak, "start", pattern, None))
+        result = get_content(
+            insert_jailbreak(document, jailbreak, "start", pattern, None)
+        )
 
         assert result.startswith("ATTACK_TEXT")
         assert result.endswith("This is the original document.")
@@ -25,7 +27,9 @@ class TestInsertJailbreak:
         document = "This is the original document."
         jailbreak = "ATTACK_TEXT"
         pattern = "INJECTION_PAYLOAD"
-        result = get_content(insert_jailbreak(document, jailbreak, "end", pattern, None))
+        result = get_content(
+            insert_jailbreak(document, jailbreak, "end", pattern, None)
+        )
 
         assert result.startswith("This is the original document.")
         assert result.endswith("ATTACK_TEXT")
@@ -35,7 +39,9 @@ class TestInsertJailbreak:
         document = "This is the original document text content here."
         jailbreak = "ATTACK"
         pattern = "INJECTION_PAYLOAD"
-        result = get_content(insert_jailbreak(document, jailbreak, "middle", pattern, None))
+        result = get_content(
+            insert_jailbreak(document, jailbreak, "middle", pattern, None)
+        )
 
         # Should contain both original text and jailbreak
         assert "This is the original" in result
@@ -48,7 +54,9 @@ class TestInsertJailbreak:
         jailbreak = "INJECTED_CONTENT"
         pattern = "INJECTION_PAYLOAD"
         placeholder = "<<MARKER>>"
-        result = get_content(insert_jailbreak(document, jailbreak, "start", pattern, placeholder))
+        result = get_content(
+            insert_jailbreak(document, jailbreak, "start", pattern, placeholder)
+        )
 
         assert "<<MARKER>>" not in result
         assert "INJECTED_CONTENT" in result
@@ -59,7 +67,9 @@ class TestInsertJailbreak:
         document = "Original document"
         jailbreak = "JAILBREAK"
         pattern = "[INJECTION_PAYLOAD]"  # Custom pattern with brackets
-        result = get_content(insert_jailbreak(document, jailbreak, "start", pattern, None))
+        result = get_content(
+            insert_jailbreak(document, jailbreak, "start", pattern, None)
+        )
 
         # Pattern should transform jailbreak
         assert "[JAILBREAK]" in result

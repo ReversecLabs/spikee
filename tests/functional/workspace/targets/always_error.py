@@ -15,4 +15,6 @@ class AlwaysErrorTarget(Target):
         target_options: Optional[str] = None,
         logprobs: bool = False,
     ) -> str:
-        raise ValueError("This target always raises an error. The response should be checked for the canary response to confirm that the error was raised correctly.")
+        raise ValueError(
+            "This target always raises an error. The response should be checked for the canary response to confirm that the error was raised correctly."
+        )

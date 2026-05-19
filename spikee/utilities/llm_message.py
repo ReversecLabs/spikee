@@ -143,7 +143,10 @@ def upgrade_messages(
     return upgraded_messages
 
 
-def single_message(messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], system_prompt: bool = False):
+def single_message(
+    messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+    system_prompt: bool = False,
+):
     """Utility function to extract a single Message object from various input formats. Raises an error if multiple messages are provided."""
     upgraded = upgrade_messages(messages)
 
@@ -155,7 +158,11 @@ def single_message(messages: Union[str, Sequence[Union[Message, dict, tuple, str
     user_message = None
     system_prompt_message = None
     for msg in upgraded:
-        if isinstance(msg, SystemMessage) and system_prompt and not system_prompt_message:
+        if (
+            isinstance(msg, SystemMessage)
+            and system_prompt
+            and not system_prompt_message
+        ):
             system_prompt_message = msg
         elif isinstance(msg, HumanMessage) and not user_message:
             user_message = msg

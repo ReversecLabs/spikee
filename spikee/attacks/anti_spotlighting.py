@@ -33,7 +33,12 @@ from typing import Callable, List
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag
 
 
@@ -75,7 +80,9 @@ class AntiSpotlightingAttack(Attack):
         """
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
-            raise ValueError("Anti-Spotlighting Attack only supports text content type.")
+            raise ValueError(
+                "Anti-Spotlighting Attack only supports text content type."
+            )
         payload = entry.get("payload", None)
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs
@@ -101,9 +108,9 @@ class AntiSpotlightingAttack(Attack):
             last_payload = candidate_text
 
             try:
-                response = process_target_content(target_module.process_input(
-                    candidate_text, system_message
-                ))
+                response = process_target_content(
+                    target_module.process_input(candidate_text, system_message)
+                )
 
                 last_response = response
                 success = call_judge(entry, response)

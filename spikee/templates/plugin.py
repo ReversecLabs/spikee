@@ -9,13 +9,19 @@ class Plugin(Module, ABC):
     @abstractmethod
     @overload
     def transform(
-        self, content: Content, exclude_patterns: Optional[List[str]] = None, plugin_option: str = ""
+        self,
+        content: Content,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = "",
     ) -> Union[Content, List[Content]]:
         pass
 
     @abstractmethod
     @overload
     def transform(
-        self, text: str, exclude_patterns: Optional[List[str]] = None, plugin_option: str = ""
+        self,
+        text: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: str = "",
     ) -> Union[str, List[str]]:
         pass

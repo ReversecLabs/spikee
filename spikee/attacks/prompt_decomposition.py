@@ -18,7 +18,12 @@ from typing import Callable, List
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
@@ -226,7 +231,9 @@ class PromptDecompositionAttack(Attack):
         """
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
-            raise ValueError("PromptDecomposition Attack only supports text content type.")
+            raise ValueError(
+                "PromptDecomposition Attack only supports text content type."
+            )
 
         system_message = entry.get("system_message", None)
         last_payload = original_text  # fallback if no transformation occurs
@@ -257,9 +264,9 @@ class PromptDecompositionAttack(Attack):
                 last_payload = candidate_text
 
                 try:
-                    response = process_target_content(target_module.process_input(
-                        candidate_text, system_message
-                    ))
+                    response = process_target_content(
+                        target_module.process_input(candidate_text, system_message)
+                    )
 
                     last_response = response
                     success = call_judge(entry, response)

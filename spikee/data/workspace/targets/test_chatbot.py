@@ -23,6 +23,7 @@ References:
     - See `test_chatbot.py` for a version of this target that implements manual session and history management using `MultiTarget`.
     - This file demonstrates using `SimpleMultiTarget` to automatically handle session mapping and history storage.
 """
+
 import json
 import uuid
 import requests
@@ -33,7 +34,11 @@ import traceback
 from spikee.templates.simple_multi_target import SimpleMultiTarget
 from spikee.utilities.enums import Turn
 from spikee.utilities.modules import parse_options
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    TargetResponseHint,
+)
 
 
 class SimpleTestChatbotTarget(SimpleMultiTarget):

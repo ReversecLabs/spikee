@@ -14,7 +14,13 @@ from spikee.utilities.files import read_jsonl_file, read_toml_file, write_jsonl_
 from spikee.utilities.modules import load_module_from_path
 from spikee.utilities.tags import validate_tag
 from spikee.utilities.enums import EntryType
-from spikee.utilities.hinting import Content, content_factory, get_content, get_content_type, validate_content_annotation
+from spikee.utilities.hinting import (
+    Content,
+    content_factory,
+    get_content,
+    get_content_type,
+    validate_content_annotation,
+)
 
 
 class Entry:
@@ -65,7 +71,9 @@ class Entry:
         self.suffix_id = suffix_id
 
         self.original_content = content  # Keep original content for reference
-        self.content = get_content(content)  # This may be modified by plugins or injection
+        self.content = get_content(
+            content
+        )  # This may be modified by plugins or injection
         self.entry_text = entry_text
         self.system_message = system_message
         self.payload = payload
@@ -241,7 +249,9 @@ def resolve_standalone_inputs_path(seed_folder: str):
 
 
 # region dataset builders
-def insert_jailbreak(document, combined_text: Content, position, injection_pattern, placeholder) -> Content:
+def insert_jailbreak(
+    document, combined_text: Content, position, injection_pattern, placeholder
+) -> Content:
     """
     Inserts the combined_text into the document at the specified position
     using the provided injection_pattern. The pattern must contain the
@@ -251,7 +261,9 @@ def insert_jailbreak(document, combined_text: Content, position, injection_patte
         raise ValueError(
             "Injection pattern must contain 'INJECTION_PAYLOAD' placeholder."
         )
-    injected_text = injection_pattern.replace("INJECTION_PAYLOAD", get_content(combined_text))
+    injected_text = injection_pattern.replace(
+        "INJECTION_PAYLOAD", get_content(combined_text)
+    )
 
     # if there is an explicit placeholder, replace it with the injected text
     # and ignore any explicit position
@@ -264,7 +276,9 @@ def insert_jailbreak(document, combined_text: Content, position, injection_patte
         elif position == "middle":
             mid_point = len(document) // 2
             insert_index = find_nearest_whitespace(document, mid_point)
-            jailbreak = f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
+            jailbreak = (
+                f"{document[:insert_index]}{injected_text}{document[insert_index:]}"
+            )
         elif position == "end":
             jailbreak = f"{document}{injected_text}"
         else:
@@ -295,7 +309,9 @@ def find_nearest_whitespace(text, index) -> int:
         )
 
 
-def get_system_message(system_message_config, spotlighting_data_marker=None) -> Union[str, None]:
+def get_system_message(
+    system_message_config, spotlighting_data_marker=None
+) -> Union[str, None]:
     """
     Retrieves the appropriate system message from the system_message_config
     based on a given spotlighting data marker. Falls back to 'default' if no
@@ -339,7 +355,9 @@ def load_plugins(plugin_names):
                 print(e)
                 exit(1)
 
-        elif name is not None:  # If it's a plugin pipe, load each sub-plugin and store as a list
+        elif (
+            name is not None
+        ):  # If it's a plugin pipe, load each sub-plugin and store as a list
             plugin_pipe = []
             for sub_name in name:
                 try:
@@ -401,7 +419,11 @@ def get_plugin_variants(plugin_module, plugin_option):
 
 
 def apply_plugin(
-    plugin_name, plugin_module, init_content: Content, exclude_patterns=None, plugin_option_map=None
+    plugin_name,
+    plugin_module,
+    init_content: Content,
+    exclude_patterns=None,
+    plugin_option_map=None,
 ) -> List[Content]:
     """
     Applies a plugin module's transform function to the given content if available.
@@ -424,13 +446,16 @@ def apply_plugin(
             params = sig.parameters
 
             for content in contents:
-
                 args = {}
 
-                if "content" in params and validate_content_annotation(content, params["content"].annotation):
+                if "content" in params and validate_content_annotation(
+                    content, params["content"].annotation
+                ):
                     args["content"] = get_content(content)
 
-                elif "text" in params and validate_content_annotation(content, params["text"].annotation):
+                elif "text" in params and validate_content_annotation(
+                    content, params["text"].annotation
+                ):
                     args["text"] = get_content(content)
 
                 else:
@@ -440,7 +465,9 @@ def apply_plugin(
                 args["exclude_patterns"] = exclude_patterns
 
                 if "plugin_option" in params:
-                    args["plugin_option"] = plugin_option_map.get(name) if plugin_option_map else None
+                    args["plugin_option"] = (
+                        plugin_option_map.get(name) if plugin_option_map else None
+                    )
 
                 try:
                     res = module.transform(**args)
@@ -481,32 +508,36 @@ def parse_exclude_patterns(jailbreak, instruction):
 
     return list(exclude_patterns) if exclude_patterns else None
 
+
 # endregion
 
-def _process_permutation_worker(perm, plugin_options_map, system_message_config, output_format) -> List[Entry]:
+
+def _process_permutation_worker(
+    perm, plugin_options_map, system_message_config, output_format
+) -> List[Entry]:
     """
     Worker function to process a single permutation (base_doc, jailbreak, instruction combination).
     Each thread gets its own asyncio event loop for async LLM operations.
-    
+
     Returns a list of Entry objects for this permutation.
     """
     asyncio.set_event_loop(asyncio.new_event_loop())
-    
+
     entries = []
-    
+
     try:
         # Unpack permutation
-        base_doc = perm['base_doc']
-        jailbreak = perm['jailbreak']
-        instruction = perm['instruction']
-        plugins = perm['plugins']
-        prefixes = perm['prefixes']
-        suffixes = perm['suffixes']
-        positions = perm['positions']
-        injection_delimiters = perm['injection_delimiters']
-        spotlighting_data_markers_list = perm['spotlighting_data_markers_list']
-        match_languages = perm['match_languages']
-        
+        base_doc = perm["base_doc"]
+        jailbreak = perm["jailbreak"]
+        instruction = perm["instruction"]
+        plugins = perm["plugins"]
+        prefixes = perm["prefixes"]
+        suffixes = perm["suffixes"]
+        positions = perm["positions"]
+        injection_delimiters = perm["injection_delimiters"]
+        spotlighting_data_markers_list = perm["spotlighting_data_markers_list"]
+        match_languages = perm["match_languages"]
+
         # Extract base document info
         base_id = base_doc["id"]
         document = base_doc["document"]
@@ -514,7 +545,7 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
         question = base_doc.get("question", "")
         ideal_answer = base_doc.get("ideal_answer", "")
         ideal_summary = base_doc.get("ideal_summary", "")
-        
+
         entry_text = {}
         if question:
             entry_text["question"] = question
@@ -522,70 +553,89 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
             entry_text["ideal_answer"] = ideal_answer
         if ideal_summary:
             entry_text["ideal_summary"] = ideal_summary
-        
+
         # Extract jailbreak info
         jailbreak_id = jailbreak["id"]
         jailbreak_text = jailbreak["text"]
         jailbreak_type = jailbreak.get("jailbreak_type", "")
         jailbreak_lang = jailbreak.get("lang", "en")
-        
+
         # Extract instruction info
         instruction_id = instruction["id"]
         instruction_content_type = instruction.get("content_type", "text")
-        instruction_content = content_factory(instruction["instruction"], instruction_content_type)
+        instruction_content = content_factory(
+            instruction["instruction"], instruction_content_type
+        )
         instruction_type = instruction.get("instruction_type", "")
         instruction_lang = instruction.get("lang", "en")
         judge_name = instruction.get("judge_name", "canary")
         judge_args = instruction.get("judge_args", instruction.get("canary", ""))
-        
+
         # Check language matching
         if match_languages and jailbreak_lang != instruction_lang:
             return []
-        
+
         # Combine jailbreak and instruction
         combined_base = content_factory(
-            jailbreak_text.replace("<INSTRUCTION>", str(get_content(instruction_content))),
-            get_content_type(instruction_content)
+            jailbreak_text.replace(
+                "<INSTRUCTION>", str(get_content(instruction_content))
+            ),
+            get_content_type(instruction_content),
         )
         lang = instruction_lang
-        
+
         # Create plugin / transformation regex exclusion lists
         local_exclude = parse_exclude_patterns(jailbreak, instruction)
-        
+
         # Apply plugins and create combined texts
         combined_texts = []
-        fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
-        
+        fix_permutations = [
+            (prefix, suffix) for prefix in prefixes for suffix in suffixes
+        ]
+
         for plugin_name, plugin_module in plugins:
             plugin_texts: List[Content] = (
-                apply_plugin(plugin_name, plugin_module, combined_base, local_exclude, plugin_options_map)
+                apply_plugin(
+                    plugin_name,
+                    plugin_module,
+                    combined_base,
+                    local_exclude,
+                    plugin_options_map,
+                )
                 if plugin_name
                 else [combined_base]
             )
-            
+
             for plugin_index, plugin_text in enumerate(plugin_texts, start=1):
                 for prefix, suffix in fix_permutations:
                     prefix_lang = prefix.get("lang", None) if prefix else None
                     suffix_lang = suffix.get("lang", None) if suffix else None
-                    
-                    if match_languages and ((prefix_lang and prefix_lang != lang) or (suffix_lang and suffix_lang != lang)):
+
+                    if match_languages and (
+                        (prefix_lang and prefix_lang != lang)
+                        or (suffix_lang and suffix_lang != lang)
+                    ):
                         continue
-                    
+
                     prefix_text = prefix.get("prefix", "") + " " if prefix else ""
                     suffix_text = " " + suffix.get("suffix", "") if suffix else ""
                     text = content_factory(
                         prefix_text + get_content(plugin_text) + suffix_text,
-                        get_content_type(plugin_text)
+                        get_content_type(plugin_text),
                     )
-                    
-                    combined_texts.append({
-                        "text": text,
-                        "prefix_id": prefix.get("id", None) if prefix else None,
-                        "suffix_id": suffix.get("id", None) if suffix else None,
-                        "plugin_name": plugin_name,
-                        "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else "",
-                    })
-        
+
+                    combined_texts.append(
+                        {
+                            "text": text,
+                            "prefix_id": prefix.get("id", None) if prefix else None,
+                            "suffix_id": suffix.get("id", None) if suffix else None,
+                            "plugin_name": plugin_name,
+                            "plugin_suffix": f"_{plugin_name}-{plugin_index}"
+                            if plugin_name
+                            else "",
+                        }
+                    )
+
         # Generate entries for each combined text
         insert_positions = ["fixed"] if placeholder else positions
 
@@ -599,23 +649,34 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                         injection_pattern,
                         placeholder,
                     )
-                    
+
                     for entry_type in output_format:
                         if entry_type == "burp":
-                            burp_payload_encoded = json.dumps(get_content(injected_doc))[1:-1]
+                            burp_payload_encoded = json.dumps(
+                                get_content(injected_doc)
+                            )[1:-1]
                             entries.append(burp_payload_encoded)
                         else:
-                            for spotlighting_data_marker in spotlighting_data_markers_list:
-                                system_message = get_system_message(system_message_config, spotlighting_data_marker)
-                                
+                            for (
+                                spotlighting_data_marker
+                            ) in spotlighting_data_markers_list:
+                                system_message = get_system_message(
+                                    system_message_config, spotlighting_data_marker
+                                )
+
                                 final_injected_doc = injected_doc
                                 if entry_type == EntryType.DOCUMENT:
-                                    if spotlighting_data_marker != "none" and isinstance(get_content(injected_doc), str):
+                                    if (
+                                        spotlighting_data_marker != "none"
+                                        and isinstance(get_content(injected_doc), str)
+                                    ):
                                         final_injected_doc = content_factory(
-                                            spotlighting_data_marker.replace("DOCUMENT", get_content(injected_doc)),
-                                            get_content_type(injected_doc)
+                                            spotlighting_data_marker.replace(
+                                                "DOCUMENT", get_content(injected_doc)
+                                            ),
+                                            get_content_type(injected_doc),
                                         )
-                                
+
                                 entry = Entry(
                                     entry_type=entry_type,
                                     entry_id=1,
@@ -629,7 +690,9 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                                     system_message=system_message,
                                     payload=combined_text.get("text", None),
                                     lang=lang,
-                                    plugin_suffix=combined_text.get("plugin_suffix", ""),
+                                    plugin_suffix=combined_text.get(
+                                        "plugin_suffix", ""
+                                    ),
                                     plugin_name=combined_text.get("plugin_name", None),
                                     judge_args=judge_args,
                                     judge_name=judge_name,
@@ -640,15 +703,16 @@ def _process_permutation_worker(perm, plugin_options_map, system_message_config,
                                     spotlighting_data_markers=spotlighting_data_marker,
                                     exclude_from_transformations_regex=local_exclude,
                                 )
-                                entries.append(entry)    
+                                entries.append(entry)
     except ValueError:
         raise
     except Exception as e:
         print(f"\n[ERROR] Processing permutation failed: {e}")
         import traceback
+
         traceback.print_exc()
         return []
-    
+
     return entries
 
 
@@ -664,10 +728,10 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
     entries = []
 
     try:
-        attack = perm['attack']
-        plugins = perm['plugins']
-        prefixes = perm['prefixes']
-        suffixes = perm['suffixes']
+        attack = perm["attack"]
+        plugins = perm["plugins"]
+        prefixes = perm["prefixes"]
+        suffixes = perm["suffixes"]
 
         attack_type = attack.get("content_type", "text")
         raw = attack.get("content", attack.get("text", ""))
@@ -678,12 +742,20 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
 
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
-        fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
+        fix_permutations = [
+            (prefix, suffix) for prefix in prefixes for suffix in suffixes
+        ]
 
         combined_texts = []
         for plugin_name, plugin_module in plugins:
             plugin_content: List[Content] = (
-                apply_plugin(plugin_name, plugin_module, attack_content, exclude_patterns, plugin_options_map)
+                apply_plugin(
+                    plugin_name,
+                    plugin_module,
+                    attack_content,
+                    exclude_patterns,
+                    plugin_options_map,
+                )
                 if plugin_name
                 else [attack_content]
             )
@@ -694,15 +766,19 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
                     suffix_text = " " + suffix.get("suffix", "") if suffix else ""
                     text = content_factory(
                         prefix_text + get_content(plugin_text) + suffix_text,
-                        get_content_type(plugin_text)
+                        get_content_type(plugin_text),
                     )
-                    combined_texts.append({
-                        "text": text,
-                        "prefix_id": prefix.get("id", None) if prefix else None,
-                        "suffix_id": suffix.get("id", None) if suffix else None,
-                        "plugin_name": plugin_name,
-                        "plugin_suffix": f"_{plugin_name}-{plugin_index}" if plugin_name else "",
-                    })
+                    combined_texts.append(
+                        {
+                            "text": text,
+                            "prefix_id": prefix.get("id", None) if prefix else None,
+                            "suffix_id": suffix.get("id", None) if suffix else None,
+                            "plugin_name": plugin_name,
+                            "plugin_suffix": f"_{plugin_name}-{plugin_index}"
+                            if plugin_name
+                            else "",
+                        }
+                    )
 
         for combined_text in combined_texts:
             entry = Entry(
@@ -742,6 +818,7 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
     except Exception as e:
         print(f"\n[ERROR] Processing standalone attack failed: {e}")
         import traceback
+
         traceback.print_exc()
         return []
 
@@ -781,22 +858,29 @@ def process_standalone_attacks(
         if "judge_args" not in attack:
             attack["judge_args"] = attack.get("canary", "")
 
-        permutations.append({
-            'attack': attack,
-            'plugins': plugins,
-            'prefixes': prefixes,
-            'suffixes': suffixes,
-        })
+        permutations.append(
+            {
+                "attack": attack,
+                "plugins": plugins,
+                "prefixes": prefixes,
+                "suffixes": suffixes,
+            }
+        )
 
-    print(f"[Info] Processing {len(permutations)} standalone attack(s) with {num_threads} thread(s)")
+    print(
+        f"[Info] Processing {len(permutations)} standalone attack(s) with {num_threads} thread(s)"
+    )
 
     new_entries = []
 
     if num_threads > 1:
+
         def thread_init():
             asyncio.set_event_loop(asyncio.new_event_loop())
 
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
+        with ThreadPoolExecutor(
+            max_workers=num_threads, initializer=thread_init
+        ) as executor:
             futures = {}
             for perm in permutations:
                 future = executor.submit(
@@ -815,7 +899,9 @@ def process_standalone_attacks(
                         new_entries.extend(entries)
                     except Exception as e:
                         perm = futures[future]
-                        print(f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}")
+                        print(
+                            f"\n[ERROR] Standalone attack {perm['attack']['id']} failed: {e}"
+                        )
                         executor.shutdown(wait=False, cancel_futures=True)
                         exit(1)
                     bar.update(1)
@@ -869,18 +955,18 @@ def generate_variations(
     Generates dataset variations from the given base documents, jailbreaks,
     instructions, injection positions, delimiters, data markers, and plugins.
     Returns the dataset and the last used entry_id.
-    
+
     When num_threads > 1, creates all permutations first and processes them in parallel.
     """
-    
+
     if plugin_only:
         plugins = [] + plugins if plugins else []
     else:
         plugins = [(None, None)] + plugins if plugins else [(None, None)]
-    
+
     prefixes = adv_prefixes
     suffixes = adv_suffixes
-    
+
     # Define output format specific entry types
     match output_format:
         case "full-prompt":
@@ -889,12 +975,14 @@ def generate_variations(
             output_format_types = [EntryType.DOCUMENT]
         case _:
             output_format_types = ["burp"]
-    
+
     # Build list of all permutations (base_doc, jailbreak, instruction)
-    print(f"[Info] Building composable permutations: {len(base_docs)} docs × {len(jailbreaks)} jailbreaks × {len(instructions)} instructions")
-    
+    print(
+        f"[Info] Building composable permutations: {len(base_docs)} docs × {len(jailbreaks)} jailbreaks × {len(instructions)} instructions"
+    )
+
     permutations = []
-    
+
     for base_doc in base_docs:
         for jailbreak in jailbreaks:
             for instruction in instructions:
@@ -904,36 +992,44 @@ def generate_variations(
                     instruction_lang = instruction.get("lang", "en")
                     if jailbreak_lang != instruction_lang:
                         continue
-                
-                permutations.append({
-                    'base_doc': base_doc,
-                    'jailbreak': jailbreak,
-                    'instruction': instruction,
-                    'plugins': plugins,
-                    'prefixes': prefixes,
-                    'suffixes': suffixes,
-                    'positions': ["fixed"] if base_doc.get("placeholder", "") else positions,
-                    'injection_delimiters': injection_delimiters,
-                    'spotlighting_data_markers_list': spotlighting_data_markers_list,
-                    'match_languages': match_languages,
-                })
-    
-    print(f"[Info] Processing {len(permutations)} composable permutations with {num_threads} thread(s)")
-    
+
+                permutations.append(
+                    {
+                        "base_doc": base_doc,
+                        "jailbreak": jailbreak,
+                        "instruction": instruction,
+                        "plugins": plugins,
+                        "prefixes": prefixes,
+                        "suffixes": suffixes,
+                        "positions": ["fixed"]
+                        if base_doc.get("placeholder", "")
+                        else positions,
+                        "injection_delimiters": injection_delimiters,
+                        "spotlighting_data_markers_list": spotlighting_data_markers_list,
+                        "match_languages": match_languages,
+                    }
+                )
+
+    print(
+        f"[Info] Processing {len(permutations)} composable permutations with {num_threads} thread(s)"
+    )
+
     # Process permutations
     dataset = []
     entry_id = 1
-    
+
     if num_threads > 1:
         # Parallel processing
         def thread_init():
             """Each worker thread gets its own asyncio event loop."""
             asyncio.set_event_loop(asyncio.new_event_loop())
-        
-        with ThreadPoolExecutor(max_workers=num_threads, initializer=thread_init) as executor:
+
+        with ThreadPoolExecutor(
+            max_workers=num_threads, initializer=thread_init
+        ) as executor:
             # Submit all permutations
             futures = {}
-            
+
             for perm in permutations:
                 future = executor.submit(
                     _process_permutation_worker,
@@ -943,10 +1039,10 @@ def generate_variations(
                     output_format_types,
                 )
                 futures[future] = perm
-            
+
             # Collect results with progress bar
             bar = tqdm(total=len(permutations), desc="Processing permutations")
-            
+
             try:
                 for future in as_completed(futures):
                     try:
@@ -955,18 +1051,20 @@ def generate_variations(
                         bar.update(1)
                     except Exception as e:
                         perm = futures[future]
-                        print(f"\n[ERROR] Permutation failed (doc={perm['base_doc']['id']}, jb={perm['jailbreak']['id']}, instr={perm['instruction']['id']}): {e}")
+                        print(
+                            f"\n[ERROR] Permutation failed (doc={perm['base_doc']['id']}, jb={perm['jailbreak']['id']}, instr={perm['instruction']['id']}): {e}"
+                        )
             except KeyboardInterrupt:
                 print("\n[Interrupt] CTRL+C pressed. Cancelling...")
                 executor.shutdown(wait=False, cancel_futures=True)
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
                 bar.close()
-    
+
     else:
         # Sequential processing (original logic)
         bar = tqdm(total=len(permutations), desc="Processing permutations")
-        
+
         for perm in permutations:
             entries = _process_permutation_worker(
                 perm,
@@ -976,9 +1074,9 @@ def generate_variations(
             )
             dataset.extend(entries)
             bar.update(1)
-        
+
         bar.close()
-    
+
     # Reassign entry IDs sequentially
     dataset_entries = []
     for i, entry in enumerate(dataset, start=1):
@@ -1202,7 +1300,7 @@ def generate_dataset(args):
             system_message_config=system_message_config,
             plugin_options_map=plugin_options_map,
             plugin_only=args.plugin_only,
-            num_threads=getattr(args, 'threads', 1),
+            num_threads=getattr(args, "threads", 1),
         )
 
         # Generate Standalone Attacks
@@ -1219,7 +1317,7 @@ def generate_dataset(args):
                 plugins=plugins if args.plugins else None,
                 plugin_options_map=plugin_options_map,
                 plugin_only=args.plugin_only,
-                num_threads=getattr(args, 'threads', 1),
+                num_threads=getattr(args, "threads", 1),
             )
     except ImportError as e:
         print(f"Missing dependency: {e}")

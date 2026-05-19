@@ -10,6 +10,7 @@ from ..utils import spikee_generate_cli, spikee_test_cli, spikee_extract_cli
 # TestExtractSearch
 # ---------------------------------------------------------------------------
 
+
 class TestExtractSearch:
     def test_plain_match(self):
         assert extract_search({"response": "hello"}, "hello", "response") is True
@@ -50,6 +51,7 @@ class TestExtractSearch:
 # TestExtractEntries
 # ---------------------------------------------------------------------------
 
+
 class TestExtractEntries:
     def test_success_true(self):
         assert extract_entries({"success": True}, "success") is True
@@ -88,59 +90,96 @@ class TestExtractEntries:
         assert extract_entries({"response": "flag"}, "custom", [["flag"]]) is True
 
     def test_custom_field_match(self):
-        assert extract_entries({"response": "flag"}, "custom", [["flag", "response"]]) is True
+        assert (
+            extract_entries({"response": "flag"}, "custom", [["flag", "response"]])
+            is True
+        )
 
     def test_custom_field_no_match(self):
-        assert extract_entries({"response": "clean"}, "custom", [["flag", "response"]]) is False
+        assert (
+            extract_entries({"response": "clean"}, "custom", [["flag", "response"]])
+            is False
+        )
 
     def test_custom_multiple_conditions_all_match(self):
         entry = {"response": "flag", "success": "True"}
-        assert extract_entries(entry, "custom", [["flag", "response"], ["True", "success"]]) is True
+        assert (
+            extract_entries(
+                entry, "custom", [["flag", "response"], ["True", "success"]]
+            )
+            is True
+        )
 
     def test_custom_multiple_conditions_partial_match(self):
         entry = {"response": "flag"}
-        assert extract_entries(entry, "custom", [["flag", "response"], ["other", "response"]]) is False
+        assert (
+            extract_entries(
+                entry, "custom", [["flag", "response"], ["other", "response"]]
+            )
+            is False
+        )
 
     def test_custom_inverted_query(self):
-        assert extract_entries({"response": "clean"}, "custom", [["!flag", "response"]]) is True
+        assert (
+            extract_entries({"response": "clean"}, "custom", [["!flag", "response"]])
+            is True
+        )
 
     # -- multi-condition: all-inverted --
 
     def test_custom_all_inverted_both_absent_match(self):
         # Both inverted conditions pass — neither term is present
         entry = {"r": "clean"}
-        assert extract_entries(entry, "custom", [["!flag", "r"], ["!poison", "r"]]) is True
+        assert (
+            extract_entries(entry, "custom", [["!flag", "r"], ["!poison", "r"]]) is True
+        )
 
     def test_custom_all_inverted_one_present_fail(self):
         # First inverted condition fails because "flag" IS present
         entry = {"r": "flag clean"}
-        assert extract_entries(entry, "custom", [["!flag", "r"], ["!poison", "r"]]) is False
+        assert (
+            extract_entries(entry, "custom", [["!flag", "r"], ["!poison", "r"]])
+            is False
+        )
 
     # -- multi-condition: mixed normal + inverted --
 
     def test_custom_mixed_normal_and_inverted_match(self):
         # Normal "flag" matches AND inverted "poison" is absent
         entry = {"r": "flag", "s": "ok"}
-        assert extract_entries(entry, "custom", [["flag", "r"], ["!poison", "s"]]) is True
+        assert (
+            extract_entries(entry, "custom", [["flag", "r"], ["!poison", "s"]]) is True
+        )
 
     def test_custom_mixed_normal_and_inverted_fail(self):
         # Normal passes but inverted fails — "poison" IS present
         entry = {"r": "flag", "s": "poison"}
-        assert extract_entries(entry, "custom", [["flag", "r"], ["!poison", "s"]]) is False
+        assert (
+            extract_entries(entry, "custom", [["flag", "r"], ["!poison", "s"]]) is False
+        )
 
     # -- three-condition chains --
 
     def test_custom_three_conditions_all_match(self):
         entry = {"a": "x", "b": "y", "c": "z"}
-        assert extract_entries(entry, "custom", [["x", "a"], ["y", "b"], ["z", "c"]]) is True
+        assert (
+            extract_entries(entry, "custom", [["x", "a"], ["y", "b"], ["z", "c"]])
+            is True
+        )
 
     def test_custom_three_conditions_middle_fails(self):
         entry = {"a": "x", "b": "y", "c": "z"}
-        assert extract_entries(entry, "custom", [["x", "a"], ["NOPE", "b"], ["z", "c"]]) is False
+        assert (
+            extract_entries(entry, "custom", [["x", "a"], ["NOPE", "b"], ["z", "c"]])
+            is False
+        )
 
     def test_custom_three_conditions_last_fails(self):
         entry = {"a": "x", "b": "y", "c": "z"}
-        assert extract_entries(entry, "custom", [["x", "a"], ["y", "b"], ["NOPE", "c"]]) is False
+        assert (
+            extract_entries(entry, "custom", [["x", "a"], ["y", "b"], ["NOPE", "c"]])
+            is False
+        )
 
     # -- multi-condition: plain (no-field) --
 
@@ -169,6 +208,7 @@ class TestExtractEntries:
 # ---------------------------------------------------------------------------
 # TestGenerateQuery
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateQuery:
     def test_non_custom_category_returns_empty(self):
@@ -207,12 +247,15 @@ class TestGenerateQuery:
 
     def test_custom_value_with_colon(self):
         # split(":", 1) means only the first colon is consumed; rest of value is preserved
-        assert generate_query("custom", ["url:http://x.com"]) == [["http://x.com", "url"]]
+        assert generate_query("custom", ["url:http://x.com"]) == [
+            ["http://x.com", "url"]
+        ]
 
 
 # ---------------------------------------------------------------------------
 # TestExtractResultsCLI
 # ---------------------------------------------------------------------------
+
 
 class TestExtractResultsCLI:
     def _run_test(self, run_spikee, workspace_dir, target):
@@ -220,14 +263,21 @@ class TestExtractResultsCLI:
         dataset_path = spikee_generate_cli(run_spikee, workspace_dir)
         entries = read_jsonl_file(dataset_path)
         results_files, _ = spikee_test_cli(
-            run_spikee, workspace_dir, target=target, datasets=[dataset_path],
+            run_spikee,
+            workspace_dir,
+            target=target,
+            datasets=[dataset_path],
             additional_args=["--no-auto-resume"],
         )
         return results_files, entries
 
     def test_extract_success(self, run_spikee, workspace_dir):
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_success")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_success"
+        )
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="success"
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -235,8 +285,12 @@ class TestExtractResultsCLI:
         assert all(e["success"] is True for e in extracted)
 
     def test_extract_failure(self, run_spikee, workspace_dir):
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_refuse")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="failure")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_refuse"
+        )
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="failure"
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -244,8 +298,12 @@ class TestExtractResultsCLI:
         assert all(e["success"] is False for e in extracted)
 
     def test_extract_success_from_mixed(self, run_spikee, workspace_dir):
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "partial_success")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "partial_success"
+        )
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="success"
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -253,8 +311,12 @@ class TestExtractResultsCLI:
         assert all(e["success"] is True for e in extracted)
 
     def test_extract_guardrail(self, run_spikee, workspace_dir):
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_guardrail")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="guardrail")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_guardrail"
+        )
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="guardrail"
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -263,7 +325,12 @@ class TestExtractResultsCLI:
 
     def test_extract_no_guardrail(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_guardrail")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="no-guardrail")
+        extract_files, _ = spikee_extract_cli(
+            run_spikee,
+            workspace_dir,
+            result_files=results_files,
+            category="no-guardrail",
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -271,19 +338,22 @@ class TestExtractResultsCLI:
 
     def test_extract_error(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_error")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="error")
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="error"
+        )
 
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) > 0
         assert all(
-            e.get("error") not in [None, "No response received"]
-            for e in extracted
+            e.get("error") not in [None, "No response received"] for e in extracted
         )
 
     def test_extract_output_file_created(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="success")
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="success"
+        )
 
         assert len(extract_files) == 1
         filename = extract_files[0].name
@@ -293,23 +363,30 @@ class TestExtractResultsCLI:
     def test_extract_traceability_long_id(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         source = results_files[0].stem  # filename without .jsonl
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="success")
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="success"
+        )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert all(e["long_id"].endswith(f"_extracted_{source}") for e in extracted)
 
     def test_extract_original_id_preserved(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
-        extract_files, _ = spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="success")
+        extract_files, _ = spikee_extract_cli(
+            run_spikee, workspace_dir, result_files=results_files, category="success"
+        )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert all("original_id" in e for e in extracted)
 
     def test_extract_custom_field_match(self, run_spikee, workspace_dir):
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_success"
+        )
         # always_success returns "EN-CHECK IT-CHECK restricted-check" — canary is in response
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK"],
@@ -321,7 +398,8 @@ class TestExtractResultsCLI:
     def test_extract_custom_inverted_no_match(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:!EN-CHECK"],
@@ -333,13 +411,21 @@ class TestExtractResultsCLI:
     def test_extract_invalid_category_fails(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         with pytest.raises(subprocess.CalledProcessError):
-            spikee_extract_cli(run_spikee, workspace_dir, result_files=results_files, category="invalid_xyz")
+            spikee_extract_cli(
+                run_spikee,
+                workspace_dir,
+                result_files=results_files,
+                category="invalid_xyz",
+            )
 
     def test_extract_custom_multi_both_match(self, run_spikee, workspace_dir):
         # Two conditions both satisfied by the canary response
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_success"
+        )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK", "response:IT-CHECK"],
@@ -352,7 +438,8 @@ class TestExtractResultsCLI:
         # Second condition kills all matches — term not in any response
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK", "response:ABSENT_TERM_XYZ"],
@@ -363,9 +450,12 @@ class TestExtractResultsCLI:
 
     def test_extract_custom_multi_field_and_success(self, run_spikee, workspace_dir):
         # Cross-field: response term + success field (coerced to "True" by str())
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_success"
+        )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK", "success:True"],
@@ -376,9 +466,12 @@ class TestExtractResultsCLI:
 
     def test_extract_custom_multi_inverted_plus_match(self, run_spikee, workspace_dir):
         # Normal condition passes AND inverted condition passes (absent term)
-        results_files, entries = self._run_test(run_spikee, workspace_dir, "always_success")
+        results_files, entries = self._run_test(
+            run_spikee, workspace_dir, "always_success"
+        )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK", "response:!ABSENT_TERM_XYZ"],
@@ -391,7 +484,8 @@ class TestExtractResultsCLI:
         # Contradictory: normal passes but inverted of the same term fails
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=results_files,
             category="custom",
             custom_search=["response:EN-CHECK", "response:!EN-CHECK"],
@@ -404,21 +498,28 @@ class TestExtractResultsCLI:
         # Generate two separate datasets and run tests to populate the results folder
         dataset1 = spikee_generate_cli(run_spikee, workspace_dir)
         _, _ = spikee_test_cli(
-            run_spikee, workspace_dir, target="always_success", datasets=[dataset1],
+            run_spikee,
+            workspace_dir,
+            target="always_success",
+            datasets=[dataset1],
             additional_args=["--no-auto-resume"],
         )
         entries1 = read_jsonl_file(dataset1)
 
         dataset2 = spikee_generate_cli(run_spikee, workspace_dir)
         _, _ = spikee_test_cli(
-            run_spikee, workspace_dir, target="always_success", datasets=[dataset2],
+            run_spikee,
+            workspace_dir,
+            target="always_success",
+            datasets=[dataset2],
             additional_args=["--no-auto-resume"],
         )
         entries2 = read_jsonl_file(dataset2)
 
         results_folder = workspace_dir / "results"
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir,
+            run_spikee,
+            workspace_dir,
             result_files=[results_folder],
             category="success",
         )
@@ -426,4 +527,3 @@ class TestExtractResultsCLI:
         assert len(extract_files) == 1
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == len(entries1) + len(entries2)
-

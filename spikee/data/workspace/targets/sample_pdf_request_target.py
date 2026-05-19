@@ -13,7 +13,11 @@ Usage:
 
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    TargetResponseHint,
+)
 
 from dotenv import load_dotenv
 import json
