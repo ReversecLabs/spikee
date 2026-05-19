@@ -670,7 +670,12 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
         suffixes = perm['suffixes']
 
         attack_type = attack.get("content_type", "text")
-        attack_content = content_factory(attack.get("content", attack.get("text", "")), attack_type)
+        raw = attack.get("content", attack.get("text", ""))
+        original_raw = raw  # Keep the original (may be a list for multi-turn entries)
+        if isinstance(raw, list):
+            raw = json.dumps(raw)  # Stringify for plugin transforms only
+        attack_content = content_factory(raw, attack_type)
+
         exclude_patterns = attack.get("exclude_from_transformations_regex", None)
 
         fix_permutations = [(prefix, suffix) for prefix in prefixes for suffix in suffixes]
@@ -779,6 +784,16 @@ def process_standalone_attacks(
         })
 
     print(f"[Info] Processing {len(permutations)} standalone attack(s) with {num_threads} thread(s)")
+    
+    # If the original seed entry was a multi-turn list, store it as a list in the
+    # output JSONL rather than as a stringified representation.
+    if isinstance(original_raw, list):
+        entry["content"] = original_raw
+        entry["payload"] = original_raw
+
+        dataset.append(entry)
+        entry_id += 1
+        bar_standalone.update(1)
 
     new_entries = []
 

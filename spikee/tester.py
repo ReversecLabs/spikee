@@ -648,6 +648,7 @@ def process_entry(
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
     if (not std_success) and attack_module:
         attack_input = None  # Ensure attack_input is always defined
+        original_attack_input = attack_input
 
         try:
             start_time = time.time()
@@ -766,8 +767,11 @@ def process_entry(
             results_list.append(attack_result)
         except Exception as e:
             # Save original attack_input for extracting conversation/objective if it's a dict
-            if original_attack_input:
+            if 'original_attack_input' in locals() and original_attack_input:
                 attack_input = original_attack_input
+
+            else: 
+                original_attack_input = attack_input
 
             if attack_input is None:
                 attack_input_type = content_type
