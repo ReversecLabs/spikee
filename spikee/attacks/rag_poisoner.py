@@ -15,7 +15,12 @@ from typing import Callable, Dict, List
 
 from spikee.tester import AdvancedTargetWrapper
 from spikee.templates.attack import Attack
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
@@ -178,10 +183,12 @@ class RAGPoisoner(Attack):
                 )
 
                 # Send the attack prompt to the target
-                last_response = process_target_content(target_module.process_input(
-                    attack_prompt,
-                    entry.get("system_message", None),
-                ))
+                last_response = process_target_content(
+                    target_module.process_input(
+                        attack_prompt,
+                        entry.get("system_message", None),
+                    )
+                )
 
                 previous_attempts.append(
                     {"attack_prompt": attack_prompt, "response": last_response}

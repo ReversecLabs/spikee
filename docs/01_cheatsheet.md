@@ -54,7 +54,7 @@ spikee generate --seed-folder my_seeds
 | **Transformation Arguments** | Description                                                                                | Docs     |
 | ---------------------------- | ------------------------------------------------------------------------------------------ | -------- |
 | `--plugins`                  | Space-separated list of plugins                                                            | [Link](./04_dataset_generation.md#plugins) |
-| `--plugin-options`           | Apply options as `"plugin1:option1=value1,option2=value2;plugin2:option2=value2"`          |          |
+| `--plugin-options`           | Apply options as `"plugin1:option1=value1,option2=value2;plugin2:option2=value2"`          | [Link](./07_custom_plugins.md#supporting-plugin-options) |
 | `--plugin-only`              | Only output plugin entries                                                                 |          |
 | `--include-fixes`            | Comma-separated list (e.g., 'adv_prefixes', 'adv_suffixes', prefixes=<filename>, suffixes=<filename>) | [Link](./04_dataset_generation.md#modifying-prompts-with-system-messages-prefixes-and-suffixes) |
 

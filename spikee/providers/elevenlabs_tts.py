@@ -6,6 +6,7 @@ Additional Args:
   Browse available voices at: https://elevenlabs.io/voice-library
 - `output_format`: mp3_44100_128 (default), mp3_22050_32, pcm_16000, pcm_22050, pcm_44100, ulaw_8000
 """
+
 import base64
 import os
 from typing import Callable, Set, Union, Dict, Sequence
@@ -14,7 +15,12 @@ from typing import Callable, Set, Union, Dict, Sequence
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 
 
 class ElevenLabsTTSProvider(StreamingProvider):
@@ -35,7 +41,14 @@ class ElevenLabsTTSProvider(StreamingProvider):
 
     @property
     def audio_formats(self) -> Set[str]:
-        return {"mp3_44100_128", "mp3_22050_32", "pcm_16000", "pcm_22050", "pcm_44100", "ulaw_8000"}
+        return {
+            "mp3_44100_128",
+            "mp3_22050_32",
+            "pcm_16000",
+            "pcm_22050",
+            "pcm_44100",
+            "ulaw_8000",
+        }
 
     def setup(
         self,
@@ -49,10 +62,13 @@ class ElevenLabsTTSProvider(StreamingProvider):
         self.output_format = additional_kwargs.get("output_format", "pcm_16000")
 
         if self.output_format not in self.audio_formats:
-            raise ValueError(f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}")
+            raise ValueError(
+                f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}"
+            )
 
         try:
             from elevenlabs import ElevenLabs
+
             self.client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
         except ImportError:
             raise ImportError(
@@ -61,9 +77,14 @@ class ElevenLabsTTSProvider(StreamingProvider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for ElevenLabs text-to-speech models."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_TTS,
+        ], "TTS Provider for ElevenLabs text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]) -> str:
+    def _validate_messages(
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+    ) -> str:
         """Extract text from messages."""
         msg, _ = single_message(messages)
 
@@ -95,7 +116,9 @@ class ElevenLabsTTSProvider(StreamingProvider):
         )
 
     def invoke_streaming(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], callback: Callable
+        self,
+        messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        callback: Callable,
     ) -> None:
         """Invoke ElevenLabs TTS with streaming, calling callback for each audio chunk."""
 
@@ -116,10 +139,15 @@ class ElevenLabsTTSProvider(StreamingProvider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = ElevenLabsTTSProvider()
-    provider.setup(model="eleven_flash_v2_5", voice_id="JBFqnCBsd6RMkjVDRZzb", output_format="pcm_16000")
+    provider.setup(
+        model="eleven_flash_v2_5",
+        voice_id="JBFqnCBsd6RMkjVDRZzb",
+        output_format="pcm_16000",
+    )
     response = provider.invoke([HumanMessage(content=text)])
     raw = response.content.get_raw_audio()
     with open("audio_file.pcm", "wb") as f:

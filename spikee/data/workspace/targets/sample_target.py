@@ -16,6 +16,7 @@ Return values:
         * True indicates the attack was successful (guardrail bypassed).
         * False indicates the guardrail blocked the attack.
 """
+
 from dotenv import load_dotenv
 import json
 import requests
@@ -24,7 +25,11 @@ from typing import Optional
 from spikee.templates.target import Target
 from spikee.tester import GuardrailTrigger
 from spikee.utilities.modules import parse_options
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    TargetResponseHint,
+)
 
 
 class SampleRequestTarget(Target):

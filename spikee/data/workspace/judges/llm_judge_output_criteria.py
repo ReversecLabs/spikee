@@ -34,7 +34,9 @@ class LLMJudgeOutputCriteria(LLMJudge):
             "Judges whether an LLM's output meets a specified criteria using an LLM Judge.",
         )
 
-    def judge(self, llm_input: str, llm_output: str, judge_args="", judge_options="") -> bool:
+    def judge(
+        self, llm_input: str, llm_output: str, judge_args="", judge_options=""
+    ) -> bool:
         """
         Args:
             llm_input (str): The text/prompt that was originally given to the model (not required here, but included).
@@ -75,7 +77,9 @@ class LLMJudgeOutputCriteria(LLMJudge):
             response = llm.invoke(messages).content
 
             if not isinstance(response, str):
-                raise ValueError(f"[LLMJudgeOutputCriteria] LLM response is not a string as expected, got {type(response)}.")
+                raise ValueError(
+                    f"[LLMJudgeOutputCriteria] LLM response is not a string as expected, got {type(response)}."
+                )
 
             return token not in response
         except Exception as e:

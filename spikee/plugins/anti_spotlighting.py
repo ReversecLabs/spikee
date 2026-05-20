@@ -57,7 +57,7 @@ class AntiSpotlighting(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> List[str]:
         """
         Transforms the input text by wrapping it in various delimiter formats to test

@@ -15,15 +15,26 @@ Authentication via environment variables:
   - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
   - AWS_PROFILE, AWS_DEFAULT_REGION
 """
+
 import asyncio
 import base64
 import os
 from typing import Optional, Set, Union, List, Dict, Sequence
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    Content,
+    Audio,
+)
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import AIMessage, HumanMessage, Message, single_message
+from spikee.utilities.llm_message import (
+    AIMessage,
+    HumanMessage,
+    Message,
+    single_message,
+)
 
 
 class AWSTranscribeSTTProvider(Provider):
@@ -86,7 +97,9 @@ class AWSTranscribeSTTProvider(Provider):
             if frozen.token:
                 os.environ["AWS_SESSION_TOKEN"] = frozen.token
 
-        elif not (os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")):
+        elif not (
+            os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")
+        ):
             raise ValueError(
                 "AWS Transcribe STT Provider requires AWS credentials. "
                 "Please set either AWS_PROFILE or AWS_ACCESS_KEY_ID and "
@@ -94,7 +107,10 @@ class AWSTranscribeSTTProvider(Provider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for AWS Transcribe speech-to-text."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_STT,
+        ], "STT Provider for AWS Transcribe speech-to-text."
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [
@@ -135,7 +151,7 @@ class AWSTranscribeSTTProvider(Provider):
             chunk_size = 16 * 1024  # 16 KB
             offset = 0
             while offset < len(audio_data):
-                chunk = audio_data[offset: offset + chunk_size]
+                chunk = audio_data[offset : offset + chunk_size]
                 await stream.input_stream.send_audio_event(audio_chunk=chunk)
                 offset += chunk_size
             await stream.input_stream.end_stream()
@@ -177,6 +193,7 @@ class AWSTranscribeSTTProvider(Provider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     pcm_path = sys.argv[1] if len(sys.argv) > 1 else "audio_file.pcm"
     with open(pcm_path, "rb") as f:

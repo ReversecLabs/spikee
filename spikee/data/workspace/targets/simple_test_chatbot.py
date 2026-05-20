@@ -29,7 +29,11 @@ from spikee.templates.simple_multi_target import (
 )  # MultiTarget, includes a series of functiona to manage conversation history and multiprocessing safe storage.
 from spikee.utilities.enums import Turn
 from spikee.utilities.modules import parse_options
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    TargetResponseHint,
+)
 import traceback
 
 import json

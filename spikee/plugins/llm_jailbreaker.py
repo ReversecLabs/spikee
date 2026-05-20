@@ -81,7 +81,7 @@ class LLMJailbreaker(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> List[str]:
         opts = parse_options(plugin_option)
         llm_model = opts.get("model", self.DEFAULT_MODEL)

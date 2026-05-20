@@ -9,7 +9,7 @@ from spikee.generator import (
     parse_plugin_piping,
     parse_plugin_options,
     load_plugins,
-    apply_plugin
+    apply_plugin,
 )
 from spikee.utilities.hinting import get_content
 
@@ -55,19 +55,12 @@ class TestParsePluginOptions:
     def test_parse_plugin_options_multiple_plugins(self):
         """Test parsing options for multiple plugins."""
         result = parse_plugin_options("plugin1:opt1;plugin2:opt2;plugin3:opt3")
-        assert result == {
-            "plugin1": "opt1",
-            "plugin2": "opt2",
-            "plugin3": "opt3"
-        }
+        assert result == {"plugin1": "opt1", "plugin2": "opt2", "plugin3": "opt3"}
 
     def test_parse_plugin_options_with_complex_values(self):
         """Test parsing options with complex values."""
         result = parse_plugin_options("plugin1:key=value,key2=value2;plugin2:mode=test")
-        assert result == {
-            "plugin1": "key=value,key2=value2",
-            "plugin2": "mode=test"
-        }
+        assert result == {"plugin1": "key=value,key2=value2", "plugin2": "mode=test"}
 
     def test_parse_plugin_options_none_returns_empty_dict(self):
         """Test that None returns empty dict."""
@@ -82,10 +75,7 @@ class TestParsePluginOptions:
     def test_parse_plugin_options_missing_colon_ignored(self):
         """Test that entries without colon are ignored."""
         result = parse_plugin_options("plugin1:opt1;invalid_entry;plugin2:opt2")
-        assert result == {
-            "plugin1": "opt1",
-            "plugin2": "opt2"
-        }
+        assert result == {"plugin1": "opt1", "plugin2": "opt2"}
 
 
 class TestLoadPlugins:
@@ -155,8 +145,7 @@ class TestLoadPlugins:
 
 
 class TestApplyPlugin:
-    """Test apply_plugin with OOP plugins, legacy plugins, options, piping, and exclude patterns
-    """
+    """Test apply_plugin with OOP plugins, legacy plugins, options, piping, and exclude patterns"""
 
     def test_upper_basic(self, workspace_dir):
         """test_upper transforms text to uppercase, returns a single-element list."""
@@ -191,11 +180,22 @@ class TestApplyPlugin:
         legacy_plugins = load_plugins(["test_upper_legacy"])
 
         text = "Hello World"
-        oop_result = apply_plugin(oop_plugins[0][0], oop_plugins[0][1], text, None, None)
-        text_result = apply_plugin(text_plugins[0][0], text_plugins[0][1], text, None, None)
-        legacy_result = apply_plugin(legacy_plugins[0][0], legacy_plugins[0][1], text, None, None)
+        oop_result = apply_plugin(
+            oop_plugins[0][0], oop_plugins[0][1], text, None, None
+        )
+        text_result = apply_plugin(
+            text_plugins[0][0], text_plugins[0][1], text, None, None
+        )
+        legacy_result = apply_plugin(
+            legacy_plugins[0][0], legacy_plugins[0][1], text, None, None
+        )
 
-        assert [get_content(r) for r in oop_result] == [get_content(r) for r in legacy_result] == [get_content(r) for r in text_result] == ["HELLO WORLD"]
+        assert (
+            [get_content(r) for r in oop_result]
+            == [get_content(r) for r in legacy_result]
+            == [get_content(r) for r in text_result]
+            == ["HELLO WORLD"]
+        )
 
     def test_repeat_legacy_default(self, workspace_dir):
         """test_repeat_legacy (module-level function) returns 2 variants by default."""
@@ -219,11 +219,30 @@ class TestApplyPlugin:
 
         for option in [None, "n_variants=3", "n_variants=2,suffix=-copy"]:
             option_map = {"test_repeat": option} if option else None
-            oop_result = apply_plugin(oop_plugins[0][0], oop_plugins[0][1], "x", None, option_map)
-            text_result = apply_plugin(text_plugins[0][0], text_plugins[0][1], "x", None, {"test_repeat_text": option} if option else None)
-            legacy_result = apply_plugin(legacy_plugins[0][0], legacy_plugins[0][1], "x", None, {"test_repeat_legacy": option} if option else None)
-            assert [get_content(r) for r in oop_result] == [get_content(r) for r in legacy_result] == [get_content(r) for r in text_result], \
+            oop_result = apply_plugin(
+                oop_plugins[0][0], oop_plugins[0][1], "x", None, option_map
+            )
+            text_result = apply_plugin(
+                text_plugins[0][0],
+                text_plugins[0][1],
+                "x",
+                None,
+                {"test_repeat_text": option} if option else None,
+            )
+            legacy_result = apply_plugin(
+                legacy_plugins[0][0],
+                legacy_plugins[0][1],
+                "x",
+                None,
+                {"test_repeat_legacy": option} if option else None,
+            )
+            assert (
+                [get_content(r) for r in oop_result]
+                == [get_content(r) for r in legacy_result]
+                == [get_content(r) for r in text_result]
+            ), (
                 f"OOP, legacy, and text results differ for option={option!r}: {oop_result} vs {legacy_result} vs {text_result}"
+            )
 
     def test_repeat_custom_count_and_suffix(self, workspace_dir):
         """test_repeat n_variants=3 with custom suffix generates 3 correctly-named variants."""
@@ -232,11 +251,21 @@ class TestApplyPlugin:
         plugins = load_plugins(["test_repeat"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, "payload", None, {"test_repeat": "n_variants=3,suffix=-copy"})
+        result = apply_plugin(
+            plugin_name,
+            plugin_module,
+            "payload",
+            None,
+            {"test_repeat": "n_variants=3,suffix=-copy"},
+        )
 
         assert isinstance(result, list)
         assert len(result) == 3
-        assert [get_content(r) for r in result] == ["payload", "payload-copy", "payload-copy-2"]
+        assert [get_content(r) for r in result] == [
+            "payload",
+            "payload-copy",
+            "payload-copy-2",
+        ]
 
     def test_piped_upper_then_base64(self, workspace_dir):
         """Piped test_upper|base64: 'hello' → 'HELLO' → 'SEVMTE8='"""
@@ -284,13 +313,17 @@ class TestApplyPlugin:
         plugins = load_plugins(["1337"])
         plugin_name, plugin_module = plugins[0]
 
-        result = apply_plugin(plugin_name, plugin_module, "hello <SKIP> world", ["<SKIP>"], None)
+        result = apply_plugin(
+            plugin_name, plugin_module, "hello <SKIP> world", ["<SKIP>"], None
+        )
 
         assert isinstance(result, list)
-        assert any("<SKIP>" in get_content(r) for r in result), \
+        assert any("<SKIP>" in get_content(r) for r in result), (
             f"Expected '<SKIP>' preserved verbatim in result, got: {result}"
-        assert any("h3ll0" in get_content(r) for r in result), \
+        )
+        assert any("h3ll0" in get_content(r) for r in result), (
             f"Expected 'hello' to be leet-transformed outside the excluded token, got: {result}"
+        )
 
     def test_multi_variant_plugin_mid_pipe_fans_out(self, workspace_dir):
         """A multi-variant plugin early in a pipe fans out: every variant is fed
@@ -308,9 +341,12 @@ class TestApplyPlugin:
         expected_repeat = base64_lib.b64encode(b"payload-repeat").decode()
 
         assert isinstance(result, list)
-        assert len(result) == 2, \
+        assert len(result) == 2, (
             f"Expected 2 variants (one per repeat output), got {len(result)}: {result}"
-        assert expected_plain in [get_content(r) for r in result], \
+        )
+        assert expected_plain in [get_content(r) for r in result], (
             f"Expected base64('payload')='{expected_plain}' in result, got: {result}"
-        assert expected_repeat in [get_content(r) for r in result], \
+        )
+        assert expected_repeat in [get_content(r) for r in result], (
             f"Expected base64('payload-repeat')='{expected_repeat}' in result, got: {result}"
+        )

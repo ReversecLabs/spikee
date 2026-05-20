@@ -5,7 +5,12 @@ import traceback
 
 from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, AttackResponseHint, process_target_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    AttackResponseHint,
+    process_target_content,
+)
 from spikee.utilities.enums import Turn, ModuleTag
 
 
@@ -37,8 +42,12 @@ class MultiTurnAttack(Attack):
         if entry.get("content_type", "text") != "text":
             raise ValueError("MultiTurn Attack only supports text content type.")
 
-        if not isinstance(original_text, list) or not all(isinstance(item, str) for item in original_text):
-            raise ValueError("For MultiTurn Attack, 'text' field must be a list of strings representing the conversation turns.")
+        if not isinstance(original_text, list) or not all(
+            isinstance(item, str) for item in original_text
+        ):
+            raise ValueError(
+                "For MultiTurn Attack, 'text' field must be a list of strings representing the conversation turns."
+            )
 
         # Attempt multi-turn attack
         try:
@@ -50,11 +59,13 @@ class MultiTurnAttack(Attack):
             for message in original_text:
                 # Send message and handle history
                 conversation.append({"role": "user", "content": message})
-                response = process_target_content(target_module.process_input(
-                    input_text=message,
-                    system_message=system_message,
-                    spikee_session_id=session_id,
-                ))
+                response = process_target_content(
+                    target_module.process_input(
+                        input_text=message,
+                        system_message=system_message,
+                        spikee_session_id=session_id,
+                    )
+                )
 
                 conversation.append({"role": "assistant", "content": response})
 

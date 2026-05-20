@@ -11,7 +11,10 @@ from ..utils import spikee_test_cli, spikee_generate_cli
         ("always_refuse_legacy", False),  # Legacy function-based implementation
         ("always_success", True),  # OOP implementation
         ("always_success_legacy", True),  # Legacy function-based implementation
-        ("always_guardrail", False),  # Raises GuardrailTrigger - tests exception handling
+        (
+            "always_guardrail",
+            False,
+        ),  # Raises GuardrailTrigger - tests exception handling
     ],
 )
 def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_success):
@@ -28,9 +31,15 @@ def test_spikee_test_targets(run_spikee, workspace_dir, target_name, expected_su
     results = read_jsonl_file(results_files[0])
 
     assert len(results) > 0, "No results recorded by spikee test"
-    assert len(results) == len(entries), f"Expected {len(entries)} results, got {len(results)}"
+    assert len(results) == len(entries), (
+        f"Expected {len(entries)} results, got {len(results)}"
+    )
     assert all(entry["success"] == expected_success for entry in results)
 
     if target_name == "always_guardrail":
         # For the always_guardrail target, we expect all entries to have success=False and the canary response indicating the guardrail was triggered
-        assert all("guardrail" in r and r['guardrail'] for r in results), "Expected all entries to have guardrail=True for the always_guardrail target {}".format(results)
+        assert all("guardrail" in r and r["guardrail"] for r in results), (
+            "Expected all entries to have guardrail=True for the always_guardrail target {}".format(
+                results
+            )
+        )

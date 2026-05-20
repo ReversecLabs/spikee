@@ -16,7 +16,11 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.enums import Turn, ModuleTag
 from spikee.utilities.llm import get_llm
 from spikee.utilities.modules import parse_options, extract_json_or_fail
-from spikee.utilities.hinting import AttackResponseHint, ModuleDescriptionHint, ModuleOptionsHint
+from spikee.utilities.hinting import (
+    AttackResponseHint,
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+)
 
 # Enhanced system prompt for more effective attacks
 GOAT_SYSTEM_PROMPT = """

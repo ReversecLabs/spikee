@@ -65,9 +65,14 @@ class Provider(Module, ABC):
             result = await fun(**params)
 
             # Drain pending httpx cleanup tasks to avoid "Event loop is closed" on Python 3.12+
-            await asyncio.gather(*[t for t in asyncio.all_tasks()
-                                   if t is not asyncio.current_task() and not t.done()],
-                                 return_exceptions=True)
+            await asyncio.gather(
+                *[
+                    t
+                    for t in asyncio.all_tasks()
+                    if t is not asyncio.current_task() and not t.done()
+                ],
+                return_exceptions=True,
+            )
             return result
 
         return asyncio.run(run_async_call(fun, **params))

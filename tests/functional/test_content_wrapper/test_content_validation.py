@@ -5,6 +5,7 @@ Tests the validation functions:
 - validate_content_signature(): Validate content against function parameter type hints
 - validate_content_annotation(): Validate content against type annotations
 """
+
 import inspect
 from typing import Union, Optional
 import pytest
@@ -69,76 +70,128 @@ class TestValidateContentSignature:
 
     def test_validate_str_against_str_function(self):
         """str content should validate against str parameter."""
-        assert validate_content_signature("Hello", function_str_only, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_str_only, "llm_input") is True
+        )
 
     def test_validate_audio_against_audio_function(self):
         """Audio content should validate against Audio parameter."""
         audio = Audio("audiodata")
-        assert validate_content_signature(audio, function_audio_only, "llm_input") is True
+        assert (
+            validate_content_signature(audio, function_audio_only, "llm_input") is True
+        )
 
     def test_validate_image_against_image_function(self):
         """Image content should validate against Image parameter."""
         image = Image("imagedata")
-        assert validate_content_signature(image, function_image_only, "llm_input") is True
+        assert (
+            validate_content_signature(image, function_image_only, "llm_input") is True
+        )
 
     def test_validate_str_against_content_union(self):
         """str should validate against Content union."""
-        assert validate_content_signature("Hello", function_content_union, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_content_union, "llm_input")
+            is True
+        )
 
     def test_validate_audio_against_content_union(self):
         """Audio should validate against Content union."""
         audio = Audio("audiodata")
-        assert validate_content_signature(audio, function_content_union, "llm_input") is True
+        assert (
+            validate_content_signature(audio, function_content_union, "llm_input")
+            is True
+        )
 
     def test_validate_image_against_content_union(self):
         """Image should validate against Content union."""
         image = Image("imagedata")
-        assert validate_content_signature(image, function_content_union, "llm_input") is True
+        assert (
+            validate_content_signature(image, function_content_union, "llm_input")
+            is True
+        )
 
     def test_validate_audio_against_str_fails(self):
         """Audio should fail validation against str-only parameter."""
         audio = Audio("audiodata")
-        assert validate_content_signature(audio, function_str_only, "llm_input") is False
+        assert (
+            validate_content_signature(audio, function_str_only, "llm_input") is False
+        )
 
     def test_validate_image_against_str_fails(self):
         """Image should fail validation against str-only parameter."""
         image = Image("imagedata")
-        assert validate_content_signature(image, function_str_only, "llm_input") is False
+        assert (
+            validate_content_signature(image, function_str_only, "llm_input") is False
+        )
 
     def test_validate_str_against_audio_fails(self):
         """str should fail validation against Audio-only parameter."""
-        assert validate_content_signature("Hello", function_audio_only, "llm_input") is False
+        assert (
+            validate_content_signature("Hello", function_audio_only, "llm_input")
+            is False
+        )
 
     def test_validate_partial_union(self):
         """Should validate against partial Union types."""
         # str should pass for Union[str, Audio]
-        assert validate_content_signature("Hello", function_str_or_audio, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_str_or_audio, "llm_input")
+            is True
+        )
 
         # Audio should pass for Union[str, Audio]
         audio = Audio("audiodata")
-        assert validate_content_signature(audio, function_str_or_audio, "llm_input") is True
+        assert (
+            validate_content_signature(audio, function_str_or_audio, "llm_input")
+            is True
+        )
 
         # Image should fail for Union[str, Audio]
         image = Image("imagedata")
-        assert validate_content_signature(image, function_str_or_audio, "llm_input") is False
+        assert (
+            validate_content_signature(image, function_str_or_audio, "llm_input")
+            is False
+        )
 
     def test_validate_no_type_hint_defaults_to_str(self):
         """Functions without type hints should default to str validation."""
         # str should pass
-        assert validate_content_signature("Hello", function_no_type_hint, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_no_type_hint, "llm_input")
+            is True
+        )
 
         # Audio/Image should fail (defaults to str)
-        assert validate_content_signature(Audio("data"), function_no_type_hint, "llm_input") is False
-        assert validate_content_signature(Image("data"), function_no_type_hint, "llm_input") is False
+        assert (
+            validate_content_signature(
+                Audio("data"), function_no_type_hint, "llm_input"
+            )
+            is False
+        )
+        assert (
+            validate_content_signature(
+                Image("data"), function_no_type_hint, "llm_input"
+            )
+            is False
+        )
 
     def test_validate_optional_str(self):
         """Should handle Optional[str] annotations."""
         # str should validate
-        assert validate_content_signature("Hello", function_optional_str, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_optional_str, "llm_input")
+            is True
+        )
 
         # None is special case - handled by Optional
         # Audio/Image should fail (Optional[str] = Union[str, None])
-        assert validate_content_signature(Audio("data"), function_optional_str, "llm_input") is False
+        assert (
+            validate_content_signature(
+                Audio("data"), function_optional_str, "llm_input"
+            )
+            is False
+        )
 
     def test_validate_wrong_parameter_raises_error(self):
         """Non-existent parameter should raise ValueError."""
@@ -148,13 +201,24 @@ class TestValidateContentSignature:
     def test_validate_multiple_params_checks_correct_one(self):
         """Should validate against the correct parameter."""
         # llm_input parameter should accept str
-        assert validate_content_signature("Hello", function_multiple_params, "llm_input") is True
+        assert (
+            validate_content_signature("Hello", function_multiple_params, "llm_input")
+            is True
+        )
 
         # llm_output parameter should also accept str
-        assert validate_content_signature("World", function_multiple_params, "llm_output") is True
+        assert (
+            validate_content_signature("World", function_multiple_params, "llm_output")
+            is True
+        )
 
         # Audio should fail for str-only parameters
-        assert validate_content_signature(Audio("data"), function_multiple_params, "llm_input") is False
+        assert (
+            validate_content_signature(
+                Audio("data"), function_multiple_params, "llm_input"
+            )
+            is False
+        )
 
 
 class TestValidateContentAnnotation:
@@ -194,8 +258,12 @@ class TestValidateContentAnnotation:
         assert validate_content_annotation("Hello", inspect.Parameter.empty) is True
 
         # Audio/Image should fail against default str
-        assert validate_content_annotation(Audio("data"), inspect.Parameter.empty) is False
-        assert validate_content_annotation(Image("data"), inspect.Parameter.empty) is False
+        assert (
+            validate_content_annotation(Audio("data"), inspect.Parameter.empty) is False
+        )
+        assert (
+            validate_content_annotation(Image("data"), inspect.Parameter.empty) is False
+        )
 
     def test_validate_invalid_annotation_returns_false(self):
         """Invalid/unsupported annotation should return False (permissive)."""
@@ -219,6 +287,7 @@ class TestBackwardCompatibility:
 
     def test_legacy_judge_no_type_hints(self):
         """Legacy judges without type hints default to str validation."""
+
         def legacy_judge(llm_input, llm_output, judge_args):
             return True
 
@@ -226,24 +295,38 @@ class TestBackwardCompatibility:
         assert validate_content_signature("text", legacy_judge, "llm_input") is True
 
         # Audio/Image require explicit type hints
-        assert validate_content_signature(Audio("data"), legacy_judge, "llm_input") is False
-        assert validate_content_signature(Image("data"), legacy_judge, "llm_input") is False
+        assert (
+            validate_content_signature(Audio("data"), legacy_judge, "llm_input")
+            is False
+        )
+        assert (
+            validate_content_signature(Image("data"), legacy_judge, "llm_input")
+            is False
+        )
 
     def test_mixed_typed_and_untyped_params(self):
         """Functions with mix of typed and untyped parameters."""
+
         def mixed_function(llm_input: str, llm_output, judge_args):
             return True
 
         # Typed parameter should validate strictly
         assert validate_content_signature("text", mixed_function, "llm_input") is True
-        assert validate_content_signature(Audio("data"), mixed_function, "llm_input") is False
+        assert (
+            validate_content_signature(Audio("data"), mixed_function, "llm_input")
+            is False
+        )
 
         # Untyped parameter defaults to str
         assert validate_content_signature("text", mixed_function, "llm_output") is True
-        assert validate_content_signature(Audio("data"), mixed_function, "llm_output") is False
+        assert (
+            validate_content_signature(Audio("data"), mixed_function, "llm_output")
+            is False
+        )
 
     def test_gradually_typed_migration(self):
         """Support gradual type hint migration."""
+
         # Start: No type hints (defaults to str)
         def v1_function(llm_input):
             return True
@@ -258,16 +341,24 @@ class TestBackwardCompatibility:
 
         # v1 defaults to str, same as v2
         assert validate_content_signature("text", v1_function, "llm_input") is True
-        assert validate_content_signature(Audio("data"), v1_function, "llm_input") is False
+        assert (
+            validate_content_signature(Audio("data"), v1_function, "llm_input") is False
+        )
 
         # v2 explicitly str only
         assert validate_content_signature("text", v2_function, "llm_input") is True
-        assert validate_content_signature(Audio("data"), v2_function, "llm_input") is False
+        assert (
+            validate_content_signature(Audio("data"), v2_function, "llm_input") is False
+        )
 
         # v3 should accept all Content types
         assert validate_content_signature("text", v3_function, "llm_input") is True
-        assert validate_content_signature(Audio("data"), v3_function, "llm_input") is True
-        assert validate_content_signature(Image("data"), v3_function, "llm_input") is True
+        assert (
+            validate_content_signature(Audio("data"), v3_function, "llm_input") is True
+        )
+        assert (
+            validate_content_signature(Image("data"), v3_function, "llm_input") is True
+        )
 
 
 class TestEdgeCases:

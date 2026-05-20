@@ -16,13 +16,24 @@ Allows for AWS Key-based or profile-based authentication via environment variabl
  - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
  - AWS_PROFILE, AWS_DEFAULT_REGION
 """
+
 import base64
 import os
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Content, Audio
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    Content,
+    Audio,
+)
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 from typing import Set, Union, Dict, Sequence
 
 
@@ -43,10 +54,10 @@ class AWSPollyTTSProvider(Provider):
     @property
     def models(self) -> Dict[str, str]:
         return {
-            "neural": "neural",         # Neural TTS — natural, high-quality voices (default)
+            "neural": "neural",  # Neural TTS — natural, high-quality voices (default)
             "generative": "generative",  # Generative TTS — most expressive
-            "long-form": "long-form",   # Optimised for longer content
-            "standard": "standard",     # Classic concatenative synthesis
+            "long-form": "long-form",  # Optimised for longer content
+            "standard": "standard",  # Classic concatenative synthesis
         }
 
     @property
@@ -65,12 +76,17 @@ class AWSPollyTTSProvider(Provider):
         self.output_format = additional_kwargs.get("output_format", "pcm")
 
         if self.output_format not in self.audio_formats:
-            raise ValueError(f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}")
+            raise ValueError(
+                f"Invalid output_format '{self.output_format}'. Supported formats: {self.audio_formats}"
+            )
 
         try:
             import boto3
+
             if not os.getenv("AWS_DEFAULT_REGION"):
-                raise ValueError("AWS_DEFAULT_REGION environment variable must be set for AWS Polly TTS Provider.")
+                raise ValueError(
+                    "AWS_DEFAULT_REGION environment variable must be set for AWS Polly TTS Provider."
+                )
 
             if os.getenv("AWS_PROFILE"):  # AWS Profile-based authentication
                 session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
@@ -79,7 +95,9 @@ class AWSPollyTTSProvider(Provider):
                     region_name=os.getenv("AWS_DEFAULT_REGION"),
                 )
 
-            elif os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):  # AWS Key-based authentication
+            elif os.getenv("AWS_ACCESS_KEY_ID") and os.getenv(
+                "AWS_SECRET_ACCESS_KEY"
+            ):  # AWS Key-based authentication
                 self.client = boto3.client(
                     "polly",
                     region_name=os.getenv("AWS_DEFAULT_REGION"),
@@ -99,7 +117,10 @@ class AWSPollyTTSProvider(Provider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for AWS Polly text-to-speech."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_TTS,
+        ], "TTS Provider for AWS Polly text-to-speech."
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [
@@ -107,7 +128,8 @@ class AWSPollyTTSProvider(Provider):
         ], False
 
     def invoke(
-        self, input_messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self,
+        input_messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
@@ -136,6 +158,7 @@ class AWSPollyTTSProvider(Provider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = AWSPollyTTSProvider()

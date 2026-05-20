@@ -16,4 +16,6 @@ class AlwaysGuardrailTarget(Target):
         target_options: Optional[str] = None,
         logprobs: bool = False,
     ) -> str:
-        raise GuardrailTrigger("This is a guardrail trigger. The response should be checked for the canary response to confirm that the guardrail was triggered correctly.")
+        raise GuardrailTrigger(
+            "This is a guardrail trigger. The response should be checked for the canary response to confirm that the guardrail was triggered correctly."
+        )

@@ -1,4 +1,5 @@
 """Mock target that accepts any Content type and returns matching type."""
+
 from typing import Optional
 
 from spikee.templates.target import Target
@@ -19,7 +20,11 @@ class MockMultimodalTarget(Target):
         logprobs: bool = False,
     ) -> Content:
         """Echo back content with same type as input."""
-        from spikee.utilities.hinting import get_content, get_content_type, content_factory
+        from spikee.utilities.hinting import (
+            get_content,
+            get_content_type,
+            content_factory,
+        )
 
         # Get raw content and type
         raw = get_content(input_text)

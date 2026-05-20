@@ -3,7 +3,11 @@ from spikee.templates.target import Target
 import requests
 import json
 from typing import Optional
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, TargetResponseHint
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    TargetResponseHint,
+)
 
 
 class LLMMailboxTarget(Target):

@@ -12,12 +12,14 @@ import pytest
 # - True: Create and install spikee in an isolated venv (recommended, clean isolation)
 # - False: Use the current Python environment (faster for local development)
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))  # Load .env from cwd
-USE_ISOLATED_VENV = os.getenv("SPIKEE_TESTS_USE_ISOLATED_VENV", "true").lower() == "true"
+USE_ISOLATED_VENV = (
+    os.getenv("SPIKEE_TESTS_USE_ISOLATED_VENV", "true").lower() == "true"
+)
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Pytest hook that runs once per test session before any tests execute.
-    
+
     Conditionally creates an isolated virtual environment based on USE_ISOLATED_VENV,
     or reuses the current Python environment for faster local testing.
     This ensures tests can run in isolation or against local development.
@@ -34,7 +36,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         # Print setup message to terminal (suspend output capture so user sees it)
         terminal = session.config.pluginmanager.get_plugin("terminalreporter")
         capture = session.config.pluginmanager.get_plugin("capturemanager")
-        message = f"[functional-tests] Installing spikee into isolated venv at {venv_dir}"
+        message = (
+            f"[functional-tests] Installing spikee into isolated venv at {venv_dir}"
+        )
         if capture:
             capture.suspend_global_capture(in_=True)
         try:
@@ -85,22 +89,25 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         # Store current Python path (use sys.executable wrapped in Path)
         session.config.spikee_venv = Path(sys.executable).parents[1]
 
+
 @pytest.fixture(scope="session")
 def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
+
 @pytest.fixture(scope="session")
 def spikee_venv(request: pytest.FixtureRequest) -> Path:
     """Returns the path to the isolated virtual environment created during pytest_sessionstart.
-    
+
     The venv was populated by pytest_sessionstart with spikee installed.
     """
     return request.config.spikee_venv
 
+
 @pytest.fixture
 def run_spikee(spikee_venv: Path):
     """Factory fixture that returns a function to run spikee commands via subprocess.
-    
+
     Locates the spikee executable from either:
     - The isolated venv (if USE_ISOLATED_VENV=true)
     - The current Python environment (if USE_ISOLATED_VENV=false)
@@ -123,34 +130,36 @@ def run_spikee(spikee_venv: Path):
             )
             return result
         except subprocess.CalledProcessError as e:
-            _print_error(' '.join(args), e.stderr or e.stdout)
+            _print_error(" ".join(args), e.stderr or e.stdout)
             raise
 
     return _run
 
+
 def _print_error(command: str, output: str) -> None:
     """Print a readable error message from a failed subprocess call.
-    
+
     Extracts the key error message and displays it clearly without overly
     specific hints. Works for any spikee command error.
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"ERROR: Command failed: spikee {command}")
-    print("="*80)
-    
+    print("=" * 80)
+
     # Try to extract the most relevant error line
     if output:
         lines = output.strip().split("\n")
         # Filter out empty lines
         relevant_lines = [line.strip() for line in lines if line.strip()]
-        
+
         if relevant_lines:
             # Print all non-empty output (usually contains the error)
             print("\n" + "\n".join(relevant_lines))
     else:
         print("\n(No error output captured)")
-    
-    print("="*80 + "\n")
+
+    print("=" * 80 + "\n")
+
 
 def workspace_init(tmp_path, project_root: Path, run_spikee, additional_args):
     # Create a temporary workspace directory
@@ -162,9 +171,7 @@ def workspace_init(tmp_path, project_root: Path, run_spikee, additional_args):
 
     # Copy fixture modules from the test fixtures folder into the workspace
     # This lets tests use mock targets, plugins, judges, attacks, and pre-built datasets
-    fixtures_workspace = (
-        project_root / "tests" / "functional" / "workspace"
-    )
+    fixtures_workspace = project_root / "tests" / "functional" / "workspace"
     if fixtures_workspace.exists():
         for item in fixtures_workspace.iterdir():
             target = workspace / item.name
@@ -177,20 +184,22 @@ def workspace_init(tmp_path, project_root: Path, run_spikee, additional_args):
 
     return workspace
 
+
 @pytest.fixture
 def workspace_dir(tmp_path, project_root: Path, run_spikee):
-    """Returns an isolated test workspace with initialized spikee structure and fixtures.
-    """
+    """Returns an isolated test workspace with initialized spikee structure and fixtures."""
     return workspace_init(tmp_path, project_root, run_spikee, [])
+
 
 @pytest.fixture
 def workspace_dir_builtin(tmp_path, project_root: Path, run_spikee):
-    """Returns an isolated test workspace with initialized spikee structure and built-in modules.
-    """
-    return workspace_init(tmp_path, project_root, run_spikee, ["--include-builtin", "all"])
+    """Returns an isolated test workspace with initialized spikee structure and built-in modules."""
+    return workspace_init(
+        tmp_path, project_root, run_spikee, ["--include-builtin", "all"]
+    )
+
 
 @pytest.fixture
 def workspace_dir_viewer(tmp_path, project_root: Path, run_spikee):
-    """Returns an isolated test workspace with initialized spikee structure and viewer.
-    """
+    """Returns an isolated test workspace with initialized spikee structure and viewer."""
     return workspace_init(tmp_path, project_root, run_spikee, ["--include-viewer"])

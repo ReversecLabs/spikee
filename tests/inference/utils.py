@@ -46,11 +46,7 @@ def create_judge_results(
     return results_file[0] if isinstance(results_file, list) else results_file
 
 
-def spikee_list(
-    run_spikee,
-    workspace_dir,
-    module: str
-) -> list[str]:
+def spikee_list(run_spikee, workspace_dir, module: str) -> list[str]:
     """Helper function to run `spikee list <entity>` and return the output lines as a list."""
     result = run_spikee(["list", module], cwd=workspace_dir)
     return result.stdout.strip().splitlines()
@@ -64,18 +60,22 @@ def spikee_generate_cli(
 ):
     """Helper function to run `spikee generate`"""
 
-    results = run_spikee(["generate", "--seed-folder", seed_folder, *additional_args], cwd=workspace_dir)
+    results = run_spikee(
+        ["generate", "--seed-folder", seed_folder, *additional_args], cwd=workspace_dir
+    )
 
     datasets = []
     stdout = results.stdout.strip()
-    pattern = r'Dataset generated and saved to (.+\.jsonl)'
+    pattern = r"Dataset generated and saved to (.+\.jsonl)"
     for line in stdout.splitlines():
         match = re.search(pattern, line)
         if match:
             file_path = match.group(1).strip()
             datasets.append(Path(workspace_dir / file_path))
 
-    assert len(datasets) == 1, f"Expected exactly one new dataset to be generated, but found {len(datasets)}. New datasets: {datasets}"
+    assert len(datasets) == 1, (
+        f"Expected exactly one new dataset to be generated, but found {len(datasets)}. New datasets: {datasets}"
+    )
     return datasets.pop()
 
 
@@ -102,18 +102,22 @@ def spikee_test_cli(
         elif dataset.is_dir():
             additional_args = ["--dataset-folder", str(dataset), *additional_args]
 
-    result = run_spikee(["test", "--target", target, *additional_args], cwd=workspace_dir)
+    result = run_spikee(
+        ["test", "--target", target, *additional_args], cwd=workspace_dir
+    )
 
     results = []
     stdout = result.stdout.strip()
-    pattern = r'\[Done\] Testing finished\. Results saved to (.+\.jsonl)'
+    pattern = r"\[Done\] Testing finished\. Results saved to (.+\.jsonl)"
     for line in stdout.splitlines():
         match = re.search(pattern, line)
         if match:
             file_path = match.group(1).strip()
             results.append(Path(workspace_dir / file_path))
 
-    assert len(results) > 0, f"Expected at least one new results file to be generated, but found {len(results)}. New results: {results}"
+    assert len(results) > 0, (
+        f"Expected at least one new results file to be generated, but found {len(results)}. New results: {results}"
+    )
     return list(results), result
 
 
@@ -138,7 +142,9 @@ def spikee_analyze_cli(
         elif result_file.is_dir():
             additional_args = ["--result-folder", str(result_file), *additional_args]
 
-    analyze_result = run_spikee(["results", "analyze", *additional_args], cwd=workspace_dir)
+    analyze_result = run_spikee(
+        ["results", "analyze", *additional_args], cwd=workspace_dir
+    )
 
     return analyze_result.stdout
 
@@ -179,12 +185,14 @@ def spikee_extract_cli(
 
     results = []
     stdout = result.stdout.strip()
-    pattern = r'Overview] Extracted \d+ / \d+ results to (.+\.jsonl)'
+    pattern = r"Overview] Extracted \d+ / \d+ results to (.+\.jsonl)"
     for line in stdout.splitlines():
         match = re.search(pattern, line)
         if match:
             file_path = match.group(1).strip()
             results.append(Path(workspace_dir / file_path))
 
-    assert len(results) > 0, f"Expected at least one new extract file to be generated, but found {len(results)}. New extracts: {results}"
+    assert len(results) > 0, (
+        f"Expected at least one new extract file to be generated, but found {len(results)}. New extracts: {results}"
+    )
     return list(results), result

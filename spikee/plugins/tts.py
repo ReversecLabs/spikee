@@ -21,7 +21,12 @@ from typing import List, Optional
 
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Audio, get_content
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    Audio,
+    get_content,
+)
 from spikee.utilities.enums import ModuleTag
 from spikee.templates.provider import Provider
 from spikee.utilities.llm import get_llm
@@ -33,7 +38,10 @@ class TTSPlugin(Plugin):
     DEFAULT_MODEL = "openai_tts/gpt-4o-mini-tts"
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "Converts text to base64-encoded audio using a TTS provider."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_TTS,
+        ], "Converts text to base64-encoded audio using a TTS provider."
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [
@@ -60,32 +68,45 @@ class TTSPlugin(Plugin):
         if isinstance(temperature, str) or temperature is not None:
             temperature = float(temperature)
 
-        llm = get_llm(llm_model, max_tokens=max_tokens, temperature=temperature, **setup_kwargs)
+        llm = get_llm(
+            llm_model, max_tokens=max_tokens, temperature=temperature, **setup_kwargs
+        )
 
         if not isinstance(llm, Provider):
-            raise ValueError(f"Selected model '{llm_model}' is not a valid Provider instance.")
+            raise ValueError(
+                f"Selected model '{llm_model}' is not a valid Provider instance."
+            )
 
         llm_description = llm.get_description()[0]
         if ModuleTag.LLM_TTS not in llm_description:
-            raise ValueError(f"Selected model '{llm_model}' is not a valid TTS provider.")
+            raise ValueError(
+                f"Selected model '{llm_model}' is not a valid TTS provider."
+            )
 
         response = llm.invoke([HumanMessage(content=content)]).content
 
         if isinstance(response, Audio):
             return response
         else:
-            raise ValueError(f"Unexpected response type from TTS provider: {type(response)}. Expected Audio.")
+            raise ValueError(
+                f"Unexpected response type from TTS provider: {type(response)}. Expected Audio."
+            )
 
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     plugin = TTSPlugin()
-    response = plugin.transform("Hello, how are you today?", plugin_option="model=openai_tts/gpt-4o-mini-tts,voice=alloy,response_format=mp3,speed=1.0")
+    response = plugin.transform(
+        "Hello, how are you today?",
+        plugin_option="model=openai_tts/gpt-4o-mini-tts,voice=alloy,response_format=mp3,speed=1.0",
+    )
     # print("Base64 Audio Content:", response)
 
     import base64
+
     audio_bytes = base64.b64decode(get_content(response.content))
 
     try:
@@ -97,4 +118,6 @@ if __name__ == "__main__":
         sd.play(data, sample_rate)
         sd.wait()
     except ImportError:
-        print("Audio playback requires 'soundfile' and 'sounddevice' packages. Please install them to enable audio playback.")
+        print(
+            "Audio playback requires 'soundfile' and 'sounddevice' packages. Please install them to enable audio playback."
+        )
