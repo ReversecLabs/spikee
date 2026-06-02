@@ -27,7 +27,7 @@
   </p>
 </div>
 
-_Version: 0.7.3-dev_
+_Version: 0.8.1-dev_
 
 
 Developed by Reversec Labs, `spikee` is a toolkit for assessing the resilience of LLMs, guardrails, and applications against prompt injection and jailbreaking. Spikee's strength is its modular design, which allows for easy customization of every part of the testing process.
@@ -210,10 +210,26 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
 ```
 
 ```bash
+# Plugin with two options: mode and variants
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugins best_of_n \
+                --plugin-options "best_of_n:mode=full,variants=10"
+```
+
+```bash
 # Plugin Piping, pipe the output of splat into base64 for a combined obfuscation effect
 spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --plugin "splat|base64"
 ```
+
+```bash
+# Multiple plugins with individual options (semicolon-separated in --plugin-options)
+spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
+                --plugins splat best_of_n \
+                --plugin-options "splat:mode=full;best_of_n:variants=10"
+```
+
+See **[Supporting Plugin Options](./docs/07_custom_plugins.md#supporting-plugin-options)** for a full reference on the options format, including multiple plugins and multiple key-value pairs per plugin.
 
 ## 5. Testing a Target: `spikee test`
 

@@ -6,6 +6,7 @@ Output: transcribed text in AIMessage content.
 
 Additional Args: none currently exposed.
 """
+
 import base64
 import os
 from io import BytesIO
@@ -15,7 +16,12 @@ from typing import Set, Union, Dict, Sequence
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 
 
 class ElevenLabsSTTProvider(Provider):
@@ -54,6 +60,7 @@ class ElevenLabsSTTProvider(Provider):
 
         try:
             from elevenlabs import ElevenLabs
+
             self.client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
         except ImportError:
             raise ImportError(
@@ -62,7 +69,10 @@ class ElevenLabsSTTProvider(Provider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_STT], "STT Provider for ElevenLabs Scribe speech-to-text models."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_STT,
+        ], "STT Provider for ElevenLabs Scribe speech-to-text models."
 
     def invoke(
         self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
@@ -74,7 +84,9 @@ class ElevenLabsSTTProvider(Provider):
         content = msg.content
 
         if not isinstance(content, Audio):
-            raise ValueError("ElevenLabs STT Provider requires a user message containing base64-encoded audio.")
+            raise ValueError(
+                "ElevenLabs STT Provider requires a user message containing base64-encoded audio."
+            )
 
         audio_bytes = content.get_raw_audio()
         audio_format = content.format
@@ -97,6 +109,7 @@ class ElevenLabsSTTProvider(Provider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     pcm_path = sys.argv[1] if len(sys.argv) > 1 else "audio_file.pcm"
     with open(pcm_path, "rb") as f:

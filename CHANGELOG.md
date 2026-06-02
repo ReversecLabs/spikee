@@ -1,6 +1,50 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.8.0] - 2026-05-19
+
+### Features
+
+- openai sts
+- add content wrapper to tester
+- add content wrapper to generator and plugins. Updated module description and option type hints.
+- digraphic lang and updated module tags (#91)
+- aws transcribe stt + linting + aws profiles to polly
+- add provider timeouts (#95)
+- bedrock sso provider
+- implement streaming for TTS providers
+- add aws polly tts provider
+- add TTS plugin
+- add elevenlabs tts and stt providers
+- add openai tts and stt providers
+- add text2image plugin
+- Suppress warnings during model loading in OpusTranslator
+- Update attack module tags
+- Improve plugin module tag taxonomies and list representations
+- add digraphic language plugin
+
+### Fixes
+
+- typing of static multi-turn dataset generation
+- judge list flattening bug
+- tester original attack input error
+- list bug
+- process_conversation bug
+- handle plugin transformation errors and improve AWS credential handling
+- async any-llm bug
+- content wrapper generator bug
+- provider hinting
+- generation content, update tests
+- update default model IDs
+
+### Changes
+
+- minimised content wrappers
+- fix type hinting and add content type checks for providers
+- move profiles to any-llm bedrock provider
+- update naming scheme and add docs
+- Enhance error handling in spikee list and add multi-modal tags
+
 ## [0.7.2] - 2026-04-08
 
 ### Fixes

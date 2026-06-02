@@ -30,9 +30,7 @@ class Base64(Plugin):
         return [], False
 
     def transform(
-        self,
-        content: str,
-        exclude_patterns: Optional[List[str]] = None
+        self, content: str, exclude_patterns: Optional[List[str]] = None
     ) -> str:
         """
         Transforms the input text into Base64 encoding.

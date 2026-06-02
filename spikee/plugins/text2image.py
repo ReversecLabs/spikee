@@ -5,10 +5,11 @@ This plugin transforms text into image data, with Base64 encoding.
 
 Usage:
     spikee generate --plugins base64_image
-    
+
 Requires the Pillow library for image processing. Install with:
     pip install Pillow
 """
+
 import base64
 from io import BytesIO
 from typing import List, Optional
@@ -16,22 +17,30 @@ from typing import List, Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from spikee.templates.plugin import Plugin
-from spikee.utilities.hinting import ModuleDescriptionHint, ModuleOptionsHint, Image as ImageContent
+from spikee.utilities.hinting import (
+    ModuleDescriptionHint,
+    ModuleOptionsHint,
+    Image as ImageContent,
+)
 from spikee.utilities.enums import ModuleTag
 
 
 class MultiModalImage(Plugin):
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.ENCODING, ModuleTag.IMAGE], "Transforms text into image data, with Base64 encoding. (Requires: `pip install Pillow`)"
+        return (
+            [ModuleTag.ENCODING, ModuleTag.IMAGE],
+            "Transforms text into image data, with Base64 encoding. (Requires: `pip install Pillow`)",
+        )
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         return [], False
 
-    def transform(self,
-                  content: str,
-                  exclude_patterns: Optional[List[str]] = None,
-                  plugin_option: Optional[str] = None
-                  ) -> ImageContent:
+    def transform(
+        self,
+        content: str,
+        exclude_patterns: Optional[List[str]] = None,
+        plugin_option: Optional[str] = None,
+    ) -> ImageContent:
 
         # Load font
         try:
@@ -58,11 +67,11 @@ class MultiModalImage(Plugin):
             lines.append(line)
 
         # Calculate image height (dynamic based on number of lines)
-        line_height = font.getbbox('A')[3] - font.getbbox('A')[1] + 5
+        line_height = font.getbbox("A")[3] - font.getbbox("A")[1] + 5
         img_height = max(100, padding * 2 + line_height * len(lines))
 
         # Create image and draw text
-        img = Image.new('RGB', (max_width, img_height), color=(255, 255, 255))
+        img = Image.new("RGB", (max_width, img_height), color=(255, 255, 255))
         draw = ImageDraw.Draw(img)
         y = padding
         for line in lines:
@@ -72,7 +81,7 @@ class MultiModalImage(Plugin):
         # Encode image to base64
         buffered = BytesIO()
         img.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return ImageContent(img_base64)
 
 

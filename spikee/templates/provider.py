@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Union, Sequence, Callable
 import os
 import asyncio
+import gc
 
 from spikee.templates.module import Module
 from spikee.utilities.llm_message import Message, AIMessage
@@ -64,10 +65,19 @@ class Provider(Module, ABC):
         async def run_async_call(fun: Callable, **params) -> Any:
             result = await fun(**params)
 
+            # Force GC to trigger any pending __del__ finalizers (e.g. httpx AsyncClient)
+            # so their cleanup coroutines are scheduled before we gather and the loop closes.
+            gc.collect()
+
             # Drain pending httpx cleanup tasks to avoid "Event loop is closed" on Python 3.12+
-            await asyncio.gather(*[t for t in asyncio.all_tasks()
-                                   if t is not asyncio.current_task() and not t.done()],
-                                 return_exceptions=True)
+            pending = [
+                t
+                for t in asyncio.all_tasks()
+                if t is not asyncio.current_task() and not t.done()
+            ]
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+
             return result
 
         return asyncio.run(run_async_call(fun, **params))

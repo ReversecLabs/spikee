@@ -6,6 +6,7 @@ Uses the OpenAI Realtime API to process audio input and return audio output.
 Additional Args:
 - `voice`: alloy (default), ash, ballad, coral, echo, sage, shimmer, verse
 """
+
 import asyncio
 import base64
 import os
@@ -14,7 +15,12 @@ from typing import Union, Dict, Sequence, Optional, Set
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 
 
 class OpenAISTSProvider(Provider):
@@ -54,6 +60,7 @@ class OpenAISTSProvider(Provider):
 
         try:
             from openai import AsyncOpenAI
+
             self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         except ImportError as exc:
             raise ImportError(
@@ -62,9 +69,14 @@ class OpenAISTSProvider(Provider):
             ) from exc
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_STS], "STS Provider for OpenAI speech-to-speech models via the Realtime API."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_STS,
+        ], "STS Provider for OpenAI speech-to-speech models via the Realtime API."
 
-    async def _invoke_async(self, audio_b64: str, instructions: Optional[str] = None) -> str:
+    async def _invoke_async(
+        self, audio_b64: str, instructions: Optional[str] = None
+    ) -> str:
         """Async call to the OpenAI Realtime API for speech-to-speech conversion."""
         session_config = {
             "modalities": ["audio"],
@@ -101,7 +113,9 @@ class OpenAISTSProvider(Provider):
             raise ValueError("OpenAI STS Provider requires audio content as input.")
 
         if system_msg is not None and not isinstance(system_msg.content, str):
-            raise ValueError("OpenAI STS Provider requires system instructions to be a text string.")
+            raise ValueError(
+                "OpenAI STS Provider requires system instructions to be a text string."
+            )
 
         audio_b64 = get_content(content)
         audio_format = content.format
@@ -121,6 +135,7 @@ class OpenAISTSProvider(Provider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     pcm_path = sys.argv[1] if len(sys.argv) > 1 else "audio_file.pcm"
     with open(pcm_path, "rb") as f:

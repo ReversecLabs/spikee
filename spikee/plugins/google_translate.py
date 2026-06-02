@@ -34,7 +34,7 @@ class GoogleTranslator(Plugin):
         self,
         content: str,
         exclude_patterns: Optional[List[str]] = None,
-        plugin_option: str = ""
+        plugin_option: str = "",
     ) -> str:
         """
         Transforms the input text into another language using google translate.

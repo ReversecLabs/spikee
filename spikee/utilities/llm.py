@@ -43,7 +43,7 @@ def get_llm(
 
     # Strip "model=" prefix if present
     if options.startswith("model="):
-        options = options[len("model="):]
+        options = options[len("model=") :]
 
     if options.startswith("offline"):  # Offline mode, no LLM provider
         return None

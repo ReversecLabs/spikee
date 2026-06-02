@@ -31,7 +31,14 @@ from spikee.utilities.files import (
     does_resource_name_match,
 )
 from spikee.utilities.modules import load_module_from_path, get_default_option
-from spikee.utilities.hinting import TargetResponseHint, Content, content_factory, get_content, get_content_type, validate_content_signature
+from spikee.utilities.hinting import (
+    TargetResponseHint,
+    Content,
+    content_factory,
+    get_content,
+    get_content_type,
+    validate_content_signature,
+)
 from spikee.utilities.tags import validate_and_get_tag
 
 
@@ -159,22 +166,27 @@ class AdvancedTargetWrapper:
                 if self.supports_backtrack:
                     kwargs["backtrack"] = backtrack
 
-                if not validate_content_signature(input_text, self.target_module.process_input, "input_text"):
-                    raise ValueError("Input content does not match the expected type for the target's process_input function.")
+                if not validate_content_signature(
+                    input_text, self.target_module.process_input, "input_text"
+                ):
+                    raise ValueError(
+                        "Input content does not match the expected type for the target's process_input function."
+                    )
 
-                if system_message and not validate_content_signature(system_message, self.target_module.process_input, "system_message"):
-                    raise ValueError("System message content does not match the expected type for the target's process_input function.")
+                if system_message and not validate_content_signature(
+                    system_message, self.target_module.process_input, "system_message"
+                ):
+                    raise ValueError(
+                        "System message content does not match the expected type for the target's process_input function."
+                    )
 
                 if kwargs:
-                    response: TargetResponseHint = (
-                        self.target_module.process_input(
-                            input_text=input_text, system_message=system_message, **kwargs
-                        )
+                    response: TargetResponseHint = self.target_module.process_input(
+                        input_text=input_text, system_message=system_message, **kwargs
                     )
                 else:
-                    response: TargetResponseHint = (
-                        self.target_module.process_input(input_text=input_text, system_message=system_message)
-
+                    response: TargetResponseHint = self.target_module.process_input(
+                        input_text=input_text, system_message=system_message
                     )
 
                 # Unpack (response, meta) if tuple returned
@@ -185,7 +197,9 @@ class AdvancedTargetWrapper:
                         response, meta = response
 
                     else:
-                        raise ValueError(f"Invalid tuple return from target's process_input. Expected (Content/bool, meta), got {len(response)} elements.")
+                        raise ValueError(
+                            f"Invalid tuple return from target's process_input. Expected (Content/bool, meta), got {len(response)} elements."
+                        )
 
                 if isinstance(response, (Content, bool)):
                     result = response
@@ -606,7 +620,9 @@ def process_entry(
     # Create Content object from entry (new format) or fall back to plain text (legacy)
     content_type = entry.get("content_type", "text")
     content = entry.get("content", entry.get("text"))
-    entry["text"] = content  # For backward compatibility with attacks that expect 'text' field
+    entry["text"] = (
+        content  # For backward compatibility with attacks that expect 'text' field
+    )
     original_input = content_factory(content, content_type)
 
     std_result = None
@@ -648,6 +664,7 @@ def process_entry(
     # If the standard attempt fail and an attack module is provided, run the dynamic attack.
     if (not std_success) and attack_module:
         attack_input = None  # Ensure attack_input is always defined
+        original_attack_input = attack_input
 
         try:
             start_time = time.time()
@@ -757,17 +774,28 @@ def process_entry(
                 "attack_options": effective_attack_options,
             }
 
-            if isinstance(original_attack_input, dict) and "conversation" in original_attack_input:
+            if (
+                isinstance(original_attack_input, dict)
+                and "conversation" in original_attack_input
+            ):
                 attack_result["conversation"] = original_attack_input["conversation"]
 
-            if isinstance(original_attack_input, dict) and "objective" in original_attack_input:
-                attack_result["objective"] = get_content(original_attack_input["objective"])
+            if (
+                isinstance(original_attack_input, dict)
+                and "objective" in original_attack_input
+            ):
+                attack_result["objective"] = get_content(
+                    original_attack_input["objective"]
+                )
 
             results_list.append(attack_result)
         except Exception as e:
             # Save original attack_input for extracting conversation/objective if it's a dict
-            if original_attack_input:
+            if "original_attack_input" in locals() and original_attack_input:
                 attack_input = original_attack_input
+
+            else:
+                original_attack_input = attack_input
 
             if attack_input is None:
                 attack_input_type = content_type
@@ -828,7 +856,9 @@ def process_entry(
                 and isinstance(original_attack_input, dict)
                 and "objective" in original_attack_input
             ):
-                error_result["objective"] = get_content(original_attack_input["objective"])
+                error_result["objective"] = get_content(
+                    original_attack_input["objective"]
+                )
 
             results_list.append(error_result)
 

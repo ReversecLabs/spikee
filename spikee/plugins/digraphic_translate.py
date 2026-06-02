@@ -46,7 +46,12 @@ from typing import List, Optional
 DIGRAPHIC_LANGUAGES = {
     "japanese": {
         "display": "Japanese",
-        "scripts": ["Kanji (漢字)", "Hiragana (ひらがな)", "Katakana (カタカナ)", "Romaji (Latin)"],
+        "scripts": [
+            "Kanji (漢字)",
+            "Hiragana (ひらがな)",
+            "Katakana (カタカナ)",
+            "Romaji (Latin)",
+        ],
         "description": (
             "Japanese uses four co-existing scripts. Kanji are logographic Chinese characters "
             "used for content words; Hiragana is a syllabary used for grammar and native words; "
@@ -80,7 +85,11 @@ DIGRAPHIC_LANGUAGES = {
     },
     "chinese": {
         "display": "Chinese",
-        "scripts": ["Simplified Chinese (简体)", "Traditional Chinese (繁體)", "Pinyin (Latin)"],
+        "scripts": [
+            "Simplified Chinese (简体)",
+            "Traditional Chinese (繁體)",
+            "Pinyin (Latin)",
+        ],
         "description": (
             "Chinese uses two official character sets: Simplified (mainland China) and "
             "Traditional (Taiwan, Hong Kong). Pinyin is the Latin romanisation system. "
@@ -166,14 +175,13 @@ class DigraphicTranslate(Plugin):
                 "language=japanese",
                 "language=... (korean, serbian, chinese, hindi-urdu)",
             ],
-            True
+            True,
         )
 
     def _build_prompt(self, objective: str, lang_key: str) -> str:
         lang = DIGRAPHIC_LANGUAGES[lang_key]
         return (
-            DIGRAPHIC_TRANSLATE_PROMPT
-            .replace("{{objective}}", objective)
+            DIGRAPHIC_TRANSLATE_PROMPT.replace("{{objective}}", objective)
             .replace("{{language}}", lang["display"])
             .replace("{{scripts}}", ", ".join(lang["scripts"]))
             .replace("{{description}}", lang["description"])
@@ -217,6 +225,7 @@ class DigraphicTranslate(Plugin):
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()  # Load environment variables from .env file if present
 
     plugin = DigraphicTranslate()

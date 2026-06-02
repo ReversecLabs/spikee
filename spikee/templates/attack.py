@@ -21,7 +21,9 @@ class Attack(Module, ABC):
         objective: Optional[Content] = None,
     ) -> Dict[str, Any]:
         """Standardise the return format for attacks."""
-        standardised_return = {"input": input if isinstance(input, Content) else str(input)}
+        standardised_return = {
+            "input": input if isinstance(input, Content) else str(input)
+        }
 
         if conversation:
             standardised_return["conversation"] = json.dumps(conversation.conversation)

@@ -62,7 +62,6 @@ def test_multiturn_refusal_backtrack(run_spikee, workspace_dir):
     _patch_dataset_judge(dataset_path)
 
     results_file, result = spikee_test_cli(
-
         run_spikee,
         workspace_dir,
         target=TARGET_NAME,

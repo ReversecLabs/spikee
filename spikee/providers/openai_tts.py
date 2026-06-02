@@ -5,17 +5,23 @@ Additional Args:
 - `voice`:
     - gpt-4o-mini-tts: alloy (default), ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse, marin, cedar
     - tts-1 and tts-1-hd: alloy, ash, coral, echo, fable, onyx, nova, sage, and shimmer.
-    
+
 - `response_format`: mp3 (default), opus, aac, flac, wav, pcm.
 - `speed`: 1.0
 """
+
 import base64
 import os
 
 from spikee.templates.streaming_provider import StreamingProvider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, single_message, AIMessage, HumanMessage
+from spikee.utilities.llm_message import (
+    Message,
+    single_message,
+    AIMessage,
+    HumanMessage,
+)
 from typing import Callable, Union, Dict, Tuple, Sequence, Set
 
 
@@ -51,10 +57,13 @@ class OpenAITTSProvider(StreamingProvider):
         self.speed = float(additional_kwargs.get("speed", 1.0))
 
         if self.response_format not in self.audio_formats:
-            raise ValueError(f"Invalid response_format '{self.response_format}'. Supported formats: {self.audio_formats}")
+            raise ValueError(
+                f"Invalid response_format '{self.response_format}'. Supported formats: {self.audio_formats}"
+            )
 
         try:
             from openai import OpenAI
+
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         except ImportError:
             raise ImportError(
@@ -63,9 +72,14 @@ class OpenAITTSProvider(StreamingProvider):
             )
 
     def get_description(self) -> ModuleDescriptionHint:
-        return [ModuleTag.AUDIO, ModuleTag.LLM_TTS], "TTS Provider for OpenAI text-to-speech models."
+        return [
+            ModuleTag.AUDIO,
+            ModuleTag.LLM_TTS,
+        ], "TTS Provider for OpenAI text-to-speech models."
 
-    def _validate_messages(self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]) -> Tuple[str, str]:
+    def _validate_messages(
+        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+    ) -> Tuple[str, str]:
         """Validate and extract instruction and text from messages."""
         msg, instruction = single_message(messages)
 
@@ -105,7 +119,9 @@ class OpenAITTSProvider(StreamingProvider):
         )
 
     def invoke_streaming(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]], callback: Callable
+        self,
+        messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        callback: Callable,
     ):
         instruction, text = self._validate_messages(messages)
 
@@ -125,6 +141,7 @@ class OpenAITTSProvider(StreamingProvider):
 if __name__ == "__main__":
     import sys
     from dotenv import load_dotenv
+
     load_dotenv()
     text = sys.argv[1] if len(sys.argv) > 1 else "Hello, I am Spikee."
     provider = OpenAITTSProvider()

@@ -211,7 +211,12 @@ def main():
         default=None,
         help="Include a tag at the end of the generated dataset filename",
     )
-
+    parser_generate.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="Number of threads for parallel plugin processing (default: 1)",
+    )
     parser_plugin = subparsers_generate.add_parser(
         "plugin", help="Apply a plugin transformation to a string"
     )
@@ -663,6 +668,29 @@ def main():
         print("Author: Reversec (reversec.com)\n")
 
     if args.command == "init":
+        # Guard against running init inside the spikee source package directory
+        cwd = Path(os.getcwd())
+        if (cwd / "cli.py").exists() and (cwd / "tester.py").exists()  and (cwd / "generator.py").exists():
+
+            if not args.force:
+                print(
+                    "[init] ERROR: It looks like you are running 'spikee init' within the Spikee sourcecode directory (e.g. ./spikee/)."
+                )
+                print(
+                    "[init] This would overwrite Spikee's source code with workspace files.\n"
+                )
+                print("[init] Recommended: create a separate workspace directory:")
+                print("[init]   mkdir ../workspace")
+                print("[init]   cd ../workspace")
+                print("[init]   spikee init\n")
+                print("[init] Use --force to override warnings.")
+                sys.exit(1)
+            
+            else:
+                print(
+                    "[init] WARNING: You are running 'spikee init' inside the Spikee sourcecode directory with --force. This will overwrite Spikee's source code with workspace files. Proceeding with initialization..."
+                )
+
         init_workspace(
             force=args.force,
             include_builtin=args.include_builtin,
