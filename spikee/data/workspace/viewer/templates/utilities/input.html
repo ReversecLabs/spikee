@@ -26,7 +26,7 @@
             {% for message in entry.input.conversation %}
                 <li class="mb-2">
                     <div class="code-block h-100 result-input">
-                        <strong style="color: {{ string_to_colour(message.role) }};">
+                        <strong style="color: {{ text_to_colour(message.role) }};">
                             {{ message.role|upper }}:
                         </strong>{{ process_text(message.content, truncated=truncated)|e }}
                     </div>
