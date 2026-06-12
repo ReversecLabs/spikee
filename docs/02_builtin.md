@@ -129,6 +129,7 @@ The following list provides an overview of each build-in plugin, further informa
 | `caesar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
 | `decimal` | Encoding | Encodes text as space-separated ASCII/Unicode decimal codepoint values. | `hint` (show the literal plaintext string `decimal` in the encoded output, default true) |
 | `hex` | Encoding | Encodes text into its hexadecimal representation. | N/A |
+| `homoglyph` | Encoding, Obfuscation | Substitutes Latin characters with visually-identical Unicode confusables (Cyrillic/Greek). Output looks unchanged to a human but uses different code points, evading ASCII keyword/regex filters. | `ratio` (fraction of mappable characters to substitute, 0.0-1.0, default: 1.0)<br> `seed` (optional integer seed for reproducible partial substitution) |
 | `morse` | Encoding | Encodes text into Morse code. | N/A |
 | `octal` | Encoding | Encodes text as space-separated ASCII/Unicode octal codepoint values. | `hint` (show the literal plaintext string `octal` in the encoded output, default true) |
 | `best_of_n` | Obfuscation, Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
