@@ -91,7 +91,7 @@ class HomoglyphPlugin(BasicPlugin):
 
     def get_description(self) -> ModuleDescriptionHint:
         return (
-            [ModuleTag.ENCODING, ModuleTag.OBFUSCATION],
+            [ModuleTag.ENCODING],
             "Substitutes Latin characters with visually-identical Unicode confusables.",
         )
 
