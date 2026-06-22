@@ -178,9 +178,11 @@ You can customize the behavior of attacks using the following command-line optio
 | `llm_poetry_jailbreaker` | Social Engineering, LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
 | `crescendo` | Social Engineering, LLM | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). A multi-turn jailbreak that leverages an LLM Agent to prompt the target with seemingly benign prompts, gradually escalating the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
 | `echo_chamber` | Social Engineering, LLM | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). A multi-turn attack that uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
-| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
+| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2410.01606) (Generative Offensive Agent Tester). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
 | `multi_turn` | Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
 | `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |
+
+> **Note:** `goat` is a workspace template, not a core built-in — it ships in `workspace/attacks/` (created by `spikee init`) rather than `spikee/attacks/`. It appears as a local attack after initialisation, but will not show up in `spikee list attacks` on a fresh install before running `spikee init`.
 
 **Usage Example**
 ```bash
