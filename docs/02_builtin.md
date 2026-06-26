@@ -155,7 +155,7 @@ spikee generate --seed ./seeds-cybersec-2026-01 \
 ```
 
 ## Built-in Attacks
-Spikee includes several built-in dynamic attacks, that will iteratively modify prompts/documents until they succeed (or run out of iterations). These are located within the `spikee/attacks/` folder, and can be listed at any time with `spikee list attacks`.
+Spikee includes several built-in dynamic attacks, that will iteratively modify prompts/documents until they succeed (or run out of iterations). These are located within the `spikee/attacks/` and `workspace/attacks` folders, and can be listed at any time with `spikee list attacks`.
 
 You can customize the behavior of attacks using the following command-line options:
 * `--attack-iterations`: Specifies the maximum number of iterations for each attack (default: 1000).
@@ -179,7 +179,7 @@ You can customize the behavior of attacks using the following command-line optio
 | `llm_poetry_jailbreaker` | Social Engineering, LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
 | `crescendo` | Social Engineering, LLM | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). A multi-turn jailbreak that leverages an LLM Agent to prompt the target with seemingly benign prompts, gradually escalating the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
 | `echo_chamber` | Social Engineering, LLM | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). A multi-turn attack that uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
-| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
+| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2410.01606) (Generative Offensive Agent Tester). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
 | `multi_turn` | Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
 | `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |
 
