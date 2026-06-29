@@ -1,11 +1,11 @@
 from any_llm import AnyLLM
 import os
-from typing import Union, Any, Dict, Sequence
+from typing import Union, Any, Dict
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content
+from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, AIMessage, MessageHint
 
 
 class AnyLLMAzureOpenAIProvider(Provider):
@@ -62,8 +62,8 @@ class AnyLLMAzureOpenAIProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for Azure OpenAI models via any-llm."
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+    def _invoke(
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM Azure OpenAI LLM with the provided messages."""
 

@@ -620,7 +620,7 @@ class ResultProcessor:
         output += f"\nTotal Attempts: {self.total_attempts}"
 
 
-        output += f"\n\nKey: ASR = Attack Success Rate" + (", GTR = Guardrail Trigger Rate" if self.guardrail_groups > 0 else "") + "\n"
+        output += "\n\nKey: ASR = Attack Success Rate" + (", GTR = Guardrail Trigger Rate" if self.guardrail_groups > 0 else "") + "\n"
         
 
         # Dynamic attack statistics

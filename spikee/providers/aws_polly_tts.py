@@ -24,17 +24,16 @@ from spikee.templates.provider import Provider
 from spikee.utilities.hinting import (
     ModuleDescriptionHint,
     ModuleOptionsHint,
-    Content,
     Audio,
 )
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
-from typing import Set, Union, Dict, Sequence
+from typing import Set, Union, Dict
 
 
 class AWSPollyTTSProvider(Provider):
@@ -127,9 +126,9 @@ class AWSPollyTTSProvider(Provider):
             "voice_id=Joanna,output_format=pcm",
         ], False
 
-    def invoke(
+    def _invoke(
         self,
-        input_messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        input_messages: MessageHint,
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
