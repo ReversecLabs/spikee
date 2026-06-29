@@ -131,10 +131,10 @@ class Provider(Module, ABC):
             result = await fun(**params)
 
             # Force GC to trigger any pending __del__ finalizers (e.g. httpx AsyncClient)
-            # so their cleanup coroutines are scheduled before we gather and the loop closes.
+            # so their cleanup coroutines are scheduled before we gather and the loop stops.
             gc.collect()
 
-            # Drain pending httpx cleanup tasks to avoid "Event loop is closed" on Python 3.12+
+            # Drain pending httpx cleanup tasks
             pending = [
                 t
                 for t in asyncio.all_tasks()
@@ -145,5 +145,27 @@ class Provider(Module, ABC):
 
             return result
 
-        return asyncio.run(run_async_call(fun, **params))
-    
+        # Use explicit loop management instead of asyncio.run().
+        # asyncio.run() closes the loop after completion, but httpx AsyncClient
+        # __del__ finalizers may fire later and try to schedule cleanup on the
+        # closed loop, causing "Event loop is closed" RuntimeError on Python 3.14+.
+        # By not closing the loop, these finalizers can call_soon() harmlessly.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(run_async_call(fun, **params))
+        finally:
+            try:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            except Exception:
+                pass
+            try:
+                loop.run_until_complete(loop.shutdown_default_executor())
+            except Exception:
+                pass
+            # NOTE: Intentionally NOT calling loop.close().
+            # httpx AsyncClient.__del__ finalizers may fire after this point
+            # and call loop.call_soon() to schedule aclose(). If the loop is
+            # closed, this raises RuntimeError on Python 3.14+. Leaving it
+            # open lets them queue harmlessly (the callbacks never run, but
+            # it's just TCP connection cleanup that the OS handles anyway).
