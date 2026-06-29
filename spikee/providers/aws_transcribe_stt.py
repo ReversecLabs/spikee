@@ -34,6 +34,7 @@ from spikee.utilities.llm_message import (
     HumanMessage,
     Message,
     single_message,
+    MessageHint,
 )
 
 
@@ -162,7 +163,7 @@ class AWSTranscribeSTTProvider(Provider):
         return " ".join(transcript_parts).strip()
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AWS Transcribe streaming STT with base64-encoded audio. Returns transcribed text."""
 

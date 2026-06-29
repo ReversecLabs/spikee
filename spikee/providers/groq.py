@@ -4,7 +4,7 @@ from typing import Union, Any, Dict, Sequence
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, Message, AIMessage, MessageHint
 
 
 class AnyLLMGroqProvider(Provider):
@@ -62,7 +62,7 @@ class AnyLLMGroqProvider(Provider):
         return [ModuleTag.LLM], "LLM Provider for Groq models via any-llm."
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM Groq LLM with the provided messages."""
 

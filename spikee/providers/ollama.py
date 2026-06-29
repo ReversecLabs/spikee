@@ -6,7 +6,7 @@ import requests
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import ModuleDescriptionHint, Content
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, Message, AIMessage, MessageHint
 
 
 class AnyLLMOllamaProvider(Provider):
@@ -81,7 +81,7 @@ class AnyLLMOllamaProvider(Provider):
         return [ModuleTag.LLM], "LLM Provider for Ollama models via any-llm."
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM Ollama LLM with the provided messages."""
 

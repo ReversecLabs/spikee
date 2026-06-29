@@ -21,6 +21,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -75,7 +76,7 @@ class ElevenLabsSTTProvider(Provider):
         ], "STT Provider for ElevenLabs Scribe speech-to-text models."
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke ElevenLabs Scribe STT with base64-encoded audio. Returns transcribed text."""
 

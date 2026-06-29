@@ -20,6 +20,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -83,7 +84,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         ], "TTS Provider for ElevenLabs text-to-speech models."
 
     def _validate_messages(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> str:
         """Extract text from messages."""
         msg, _ = single_message(messages)
@@ -94,7 +95,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
         return get_content(msg.content)
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""
 
@@ -117,7 +118,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
 
     def invoke_streaming(
         self,
-        messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        messages: MessageHint,
         callback: Callable,
     ) -> None:
         """Invoke ElevenLabs TTS with streaming, calling callback for each audio chunk."""

@@ -21,6 +21,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 from typing import Callable, Union, Dict, Tuple, Sequence, Set
 
@@ -78,7 +79,7 @@ class OpenAITTSProvider(StreamingProvider):
         ], "TTS Provider for OpenAI text-to-speech models."
 
     def _validate_messages(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> Tuple[str, str]:
         """Validate and extract instruction and text from messages."""
         msg, instruction = single_message(messages)
@@ -94,7 +95,7 @@ class OpenAITTSProvider(StreamingProvider):
         return instruction, get_content(msg.content)
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
 
@@ -120,7 +121,7 @@ class OpenAITTSProvider(StreamingProvider):
 
     def invoke_streaming(
         self,
-        messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        messages: MessageHint,
         callback: Callable,
     ):
         instruction, text = self._validate_messages(messages)

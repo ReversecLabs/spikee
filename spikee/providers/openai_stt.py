@@ -19,6 +19,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -68,7 +69,7 @@ class OpenAISTTProvider(Provider):
         ], "STT Provider for OpenAI speech-to-text models."
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI STT with the provided audio. Returns transcribed text in metadata."""
 

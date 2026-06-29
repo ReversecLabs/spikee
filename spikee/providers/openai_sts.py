@@ -20,6 +20,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -102,7 +103,7 @@ class OpenAISTSProvider(Provider):
         return base64.b64encode(combined_audio).decode("utf-8")
 
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI STS via the Realtime API. Takes audio input, returns audio output."""
         msg, system_msg = single_message(messages, system_prompt=True)

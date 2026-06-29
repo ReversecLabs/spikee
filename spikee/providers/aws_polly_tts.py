@@ -33,6 +33,7 @@ from spikee.utilities.llm_message import (
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 from typing import Set, Union, Dict, Sequence
 
@@ -129,7 +130,7 @@ class AWSPollyTTSProvider(Provider):
 
     def invoke(
         self,
-        input_messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]],
+        input_messages: MessageHint,
     ) -> AIMessage:
         """Invoke AWS Polly TTS with the provided text. Returns base64-encoded audio."""
 
