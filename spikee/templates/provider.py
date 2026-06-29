@@ -5,8 +5,8 @@ import asyncio
 import gc
 
 from spikee.templates.module import Module
-from spikee.utilities.llm_message import AIMessage, MessageHint
-from spikee.utilities.hinting import ModuleOptionsHint
+from spikee.utilities.llm_message import Message, AIMessage, MessageHint
+from spikee.utilities.hinting import ModuleOptionsHint, get_content
 
 class ProviderError(Exception):
     """Custom exception for provider-related errors."""
@@ -79,7 +79,12 @@ class Provider(Module, ABC):
         """
 
         if self.debug_prompt:
-            print(f"[{self.__class__.__name__} DEBUG] Prompt: {messages}")
+            if isinstance(messages, list):
+                for message in messages:
+                    print(f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(message)}")
+            
+            else:
+                print(f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(messages)}")
 
         try:
             response = self._invoke(messages)
@@ -95,9 +100,17 @@ class Provider(Module, ABC):
             ) from e
 
         if self.debug_prompt:
-            print(f"[{self.__class__.__name__} DEBUG] Response: {response.content if response else 'No response'}")
+            print(f"[{self.__class__.__name__} DEBUG] Response: {self.__extract_content(response) if response else 'No response'}")
 
         return response
+    
+    def __extract_content(self, message):
+
+        if isinstance(message, Message):
+            message = message.content
+        
+        return get_content(message)
+        
 
 
     def _invoke(
