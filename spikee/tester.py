@@ -286,21 +286,23 @@ def _build_target_name(target, target_options):
 
 
 def _load_results_file(resume_file, attack_module, attack_iters):
-    completed_ids, results, already_done = set(), [], 0
+    completed_ids, results, already_done, entries_done = set(), [], 0, 0
 
     # Load Resume File, if selected.
     if resume_file and os.path.exists(resume_file):
         results = read_jsonl_file(resume_file)
         completed_ids = {r["id"] for r in results}
-        print(
-            f"[Resume] Found {len(completed_ids)} completed entries in {resume_file}."
-        )
 
-        # Identify attack results
+        # Identify attack results vs standard (one standard result per dataset entry)
         no_attack = sum(1 for r in results if r.get("attack_name") == "None")
         with_attack = len(results) - no_attack
         already_done = no_attack + with_attack * attack_iters
-    return completed_ids, results, already_done
+        entries_done = no_attack  # actual dataset entries completed
+
+        print(
+            f"[Resume] Found {entries_done} completed entries in {resume_file}."
+        )
+    return completed_ids, results, already_done, entries_done
 
 
 # endregion
@@ -1078,7 +1080,7 @@ def test_dataset(args):
             current_resume_file = picked
 
         # Load resume data if any has been selected
-        completed_ids, results, already_done = _load_results_file(
+        completed_ids, results, already_done, entries_done = _load_results_file(
             current_resume_file, attack_module, args.attack_iterations
         )
 
@@ -1135,7 +1137,7 @@ def test_dataset(args):
             already_done,
             output_file,
             len(dataset_json),
-            len(completed_ids),
+            entries_done,
             success_count,
             guardrail_count,
         )
