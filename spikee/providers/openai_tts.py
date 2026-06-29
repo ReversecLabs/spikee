@@ -14,16 +14,15 @@ import base64
 import os
 
 from spikee.templates.streaming_provider import StreamingProvider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
     MessageHint,
 )
-from typing import Callable, Union, Dict, Tuple, Sequence, Set
+from typing import Callable, Union, Dict, Tuple, Set
 
 
 class OpenAITTSProvider(StreamingProvider):

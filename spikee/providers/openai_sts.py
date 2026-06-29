@@ -10,13 +10,12 @@ Additional Args:
 import asyncio
 import base64
 import os
-from typing import Union, Dict, Sequence, Optional, Set
+from typing import Union, Dict, Optional, Set
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,

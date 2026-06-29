@@ -8,14 +8,13 @@ Additional Args:
 import base64
 from io import BytesIO
 import os
-from typing import Union, Dict, Sequence
+from typing import Union, Dict
 
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,

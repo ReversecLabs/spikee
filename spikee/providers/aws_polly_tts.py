@@ -24,18 +24,16 @@ from spikee.templates.provider import Provider
 from spikee.utilities.hinting import (
     ModuleDescriptionHint,
     ModuleOptionsHint,
-    Content,
     Audio,
 )
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
     MessageHint,
 )
-from typing import Set, Union, Dict, Sequence
+from typing import Set, Union, Dict
 
 
 class AWSPollyTTSProvider(Provider):

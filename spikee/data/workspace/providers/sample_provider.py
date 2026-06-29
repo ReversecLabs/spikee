@@ -1,9 +1,9 @@
-from typing import Dict, Union, Any, Sequence
+from typing import Dict, Union, Any
 
 from spikee.templates.provider import Provider
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import Message, AIMessage, MessageHint
-from spikee.utilities.hinting import ModuleDescriptionHint, Content
+from spikee.utilities.llm_message import AIMessage, MessageHint
+from spikee.utilities.hinting import ModuleDescriptionHint
 
 from agent_framework.openai import OpenAIChatClient, OpenAIChatOptions
 

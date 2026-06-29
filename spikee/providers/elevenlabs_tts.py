@@ -9,14 +9,13 @@ Additional Args:
 
 import base64
 import os
-from typing import Callable, Set, Union, Dict, Sequence
+from typing import Callable, Set, Union, Dict
 
 
 from spikee.templates.streaming_provider import StreamingProvider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
