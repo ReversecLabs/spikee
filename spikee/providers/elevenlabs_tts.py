@@ -94,7 +94,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
 
         return get_content(msg.content)
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""

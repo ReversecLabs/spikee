@@ -75,7 +75,7 @@ class ElevenLabsSTTProvider(Provider):
             ModuleTag.LLM_STT,
         ], "STT Provider for ElevenLabs Scribe speech-to-text models."
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke ElevenLabs Scribe STT with base64-encoded audio. Returns transcribed text."""

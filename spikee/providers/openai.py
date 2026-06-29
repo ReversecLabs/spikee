@@ -83,7 +83,7 @@ class AnyLLMOpenAIProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for OpenAI models via any-llm."
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM OpenAI LLM with the provided messages."""

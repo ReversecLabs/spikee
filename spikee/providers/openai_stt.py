@@ -68,7 +68,7 @@ class OpenAISTTProvider(Provider):
             ModuleTag.LLM_STT,
         ], "STT Provider for OpenAI speech-to-text models."
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI STT with the provided audio. Returns transcribed text in metadata."""

@@ -80,7 +80,7 @@ class AnyLLMOllamaProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for Ollama models via any-llm."
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM Ollama LLM with the provided messages."""

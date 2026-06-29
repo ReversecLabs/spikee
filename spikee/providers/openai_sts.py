@@ -102,7 +102,7 @@ class OpenAISTSProvider(Provider):
         combined_audio = b"".join(audio_chunks)
         return base64.b64encode(combined_audio).decode("utf-8")
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI STS via the Realtime API. Takes audio input, returns audio output."""

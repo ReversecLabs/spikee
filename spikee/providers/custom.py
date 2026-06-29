@@ -77,7 +77,7 @@ class AnyLLMCustomProvider(Provider):
             ModuleTag.LLM
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""

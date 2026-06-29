@@ -94,7 +94,7 @@ class OpenAITTSProvider(StreamingProvider):
 
         return instruction, get_content(msg.content)
 
-    def invoke(
+    def _invoke(
         self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""

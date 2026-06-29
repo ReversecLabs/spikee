@@ -128,7 +128,7 @@ class AWSPollyTTSProvider(Provider):
             "voice_id=Joanna,output_format=pcm",
         ], False
 
-    def invoke(
+    def _invoke(
         self,
         input_messages: MessageHint,
     ) -> AIMessage:

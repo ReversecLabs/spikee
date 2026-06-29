@@ -1,13 +1,20 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Sequence, Callable
+from typing import Any, List, Union, Callable
 import os
 import asyncio
 import gc
 
 from spikee.templates.module import Module
-from spikee.utilities.llm_message import Message, AIMessage
-from spikee.utilities.hinting import ModuleOptionsHint, Content
+from spikee.utilities.llm_message import AIMessage, MessageHint
+from spikee.utilities.hinting import ModuleOptionsHint
 
+class ProviderError(Exception):
+    """Custom exception for provider-related errors."""
+    def __init__(self, message, prompt: MessageHint = "", response: Union[AIMessage, None] = None, metadata: dict = {}):
+        super().__init__(message)
+        self.prompt = prompt
+        self.response = response
+        self.metadata = metadata
 
 class Provider(Module, ABC):
     @property
@@ -35,6 +42,14 @@ class Provider(Module, ABC):
     def logprobs_models(self) -> List[str]:
         """Override in subclass to specify which models support logprobs."""
         return []
+    
+    @property
+    def debug_prompt(self) -> bool:
+        """Global flag to enable debug prompt logging, reads from PROVIDER_DEBUG."""
+        val = os.getenv("PROVIDER_DEBUG")
+        if val:
+            return val.lower() in ("1", "true", "yes")
+        return False
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]."""
@@ -54,11 +69,48 @@ class Provider(Module, ABC):
     ) -> None:
         """Sets up the provider with the specified model and parameters."""
 
-    @abstractmethod
     def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+        self, messages: MessageHint
     ) -> AIMessage:
-        """Invoke the provider with the given messages and return an AIMessage response."""
+        """
+        Invokes the provider with the given messages returning an AIMessage response, and implements management logic.
+        
+        Legacy providers 
+        """
+
+        if self.debug_prompt:
+            print(f"[{self.__class__.__name__} DEBUG] Prompt: {messages}")
+
+        try:
+            response = self._invoke(messages)
+        except ProviderError as e:
+            raise e
+        
+        except Exception as e:
+            raise ProviderError(
+                f"A generic error occurred while invoking the provider: {str(e)}",
+                prompt=messages,
+                response=None,
+                metadata={"error_type": type(e).__name__, "error_message": str(e)},
+            ) from e
+
+        if self.debug_prompt:
+            print(f"[{self.__class__.__name__} DEBUG] Response: {response.content if response else 'No response'}")
+
+        return response
+
+
+    def _invoke(
+        self, messages: MessageHint
+    ) -> AIMessage:
+        """Internal abstract method to invoke the provider; should be implemented by subclasses."""
+        raise ProviderError(
+            "The '_invoke' method must be implemented by subclasses of Provider.",
+            prompt=messages,
+            response=None,
+            metadata={"error_type": "NotImplementedError"},
+        )
+        
 
     def async_call(self, fun: Callable, **params) -> Any:
 
@@ -81,3 +133,4 @@ class Provider(Module, ABC):
             return result
 
         return asyncio.run(run_async_call(fun, **params))
+    
