@@ -194,7 +194,7 @@ class ResultsViewer(Viewer):
 
         def render_message(node, message) -> str:
             """Render a single message as an HTML list item, including its content and metadata."""
-            # node_entry = f'<div class="code-block h-100 result-input"><strong style="color: {string_to_colour(str("node"))};">node:</strong> {html.escape(str(node))}</div>'
+            # node_entry = f'<div class="code-block h-100 result-input"><strong style="color: {text_to_colour(str("node"))};">node:</strong> {html.escape(str(node))}</div>'
 
             if isinstance(message["data"], dict):
                 data = [

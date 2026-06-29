@@ -20,7 +20,7 @@
                     {% if message is mapping %}
                         {% for key, value in message.items() %}
                             <div class="code-block h-100">
-                                <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_text(value, truncated=truncated)|e }}
+                                <strong style="color: {{ text_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_text(value, truncated=truncated)|e }}
                             </div>
                         {% endfor %}
                     {% else %}
@@ -37,7 +37,7 @@
         <div class="code-block h-100 result-response">
             {% for key, value in entry.response.items() %}
                 <div class="mb-2">
-                    <strong style="color: {{ string_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_text(value, truncated=truncated)|e }}
+                    <strong style="color: {{ text_to_colour(key) }};">{{ key|upper }}: </strong>{{ process_text(value, truncated=truncated)|e }}
                 </div>
             {% endfor %}
         </div>

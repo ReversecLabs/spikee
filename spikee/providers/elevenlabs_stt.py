@@ -10,17 +10,17 @@ Additional Args: none currently exposed.
 import base64
 import os
 from io import BytesIO
-from typing import Set, Union, Dict, Sequence
+from typing import Set, Union, Dict
 
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -74,8 +74,8 @@ class ElevenLabsSTTProvider(Provider):
             ModuleTag.LLM_STT,
         ], "STT Provider for ElevenLabs Scribe speech-to-text models."
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+    def _invoke(
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke ElevenLabs Scribe STT with base64-encoded audio. Returns transcribed text."""
 
