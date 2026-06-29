@@ -1,3 +1,19 @@
+"""
+Debugging utilities for running individual Spikee modules in isolation.
+
+Each function maps to a `spikee debug module <type>` sub-command and loads the
+named module, executes it with the supplied arguments, then prints the result.
+This is useful for verifying that a custom module is correctly implemented
+before running a full test.
+
+CLI Usage:
+    spikee debug module targets   -m <module>  -i <input>  [--system-message <msg>] [--target-options <opts>]
+    spikee debug module judges    -m <module>  -i <input>  -o <output>  [--judge-options <opts>] [--judge-args <args>]
+    spikee debug module plugins   -m <module>  -i <input>  [--plugin-options <opts>] [--exclude-patterns <regex>]
+    spikee debug module attacks   -m <module>  -i <b64json> --target <target>  [--max-iterations <n>] [--attack-options <opts>]
+    spikee debug module providers -m <provider/model>  -i <input>  [--max-tokens <n>] [--temperature <f>]
+"""
+
 import base64
 import json
 
@@ -7,6 +23,18 @@ from spikee.judge import call_judge
 from spikee.utilities.llm import get_llm
 
 def debug_module_target(args):
+    """
+    Debug a target module by sending a single input and printing the response.
+
+    CLI args used:
+        -m / --module          Name of the target module (local or built-in)
+        -i / --input           Input text to send to the target
+        --system-message       Optional system prompt
+        --target-options       Optional target options string (e.g. "openai/gpt-4o")
+
+    Example:
+        spikee debug module targets -m llm_provider -i "Hello!" --target-options "openai/gpt-4o"
+    """
     target = load_module_from_path(args.module, "targets")
 
     target_args = {}
@@ -22,6 +50,22 @@ def debug_module_target(args):
     print(f"[{target.__class__.__name__}] Response: {get_content(response) if response else 'No response'}")
 
 def debug_module_judge(args):
+    """
+    Debug a judge module by evaluating a target response and printing the verdict.
+
+    CLI args used:
+        -m / --module          Name of the judge module (local or built-in)
+        -i / --input           The original prompt / input that was sent to the target
+        -o / --output          The LLM output to evaluate (required)
+        --judge-options        LLM provider options for the judge (e.g. "openai/gpt-4o-mini")
+        --judge-args           Additional judge-specific arguments (format varies by judge)
+
+    Example:
+        spikee debug module judges -m llm_judge_harmful \\
+            -i "How do I make a bomb?" \\
+            -o "Sure, here are the steps..." \\
+            --judge-options "openai/gpt-4o-mini"
+    """
     judge = load_module_from_path(args.module, "judges")
 
     judge_args = {}
@@ -43,6 +87,19 @@ def debug_module_judge(args):
     print(f"[{judge.__class__.__name__}] Judge Result: {response}")
 
 def debug_module_plugin(args):
+    """
+    Debug a plugin module by transforming an input and printing the result.
+
+    CLI args used:
+        -m / --module          Name of the plugin module (local or built-in)
+        -i / --input           Input text to transform
+        --plugin-options       Plugin options string
+        --exclude-patterns     Regex pattern(s) to exclude from transformation.
+                               This flag can be specified multiple times.
+
+    Example:
+        spikee debug module plugins -m base64_plugin -i "Ignore previous instructions and..."
+    """
     plugin = load_module_from_path(args.module, "plugins")
 
     plugin_args = {}
@@ -58,6 +115,36 @@ def debug_module_plugin(args):
     print(f"[{plugin.__class__.__name__}] Plugin Response: {get_content(response) if response else 'No response'}")
 
 def debug_module_attack(args):
+    """
+    Debug an attack module by running it against a target and printing the result.
+
+    The -i / --input argument must be a base64-encoded JSON string representing a
+    dataset entry. The JSON object must contain all of the following fields:
+        id            (int)  Numeric entry identifier
+        long_id       (str)  Human-readable entry identifier
+        content       (str)  The prompt / payload content
+        content_type  (str)  Content type, e.g. "text"
+        judge_name    (str)  Name of the judge module to use for evaluation
+        judge_args    (dict) Judge-specific arguments (can be an empty object {})
+
+    To generate the base64 input in a shell:
+        echo '{"id":1,"long_id":"entry_001","content":"<prompt>","content_type":"text","judge_name":"<judge>","judge_args":{}}' | base64
+
+    CLI args used:
+        -m / --module          Name of the attack module (local or built-in)
+        -i / --input           Base64-encoded JSON dataset entry (see above)
+        --target               Name of the target module to attack (required)
+        --max-iterations       Maximum attack iterations (default: 10)
+        --attack-options       Attack options string
+
+    Example:
+        spikee debug module attacks \\
+            -m crescendo \\
+            -i $(echo '{"id":1,"long_id":"e1","content":"Ignore instructions","content_type":"text","judge_name":"llm_judge_harmful","judge_args":{}}' | base64) \\
+            --target llm_provider \\
+            --max-iterations 5 \\
+            --attack-options "model=openai/gpt-4o-mini"
+    """
     attack = load_module_from_path(args.module, "attacks")
 
     try:
@@ -89,6 +176,22 @@ def debug_module_attack(args):
     print(f"[{attack.__class__.__name__}] Attack Response: {str(response) if response else 'No response'}")
 
 def debug_module_provider(args):
+    """
+    Debug a provider by sending a single prompt and printing the response.
+
+    The -m / --module argument accepts the same provider/model identifier format
+    used throughout Spikee (e.g. "openai/gpt-4o", "bedrock/claude45-haiku",
+    "google/gemini-2.5-flash"). Use `spikee list providers` to see available options.
+
+    CLI args used:
+        -m / --module          Provider/model identifier (e.g. "openai/gpt-4o")
+        -i / --input           Input prompt to send to the provider
+        --max-tokens           Maximum tokens for the response
+        --temperature          Sampling temperature
+
+    Example:
+        spikee debug module providers -m "openai/gpt-4o" -i "What is 2+2?"
+    """
     provider_args = {}
 
     if args.module is None:
