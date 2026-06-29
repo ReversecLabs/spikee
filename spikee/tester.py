@@ -898,11 +898,18 @@ def _run_threaded(
     else:
         bar_entries.set_postfix(success=initial_success)
 
+    _thread_local = threading.local()
+
     def _thread_init():
-        """Give each worker thread its own asyncio event loop so that
-        libraries using run_async_in_sync (e.g. any_llm / httpx) can
-        clean up connections without 'Event loop is closed' errors."""
-        asyncio.set_event_loop(asyncio.new_event_loop())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        _thread_local.asyncio_loop = loop
+
+    def _thread_cleanup():
+        loop = getattr(_thread_local, "asyncio_loop", None)
+        if loop is not None:
+            loop.close()
+            asyncio.set_event_loop(None)
 
     executor = ThreadPoolExecutor(max_workers=num_threads, initializer=_thread_init)
     futures = {
@@ -963,6 +970,8 @@ def _run_threaded(
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
         bar_all.close()
+        for thread in executor._threads:
+            _thread_cleanup()
         bar_entries.close()
 
 
