@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import status_badge, type_badge %}
+{% set active_section = "jobs" %}
+{% block body_class %}no-subnav{% endblock %}
+{% block title %}Jobs | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-semibold mb-0">Jobs</h5>
+        {% if jobs %}
+        <span class="badge bg-secondary rounded-pill">{{ jobs | length }}</span>
+        {% endif %}
+    </div>
+
+    <div class="card spikee-card">
+        <div class="card-body p-0">
+            {% if jobs %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light border-bottom">
+                        <tr>
+                            <th class="ps-3 text-muted small fw-semibold" style="width:56px">#</th>
+                            <th class="text-muted small fw-semibold" style="width:100px">Type</th>
+                            <th class="text-muted small fw-semibold">Name</th>
+                            <th class="text-muted small fw-semibold" style="width:130px">Status</th>
+                            <th class="text-muted small fw-semibold" style="width:175px">Created</th>
+                            <th style="width:72px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-tbody"
+                           hx-get="/jobs/list-partial"
+                           hx-trigger="every 3s [hasRunningJobs()]"
+                           hx-swap="outerHTML">
+                        {% for job in jobs %}
+                        <tr>
+                            <td class="ps-3 text-muted small font-monospace">{{ loop.index }}</td>
+                            <td>{{ type_badge(job.type) }}</td>
+                            <td class="small fw-semibold text-break">{{ job.name }}</td>
+                            <td>{{ status_badge(job.status) }}</td>
+                            <td class="small text-muted text-nowrap">
+                                {{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </td>
+                            <td class="text-end pe-3">
+                                <a href="/jobs/{{ job.id }}"
+                                   class="btn btn-xs btn-outline-secondary">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor"
+                     class="bi bi-play-circle mb-3 opacity-25" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                    <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"/>
+                </svg>
+                <p class="fw-semibold mb-1">No jobs yet.</p>
+                <p class="small mb-3">Run Generate or Test to create a job.</p>
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="/generate" class="btn btn-sm btn-outline-spikee">Generate</a>
+                    <a href="/test"     class="btn btn-sm btn-outline-spikee">Test</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* HTMX polling condition — only poll while at least one Running badge is visible */
+function hasRunningJobs() {
+    return document.querySelector('.badge-running') !== null;
+}
+</script>
+{% endblock %}

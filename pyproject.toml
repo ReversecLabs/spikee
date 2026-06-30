@@ -9,7 +9,7 @@ description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitat
 readme = "README.md"
 keywords = [ "prompt-injection", "LLM", "cyber-security", "pentesting",]
 classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: Apache Software License", "Operating System :: OS Independent",]
-dependencies = [ "tqdm==4.67.3", "rich==14.3.3", "any-llm-sdk==1.13.0", "datasets==4.8.4", "tabulate==0.9.0", "flask==3.1.3", "jinja2==3.1.6", "pandas==3.0.1", "python-dotenv==1.2.2", "InquirerPy==0.3.4", "requests==2.33.0", "tomli; python_version < '3.11'",]
+dependencies = [ "tqdm==4.67.3", "rich==14.3.3", "any-llm-sdk==1.13.0", "datasets==4.8.4", "tabulate==0.9.0", "flask==3.1.3", "jinja2==3.1.6", "pandas==3.0.1", "python-dotenv==1.2.2", "InquirerPy==0.3.4", "requests==2.33.0", "tomli; python_version < '3.11'", "markdown==3.10.2",]
 [[project.authors]]
 name = "Reversec"
 email = "donato.capitella@reversec.com"

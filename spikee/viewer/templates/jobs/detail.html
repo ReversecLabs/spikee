@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import status_badge, type_badge %}
+{% set active_section = "jobs" %}
+{% block body_class %}no-subnav{% endblock %}
+{% block title %}Job: {{ job.name }} | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    {# ── Back + action bar ── #}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <a href="/jobs" class="btn btn-sm btn-outline-secondary">&larr; All Jobs</a>
+
+        {% if job.status == 'running' %}
+        <form method="post" action="/jobs/{{ job.id }}/cancel" class="mb-0">
+            <button type="submit" class="btn btn-sm btn-danger"
+                    onclick="return confirm('Cancel this job?')">Cancel</button>
+        </form>
+        {% endif %}
+
+        {% if dataset_filename %}
+        <a href="/generate/datasets/{{ dataset_filename | urlencode }}" class="btn btn-sm btn-outline-primary">
+            View Dataset
+        </a>
+        {% endif %}
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+            {{ type_badge(job.type) }}
+            <span id="status-badge" class="d-inline-flex align-items-center">{{ status_badge(job.status) }}</span>
+        </div>
+    </div>
+
+    {# ── Job header card ── #}
+    <div class="card spikee-card mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="row g-2">
+                <div class="col-12 col-md-6">
+                    <div class="meta-label">Name</div>
+                    <div class="fw-semibold">{{ job.name }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="meta-label">Created</div>
+                    <div class="small">{{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+                {% if job.returncode is not none %}
+                <div class="col-6 col-md-3">
+                    <div class="meta-label">Exit Code</div>
+                    <div class="small font-monospace
+                         {{ 'text-success' if job.returncode == 0 else 'text-danger' }}">
+                        {{ job.returncode }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if job.args %}
+            <div class="mt-2">
+                <div class="meta-label mb-1">Command</div>
+                <code class="small d-block" style="word-break:break-all;white-space:pre-wrap;">spikee {{ job.args | join(' ') }}</code>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Log panel ── #}
+    <div class="card spikee-card">
+        <div class="card-header py-2 px-3 fw-semibold small d-flex align-items-center justify-content-between">
+            <span>Output</span>
+            {% if job.status == 'running' %}
+            <span class="text-muted small d-flex align-items-center gap-1">
+                <span class="spinner-border spinner-border-sm" style="width:.65em;height:.65em;border-width:1.5px;"
+                      role="status" aria-hidden="true"></span>
+                Live
+            </span>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <pre id="log-panel" class="spikee-terminal m-0 rounded-0 rounded-bottom">{% for line in job.log %}{{ line | e }}
+{% endfor %}</pre>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const panel   = document.getElementById('log-panel');
+    const isRunning = {{ 'true' if job.status == 'running' else 'false' }};
+    const jobId   = {{ job.id | tojson }};
+
+    /* Auto-scroll helper */
+    function scrollBottom() {
+        if (panel) panel.scrollTop = panel.scrollHeight;
+    }
+    scrollBottom();
+
+    /* Dynamically size terminal to fill remaining viewport */
+    function fitTerminal() {
+        if (!panel) return;
+        const top = panel.getBoundingClientRect().top;
+        const margin = 24; /* bottom breathing room */
+        const height = Math.max(200, window.innerHeight - top - margin);
+        document.documentElement.style.setProperty('--terminal-height', height + 'px');
+    }
+    fitTerminal();
+    window.addEventListener('resize', fitTerminal);
+
+    function updateStatusBadge(status) {
+        const el = document.getElementById('status-badge');
+        if (!el) return;
+        if (status === 'success') {
+            el.innerHTML = '<span class="badge badge-success">Success</span>';
+        } else {
+            el.innerHTML = '<span class="badge badge-failed">Failed</span>';
+        }
+        const spinner = document.querySelector('.card-header .spinner-border');
+        if (spinner) spinner.closest('span').remove();
+    }
+
+    /* Poll log while running */
+    if (isRunning) {
+        const intervalMs = 1500;
+        let timer = setInterval(async function () {
+            try {
+                const resp = await fetch('/jobs/' + jobId + '/log');
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                /* Update log */
+                if (panel && data.log) {
+                    panel.textContent = data.log.join('\n');
+                    scrollBottom();
+                }
+
+                /* Stop polling when job finishes */
+                if (data.status !== 'running') {
+                    clearInterval(timer);
+                    updateStatusBadge(data.status);
+                    /* Reload page so exit code and final state render correctly */
+                    setTimeout(() => location.reload(), 800);
+                }
+            } catch (e) {
+                /* network error — keep polling */
+            }
+        }, intervalMs);
+    }
+}());
+</script>
+{% endblock %}

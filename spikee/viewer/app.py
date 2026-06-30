@@ -52,10 +52,13 @@ def create_app(truncate_length: int = 500) -> Flask:
     # Suppress noisy werkzeug request logs (keep warnings/errors)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
+    from spikee import __version__ as _spikee_version
+
     # Jinja globals available in all templates
     app.jinja_env.globals.update(
         app_name="SPIKEE",
         truncate_length=truncate_length,
+        spikee_version=_spikee_version,
     )
 
     # Register blueprints

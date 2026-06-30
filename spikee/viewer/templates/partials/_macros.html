@@ -6,3 +6,25 @@
   {%- elif entry.error and entry.error != '' %}error
   {%- else %}failure{%- endif -%}
 {% endmacro %}
+
+{% macro status_badge(status) %}
+{%- if status == 'running' -%}
+<span class="badge badge-running d-inline-flex align-items-center gap-1">
+    <span class="spinner-border" style="width:.6em;height:.6em;border-width:1.5px;"
+          role="status" aria-hidden="true"></span>
+    Running
+</span>
+{%- elif status == 'success' -%}
+<span class="badge badge-success">Success</span>
+{%- else -%}
+<span class="badge badge-failed">Errored</span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro type_badge(type) %}
+{%- if type == 'generate' -%}
+<span class="badge bg-info text-dark">Generate</span>
+{%- else -%}
+<span class="badge bg-primary">Test</span>
+{%- endif -%}
+{% endmacro %}

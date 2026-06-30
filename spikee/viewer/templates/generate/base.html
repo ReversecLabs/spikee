@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% set active_section = "generate" %}
+
+{% block subnav %}
+<div class="spikee-subnav">
+    <ul class="nav gap-1">
+        <li class="nav-item">
+            <a class="nav-link {% if active_generate_page == 'seeds' %}active{% endif %}"
+               href="/generate/seeds">Seeds</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if active_generate_page == 'datasets' %}active{% endif %}"
+               href="/generate/datasets">Datasets</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if active_generate_page == 'run' %}active{% endif %}"
+               href="/generate/run">Generate</a>
+        </li>
+    </ul>
+</div>
+{% endblock %}

@@ -153,10 +153,13 @@ def _load_result_data(
 
 
 def _highlight_headings(text: str) -> str:
+    # Escape the plain-text output first so LLM responses can't inject HTML,
+    # then safely wrap known heading markers in markup.
+    escaped = _html.escape(text)
     return re.sub(
         r"===\s*(.*?)\s*===",
         lambda m: f"<mark><strong>=== {m.group(1)} ===</strong></mark>",
-        text,
+        escaped,
     )
 
 

@@ -11,12 +11,14 @@ from __future__ import annotations
 import os
 import sys
 import html
+import shutil
 import subprocess
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 
@@ -65,6 +67,27 @@ class JobQueue:
             return any(j.status == "running" for j in self._jobs.values())
 
 
+def _find_spikee_exe() -> str:
+    """
+    Locate the spikee console-script executable installed in the same environment
+    as the running Python interpreter. Falls back to 'spikee' on PATH.
+    """
+    # Prefer the sibling Scripts/bin directory of the current interpreter
+    scripts_dir = Path(sys.executable).parent
+    for candidate in ("spikee", "spikee.exe"):
+        full = scripts_dir / candidate
+        if full.is_file():
+            return str(full)
+    # Fall back to PATH lookup
+    found = shutil.which("spikee")
+    if found:
+        return found
+    raise FileNotFoundError(
+        "Could not locate the 'spikee' executable. "
+        "Ensure spikee is installed in the active environment."
+    )
+
+
 def spawn_job(job: Job) -> None:
     """
     Start the spikee subprocess for the given job.
@@ -72,11 +95,12 @@ def spawn_job(job: Job) -> None:
     Sets job.status to "success" or "failed" when the process exits.
     """
     try:
+        spikee_exe = _find_spikee_exe()
         proc = subprocess.Popen(
-            [sys.executable, "-m", "spikee", "--quiet"] + job.args,
+            [spikee_exe, "--quiet"] + job.args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
+            text=False,          # binary — we decode manually to handle \r correctly
             cwd=os.getcwd(),
         )
         job.process = proc
@@ -88,10 +112,45 @@ def spawn_job(job: Job) -> None:
         return
 
     def _reader():
+        buf = ""
         try:
-            for line in proc.stdout:
+            while True:
+                raw = proc.stdout.read(256)
+                if not raw:
+                    break
+                chunk = raw.decode("utf-8", errors="replace")
+                buf += chunk
+                # Process all complete "lines" handling \r\n, \n, and bare \r.
+                # Binary mode preserves \r so progress-bar overwrite works correctly.
+                while True:
+                    rn = buf.find("\r\n")
+                    r  = buf.find("\r")
+                    n  = buf.find("\n")
+
+                    candidates = [
+                        (pos, kind)
+                        for pos, kind in [(rn, "rn"), (r, "r"), (n, "n")]
+                        if pos != -1
+                    ]
+                    if not candidates:
+                        break  # wait for more data
+
+                    pos, kind = min(candidates, key=lambda x: x[0])
+                    line = buf[:pos]
+
+                    with job.lock:
+                        if kind == "r" and job.log:
+                            # bare \r → overwrite last entry (tqdm progress bar)
+                            job.log[-1] = line
+                        else:
+                            job.log.append(line)
+
+                    buf = buf[pos + (2 if kind == "rn" else 1):]
+
+            # flush any remaining buffered text
+            if buf:
                 with job.lock:
-                    job.log.append(line.rstrip())
+                    job.log.append(buf)
         except Exception as e:
             with job.lock:
                 job.log.append(f"[Error] Log reader error: {e}")
