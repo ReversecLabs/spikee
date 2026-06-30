@@ -30,7 +30,7 @@ all = [ "any-llm-sdk[azure,azureopenai,bedrock,ollama,groq]==1.13.0",]
 spikee = "spikee.cli:main"
 
 [tool.setuptools.package-data]
-spikee = [ "data/**/*",]
+spikee = [ "data/**/*", "viewer/**/*",]
 
 [tool.setuptools.packages.find]
 include = [ "spikee*",]

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link href="/static/bootstrap.5.3.8.min.css" rel="stylesheet">
+    <link href="/static/app.css" rel="stylesheet">
+</head>
+<body class="spikee-body">
+
+<!-- ================================================================
+     TOP NAVIGATION BAR
+================================================================ -->
+<nav class="navbar navbar-expand-md spikee-navbar fixed-top">
+    <div class="container-fluid px-3">
+
+        <!-- Brand -->
+        <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+            <img src="/static/logo.png" alt="Spikee" height="28">
+            <span class="fw-semibold">{{ app_name }}</span>
+        </a>
+
+        <!-- Mobile toggler -->
+        <button class="navbar-toggler border-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Nav items -->
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-4 me-auto mb-2 mb-md-0 gap-1">
+                <li class="nav-item">
+                    <a class="nav-link spikee-nav-link {% if active_section == 'jobs' %}active{% endif %}"
+                       href="/jobs">Jobs</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link spikee-nav-link {% if active_section == 'generate' %}active{% endif %}"
+                       href="/generate">Generate</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link spikee-nav-link {% if active_section == 'test' %}active{% endif %}"
+                       href="/test">Test</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link spikee-nav-link {% if active_section == 'results' %}active{% endif %}"
+                       href="/results">Results</a>
+                </li>
+            </ul>
+
+            <!-- Right side brand link -->
+            <a href="https://reversec.com" class="d-flex align-items-center" title="Reversec">
+                <img src="/static/reversec-menu-icon.svg" alt="Reversec" height="26">
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- ================================================================
+     SECONDARY / SUB NAVIGATION BAR
+================================================================ -->
+{% block subnav %}{% endblock %}
+
+<!-- ================================================================
+     MAIN CONTENT
+================================================================ -->
+<main class="spikee-main">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- ================================================================
+     SCRIPTS
+================================================================ -->
+<script src="/static/bootstrap.5.3.8.bundle.min.js"></script>
+<script src="/static/htmx.2.0.4.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

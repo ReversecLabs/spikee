@@ -1,0 +1,201 @@
+/* ================================================================
+   SPIKEE Viewer — app.css
+   Brand colour: #2a1635 (dark purple)
+   Accent:       #7c3aed (violet)
+================================================================ */
+
+/* ---- Colour variables ---------------------------------------- */
+:root {
+    --spikee-bg:        #2a1635;
+    --spikee-accent:    #7c3aed;
+    --spikee-accent-lt: #9d65f5;
+    --spikee-text:      #f0eaf7;
+    --spikee-muted:     #b0a0c0;
+    --spikee-border:    rgba(255,255,255,0.1);
+    --content-top:      112px;  /* navbar (56px) + subnav (56px) */
+}
+
+/* ---- Body ---------------------------------------------------- */
+.spikee-body {
+    background-color: #f8f7fa;
+    color: #1a1a2e;
+}
+
+/* ---- Top navbar --------------------------------------------- */
+.spikee-navbar {
+    background-color: var(--spikee-bg);
+    border-bottom: 1px solid var(--spikee-border);
+    min-height: 56px;
+}
+
+.spikee-navbar .navbar-brand {
+    color: var(--spikee-text);
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+}
+.spikee-navbar .navbar-brand:hover { color: #fff; }
+
+.spikee-nav-link {
+    color: var(--spikee-muted) !important;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.45rem 0.85rem !important;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.spikee-nav-link:hover {
+    color: var(--spikee-text) !important;
+    background: rgba(255,255,255,0.07);
+}
+.spikee-nav-link.active {
+    color: #fff !important;
+    background: var(--spikee-accent);
+}
+
+/* ---- Sub-navbar --------------------------------------------- */
+.spikee-subnav {
+    background-color: #1e1028;
+    border-bottom: 1px solid var(--spikee-border);
+    min-height: 48px;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 1029;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.spikee-subnav .nav-link {
+    color: var(--spikee-muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 0.3rem 0.75rem !important;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+.spikee-subnav .nav-link:hover {
+    color: var(--spikee-text);
+    background: rgba(255,255,255,0.07);
+}
+.spikee-subnav .nav-link.active {
+    color: #fff;
+    background: rgba(124, 58, 237, 0.35);
+}
+
+/* ---- Main content ------------------------------------------- */
+.spikee-main {
+    padding-top: var(--content-top);
+    padding-bottom: 2rem;
+}
+
+/* When there is no subnav the top offset is just the navbar */
+.spikee-main.no-subnav {
+    padding-top: 72px;
+}
+
+/* ---- Home page --------------------------------------------- */
+.spikee-home {
+    min-height: calc(100vh - var(--content-top));
+}
+.spikee-home-logo {
+    width: 90px;
+    height: auto;
+    filter: drop-shadow(0 4px 16px rgba(124,58,237,0.4));
+}
+
+/* ---- Buttons ----------------------------------------------- */
+.btn-spikee {
+    background-color: var(--spikee-accent);
+    color: #fff;
+    border: none;
+    font-weight: 500;
+}
+.btn-spikee:hover {
+    background-color: var(--spikee-accent-lt);
+    color: #fff;
+}
+.btn-outline-spikee {
+    color: var(--spikee-accent);
+    border-color: var(--spikee-accent);
+    font-weight: 500;
+}
+.btn-outline-spikee:hover {
+    background-color: var(--spikee-accent);
+    color: #fff;
+}
+
+/* ---- Cards ------------------------------------------------- */
+.spikee-card {
+    border: 1px solid #e2dcea;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(42,22,53,0.06);
+    transition: box-shadow 0.15s;
+}
+.spikee-card:hover { box-shadow: 0 4px 14px rgba(42,22,53,0.12); }
+
+/* ---- Terminal / log panel ---------------------------------- */
+.spikee-terminal {
+    background: #0d0d17;
+    color: #d4d4d4;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-y: auto;
+    min-height: 300px;
+    max-height: 600px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ---- Result / entry cards ---------------------------------- */
+.result-card {
+    border-left: 4px solid #dee2e6;
+    border-radius: 6px;
+    background: #fff;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: border-color 0.15s;
+}
+.result-card:hover { border-left-color: var(--spikee-accent); }
+.result-card.success { border-left-color: #198754; }
+.result-card.failure { border-left-color: #dc3545; }
+.result-card.error   { border-left-color: #fd7e14; }
+
+.code-block {
+    background: #f6f3fa;
+    border-radius: 5px;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #2a1635;
+}
+
+/* ---- Status badges ---------------------------------------- */
+.badge-running  { background-color: #0d6efd; color: #fff; }
+.badge-success  { background-color: #198754; color: #fff; }
+.badge-failed   { background-color: #dc3545; color: #fff; }
+
+/* ---- Misc ------------------------------------------------- */
+.meta-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

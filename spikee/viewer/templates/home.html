@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% set active_section = "home" %}
+
+{% block title %}SPIKEE — Prompt Injection Testing{% endblock %}
+
+{% block content %}
+<div class="container-fluid d-flex align-items-center justify-content-center spikee-home">
+    <div class="text-center">
+        <img src="/static/logo.png" alt="Spikee" class="mb-4 spikee-home-logo">
+        <h1 class="fw-bold mb-1">SPIKEE</h1>
+        <p class="text-muted mb-4 fs-5">Simple Prompt Injection Kit for Evaluation and Exploitation</p>
+
+        <div class="d-flex flex-wrap justify-content-center gap-3 mt-2">
+            <a href="/jobs" class="btn btn-spikee btn-lg px-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+                     class="bi bi-list-task me-2 mb-1" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
+                          d="M2 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5zM3 3H2v1h1z"/>
+                    <path d="M5 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M5.5 7a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zm0 4a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z"/>
+                    <path fill-rule="evenodd"
+                          d="M1.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5zm1 0H2v1h1zm-1 3.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zm1 .5H2v1h1z"/>
+                </svg>
+                Jobs
+            </a>
+            <a href="/generate" class="btn btn-outline-spikee btn-lg px-4">Generate</a>
+            <a href="/test" class="btn btn-outline-spikee btn-lg px-4">Test</a>
+            <a href="/results" class="btn btn-outline-spikee btn-lg px-4">Results</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
