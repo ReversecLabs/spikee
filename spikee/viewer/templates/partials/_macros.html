@@ -1,0 +1,8 @@
+{# partials/_macros.html — shared Jinja2 macros #}
+
+{% macro entry_state(entry) %}
+  {%- if entry.success %}success
+  {%- elif entry.guardrail %}guardrail
+  {%- elif entry.error and entry.error != '' %}error
+  {%- else %}failure{%- endif -%}
+{% endmacro %}

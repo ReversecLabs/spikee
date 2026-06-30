@@ -1,0 +1,128 @@
+{% extends "results/base.html" %}
+{% set active_results_page = "overview" %}
+
+{% block title %}Results — Overview | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    {# ================================================================
+       STAT CARDS
+       Order: Total, ASR, Successes, Failures, GTR, Guardrails, Errors
+    ================================================================ #}
+    <div class="row g-3 mb-4">
+        {# Total #}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-white bg-primary h-100 shadow-sm">
+                <div class="stat-label">Total Entries</div>
+                <div class="stat-value">{{ stats.total if stats else "—" }}</div>
+            </div>
+        </div>
+        {# ASR #}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-white bg-spikee h-100 shadow-sm">
+                <div class="stat-label">ASR</div>
+                <div class="stat-value">{{ stats.asr if stats else "—" }}</div>
+                <div class="stat-sublabel">Attack Success Rate</div>
+            </div>
+        </div>
+        {# Successes #}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-white bg-success h-100 shadow-sm">
+                <div class="stat-label">Successes</div>
+                <div class="stat-value">{{ stats.successes if stats else "—" }}</div>
+            </div>
+        </div>
+        {# Failures #}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-white bg-secondary h-100 shadow-sm">
+                <div class="stat-label">Failures</div>
+                <div class="stat-value">{{ stats.failures if stats else "—" }}</div>
+            </div>
+        </div>
+        {# GTR — only show if guardrail data exists #}
+        {% if stats and stats.guardrails > 0 %}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-dark bg-warning h-100 shadow-sm">
+                <div class="stat-label">GTR</div>
+                <div class="stat-value">{{ stats.gtr }}</div>
+                <div class="stat-sublabel">Guardrail Trigger Rate</div>
+            </div>
+        </div>
+        {% endif %}
+        {# Errors #}
+        <div class="col-6 col-md-4 col-xl">
+            <div class="stat-card border-0 text-white bg-danger h-100 shadow-sm">
+                <div class="stat-label">Errors</div>
+                <div class="stat-value">{{ stats.errors if stats else "—" }}</div>
+            </div>
+        </div>
+    </div>
+
+    {# ================================================================
+       ANALYSIS TEXT OUTPUT
+    ================================================================ #}
+    <div class="card spikee-card mb-4">
+        <div class="card-header fw-semibold py-2 px-3 d-flex justify-content-between align-items-center">
+            <span>
+                Analysis:
+                <span class="text-muted fw-normal">{{ selected_file or 'combined' }}</span>
+            </span>
+            <span class="badge {{ 'bg-success' if processor_output else 'bg-secondary' }}">
+                {{ "live" if processor_output else "no data" }}
+            </span>
+        </div>
+        <div class="card-body p-0">
+            {% if processor_output %}
+                <pre class="spikee-analysis-output m-0 p-3">{{ processor_output | safe }}</pre>
+            {% else %}
+                <p class="text-muted small p-3 mb-0">No result files found in <code>results/</code>.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ================================================================
+       BREAKDOWNS
+    ================================================================ #}
+    {% if breakdowns and breakdowns | length > 0 %}
+
+    {# ── Breakdown colour key ── #}
+    <div class="d-flex align-items-center gap-3 mb-2 ms-1">
+        <span class="small text-muted fw-semibold me-1">Key:</span>
+        <span class="d-flex align-items-center gap-1 small">
+            <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#198754;"></span>
+            Success
+        </span>
+        <span class="d-flex align-items-center gap-1 small">
+            <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ffc107;"></span>
+            Guardrail
+        </span>
+        <span class="d-flex align-items-center gap-1 small">
+            <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dee2e6;border:1px solid #ced4da;"></span>
+            Failure
+        </span>
+    </div>
+
+    <div class="row g-3">
+        {% for i in range(0, breakdowns|length, 2) %}
+            {% set left  = breakdowns[i] %}
+            {% set right = breakdowns[i+1] if i+1 < breakdowns|length else none %}
+            <div class="col-12 col-lg-6">
+                {% set title = left[0] %}
+                {% set rows  = left[1] %}
+                {% include "partials/_breakdown_card.html" %}
+            </div>
+            {% if right %}
+            <div class="col-12 col-lg-6">
+                {% set title = right[0] %}
+                {% set rows  = right[1] %}
+                {% include "partials/_breakdown_card.html" %}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}

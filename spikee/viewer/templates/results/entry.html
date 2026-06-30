@@ -1,0 +1,37 @@
+{% extends "results/base.html" %}
+{% set active_results_page = "entries" %}
+
+{% block title %}Entry #{{ entry.id if entry is defined else '1' }} | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    {# ---- Action bar ---- #}
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <a href="/results/entries{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+           class="btn btn-sm btn-outline-secondary">
+            &larr; Back to Entries
+        </a>
+
+        <form method="post"
+              action="/results/entry/{{ id }}/toggle{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+              class="mb-0">
+            <button type="submit" class="btn btn-sm btn-success">Toggle Success</button>
+        </form>
+
+        <form method="post"
+              action="/results/entry/{{ id }}/rejudge{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+              class="mb-0">
+            <button type="submit" class="btn btn-sm btn-warning">Re-judge</button>
+        </form>
+    </div>
+
+    {# ---- Detail card ---- #}
+    {% if entry is defined %}
+        {% include "partials/_result_detail.html" %}
+    {% else %}
+        <div class="text-muted text-center py-5">Entry not found.</div>
+    {% endif %}
+
+</div>
+{% endblock %}

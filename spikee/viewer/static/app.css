@@ -90,14 +90,16 @@
     padding-bottom: 2rem;
 }
 
-/* When there is no subnav the top offset is just the navbar */
+/* Pages with no subnav (e.g. home) only offset by the navbar */
 .spikee-main.no-subnav {
-    padding-top: 72px;
+    padding-top: 56px;
+    padding-bottom: 0;
 }
 
 /* ---- Home page --------------------------------------------- */
 .spikee-home {
-    min-height: calc(100vh - var(--content-top));
+    height: calc(100vh - 56px);
+    overflow: hidden;
 }
 .spikee-home-logo {
     width: 90px;
@@ -184,6 +186,141 @@
 .badge-success  { background-color: #198754; color: #fff; }
 .badge-failed   { background-color: #dc3545; color: #fff; }
 
+/* ---- Stat cards -------------------------------------------- */
+.stat-card {
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+}
+.stat-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.8;
+    margin-bottom: 2px;
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.stat-sublabel {
+    font-size: 0.68rem;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+/* bg-spikee — brand violet for ASR card */
+.bg-spikee {
+    background-color: var(--spikee-accent) !important;
+}
+
+/* ---- Breakdown bars ---------------------------------------- */
+.breakdown-label {
+    width: 160px;
+    min-width: 100px;
+}
+
+/* ---- Search chips ------------------------------------------ */
+.btn-xs {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 20px;
+    line-height: 1.4;
+}
+.search-chip {
+    background: #ede8f5;
+    border: 1px solid #c9b8e8;
+    color: #4a2c7a;
+}
+.search-chip:hover {
+    background: var(--spikee-accent);
+    border-color: var(--spikee-accent);
+    color: #fff;
+}
+.search-chip-field {
+    background: #e8f0fd;
+    border-color: #b8c8ee;
+    color: #1a3a7a;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+.search-chip-field:hover {
+    background: #1a3a7a;
+    border-color: #1a3a7a;
+    color: #fff;
+}
+
+/* ---- Analysis output pre ---------------------------------- */
+.spikee-analysis-output {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    background: #f6f3fa;
+    color: #1a1a2e;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 500px;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+}
+
+/* ---- Entry state header strips — identical to Overview stat card colours ---- */
+/* Success=#198754 (bg-success)  Failure=#6c757d (bg-secondary)                 */
+/* Guardrail=#ffc107 (bg-warning, dark text)  Error=#dc3545 (bg-danger)         */
+.entry-header-success   { background: #198754; color: #fff; }
+.entry-header-failure   { background: #6c757d; color: #fff; }
+.entry-header-guardrail { background: #ffc107; color: #664d03; }
+.entry-header-error     { background: #dc3545; color: #fff; }
+
+.entry-badge {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.75rem;
+    background: rgba(255,255,255,0.22);
+    border-radius: 20px;
+}
+.entry-header-guardrail .entry-badge {
+    background: rgba(0,0,0,0.1);
+}
+
+/* ---- Bootstrap missing utility ----------------------------- */
+
+/* ---- File select in subnav -------------------------------- */
+.spikee-file-select {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--spikee-text);
+    font-size: 0.82rem;
+}
+.spikee-file-select option {
+    background-color: #1e1028;
+    color: var(--spikee-text);
+}
+
+/* ---- Conversation thread ----------------------------------- */
+.conversation-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+.conv-message {
+    border-radius: 6px;
+    overflow: hidden;
+}
+.conv-role {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 2px 8px;
+    background: rgba(0,0,0,0.04);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.conv-content {
+    border-radius: 0 0 6px 6px !important;
+    margin: 0 !important;
+}
+
 /* ---- Misc ------------------------------------------------- */
 .meta-label {
     font-size: 0.7rem;
@@ -198,4 +335,19 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* ---- Utilities --------------------------------------------- */
+.cursor-pointer { cursor: pointer; }
+
+/* ---- Pagination -------------------------------------------- */
+.page-item.active .page-link {
+    background-color: var(--spikee-accent);
+    border-color:     var(--spikee-accent);
+}
+.page-link {
+    color: var(--spikee-accent);
+}
+.page-link:hover {
+    color: var(--spikee-accent-lt);
 }

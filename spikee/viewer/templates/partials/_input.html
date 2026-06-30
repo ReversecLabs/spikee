@@ -1,0 +1,81 @@
+{# partials/_input.html
+   Renders the input prompt section of a result entry.
+   Expects: entry, truncated (bool), process_text(), process_standardised_conversation(), text_to_colour()
+#}
+{% if entry.system_message and entry.system_message is not none and entry.system_message != '' %}
+<div class="border-start border-secondary ps-3 mb-3">
+    <div class="meta-label mb-1">System Message</div>
+    <div class="code-block">{{ process_text(entry.system_message, truncated=truncated)|e }}</div>
+</div>
+{% endif %}
+
+{% set _has_trace = entry.conversation or (entry.input is mapping) or (entry.input is sequence and entry.input is not string) %}
+{% set _collapse_id = "trace-" ~ (entry.id | string | replace("-","_")) %}
+
+<div class="border-start border-secondary ps-3 mb-2">
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="meta-label mb-0">
+            {% if entry.conversation %}
+                Attack Conversation Trace
+            {% elif entry.input is mapping or (entry.input is sequence and entry.input is not string) %}
+                Multi-Turn Input
+            {% else %}
+                Input Prompt
+            {% endif %}
+        </div>
+        {% if _has_trace %}
+        <button class="btn btn-xs btn-outline-secondary"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#{{ _collapse_id }}"
+                aria-expanded="true"
+                aria-controls="{{ _collapse_id }}"
+                onclick="this.textContent = this.getAttribute('aria-expanded') === 'true' ? '▶ Show trace' : '▼ Hide trace'">
+            ▼ Hide trace
+        </button>
+        {% endif %}
+    </div>
+
+    {% if entry.objective and not entry.conversation and entry.objective is not none and entry.objective != '' %}
+        <div class="code-block mb-2">
+            <span class="meta-label d-inline me-1">Objective:</span>{{ entry.objective|e }}
+        </div>
+    {% endif %}
+
+    {# ── Standardised attack conversation trace ── #}
+    {% if entry.conversation %}
+        <div class="collapse show" id="{{ _collapse_id }}">
+            {{ process_standardised_conversation(entry.conversation, truncated=truncated) | safe }}
+        </div>
+
+    {# ── Multi-turn mapping: {conversation: [{role, content}, ...]} ── #}
+    {% elif entry.input is mapping %}
+        <div class="collapse show" id="{{ _collapse_id }}">
+            <div class="conversation-thread">
+                {% for message in entry.input.conversation %}
+                <div class="conv-message conv-{{ message.role | lower | replace(' ','_') }}">
+                    <div class="conv-role"
+                         style="color: {{ text_to_colour(message.role) }};">{{ message.role | upper }}</div>
+                    <div class="code-block conv-content">{{ process_text(message.content, truncated=truncated)|e }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    {# ── Sequence of messages ── #}
+    {% elif entry.input is sequence and entry.input is not string %}
+        <div class="collapse show" id="{{ _collapse_id }}">
+            <div class="conversation-thread">
+                {% for message in entry.input %}
+                <div class="conv-message">
+                    <div class="code-block conv-content">{{ process_text(message, truncated=truncated)|e }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    {# ── Plain string ── #}
+    {% else %}
+        <div class="code-block">{{ process_text(entry.input, truncated=truncated)|e }}</div>
+    {% endif %}
+</div>
