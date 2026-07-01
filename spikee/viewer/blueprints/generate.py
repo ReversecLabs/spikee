@@ -10,7 +10,10 @@ from flask import Blueprint, Response, abort, redirect, render_template, request
 import markdown as md_lib
 
 from spikee.utilities.files import read_jsonl_file
-from spikee.utilities.modules import collect_datasets, collect_modules, collect_seeds
+from spikee.utilities.modules import (
+    collect_datasets, collect_modules, collect_seeds,
+    get_description_from_module, get_options_from_module, load_module_from_path,
+)
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
 from spikee.viewer.blueprints._forms import FormValidationError, GenerateForm
@@ -61,18 +64,87 @@ def _collect_datasets_with_meta() -> list[dict]:
 
 
 def _collect_plugins() -> dict:
-    """Return plugins as {local: [{name, tags}], builtin: [{name, tags}]}."""
+    """Return plugins as {local: [{name, tags, description, options, llm_required}], builtin: [...]}."""
     _all, local_names, builtin_names = collect_modules("plugins")
     exclude = {"Single-Turn"}
 
     def _entry(name: str) -> dict:
         tags = [t for t in _module_tags(name, "plugins") if t["label"] not in exclude]
-        return {"name": name, "tags": tags}
+        description = ""
+        options: list[str] = []
+        llm_required = False
+        try:
+            mod = load_module_from_path(name, "plugins")
+            desc = get_description_from_module(mod, "plugins")
+            if desc and isinstance(desc, tuple) and len(desc) >= 2:
+                description = str(desc[1]) if desc[1] else ""
+            opts = get_options_from_module(mod, "plugins")
+            if opts and isinstance(opts, tuple) and len(opts) >= 2:
+                option_list, llm_req = opts
+                options = list(option_list) if option_list else []
+                llm_required = bool(llm_req)
+        except Exception:
+            pass
+        return {
+            "name": name,
+            "tags": tags,
+            "description": description,
+            "options": options,
+            "llm_required": llm_required,
+        }
 
     return {
         "local":   [_entry(n) for n in sorted(local_names)],
         "builtin": [_entry(n) for n in sorted(builtin_names)],
     }
+
+
+def _collect_plugins_detail() -> list[dict]:
+    """Return a rich list of plugin metadata for the plugins browser page.
+
+    Each entry is a dict with:
+        name        — module name
+        source      — "local" or "builtin"
+        tags        — [{label, colour}] (Single-Turn excluded)
+        description — plain-text description string, or "" on failure
+        options     — list of option strings advertised by the module, or []
+        llm_required — bool; True if any option requires an LLM call
+    """
+    _all, local_names, builtin_names = collect_modules("plugins")
+    local_set = set(local_names)
+    exclude_tags = {"Single-Turn"}
+
+    plugins = []
+    for name in sorted(_all):
+        tags = [t for t in _module_tags(name, "plugins") if t["label"] not in exclude_tags]
+        source = "local" if name in local_set else "builtin"
+
+        description = ""
+        options: list[str] = []
+        llm_required = False
+        try:
+            mod = load_module_from_path(name, "plugins")
+            desc = get_description_from_module(mod, "plugins")
+            if desc and isinstance(desc, tuple) and len(desc) >= 2:
+                description = str(desc[1]) if desc[1] else ""
+            opts = get_options_from_module(mod, "plugins")
+            if opts and isinstance(opts, tuple) and len(opts) >= 2:
+                option_list, llm_req = opts
+                options = list(option_list) if option_list else []
+                llm_required = bool(llm_req)
+        except Exception:
+            pass
+
+        plugins.append({
+            "name":         name,
+            "source":       source,
+            "tags":         tags,
+            "description":  description,
+            "options":      options,
+            "llm_required": llm_required,
+        })
+
+    return plugins
 
 
 def _normalize_row(row: dict, file_type: str) -> dict:
@@ -298,6 +370,82 @@ def index() -> Response:
 def seeds() -> str:
     """Render the seed folder browser."""
     return render_template("generate/seeds.html", seeds=_collect_seeds_with_meta())
+
+
+@generate_bp.route("/plugins")
+def plugins() -> str:
+    """Render the plugin workshop — build a pipeline, enter input, see output."""
+    return render_template(
+        "generate/plugins.html",
+        plugins=_collect_plugins_detail(),
+    )
+
+
+@generate_bp.route("/plugins/run", methods=["POST"])
+def plugins_run() -> Response:
+    """Execute a plugin pipeline against a user-supplied input text.
+
+    Expects JSON body:
+        pipeline         — pipe-separated plugin names, e.g. "base64|rot13"
+        plugin_options   — semicolon/newline-separated "plugin:key=val" strings
+        input_text       — text to transform
+        exclude_patterns — newline-separated regex strings to exclude from transformation
+
+    Returns JSON:
+        {outputs: [str], count: int, error: str|null}
+    """
+    from flask import jsonify
+    from spikee.generator import apply_plugin, load_plugins, parse_plugin_options
+
+    data = request.get_json(silent=True) or {}
+    pipeline_str   = (data.get("pipeline") or "").strip()
+    options_raw    = (data.get("plugin_options") or "").strip()
+    input_text     = data.get("input_text", "")
+    exclude_raw    = (data.get("exclude_patterns") or "").strip()
+
+    # Parse exclude patterns — one regex per non-empty line
+    exclude_patterns = [ln.strip() for ln in exclude_raw.splitlines() if ln.strip()] or None
+
+    if not pipeline_str:
+        return jsonify({"outputs": [], "count": 0, "error": "No plugins specified."})
+    if input_text == "":
+        return jsonify({"outputs": [], "count": 0, "error": "Input text is empty."})
+
+    # Normalise options — accept newlines or semicolons as separators
+    options_normalised = ";".join(
+        ln.strip() for ln in options_raw.replace(";", "\n").splitlines() if ln.strip()
+    )
+    plugin_option_map = parse_plugin_options(options_normalised)
+
+    try:
+        # pipeline_str is already in the |-separated format load_plugins expects
+        plugins_loaded = load_plugins([pipeline_str])
+    except SystemExit:
+        return jsonify({"outputs": [], "count": 0, "error": f"Failed to load plugin(s): {pipeline_str}"})
+    except Exception as exc:
+        return jsonify({"outputs": [], "count": 0, "error": str(exc)})
+
+    if not plugins_loaded:
+        return jsonify({"outputs": [], "count": 0, "error": "No plugins loaded."})
+
+    plugin_name, plugin_module = plugins_loaded[0]
+
+    try:
+        results = apply_plugin(
+            plugin_name,
+            plugin_module,
+            input_text,
+            exclude_patterns=exclude_patterns,
+            plugin_option_map=plugin_option_map,
+        )
+    except Exception as exc:
+        return jsonify({"outputs": [], "count": 0, "error": str(exc)})
+
+    # Coerce Content objects to plain strings
+    from spikee.utilities.hinting import get_content
+    outputs = [str(get_content(r)) for r in results]
+
+    return jsonify({"outputs": outputs, "count": len(outputs), "error": None})
 
 
 @generate_bp.route("/seeds/<seed_name>")

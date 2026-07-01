@@ -66,7 +66,7 @@
                         <input type="text" class="form-control form-control-sm mb-2" id="plugin_search"
                                placeholder="Search…" oninput="filterPlugins(this.value)" autocomplete="off">
                         <div class="border rounded px-2 pt-2 pb-1" id="plugin-list"
-                             style="max-height:200px;overflow-y:auto"
+                             style="max-height:320px;overflow-y:auto"
                              hx-get="/generate/partials/plugins-list"
                              hx-trigger="load"
                              hx-swap="innerHTML">
@@ -80,7 +80,7 @@
                     {# Middle: dynamic groups #}
                     <div class="col-12 col-md-4">
                         <label class="form-label small fw-semibold">Plugin Groups</label>
-                        <div class="form-text mb-2">Each group is independent. Chips <em>within</em> a group are piped with <code>~</code>. Drag chips between groups.</div>
+                        <div class="form-text mb-2">Each group is independent. Chips within a group are piped with <code>|</code>.</div>
                         <div id="groups-container" class="d-flex flex-column gap-2" style="max-height:260px;overflow-y:auto;padding-right:2px"></div>
                         <button type="button" class="btn btn-xs btn-outline-secondary mt-2 w-100" id="add-group-btn">+ New group</button>
                         <textarea id="plugins" name="plugins" class="d-none"></textarea>
@@ -234,7 +234,7 @@
 <script>
 // ── Plugin multi-group builder ────────────────────────────────────────────────
 // Each group = one independent plugin entry (one line in --plugins)
-// Chips within a group = piped with ~ (e.g. base64~rot13)
+// Chips within a group = piped with | (e.g. base64|rot13)
 // Chips can be dragged between groups via SortableJS shared group
 
 const container   = document.getElementById('groups-container');
@@ -254,7 +254,7 @@ function buildHiddenValue() {
     const lines = [];
     container.querySelectorAll('.pg-chip-zone').forEach(zone => {
         const chips = Array.from(zone.querySelectorAll('.plugin-chip')).map(c => c.dataset.name);
-        if (chips.length) lines.push(chips.join('~'));
+        if (chips.length) lines.push(chips.join('|'));
     });
     pluginField.value = lines.join('\n');
 }
@@ -266,7 +266,7 @@ function refreshSeparators(zone) {
         if (i > 0) {
             const sep = document.createElement('span');
             sep.className = 'pipe-sep text-muted small px-1';
-            sep.textContent = '~';
+            sep.textContent = '|';
             sep.style.pointerEvents = 'none';
             zone.insertBefore(sep, chip);
         }
@@ -375,5 +375,31 @@ document.getElementById('plugin-list').addEventListener('click', e => {
 });
 
 addGroup(); // start with one group ready
+
+// Pre-populate plugin from ?plugin= query param (e.g. linked from Plugins page).
+// The plugin list loads asynchronously via HTMX, so we wait for the htmx:afterSwap
+// event on the plugin-list container before adding the chip.
+{% if request.args.get('plugin') %}
+(function () {
+    var presetPlugin = {{ request.args.get('plugin') | tojson }};
+    var pluginList   = document.getElementById('plugin-list');
+
+    function tryAdd() {
+        var btn = pluginList.querySelector('[data-plugin="' + presetPlugin + '"]');
+        if (btn) {
+            addPlugin(presetPlugin);
+        }
+    }
+
+    // If cache is warm the list may already be present (no HTMX swap needed).
+    tryAdd();
+
+    // Otherwise wait for the HTMX swap that replaces the loading spinner.
+    pluginList.addEventListener('htmx:afterSwap', function onSwap() {
+        tryAdd();
+        pluginList.removeEventListener('htmx:afterSwap', onSwap);
+    });
+})();
+{% endif %}
 </script>
 {% endblock %}

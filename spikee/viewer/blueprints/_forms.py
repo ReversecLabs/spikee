@@ -141,7 +141,7 @@ class GenerateForm:
         threads = _parse_positive_int(f.get("threads", ""), "Threads")
 
         plugin_lines = [
-            ln.strip().replace("~", "|")
+            ln.strip()
             for ln in f.get("plugins", "").splitlines()
             if ln.strip()
         ]

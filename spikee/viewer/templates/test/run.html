@@ -158,12 +158,12 @@
             </div>
             <div class="card-body py-3 px-3">
                 <div class="row g-3">
-                    <div class="col-12 col-md-4">
+                    {# Left col: module picker #}
+                    <div class="col-12 col-md-6">
                         <label class="form-label small fw-semibold">Attack Module</label>
-                        {# Hidden input carries the selected attack name to the form #}
                         <input type="hidden" id="attack" name="attack" value="">
                         <div class="border rounded px-2 pt-2 pb-1" id="attack-list"
-                             style="max-height:180px;overflow-y:auto"
+                             style="max-height:320px;overflow-y:auto"
                              hx-get="/test/partials/attacks-list"
                              hx-trigger="load"
                              hx-swap="innerHTML">
@@ -174,22 +174,24 @@
                         </div>
                         <div class="form-text mt-1">Runs if standard attempts fail.</div>
                     </div>
-                    <div class="col-6 col-md-4" id="af-iterations" style="display:none">
-                        <label class="form-label small fw-semibold" for="attack_iterations">Iterations</label>
-                        <input type="number" class="form-control form-control-sm"
-                               id="attack_iterations" name="attack_iterations" min="1" value="10">
-                    </div>
-                    <div class="col-12 col-md-4" id="af-options" style="display:none">
-                        <label class="form-label small fw-semibold" for="attack_options">Attack Options</label>
-                        <input type="text" class="form-control form-control-sm font-monospace"
-                               id="attack_options" name="attack_options" placeholder="mode=aggressive">
-                    </div>
-                    {# Attack only — own row #}
-                    <div class="col-12" id="af-only" style="display:none">
+                    {# Right col: iterations + options + attack only, stacked #}
+                    <div class="col-12 col-md-6 d-flex flex-column gap-3" id="af-fields" style="display:none!important">
+                        <div>
+                            <label class="form-label small fw-semibold" for="attack_iterations">Iterations</label>
+                            <input type="number" class="form-control form-control-sm"
+                                   id="attack_iterations" name="attack_iterations" min="1" value="10">
+                            <div class="form-text">Number of attack iterations.</div>
+                        </div>
+                        <div>
+                            <label class="form-label small fw-semibold" for="attack_options">Attack Options</label>
+                            <input type="text" class="form-control form-control-sm font-monospace"
+                                   id="attack_options" name="attack_options" placeholder="mode=aggressive">
+                            <div class="form-text">Key=value options passed to the attack module.</div>
+                        </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox"
                                    id="attack_only" name="attack_only">
-                            <label class="form-check-label small" for="attack_only">Attack only (skip standard attempts, run attack directly)</label>
+                            <label class="form-check-label small" for="attack_only">Attack only — skip standard attempts, run attack directly</label>
                         </div>
                     </div>
                 </div>
@@ -212,10 +214,8 @@
 
 <script>
 function toggleAttackFields(val) {
-    const show = !!val;
-    ['af-iterations', 'af-options', 'af-only'].forEach(id => {
-        document.getElementById(id).style.display = show ? '' : 'none';
-    });
+    const el = document.getElementById('af-fields');
+    el.style.display = val ? '' : 'none';
 }
 
 // Attack picker — event delegation so it works after HTMX swap

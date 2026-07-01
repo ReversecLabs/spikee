@@ -6,6 +6,9 @@ from __future__ import annotations
 from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
 
 from spikee.utilities.modules import collect_datasets, collect_modules
+from spikee.utilities.modules import (
+    get_description_from_module, get_options_from_module, load_module_from_path,
+)
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
 from spikee.viewer.blueprints._forms import FormValidationError, TestForm
@@ -21,13 +24,37 @@ def _collect_datasets() -> list[str]:
     return collect_datasets()
 
 
-def _collect_modules_for_target(module_type: str) -> dict:
-    """Return {local: [{name, tags}], builtin: [...]} for target/attack optgroup rendering."""
+def _collect_modules_for_target(module_type: str, rich: bool = False) -> dict:
+    """Return {local: [{name, tags, ...}], builtin: [...]} for target/attack rendering.
+
+    When *rich* is True, each entry also includes description, options, and
+    llm_required — used by the attacks picker to show inline metadata.
+    """
     _all, local_names, builtin_names = collect_modules(module_type)
 
     def _entry(name: str) -> dict:
         tags = _module_tags(name, module_type)
-        return {"name": name, "tags": tags}
+        entry: dict = {"name": name, "tags": tags}
+        if rich:
+            description = ""
+            options: list[str] = []
+            llm_required = False
+            try:
+                mod = load_module_from_path(name, module_type)
+                desc = get_description_from_module(mod, module_type)
+                if desc and isinstance(desc, tuple) and len(desc) >= 2:
+                    description = str(desc[1]) if desc[1] else ""
+                opts = get_options_from_module(mod, module_type)
+                if opts and isinstance(opts, tuple) and len(opts) >= 2:
+                    option_list, llm_req = opts
+                    options = list(option_list) if option_list else []
+                    llm_required = bool(llm_req)
+            except Exception:
+                pass
+            entry["description"] = description
+            entry["options"] = options
+            entry["llm_required"] = llm_required
+        return entry
 
     return {
         "local":   [_entry(m) for m in sorted(local_names)],
@@ -74,7 +101,7 @@ def attacks_list_partial() -> str:
                                poll_url="/test/partials/attacks-list",
                                label="attacks")
     return render_template("partials/_attacks_list.html",
-                            attacks=_collect_modules_for_target("attacks"))
+                            attacks=_collect_modules_for_target("attacks", rich=True))
 
 
 @test_bp.route("/run", methods=["POST"])
