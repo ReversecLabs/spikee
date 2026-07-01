@@ -6,13 +6,13 @@
     <ul class="nav gap-1 me-auto">
         <li class="nav-item">
             <a class="nav-link {% if active_results_page == 'overview' %}active{% endif %}"
-               href="/results/overview{% if selected_file %}?result_file={{ selected_file }}{% endif %}">
+               href="/results/overview{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}">
                 Overview
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link {% if active_results_page == 'entries' %}active{% endif %}"
-               href="/results/entries{% if selected_file %}?result_file={{ selected_file }}{% endif %}">
+               href="/results/entries{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}">
                 Entries
             </a>
         </li>

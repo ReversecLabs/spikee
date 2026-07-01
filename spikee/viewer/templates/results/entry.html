@@ -8,19 +8,19 @@
 
     {# ---- Action bar ---- #}
     <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-        <a href="/results/entries{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+        <a href="/results/entries{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}"
            class="btn btn-sm btn-outline-secondary">
             &larr; Back to Entries
         </a>
 
         <form method="post"
-              action="/results/entry/{{ id }}/toggle{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+              action="/results/entry/{{ id }}/toggle{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}"
               class="mb-0">
             <button type="submit" class="btn btn-sm btn-success">Toggle Success</button>
         </form>
 
         <form method="post"
-              action="/results/entry/{{ id }}/rejudge{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+              action="/results/entry/{{ id }}/rejudge{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}"
               class="mb-0">
             <button type="submit" class="btn btn-sm btn-warning">Re-judge</button>
         </form>

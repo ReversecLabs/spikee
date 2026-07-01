@@ -3,7 +3,7 @@
    Expects: id (str), entry (dict), selected_file, truncated=True
    Optional: bulk_form=True to render the checkbox (set by entries page)
 #}
-{% from "partials/_macros.html" import entry_state %}
+{% from "partials/_macros.html" import entry_state, entry_label %}
 {% set _is_combined = selected_file == 'combined' or (selected_file and selected_file.startswith('folder:')) %}
 {% set _src = source_label(entry) if _is_combined else '' %}
 {% set _state = entry_state(entry) %}
@@ -35,10 +35,7 @@
                       style="font-size:0.65rem">{{ _src }}</span>
                 {% endif %}
                 <span class="entry-badge rounded-pill px-3 text-nowrap small fw-bold">
-                    {% if entry.success %}SUCCESS
-                    {% elif entry.guardrail %}GUARDRAIL
-                    {% elif entry.error and entry.error != '' %}ERROR
-                    {% else %}FAILED{% endif %}
+                    {{ entry_label(entry) }}
                 </span>
             </span>
         </a>

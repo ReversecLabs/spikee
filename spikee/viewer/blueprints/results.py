@@ -1,9 +1,5 @@
 # spikee/viewer/blueprints/results.py
-"""
-Results Blueprint — Phase 1 implementation.
-Scans CWD/results/ for JSONL files, loads + analyses them, and serves
-the overview, entries list, and entry detail pages.
-"""
+"""Results Blueprint — scans CWD/results/ for JSONL files and serves analysis views."""
 
 from __future__ import annotations
 
@@ -16,7 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, redirect, render_template, request, url_for
 
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import (
@@ -44,13 +40,15 @@ def scan_result_files() -> None:
     Walk CWD/results/ (one level of subdirectories) and register every
     *.jsonl whose name starts with a recognised prefix.
 
-    Populates the module-level `loaded_files` dict.
+    Populates the module-level `loaded_files` dict atomically to avoid
+    concurrent readers seeing a partially-rebuilt dict.
     """
     global loaded_files
-    loaded_files = {}
+    new_files: Dict[str, Path] = {}
 
     results_dir = Path(os.getcwd()) / "results"
     if not results_dir.is_dir():
+        loaded_files = new_files
         return
 
     def _accept(fname: str) -> bool:
@@ -60,14 +58,14 @@ def scan_result_files() -> None:
 
     for item in sorted(results_dir.iterdir()):
         if item.is_file() and _accept(item.name):
-            loaded_files[extract_resource_name(str(item))] = item
+            new_files[extract_resource_name(str(item))] = item
         elif item.is_dir():
             for child in sorted(item.iterdir()):
                 if child.is_file() and _accept(child.name):
-                    # Key includes subfolder to avoid name collisions:
-                    # "cybersec/results_foo_123"
                     key = f"{item.name}/{extract_resource_name(str(child))}"
-                    loaded_files[key] = child
+                    new_files[key] = child
+
+    loaded_files = new_files  # single atomic assignment — readers see old or new, never partial
 
 
 def _build_file_tree() -> List[Tuple[str, List[str]]]:
@@ -120,7 +118,17 @@ def _load_result_data(
     """
     Load and combine JSONL files into an entries dict + processor output string.
     Returns: (entries_dict, processor_output_html, ResultProcessor)
+
+    Results are memoised on Flask's ``g`` for the duration of the current request
+    so that multiple routes reading the same files don't re-parse them.
     """
+    # Build a stable, short cache key from the sorted file paths
+    cache_key = "_lrd_" + hashlib.md5(
+        "_".join(sorted(str(p) for p in files.values())).encode()
+    ).hexdigest()
+    cached = getattr(g, cache_key, None)
+    if cached is not None:
+        return cached
     entries: Dict[str, Any] = {}
 
     for resource_name, path in files.items():
@@ -149,7 +157,9 @@ def _load_result_data(
     raw_output = rp.generate_output(combined=combined)
     processor_output = _highlight_headings(raw_output)
 
-    return entries, processor_output, rp
+    result = (entries, processor_output, rp)
+    setattr(g, cache_key, result)
+    return result
 
 
 def _highlight_headings(text: str) -> str:
@@ -333,16 +343,6 @@ def _inject_helpers():
 
 # ── Lazy init ─────────────────────────────────────────────────────────────────
 
-_scanned = False
-
-@results_bp.before_request
-def _ensure_scanned():
-    global _scanned
-    if not _scanned:
-        scan_result_files()
-        _scanned = True
-
-
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @results_bp.route("/")
@@ -353,6 +353,7 @@ def index():
 
 @results_bp.route("/overview")
 def overview():
+    scan_result_files()  # re-scan on every overview visit to pick up new results
     selected = request.args.get("result_file", "combined")
     files = _files_for_selection(selected)
 
@@ -388,8 +389,11 @@ def overview():
 def entries():
     selected     = request.args.get("result_file", "combined")
     custom_search = request.args.get("custom_search", "")
-    per_page     = max(1, min(int(request.args.get("per_page", 100)), 500))
-    page         = max(1, int(request.args.get("page", 1)))
+    try:
+        per_page = max(1, min(int(request.args.get("per_page", 100)), 500))
+        page     = max(1, int(request.args.get("page", 1)))
+    except ValueError:
+        abort(400, description="Invalid pagination parameters — 'page' and 'per_page' must be integers.")
     files        = _files_for_selection(selected)
 
     if not loaded_files:
@@ -504,6 +508,12 @@ def _find_entry_in_files(entry_id: str, selected: str) -> Tuple[Dict[str, Any], 
 
 # ── POST endpoints ────────────────────────────────────────────────────────────
 
+def _safe_return_url(url: str, default: str) -> str:
+    """Reject external / protocol-relative redirects to prevent open-redirect attacks."""
+    if url and url.startswith("/") and not url.startswith("//"):
+        return url
+    return default
+
 @results_bp.route("/entry/<path:entry_id>/toggle", methods=["POST"])
 def toggle(entry_id):
     selected = request.args.get("result_file", "combined")
@@ -577,14 +587,11 @@ def bulk():
                 row["success"] = call_judge(row, row.get("response", ""))
         write_jsonl_file(source, rows)
 
-    return redirect(return_url)
+    return redirect(_safe_return_url(return_url, "/results/entries"))
 
 
 @results_bp.route("/refresh", methods=["POST"])
 def refresh():
-    global _scanned
-    _scanned = False
     scan_result_files()
-    _scanned = True
     return_url = request.form.get("return_url", "/results/overview")
-    return redirect(return_url)
+    return redirect(_safe_return_url(return_url, "/results/overview"))

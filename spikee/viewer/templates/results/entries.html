@@ -9,7 +9,7 @@
 {# ── Pagination macro — rendered both above and below the cards ── #}
 {% macro pagination_bar() %}
 {% if total_pages > 1 %}
-{% set base_url = '/results/entries?result_file=' ~ (selected_file or 'combined') ~ (('&custom_search=' ~ custom_search) if custom_search else '') ~ '&per_page=' ~ per_page %}
+{% set base_url = '/results/entries?result_file=' ~ ((selected_file or 'combined') | urlencode) ~ (('&custom_search=' ~ (custom_search | urlencode)) if custom_search else '') ~ '&per_page=' ~ per_page %}
 <nav class="d-flex align-items-center justify-content-between my-2" aria-label="Entries pagination">
     <div>
         {% if page > 1 %}
@@ -99,11 +99,12 @@
             <div class="d-flex flex-wrap align-items-center gap-1">
                 <span class="small text-muted me-1" style="white-space:nowrap">Quick add:</span>
                 {% for label, token in [
-                    ("✓ Success",      "success:True"),
-                    ("✗ Failure",      "success:False"),
-                    ("⚠ Guardrail",    "guardrail:True"),
-                    ("✓ No Guardrail", "!guardrail:True"),
-                    ("✕ Error",        "error:"),
+                    ("Success",      "success:True"),
+                    ("Failure",      "success:False"),
+                    ("Guardrail",    "guardrail:True"),
+                    ("No Guardrail", "!guardrail"),
+                    ("Error",        "error:True"),
+                    ("No Error",     "!error"),
                 ] %}
                 <button type="button" class="btn btn-xs search-chip"
                         onclick="appendSearch('{{ token }}')"

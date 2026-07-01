@@ -7,6 +7,13 @@
   {%- else %}failure{%- endif -%}
 {% endmacro %}
 
+{% macro entry_label(entry) %}
+  {%- if entry.success %}SUCCESS
+  {%- elif entry.guardrail %}GUARDRAIL
+  {%- elif entry.error and entry.error != '' %}ERROR
+  {%- else %}FAILED{%- endif -%}
+{% endmacro %}
+
 {% macro status_badge(status) %}
 {%- if status == 'running' -%}
 <span class="badge badge-running d-inline-flex align-items-center gap-1">

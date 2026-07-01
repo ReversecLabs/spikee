@@ -2,7 +2,7 @@
    Full expanded view of a single result entry.
    Expects: id (str), entry (dict), selected_file, truncated=False (default)
 #}
-{% from "partials/_macros.html" import entry_state %}
+{% from "partials/_macros.html" import entry_state, entry_label %}
 {% set truncated = truncated if truncated is defined else false %}
 
 <div class="card spikee-card overflow-hidden">
@@ -13,10 +13,7 @@
             #{{ entry.id }}{% if entry.long_id %} &mdash; {{ entry.long_id }}{% endif %}
         </span>
         <span class="entry-badge rounded-pill px-3 small fw-bold">
-            {% if entry.success %}SUCCESS
-            {% elif entry.guardrail %}GUARDRAIL
-            {% elif entry.error and entry.error != '' %}ERROR
-            {% else %}FAILED{% endif %}
+            {{ entry_label(entry) }}
         </span>
     </div>
 

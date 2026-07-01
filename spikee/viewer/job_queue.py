@@ -107,8 +107,8 @@ def spawn_job(job: Job) -> None:
     except Exception as e:
         with job.lock:
             job.log.append(f"[Error] Failed to start subprocess: {e}")
-        job.status = "failed"
-        job.returncode = -1
+            job.status = "failed"
+            job.returncode = -1
         return
 
     def _reader():
@@ -156,8 +156,9 @@ def spawn_job(job: Job) -> None:
                 job.log.append(f"[Error] Log reader error: {e}")
         finally:
             proc.wait()
-            job.status = "success" if proc.returncode == 0 else "failed"
-            job.returncode = proc.returncode
+            with job.lock:
+                job.status = "success" if proc.returncode == 0 else "failed"
+                job.returncode = proc.returncode
 
     t = threading.Thread(target=_reader, daemon=True)
     t.start()

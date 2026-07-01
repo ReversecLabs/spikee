@@ -1,10 +1,11 @@
 # spikee/viewer/blueprints/jobs.py
-"""Jobs Blueprint — Phase 2 complete. SSE stream + cancel backend wired in Phase 4b."""
+"""Jobs Blueprint — job list, detail, log polling, and cancel."""
 
 from __future__ import annotations
 
 from flask import Blueprint, abort, jsonify, redirect, render_template, url_for
 
+from spikee.utilities.files import extract_resource_name
 from spikee.viewer.job_queue import job_queue
 
 jobs_bp = Blueprint("jobs", __name__)
@@ -48,17 +49,37 @@ def detail(job_id):
                     dataset_filename = raw_path
                 break
 
-    return render_template("jobs/detail.html", job=job, dataset_filename=dataset_filename)
+    # For test jobs, scan the log for all output results filenames (one per dataset)
+    result_keys = []
+    if job.type == "test":
+        prefix = "[Done] Testing finished. Results saved to "
+        with job.lock:
+            log_lines = list(job.log)
+        for line in log_lines:
+            stripped = line.strip()
+            if stripped.startswith(prefix):
+                raw_path = stripped[len(prefix):].strip().replace("\\", "/")
+                # raw_path is like "results/foo.jsonl" or "results/sub/foo.jsonl"
+                parts = raw_path.split("/")
+                if len(parts) >= 3:  # results/subfolder/file.jsonl
+                    result_keys.append(f"{parts[-2]}/{extract_resource_name(parts[-1])}")
+                elif len(parts) == 2:  # results/file.jsonl
+                    result_keys.append(extract_resource_name(parts[-1]))
+
+    return render_template("jobs/detail.html", job=job, dataset_filename=dataset_filename, result_keys=result_keys)
 
 
 @jobs_bp.route("/<job_id>/cancel", methods=["POST"])
 def cancel(job_id):
-    """Phase 4b: terminate a running job subprocess."""
+    """Terminate a running job subprocess."""
     job = job_queue.get(job_id)
     if job is None:
         abort(404, description=f"Job '{job_id}' not found.")
-    if job.status == "running" and job.process:
-        job.process.terminate()
+    with job.lock:
+        status = job.status
+        process = job.process
+    if status == "running" and process:
+        process.terminate()
     return redirect(url_for("jobs.detail", job_id=job_id))
 
 
@@ -76,6 +97,6 @@ def log(job_id):
 
 @jobs_bp.route("/<job_id>/stream")
 def stream(job_id):
-    """Phase 4b: SSE log stream. Not yet implemented."""
-    abort(501, description="SSE streaming will be activated in Phase 4b.")
+    """SSE log stream — not yet implemented."""
+    abort(501, description="SSE streaming is not yet implemented.")
 

@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import sys
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, abort, g, render_template, request, session
 
 from spikee.viewer.blueprints.results import results_bp
 from spikee.viewer.blueprints.generate import generate_bp
@@ -27,6 +28,20 @@ _WORKSPACE_MARKERS = ("datasets", "results", "targets")
 
 def _validate_workspace(cwd: Path) -> None:
     """Abort with a clear message if CWD is not a valid Spikee workspace."""
+    # Detect accidental launch from inside the spikee source / install root.
+    # A pyproject.toml in CWD is a strong signal that this is the package source
+    # tree rather than a user workspace.
+    if (cwd / "pyproject.toml").is_file():
+        print(
+            "\n[Error] You are running 'spikee viewer' from the Spikee source directory.\n"
+            f"        Current directory: {cwd}\n\n"
+            "        Please change to your workspace directory and run the viewer from there.\n"
+            "        Example:\n"
+            "            cd ~/my-workspace\n"
+            "            spikee viewer\n"
+        )
+        sys.exit(1)
+
     if not any((cwd / marker).is_dir() for marker in _WORKSPACE_MARKERS):
         print(
             "\n[Error] The current directory does not appear to be a Spikee workspace.\n"
@@ -49,6 +64,8 @@ def create_app(truncate_length: int = 500) -> Flask:
         template_folder=str(viewer_dir / "templates"),
     )
 
+    app.secret_key = secrets.token_hex(32)
+
     # Suppress noisy werkzeug request logs (keep warnings/errors)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -60,6 +77,19 @@ def create_app(truncate_length: int = 500) -> Flask:
         truncate_length=truncate_length,
         spikee_version=_spikee_version,
     )
+
+    # CSRF protection
+    @app.before_request
+    def _csrf_protect():
+        if "_csrf_token" not in session:
+            session["_csrf_token"] = secrets.token_hex(32)
+        g.csrf_token = session["_csrf_token"]
+        if request.method == "POST":
+            token = request.form.get("_csrf_token", "")
+            if not token or token != session.get("_csrf_token", ""):
+                abort(403, description="Invalid CSRF token.")
+
+    app.jinja_env.globals["csrf_token"] = lambda: g.csrf_token
 
     # Register blueprints
     app.register_blueprint(results_bp,  url_prefix="/results")

@@ -1,5 +1,5 @@
 # spikee/viewer/blueprints/generate.py
-"""Generate Blueprint — Phase 3b: real data from CWD. POST wired in Phase 3b backend."""
+"""Generate Blueprint — dataset generation form and seed/dataset browsing."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import markdown as md_lib
 
 from spikee.utilities.files import read_jsonl_file
 from spikee.utilities.modules import collect_datasets, collect_modules, collect_seeds
+from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.generator import resolve_seed_folder
 from spikee.viewer.job_queue import job_queue, spawn_job
 
@@ -49,7 +50,8 @@ def _collect_datasets_with_meta() -> list[dict]:
     for name in collect_datasets():
         path = datasets_dir / name
         try:
-            count = sum(1 for _ in open(path, encoding="utf-8"))
+            with open(path, encoding="utf-8") as _f:
+                count = sum(1 for _ in _f)
         except OSError:
             count = None
         result.append({"name": name, "entry_count": count})
@@ -57,9 +59,14 @@ def _collect_datasets_with_meta() -> list[dict]:
 
 
 def _collect_plugins() -> list[dict]:
-    """Return all available plugin names as list of dicts."""
-    all_plugins, _local, _builtin = collect_modules("plugins")
-    return [{"name": p} for p in sorted(all_plugins)]
+    """Return plugins as [{name, local, tags}] dicts, local first then built-in."""
+    _all, local_names, builtin_names = collect_modules("plugins")
+    result = []
+    for name in sorted(local_names) + sorted(builtin_names):
+        is_local = name in local_names
+        tags = [t for t in _module_tags(name, "plugins") if t["label"] != "Single-Turn"]
+        result.append({"name": name, "local": is_local, "tags": tags})
+    return result
 
 
 def _normalize_row(row: dict, file_type: str) -> dict:
@@ -161,10 +168,31 @@ def _load_seed_detail(seed_name: str) -> dict | None:
                 source,
                 extensions=["fenced_code", "tables", "nl2br"],
             )
-            # Strip tags that could execute code or load external resources.
+            # Sanitise: remove dangerous elements, event handlers, javascript: URIs.
+            # Strip dangerous elements entirely
             readme_html = _re.sub(
-                r"<(/?)\ *(script|iframe|object|embed|form|base|meta|link)(\s[^>]*)?/?>",
-                lambda m: f"&lt;{m.group(1)}{m.group(2)}",
+                r"<(/?)(script|iframe|object|embed|form|base|meta|link|svg|math)(\s[^>]*)?/?>",
+                lambda m: f"&lt;{m.group(1)}{m.group(2)}&gt;",
+                readme_html,
+                flags=_re.IGNORECASE,
+            )
+            # Strip inline event handler attributes (on*=...)
+            readme_html = _re.sub(
+                r'\s+on\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]*)',
+                "",
+                readme_html,
+                flags=_re.IGNORECASE,
+            )
+            # Replace javascript: and data: URIs in href/src attributes
+            readme_html = _re.sub(
+                r'(href|src)\s*=\s*"(javascript|data):[^"]*"',
+                r'\1="#"',
+                readme_html,
+                flags=_re.IGNORECASE,
+            )
+            readme_html = _re.sub(
+                r"(href|src)\s*=\s*'(javascript|data):[^']*'",
+                r"\1='#'",
                 readme_html,
                 flags=_re.IGNORECASE,
             )
@@ -176,7 +204,11 @@ def _load_seed_detail(seed_name: str) -> dict | None:
 
 def _load_dataset_entries(dataset_name: str, page: int = 1) -> dict | None:
     """Read a dataset JSONL from CWD/datasets/ and return a paginated result."""
-    path = Path(os.getcwd()) / "datasets" / dataset_name
+    # Prevent path traversal: resolve and verify path stays inside datasets/
+    datasets_dir = (Path(os.getcwd()) / "datasets").resolve()
+    path = (datasets_dir / dataset_name).resolve()
+    if not str(path).startswith(str(datasets_dir)):
+        return None  # reject traversal attempts
     if not path.is_file():
         return None
     try:
@@ -332,9 +364,10 @@ def run_post():
 
     # Plugins: textarea value, one entry per line (each line may contain ~ for pipes)
     # The form encodes piped groups with ~ but the CLI expects | as the pipe separator
+    # All independent plugins go as space-separated values after a single --plugins flag
     plugin_lines = [ln.strip().replace("~", "|") for ln in f.get("plugins", "").splitlines() if ln.strip()]
-    for p in plugin_lines:
-        args += ["--plugins", p]
+    if plugin_lines:
+        args += ["--plugins"] + plugin_lines
 
     # Plugin options: textarea, convert newlines to semicolons
     if plugin_opts := ";".join(

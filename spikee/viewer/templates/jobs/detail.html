@@ -24,6 +24,14 @@
         </a>
         {% endif %}
 
+        {% if result_keys %}
+        {% for key in result_keys %}
+        <a href="/results/overview?result_file={{ key | urlencode }}" class="btn btn-sm btn-outline-success">
+            {% if result_keys | length == 1 %}View Results{% else %}Results {{ loop.index }}{% endif %}
+        </a>
+        {% endfor %}
+        {% endif %}
+
         <div class="ms-auto d-flex align-items-center gap-2">
             {{ type_badge(job.type) }}
             <span id="status-badge" class="d-inline-flex align-items-center">{{ status_badge(job.status) }}</span>
@@ -74,7 +82,7 @@
             {% endif %}
         </div>
         <div class="card-body p-0">
-            <pre id="log-panel" class="spikee-terminal m-0 rounded-0 rounded-bottom">{% for line in job.log %}{{ line | e }}
+            <pre id="log-panel" class="spikee-terminal m-0 rounded-0 rounded-bottom{% if job.status == 'failed' %} spikee-terminal-failed{% endif %}">{% for line in job.log %}{{ line | e }}
 {% endfor %}</pre>
         </div>
     </div>
