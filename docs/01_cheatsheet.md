@@ -8,7 +8,7 @@ Jump to Links:
 - [`spikee generate`](#spikee-generate)
 - [`spikee test`](#spikee-test)
 - [`spikee results`](#spikee-results)
-- [`spikee viewer`](#spikee-viewer)
+- [`spikee webui`](#spikee-webui)
 
 ## `spikee init`
 Initializes a new Spikee project in the current directory.
@@ -22,7 +22,6 @@ spikee init
 | ------------------- | ------------------------------------------------------ | -------- |
 | `--force`           | Overwrite existing directories                         |          |
 | `--include-builtin` | Copy built-in modules to local workspace               |          |
-| `--include-viewer`  | Include the built-in web viewer in the local workspace | [Link](./11_results.md#the-web-viewer-command) |
 
 ## `spikee list`
 Lists all local and built-in modules available. Use `--description` to include module descriptions.
@@ -166,35 +165,26 @@ spikee results extract --results-file results.jsonl --category "success"
 
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
 
-## `spikee viewer`
-Launches the Spikee web viewer.
+## `spikee webui`
+Launches the Spikee web UI. Run from a workspace directory (one initialised with `spikee init`).
 
-> Viewer is a WIP, currently only the results viewer is available.
+The web UI covers the full Spikee workflow: generate datasets, run tests, monitor live job output, and explore results interactively.
 
-### Common Arguments
-| Argument            | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `-h`, `--host`      | Host address for the web viewer (default: 127.0.0.1)   |
-| `-p`, `--port`      | Port number for the web viewer (default: 8080)         |
-| `-d`, `--debug`     | Enable debug mode for the web viewer (default: False)  |
-| `--truncate`        | Truncate long fields in the web viewer for better readability (default: 500 characters, disable with 0) |
-
-**Usage**
-```bash
-spikee viewer <common args> results <results-specific args>
-```
-
-### `results` Specific Arguments - [Link](./11_results.md#the-web-viewer-command)
-| Argument            | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `--result-file`      | Path to a results JSONL file, generated using the dataset |
-| `--result-folder`    | Path to a results folder containing multiple JSONL files, generated using the dataset |
-| `--allow-ast`        | Allow AST parsing in the web viewer (use with caution) |
-
-(NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
-
+### Arguments
+| Argument        | Description                                                                        |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `--host`        | Host address to bind to (default: `127.0.0.1`)                                    |
+| `-p`, `--port`  | Port number to listen on (default: `8080`)                                         |
+| `-d`, `--debug` | Run with Flask debug mode and hot-reloading (default: `False`)                     |
+| `--database`    | Path to a SQLite file for persistent job history (created on first run if absent)  |
 
 ```bash
-spikee viewer -p 8081 results --result-folder .\results\
+spikee webui
+
+# Custom host and port
+spikee webui --host 0.0.0.0 -p 8081
+
+# Persist job history across restarts
+spikee webui --database jobs.db
 ```
 
