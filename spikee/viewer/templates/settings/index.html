@@ -8,5 +8,121 @@
 {% block content %}
 <div class="container-fluid px-4 py-4">
     <h4 class="fw-semibold mb-4">Settings</h4>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h6 class="card-title">Module Cache</h6>
+            <p class="card-text text-muted">Refresh plugins, attacks, targets, and judges module cache.</p>
+            <button class="btn btn-primary" id="refresh-modules-btn" data-hotreload>
+                <i class="bi bi-arrow-clockwise me-2"></i>Refresh Plugins/Attacks
+            </button>
+            <div id="refresh-status" class="mt-2" role="status" aria-live="polite"></div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h6 class="card-title">Truncation</h6>
+            <p class="card-text text-muted">Set maximum character length for long text entries in the web UI. Set to 0 to disable truncation.</p>
+            <div class="input-group w-25">
+                <input type="number" class="form-control" id="truncate-length" value="{{ truncate_length }}" min="0">
+                <button class="btn btn-outline-primary" type="button" id="save-truncate-btn">Save</button>
+            </div>
+            <div id="truncate-status" class="mt-2" role="status" aria-live="polite"></div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from meta tag
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = meta ? meta.content : '';
+    
+    // Refresh modules button
+    const refreshBtn = document.getElementById('refresh-modules-btn');
+    const refreshStatus = document.getElementById('refresh-status');
+    
+    refreshBtn.addEventListener('click', async function() {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Refreshing...';
+        
+        try {
+            const response = await fetch('/settings/api/refresh-modules', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                refreshStatus.innerHTML = '<span class="text-success">Module cache refresh started. Please wait while modules are reloaded...</span>';
+                // Reload page after a delay to pick up new modules
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                throw new Error(data.error || 'Refresh failed');
+            }
+        } catch (error) {
+            console.error('Refresh error:', error);
+            refreshStatus.innerHTML = '<span class="text-danger">Error: ' + error.message + '</span>';
+        } finally {
+            if (!refreshBtn.classList.contains('disabled')) {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Refresh Plugins/Attacks';
+            }
+        }
+    });
+    
+    // Truncate length save button
+    const truncateInput = document.getElementById('truncate-length');
+    const saveTruncateBtn = document.getElementById('save-truncate-btn');
+    const truncateStatus = document.getElementById('truncate-status');
+    
+    saveTruncateBtn.addEventListener('click', async function() {
+        const truncateLength = parseInt(truncateInput.value, 10) || 0;
+        
+        saveTruncateBtn.disabled = true;
+        saveTruncateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+        
+        try {
+            const response = await fetch('/settings/api/truncate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ truncate_length: truncateLength })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                truncateStatus.innerHTML = '<span class="text-success">Truncation set to ' + data.truncate_length + ' characters</span>';
+            } else {
+                throw new Error(data.error || 'Failed to update truncation');
+            }
+        } catch (error) {
+            console.error('Truncate error:', error);
+            truncateStatus.innerHTML = '<span class="text-danger">Error: ' + error.message + '</span>';
+        } finally {
+            saveTruncateBtn.disabled = false;
+            saveTruncateBtn.innerHTML = 'Save';
+        }
+    });
+    
+    // Live input validation
+    truncateInput.addEventListener('input', function() {
+        const val = parseInt(this.value, 10) || 0;
+        if (val < 0) {
+            this.value = 0;
+        }
+        truncateStatus.innerHTML = '';
+    });
+});
+</script>
 {% endblock %}

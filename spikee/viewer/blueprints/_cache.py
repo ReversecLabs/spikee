@@ -24,9 +24,19 @@ _all_ready = threading.Event()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def _evict_sys_modules(module_type: str) -> None:
+    """Remove all cached entries for a module type from sys.modules."""
+    import sys
+    prefix = f"spikee.{module_type}."
+    to_delete = [k for k in sys.modules if k == f"spikee.{module_type}" or k.startswith(prefix)]
+    for key in to_delete:
+        del sys.modules[key]
+
+
 def warm_cache() -> None:
     """Load all module tags into _store. Meant to run in a daemon thread."""
     for module_type in _MODULE_TYPES:
+        _evict_sys_modules(module_type)
         try:
             all_names, _, _ = collect_modules(module_type)
         except Exception:

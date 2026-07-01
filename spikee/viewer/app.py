@@ -88,7 +88,10 @@ def create_app(truncate_length: int = 500) -> Flask:
             session["_csrf_token"] = secrets.token_hex(32)
         g.csrf_token = session["_csrf_token"]
         if request.method == "POST":
-            token = request.form.get("_csrf_token", "")
+            token = (
+                request.form.get("_csrf_token")
+                or request.headers.get("X-CSRFToken", "")
+            )
             if not token or token != session.get("_csrf_token", ""):
                 abort(403, description="Invalid CSRF token.")
 
