@@ -690,8 +690,19 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
         seed_target_refusal = 0  # Tracks target refusals to generate seeds
         refusal_count = -1
         order = None
+        _first_iteration = True
         try:
             while max_iterations - conversation.get_attempt_total() > 0:
+                # Update progress bar (skip first iteration)
+                if not _first_iteration:
+                    if attempts_bar:
+                        if bar_lock:
+                            with bar_lock:
+                                attempts_bar.update(1)
+                        else:
+                            attempts_bar.update(1)
+                _first_iteration = False
+
                 prompt_message_id = last_message_id
 
                 # Handle backtrack
@@ -1071,13 +1082,6 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                     last_message_id = sentences_message_id
                     continue
 
-                # Update progress bar
-                if attempts_bar:
-                    if bar_lock:
-                        with bar_lock:
-                            attempts_bar.update(1)
-                    else:
-                        attempts_bar.update(1)
 
             return (
                 conversation.get_attempt_total(),
