@@ -1,6 +1,6 @@
 # spikee/viewer/app.py
 """
-SpikeeApp — Flask application factory for the Spikee web viewer.
+Spikee Web UI — Flask application factory for the Spikee Web UI.
 
 Creates the Flask app, validates the workspace, registers all blueprints,
 and provides the root landing page.
@@ -20,10 +20,12 @@ from spikee.viewer.blueprints.results import results_bp
 from spikee.viewer.blueprints.generate import generate_bp
 from spikee.viewer.blueprints.test import test_bp
 from spikee.viewer.blueprints.jobs import jobs_bp
+from spikee.viewer.blueprints.settings import settings_bp
+from spikee.viewer.blueprints import _cache as _module_cache
 
 
 # Directories that must exist in CWD for it to be considered a valid workspace
-_WORKSPACE_MARKERS = ("datasets", "results", "targets")
+_WORKSPACE_MARKERS = ("datasets", "results", "targets", "attacks", "plugins")
 
 
 def _validate_workspace(cwd: Path) -> None:
@@ -37,7 +39,8 @@ def _validate_workspace(cwd: Path) -> None:
             f"        Current directory: {cwd}\n\n"
             "        Please change to your workspace directory and run the viewer from there.\n"
             "        Example:\n"
-            "            cd ~/my-workspace\n"
+            "            cd ~/workspace\n"
+            "            spikee init\n"
             "            spikee viewer\n"
         )
         sys.exit(1)
@@ -96,11 +99,24 @@ def create_app(truncate_length: int = 500) -> Flask:
     app.register_blueprint(generate_bp, url_prefix="/generate")
     app.register_blueprint(test_bp,     url_prefix="/test")
     app.register_blueprint(jobs_bp,     url_prefix="/jobs")
+    app.register_blueprint(settings_bp, url_prefix="/settings")
 
     # Root route — Spikee landing page
     @app.route("/")
     def home():
         return render_template("home.html")
+
+    # Cache status API — used by HTMX partials to detect readiness
+    @app.route("/api/cache/status")
+    def cache_status():
+        from flask import jsonify
+        return jsonify(_module_cache.status_dict())
+
+    # Start background module-tag cache warmer
+    import threading as _threading
+    _threading.Thread(
+        target=_module_cache.warm_cache, daemon=True, name="module-cache-warmer"
+    ).start()
 
     return app
 

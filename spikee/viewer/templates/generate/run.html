@@ -132,19 +132,15 @@
                         </div>
                         <input type="text" class="form-control form-control-sm mb-2" id="plugin_search"
                                placeholder="Search…" oninput="filterPlugins(this.value)" autocomplete="off">
-                        <div class="border rounded px-2 pt-2 pb-1" style="max-height:200px;overflow-y:auto">
-                            {% if plugins %}
-                                {% for plugin in plugins %}
-                                <div class="plugin-item mb-1">
-                                    <button type="button" data-plugin="{{ plugin.name }}"
-                                            class="btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
-                                        {{ plugin.name }}{% if plugin.local %} <span class="badge bg-success text-white ms-1" style="font-size:0.6rem;font-family:sans-serif">local</span>{% endif %}{% for tag in plugin.tags %} <span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
-                                    </button>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-muted small">No plugins found.</span>
-                            {% endif %}
+                        <div class="border rounded px-2 pt-2 pb-1" id="plugin-list"
+                             style="max-height:200px;overflow-y:auto"
+                             hx-get="/generate/partials/plugins-list"
+                             hx-trigger="load"
+                             hx-swap="innerHTML">
+                            <div class="d-flex align-items-center gap-2 text-muted small p-2">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Loading plugins…
+                            </div>
                         </div>
                         <div class="form-text mt-1">Click to add. <strong>Independent</strong>: each plugin gets its own group. <strong>Add to group</strong>: chains into the active group.</div>
                     </div>
@@ -371,8 +367,10 @@ function filterPlugins(q) {
 }
 
 document.getElementById('add-group-btn').addEventListener('click', addGroup);
-document.querySelectorAll('.plugin-item button').forEach(btn => {
-    btn.addEventListener('click', () => addPlugin(btn.dataset.plugin));
+// Event delegation — works for buttons loaded after HTMX swap
+document.getElementById('plugin-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-plugin]');
+    if (btn) addPlugin(btn.dataset.plugin);
 });
 
 addGroup(); // start with one group ready

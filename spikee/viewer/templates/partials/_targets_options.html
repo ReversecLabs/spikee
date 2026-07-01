@@ -1,0 +1,19 @@
+{# partials/_targets_options.html
+   <option>/<optgroup> elements for the target <select>.
+   Expects: targets — {local: [{name, tags_text}], builtin: [...]}
+#}
+<option value="" disabled selected>&mdash; select a target &mdash;</option>
+{% if targets.local %}
+<optgroup label="Local">
+    {% for t in targets.local %}
+    <option value="{{ t.name }}">{{ t.name }}{{ t.tags_text }}</option>
+    {% endfor %}
+</optgroup>
+{% endif %}
+{% if targets.builtin %}
+<optgroup label="Built-in">
+    {% for t in targets.builtin %}
+    <option value="{{ t.name }}">{{ t.name }}{{ t.tags_text }}</option>
+    {% endfor %}
+</optgroup>
+{% endif %}

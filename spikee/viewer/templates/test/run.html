@@ -22,22 +22,11 @@
                         <label class="form-label small fw-semibold" for="target">
                             Target <span class="text-danger">*</span>
                         </label>
-                        <select class="form-select form-select-sm" id="target" name="target" required>
-                            <option value="" disabled selected>&mdash; select a target &mdash;</option>
-                            {% if targets.local %}
-                            <optgroup label="Local">
-                                {% for t in targets.local %}
-                                <option value="{{ t.name }}">{{ t.name }}{{ t.tags_text }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            {% endif %}
-                            {% if targets.builtin %}
-                            <optgroup label="Built-in">
-                                {% for t in targets.builtin %}
-                                <option value="{{ t.name }}">{{ t.name }}{{ t.tags_text }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            {% endif %}
+                        <select class="form-select form-select-sm" id="target" name="target" required
+                                hx-get="/test/partials/targets-options"
+                                hx-trigger="load"
+                                hx-swap="innerHTML">
+                            <option value="" disabled selected>Loading targets…</option>
                         </select>
                         <div class="form-text">Built-in or workspace target module.</div>
                     </div>
@@ -173,32 +162,15 @@
                         <label class="form-label small fw-semibold">Attack Module</label>
                         {# Hidden input carries the selected attack name to the form #}
                         <input type="hidden" id="attack" name="attack" value="">
-                        <div class="border rounded px-2 pt-2 pb-1" style="max-height:180px;overflow-y:auto">
-                            {% if attacks.local %}
-                            <div class="attack-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; local &#9472;</span></div>
-                            {% for a in attacks.local %}
-                            <div class="attack-item mb-1">
-                                <button type="button" data-attack="{{ a.name }}"
-                                        class="attack-picker-btn btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
-                                    {{ a.name }}
-                                    <span class="badge bg-success ms-1" style="font-size:0.6rem;font-family:sans-serif">local</span>
-                                    {% for tag in a.tags %}<span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
-                                </button>
+                        <div class="border rounded px-2 pt-2 pb-1" id="attack-list"
+                             style="max-height:180px;overflow-y:auto"
+                             hx-get="/test/partials/attacks-list"
+                             hx-trigger="load"
+                             hx-swap="innerHTML">
+                            <div class="d-flex align-items-center gap-2 text-muted small p-2">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Loading attacks…
                             </div>
-                            {% endfor %}
-                            {% endif %}
-                            {% if attacks.builtin %}
-                            {% if attacks.local %}<div class="attack-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; built-in &#9472;</span></div>{% endif %}
-                            {% for a in attacks.builtin %}
-                            <div class="attack-item mb-1">
-                                <button type="button" data-attack="{{ a.name }}"
-                                        class="attack-picker-btn btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
-                                    {{ a.name }}
-                                    {% for tag in a.tags %}<span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
-                                </button>
-                            </div>
-                            {% endfor %}
-                            {% endif %}
                         </div>
                         <div class="form-text mt-1">Runs if standard attempts fail.</div>
                     </div>
@@ -246,24 +218,24 @@ function toggleAttackFields(val) {
     });
 }
 
-// Attack picker — single-select list with badge rendering; click again to deselect
-document.querySelectorAll('.attack-picker-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const isActive = btn.classList.contains('btn-secondary');
-        document.querySelectorAll('.attack-picker-btn').forEach(b => {
-            b.classList.remove('btn-secondary');
-            b.classList.add('btn-outline-secondary');
-        });
-        if (!isActive) {
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-secondary');
-            document.getElementById('attack').value = btn.dataset.attack;
-            toggleAttackFields(btn.dataset.attack);
-        } else {
-            document.getElementById('attack').value = '';
-            toggleAttackFields('');
-        }
+// Attack picker — event delegation so it works after HTMX swap
+document.getElementById('attack-list').addEventListener('click', e => {
+    const btn = e.target.closest('.attack-picker-btn');
+    if (!btn) return;
+    const isActive = btn.classList.contains('btn-secondary');
+    document.querySelectorAll('.attack-picker-btn').forEach(b => {
+        b.classList.remove('btn-secondary');
+        b.classList.add('btn-outline-secondary');
     });
+    if (!isActive) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-secondary');
+        document.getElementById('attack').value = btn.dataset.attack;
+        toggleAttackFields(btn.dataset.attack);
+    } else {
+        document.getElementById('attack').value = '';
+        toggleAttackFields('');
+    }
 });
 
 function toggleAllDatasets(state) {

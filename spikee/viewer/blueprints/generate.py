@@ -12,6 +12,7 @@ import markdown as md_lib
 from spikee.utilities.files import read_jsonl_file
 from spikee.utilities.modules import collect_datasets, collect_modules, collect_seeds
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
+from spikee.viewer.blueprints import _cache as _module_cache
 from spikee.generator import resolve_seed_folder
 from spikee.viewer.job_queue import job_queue, spawn_job
 
@@ -58,15 +59,21 @@ def _collect_datasets_with_meta() -> list[dict]:
     return result
 
 
-def _collect_plugins() -> list[dict]:
-    """Return plugins as [{name, local, tags}] dicts, local first then built-in."""
-    _all, local_names, builtin_names = collect_modules("plugins")
+def _collect_modules(module_type: str, exclude_labels: list[str] | None = None) -> list[dict]:
+    """Return modules of given type as [{name, local, tags}] dicts."""
+    exclude_labels = exclude_labels or []
+    _all, local_names, builtin_names = collect_modules(module_type)
     result = []
     for name in sorted(local_names) + sorted(builtin_names):
         is_local = name in local_names
-        tags = [t for t in _module_tags(name, "plugins") if t["label"] != "Single-Turn"]
+        tags = [t for t in _module_tags(name, module_type) if t["label"] not in exclude_labels]
         result.append({"name": name, "local": is_local, "tags": tags})
     return result
+
+
+def _collect_plugins() -> list[dict]:
+    """Return plugins as [{name, local, tags}] dicts, local first then built-in."""
+    return _collect_modules("plugins", exclude_labels=["Single-Turn"])
 
 
 def _normalize_row(row: dict, file_type: str) -> dict:
@@ -324,8 +331,18 @@ def run():
     return render_template(
         "generate/run.html",
         seeds=_collect_seeds_with_meta(),
-        plugins=_collect_plugins(),
     )
+
+
+@generate_bp.route("/partials/plugins-list")
+def plugins_list_partial():
+    """HTMX partial — returns plugin button list HTML or a polling spinner."""
+    if not _module_cache.is_type_ready("plugins"):
+        return render_template("partials/_picker_loading.html",
+                               target_id="plugin-list",
+                               poll_url="/generate/partials/plugins-list",
+                               label="plugins")
+    return render_template("partials/_plugins_list.html", plugins=_collect_plugins())
 
 
 @generate_bp.route("/run", methods=["POST"])

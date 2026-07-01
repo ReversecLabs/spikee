@@ -7,6 +7,7 @@ from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from spikee.utilities.modules import collect_datasets, collect_modules
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
+from spikee.viewer.blueprints import _cache as _module_cache
 from spikee.viewer.job_queue import job_queue, spawn_job
 
 test_bp = Blueprint("test", __name__)
@@ -18,14 +19,13 @@ def _collect_datasets() -> list[str]:
     return collect_datasets()
 
 
-def _collect_modules(module_type: str) -> dict:
-    """Return {local: [{name, tags, tags_text}], builtin: [...]} for optgroup rendering."""
+def _collect_modules_for_target(module_type: str) -> dict:
+    """Return {local: [{name, tags}], builtin: [...]} for target/attack optgroup rendering."""
     _all, local_names, builtin_names = collect_modules(module_type)
 
     def _entry(name: str) -> dict:
         tags = _module_tags(name, module_type)
-        tags_text = (" " + " ".join(f"[{t['label']}]" for t in tags)) if tags else ""
-        return {"name": name, "tags": tags, "tags_text": tags_text}
+        return {"name": name, "tags": tags}
 
     return {
         "local":   [_entry(m) for m in sorted(local_names)],
@@ -46,9 +46,31 @@ def run():
     return render_template(
         "test/run.html",
         datasets=_collect_datasets(),
-        targets=_collect_modules("targets"),
-        attacks=_collect_modules("attacks"),
     )
+
+
+@test_bp.route("/partials/targets-options")
+def targets_options_partial():
+    """HTMX partial — returns <option>/<optgroup> HTML for the target <select>."""
+    if not _module_cache.is_type_ready("targets"):
+        return render_template("partials/_picker_loading.html",
+                               target_id="target",
+                               poll_url="/test/partials/targets-options",
+                               label="targets")
+    return render_template("partials/_targets_options.html",
+                            targets=_collect_modules_for_target("targets"))
+
+
+@test_bp.route("/partials/attacks-list")
+def attacks_list_partial():
+    """HTMX partial — returns attack button list HTML or a polling spinner."""
+    if not _module_cache.is_type_ready("attacks"):
+        return render_template("partials/_picker_loading.html",
+                               target_id="attack-list",
+                               poll_url="/test/partials/attacks-list",
+                               label="attacks")
+    return render_template("partials/_attacks_list.html",
+                            attacks=_collect_modules_for_target("attacks"))
 
 
 @test_bp.route("/run", methods=["POST"])
