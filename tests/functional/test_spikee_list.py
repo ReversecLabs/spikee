@@ -47,7 +47,7 @@ def test_list_plugins(run_spikee, workspace_dir):
 
     output_lines = spikee_list(run_spikee, workspace_dir, "plugins")
     expected_local = {"test_repeat", "test_upper"}
-    expected_builtin = {"1337", "base64", "hex"}
+    expected_builtin = {"1337", "base32", "base64", "hex"}
     _assert_contains(output_lines, expected_local | expected_builtin)
 
 
