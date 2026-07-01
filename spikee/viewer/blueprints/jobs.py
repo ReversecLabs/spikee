@@ -83,6 +83,22 @@ def cancel(job_id):
     return redirect(url_for("jobs.detail", job_id=job_id))
 
 
+@jobs_bp.route("/<job_id>/rerun", methods=["POST"])
+def rerun(job_id):
+    """Create and immediately start a new job with the same args."""
+    from spikee.viewer.job_queue import spawn_job
+    original = job_queue.get(job_id)
+    if original is None:
+        abort(404, description=f"Job '{job_id}' not found.")
+    with original.lock:
+        job_type = original.type
+        job_name = original.name
+        job_args = list(original.args)
+    new_job = job_queue.create(type=job_type, name=job_name, args=job_args)
+    spawn_job(new_job)
+    return redirect(url_for("jobs.detail", job_id=new_job.id))
+
+
 @jobs_bp.route("/<job_id>/log")
 def log(job_id):
     """Polling endpoint — returns current log lines and status as JSON."""

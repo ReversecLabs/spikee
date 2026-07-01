@@ -16,6 +16,10 @@
             <button type="submit" class="btn btn-sm btn-danger"
                     onclick="return confirm('Cancel this job?')">Cancel</button>
         </form>
+        {% else %}
+        <form method="post" action="/jobs/{{ job.id }}/rerun" class="mb-0">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Re-run</button>
+        </form>
         {% endif %}
 
         {% if dataset_filename %}
