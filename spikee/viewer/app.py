@@ -36,23 +36,25 @@ def _validate_workspace(cwd: Path) -> None:
     # tree rather than a user workspace.
     if (cwd / "pyproject.toml").is_file():
         print(
-            "\n[Error] You are running 'spikee viewer' from the Spikee source directory.\n"
-            f"        Current directory: {cwd}\n\n"
-            "        Please change to your workspace directory and run the viewer from there.\n"
-            "        Example:\n"
-            "            cd ~/workspace\n"
-            "            spikee init\n"
-            "            spikee viewer\n"
+            f"ERROR: You are running 'spikee viewer' from the Spikee source directory.\n"
+            f"Current directory: {cwd}\n\n"
+            f"Please change to your workspace directory and run the viewer from there.\n"
+            f"Example:\n"
+            f"  cd ~/workspace\n"
+            f"  spikee init\n"
+            f"  spikee viewer",
+            file=sys.stderr,
         )
         sys.exit(1)
 
     if not any((cwd / marker).is_dir() for marker in _WORKSPACE_MARKERS):
         print(
-            "\n[Error] The current directory does not appear to be a Spikee workspace.\n"
-            f"        Expected at least one of: {', '.join(_WORKSPACE_MARKERS)}\n"
-            f"        Current directory: {cwd}\n\n"
-            "        Run 'spikee init' from your workspace directory first,\n"
-            "        then launch the viewer from there.\n"
+            f"ERROR: The current directory does not appear to be a Spikee workspace.\n"
+            f"Expected at least one of: {', '.join(_WORKSPACE_MARKERS)}\n"
+            f"Current directory: {cwd}\n\n"
+            f"Run 'spikee init' from your workspace directory first,\n"
+            f"then launch the viewer from there.",
+            file=sys.stderr,
         )
         sys.exit(1)
 
@@ -111,12 +113,14 @@ def create_app(truncate_length: int = 500, db_path: str | None = None) -> Flask:
 
     # Root route — Spikee landing page
     @app.route("/")
-    def home():
+    def home() -> str:
+        """Render the Spikee landing page."""
         return render_template("home.html")
 
     # Cache status API — used by HTMX partials to detect readiness
     @app.route("/api/cache/status")
     def cache_status():
+        """Return the current module cache warming status as JSON."""
         from flask import jsonify
         return jsonify(_module_cache.status_dict())
 
@@ -135,12 +139,13 @@ class Viewer:
     and provides a `run()` method called from cli.py.
     """
 
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         _validate_workspace(Path(os.getcwd()))
         self.app = create_app(truncate_length=args.truncate, db_path=args.database)
         self._args = args
 
-    def run(self):
+    def run(self) -> None:
+        """Start the Flask development server with the configured host/port/debug settings."""
         self.app.run(
             debug=self._args.debug,
             host=self._args.host,

@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
 
 from spikee.utilities.modules import collect_datasets, collect_modules
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
+from spikee.viewer.blueprints._forms import FormValidationError, TestForm
 from spikee.viewer.job_queue import job_queue, spawn_job
 
 test_bp = Blueprint("test", __name__)
@@ -16,6 +17,7 @@ test_bp = Blueprint("test", __name__)
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _collect_datasets() -> list[str]:
+    """Return a list of dataset filenames available in CWD/datasets/."""
     return collect_datasets()
 
 
@@ -37,12 +39,14 @@ def _collect_modules_for_target(module_type: str) -> dict:
 
 @test_bp.route("/")
 @test_bp.route("")
-def index():
+def index() -> Response:
+    """Redirect to the test run page."""
     return redirect(url_for("test.run"))
 
 
 @test_bp.route("/run", methods=["GET"])
-def run():
+def run() -> str:
+    """Render the test configuration form."""
     return render_template(
         "test/run.html",
         datasets=_collect_datasets(),
@@ -50,7 +54,7 @@ def run():
 
 
 @test_bp.route("/partials/targets-options")
-def targets_options_partial():
+def targets_options_partial() -> str:
     """HTMX partial — returns <option>/<optgroup> HTML for the target <select>."""
     if not _module_cache.is_type_ready("targets"):
         return render_template("partials/_picker_loading.html",
@@ -62,7 +66,7 @@ def targets_options_partial():
 
 
 @test_bp.route("/partials/attacks-list")
-def attacks_list_partial():
+def attacks_list_partial() -> str:
     """HTMX partial — returns attack button list HTML or a polling spinner."""
     if not _module_cache.is_type_ready("attacks"):
         return render_template("partials/_picker_loading.html",
@@ -74,106 +78,15 @@ def attacks_list_partial():
 
 
 @test_bp.route("/run", methods=["POST"])
-def run_post():
-    f = request.form
-
-    # ── Required ──────────────────────────────────────────────────────────────
-    target = f.get("target", "").strip()
-    if not target:
-        abort(400, description="target is required.")
-
-    datasets_selected = [d.strip() for d in f.getlist("datasets") if d.strip()]
-    if not datasets_selected:
-        abort(400, description="At least one dataset is required.")
-
-    args = ["test", "--target", target]
-
-    for ds in datasets_selected:
-        args += ["--dataset", f"datasets/{ds}"]
-
-    # ── Target options ────────────────────────────────────────────────────────
-    if target_opts := f.get("target_options", "").strip():
-        args += ["--target-options", target_opts]
-
-    # ── Judge ─────────────────────────────────────────────────────────────────
-    if judge_opts := f.get("judge_options", "").strip():
-        args += ["--judge-options", judge_opts]
-
-    # ── Execution ─────────────────────────────────────────────────────────────
-    threads = f.get("threads", "4").strip()
+def run_post() -> Response:
+    """Handle test form submission, create a job, and redirect to its detail page."""
     try:
-        if int(threads) != 4:
-            args += ["--threads", threads]
-    except ValueError:
-        pass
+        form = TestForm.from_form(request.form)
+    except FormValidationError as exc:
+        abort(400, description=str(exc))
+        return  # unreachable; satisfies type checkers
 
-    attempts = f.get("attempts", "1").strip()
-    try:
-        if int(attempts) != 1:
-            args += ["--attempts", attempts]
-    except ValueError:
-        pass
-
-    max_retries = f.get("max_retries", "3").strip()
-    try:
-        if int(max_retries) != 3:
-            args += ["--max-retries", max_retries]
-    except ValueError:
-        pass
-
-    throttle = f.get("throttle", "0").strip()
-    try:
-        if float(throttle) > 0:
-            args += ["--throttle", throttle]
-    except ValueError:
-        pass
-
-    # ── Attack ────────────────────────────────────────────────────────────────
-    if attack := f.get("attack", "").strip():
-        args += ["--attack", attack]
-
-        attack_iters = f.get("attack_iterations", "10").strip()
-        try:
-            if int(attack_iters) != 10:
-                args += ["--attack-iterations", attack_iters]
-        except ValueError:
-            pass
-
-        if attack_opts := f.get("attack_options", "").strip():
-            args += ["--attack-options", attack_opts]
-
-        if f.get("attack_only"):
-            args.append("--attack-only")
-
-    # ── Sampling ──────────────────────────────────────────────────────────────
-    if sample := f.get("sample", "").strip():
-        try:
-            s = float(sample)
-            if 0 < s < 1:
-                args += ["--sample", str(s)]
-                seed = f.get("sample_seed", "42").strip()
-                if seed != "42":
-                    args += ["--sample-seed", seed]
-        except ValueError:
-            pass
-
-    # ── Resume behaviour ──────────────────────────────────────────────────────
-    # Always emit a resume flag — never rely on interactive stdin
-    resume = f.get("resume", "no").strip()
-    if resume == "auto":
-        args.append("--auto-resume")
-    else:
-        args.append("--no-auto-resume")
-
-    # ── Tag ───────────────────────────────────────────────────────────────────
-    tag = f.get("tag", "").strip()
-    if tag:
-        args += ["--tag", tag]
-
-    # ── Job name ──────────────────────────────────────────────────────────────
-    ds_label = datasets_selected[0] if len(datasets_selected) == 1 else f"{len(datasets_selected)} datasets"
-    name = f"{target} ← {ds_label}" + (f" [{tag}]" if tag else "")
-
-    job = job_queue.create(type="test", name=name, args=args)
+    args = form.to_cli_args()
+    job = job_queue.create(type="test", name=form.job_name, args=args)
     spawn_job(job)
     return redirect(url_for("jobs.detail", job_id=job.id))

@@ -12,7 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, g, redirect, render_template, request, url_for
 
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import (
@@ -163,6 +163,11 @@ def _load_result_data(
 
 
 def _highlight_headings(text: str) -> str:
+    """Escape plain text and wrap known heading markers in markup for display.
+    
+    This prevents XSS attacks from LLM responses while still allowing
+    formatted result output.
+    """
     # Escape the plain-text output first so LLM responses can't inject HTML,
     # then safely wrap known heading markers in markup.
     escaped = _html.escape(text)
@@ -175,13 +180,14 @@ def _highlight_headings(text: str) -> str:
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
-def _truncate(text: str, length: Optional[int]) -> str:
-    if length and len(text) > length:
-        return text[:length] + "...[Truncated]"
-    return text
+def _get_truncate_length() -> Optional[int]:
+    """Get the global truncate length from Flask app config."""
+    from flask import current_app
+    return current_app.jinja_env.globals.get("truncate_length")
 
 
 def _process_text(text, truncated: bool = False) -> str:
+    """Process text for display, applying truncation if requested."""
     if text is None:
         return "—"
     text = str(text)
@@ -191,12 +197,19 @@ def _process_text(text, truncated: bool = False) -> str:
     return text
 
 
-def _get_truncate_length() -> Optional[int]:
-    from flask import current_app
-    return current_app.jinja_env.globals.get("truncate_length")
+def _truncate(text: str, length: Optional[int]) -> str:
+    """Truncate text to specified length, adding ellipsis if needed."""
+    if length and len(text) > length:
+        return text[:length] + "...[Truncated]"
+    return text
 
 
 def _text_to_colour(text: str) -> str:
+    """Generate a deterministic color from text using MD5 hash.
+    
+    Returns an RGB hex color string suitable for use in CSS.
+    Colors are constrained to a readable range (NOT too dark, NOT too bright).
+    """
     h = hashlib.md5(str(text).encode("utf-8")).digest()
     r, g, b = h[0], h[1], h[2]
     lo, hi = 80, 230
@@ -208,6 +221,11 @@ def _text_to_colour(text: str) -> str:
 
 
 def _process_standardised_conversation(conversation_data: str, truncated: bool = False) -> str:
+    """Render conversation data as HTML with proper formatting.
+    
+    Handles both structured conversation data (dict/list) and plain strings.
+    Includes XSS防护 by escaping content.
+    """
     try:
         conversation = StandardisedConversation()
         conversation.add_conversation(conversation_data)
@@ -255,6 +273,12 @@ def _process_standardised_conversation(conversation_data: str, truncated: bool =
 # ── Stats extraction from ResultProcessor ────────────────────────────────────
 
 def _extract_stats(rp: ResultProcessor) -> dict:
+    """Extract statistics from ResultProcessor for display.
+    
+    Returns a dict with:
+        total, successes, failures, guardrails, errors
+        asr (float), gtr (float)
+    """
     total = rp.total_entries
     succ  = rp.successful_groups
     fail  = rp.failed_groups
@@ -276,8 +300,7 @@ def _extract_stats(rp: ResultProcessor) -> dict:
 
 
 def _extract_breakdowns(rp: ResultProcessor):
-    """
-    Convert ResultProcessor._breakdowns into the list-of-tuples format
+    """Convert ResultProcessor._breakdowns into the list-of-tuples format
     the overview template expects:
       [(title, [(label, total, successes, asr_pct[, gtr_n]), ...]), ...]
     Only include breakdowns with >1 distinct value.
@@ -328,6 +351,7 @@ def _extract_breakdowns(rp: ResultProcessor):
 
 @results_bp.context_processor
 def _inject_helpers():
+    """Inject shared template helpers into all results blueprint templates."""
     def _source_label(entry: dict) -> str:
         """Return a short display name for an entry's source file."""
         sf = entry.get("source_file", "")
@@ -341,18 +365,18 @@ def _inject_helpers():
     )
 
 
-# ── Lazy init ─────────────────────────────────────────────────────────────────
-
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @results_bp.route("/")
 @results_bp.route("")
-def index():
+def index() -> Response:
+    """Redirect to the results overview."""
     return redirect(url_for("results.overview"))
 
 
 @results_bp.route("/overview")
-def overview():
+def overview() -> str:
+    """Display aggregated statistics and analysis from result files."""
     scan_result_files()  # re-scan on every overview visit to pick up new results
     selected = request.args.get("result_file", "combined")
     files = _files_for_selection(selected)
@@ -386,8 +410,9 @@ def overview():
 
 
 @results_bp.route("/entries")
-def entries():
-    selected     = request.args.get("result_file", "combined")
+def entries() -> str:
+    """Render a paginated, filterable list of result entries."""
+    selected      = request.args.get("result_file", "combined")
     custom_search = request.args.get("custom_search", "")
     try:
         per_page = max(1, min(int(request.args.get("per_page", 100)), 500))
@@ -457,7 +482,8 @@ def entries():
 
 
 @results_bp.route("/entry/<path:entry_id>")
-def entry(entry_id):
+def entry(entry_id: str) -> str:
+    """Render the detail view for a single result entry."""
     selected = request.args.get("result_file", "combined")
     files = _files_for_selection(selected)
 
@@ -476,9 +502,6 @@ def entry(entry_id):
         id=entry_id,
         entry=entry_data,
     )
-
-
-# ── POST helpers ─────────────────────────────────────────────────────────────
 
 def _find_entry_in_files(entry_id: str, selected: str) -> Tuple[Dict[str, Any], str]:
     """
@@ -515,7 +538,8 @@ def _safe_return_url(url: str, default: str) -> str:
     return default
 
 @results_bp.route("/entry/<path:entry_id>/toggle", methods=["POST"])
-def toggle(entry_id):
+def toggle(entry_id: str) -> Response:
+    """Toggle the success flag of a single result entry."""
     selected = request.args.get("result_file", "combined")
     entry_data, source = _find_entry_in_files(entry_id, selected)
     rows = read_jsonl_file(source)
@@ -529,7 +553,8 @@ def toggle(entry_id):
 
 
 @results_bp.route("/entry/<path:entry_id>/rejudge", methods=["POST"])
-def rejudge(entry_id):
+def rejudge(entry_id: str) -> Response:
+    """Re-run the judge on a single result entry and persist the updated success flag."""
     selected = request.args.get("result_file", "combined")
     entry_data, source = _find_entry_in_files(entry_id, selected)
     rows = read_jsonl_file(source)
@@ -543,7 +568,7 @@ def rejudge(entry_id):
 
 
 @results_bp.route("/bulk", methods=["POST"])
-def bulk():
+def bulk() -> Response:
     """
     Bulk action on a set of entry IDs.
     Form fields:
@@ -591,7 +616,8 @@ def bulk():
 
 
 @results_bp.route("/refresh", methods=["POST"])
-def refresh():
+def refresh() -> Response:
+    """Re-scan the results directory and redirect back."""
     scan_result_files()
     return_url = request.form.get("return_url", "/results/overview")
     return redirect(_safe_return_url(return_url, "/results/overview"))

@@ -11,20 +11,20 @@ persisted to a SQLite database (stdlib sqlite3, no extra dependencies).
 
 from __future__ import annotations
 
+import html
 import json
 import os
-import sqlite3
-import sys
-import html
 import shutil
+import sqlite3
 import subprocess
+import sys
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Generator, Optional
 
 
 _CREATE_TABLE_SQL = """
@@ -56,7 +56,7 @@ class Job:
 
 
 class JobQueue:
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: Optional[str] = None) -> None:
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
         self._db_path: Optional[str] = db_path
@@ -74,6 +74,7 @@ class JobQueue:
         return sqlite3.connect(self._db_path)
 
     def _init_db(self) -> None:
+        """Create the jobs table if it does not already exist."""
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
             conn.commit()
@@ -143,6 +144,7 @@ class JobQueue:
     # ── Public API ────────────────────────────────────────────────────────────
 
     def create(self, type: str, name: str, args: list) -> Job:
+        """Create a new job, register it in memory (and DB if enabled), and return it."""
         job = Job(
             id=str(uuid.uuid4()),
             type=type,
@@ -158,6 +160,7 @@ class JobQueue:
         return job
 
     def get(self, job_id: str) -> Optional[Job]:
+        """Return the job with the given ID, or None if not found."""
         return self._jobs.get(job_id)
 
     def all(self) -> list[Job]:
@@ -166,6 +169,7 @@ class JobQueue:
             return sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
 
     def has_running(self) -> bool:
+        """Return True if any job is currently in the 'running' state."""
         with self._lock:
             return any(j.status == "running" for j in self._jobs.values())
 
@@ -285,7 +289,7 @@ def spawn_job(job: Job) -> None:
     t.start()
 
 
-def sse_stream(job: Job):
+def sse_stream(job: Job) -> Generator[str, None, None]:
     """
     Generator that yields SSE-formatted log lines for the given job.
     Sends `event: done` when the job exits.

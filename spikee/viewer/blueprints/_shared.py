@@ -5,13 +5,12 @@ from __future__ import annotations
 
 from spikee.utilities.modules import load_module_from_path
 
-from spikee.viewer.blueprints._tags import TAG_COLOURS
+from spikee.viewer.blueprints._tags import _get_tag_label, _get_tag_colour
 
 
 def module_tags(name: str, module_type: str) -> list[dict]:
-    """
-    Return sorted [{label, colour}] tag list for *name* / *module_type*.
-
+    """Return sorted [{label, colour}] tag list for *name* / *module_type*.
+    
     Checks the background cache first; falls back to a live load on cache miss
     (covers the startup race window before warm_cache() has reached this entry).
     """
@@ -26,7 +25,11 @@ def module_tags(name: str, module_type: str) -> list[dict]:
 
 
 def _compute_tags_live(name: str, module_type: str) -> list[dict]:
-    """Live tag computation for cache-miss fallback."""
+    """Live tag computation for cache-miss fallback.
+    
+    Loads the module directly and extracts its DESCRIPTION tuple.
+    Returns empty list on any error.
+    """
     try:
         mod = load_module_from_path(name, module_type)
         desc = mod.DESCRIPTION if hasattr(mod, "DESCRIPTION") else None
@@ -35,12 +38,7 @@ def _compute_tags_live(name: str, module_type: str) -> list[dict]:
 
             sorted_tags = sorted(desc[0], key=formatting_priority)
             return [
-                {
-                    "label":  tag.value if hasattr(tag, "value") else str(tag),
-                    "colour": TAG_COLOURS.get(
-                        tag.value if hasattr(tag, "value") else str(tag), "secondary"
-                    ),
-                }
+                {"label": _get_tag_label(tag), "colour": _get_tag_colour(tag)}
                 for tag in sorted_tags
             ]
     except Exception:

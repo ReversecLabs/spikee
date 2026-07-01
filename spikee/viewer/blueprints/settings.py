@@ -1,23 +1,23 @@
-from flask import Blueprint, current_app, jsonify, render_template, request
+from __future__ import annotations
+
+from flask import Blueprint, Response, current_app, jsonify, render_template, request
 
 settings_bp = Blueprint("settings", __name__)
 
 
+
 @settings_bp.route("/")
-def index():
+def index() -> str:
+    """Render the settings page."""
     return render_template("settings/index.html")
 
 
 @settings_bp.route("/api/refresh-modules", methods=["POST"])
-def refresh_modules():
+def refresh_modules() -> Response:
     """Refresh the module cache by resetting and restarting warm_cache."""
     from spikee.viewer.blueprints import _cache as _module_cache
 
-    with _module_cache._store_lock:
-        _module_cache._store.clear()
-        for t in _module_cache._type_ready:
-            _module_cache._type_ready[t] = False
-    _module_cache._all_ready.clear()
+    _module_cache.reset_cache()
 
     import threading
     threading.Thread(
@@ -28,7 +28,7 @@ def refresh_modules():
 
 
 @settings_bp.route("/api/truncate", methods=["POST"])
-def update_truncate():
+def update_truncate() -> Response | tuple[Response, int]:
     """Update the truncate length globally."""
     data = request.get_json()
     truncate_length = data.get("truncate_length", 500)

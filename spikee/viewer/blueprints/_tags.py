@@ -26,6 +26,17 @@ TAG_COLOURS: dict[str, str] = {
 }
 
 
+def _get_tag_label(tag) -> str:
+    """Extract string label from a tag (supports enum or string values)."""
+    return tag.value if hasattr(tag, "value") else str(tag)
+
+
+def _get_tag_colour(tag) -> str:
+    """Get Bootstrap colour for a tag."""
+    label = _get_tag_label(tag)
+    return TAG_COLOURS.get(label, "secondary")
+
+
 def _compute_tags(name: str, module_type: str) -> list[dict]:
     """Load and return sorted [{label, colour}] tag list for a module."""
     try:
@@ -34,12 +45,7 @@ def _compute_tags(name: str, module_type: str) -> list[dict]:
         if desc and isinstance(desc, tuple) and desc[0]:
             sorted_tags = sorted(desc[0], key=formatting_priority)
             return [
-                {
-                    "label":  tag.value if hasattr(tag, "value") else str(tag),
-                    "colour": TAG_COLOURS.get(
-                        tag.value if hasattr(tag, "value") else str(tag), "secondary"
-                    ),
-                }
+                {"label": _get_tag_label(tag), "colour": _get_tag_colour(tag)}
                 for tag in sorted_tags
             ]
     except Exception:

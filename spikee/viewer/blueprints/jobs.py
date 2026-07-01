@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, url_for
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, url_for
 
 from spikee.utilities.files import extract_resource_name
 from spikee.viewer.job_queue import job_queue
@@ -15,18 +15,20 @@ jobs_bp = Blueprint("jobs", __name__)
 
 @jobs_bp.route("/")
 @jobs_bp.route("")
-def index():
+def index() -> str:
+    """Render the jobs list page."""
     return render_template("jobs/list.html", jobs=job_queue.all())
 
 
 @jobs_bp.route("/list-partial")
-def list_partial():
+def list_partial() -> str:
     """HTMX polling target — returns tbody rows only."""
     return render_template("jobs/list_partial.html", jobs=job_queue.all())
 
 
 @jobs_bp.route("/<job_id>")
-def detail(job_id):
+def detail(job_id: str) -> str:
+    """Render the detail page for a single job, including log output and result links."""
     job = job_queue.get(job_id)
     if job is None:
         abort(404, description=f"Job '{job_id}' not found.")
@@ -70,7 +72,7 @@ def detail(job_id):
 
 
 @jobs_bp.route("/<job_id>/cancel", methods=["POST"])
-def cancel(job_id):
+def cancel(job_id: str) -> Response:
     """Terminate a running job subprocess."""
     job = job_queue.get(job_id)
     if job is None:
@@ -84,7 +86,7 @@ def cancel(job_id):
 
 
 @jobs_bp.route("/<job_id>/rerun", methods=["POST"])
-def rerun(job_id):
+def rerun(job_id: str) -> Response:
     """Create and immediately start a new job with the same args."""
     from spikee.viewer.job_queue import spawn_job
     original = job_queue.get(job_id)
@@ -100,7 +102,7 @@ def rerun(job_id):
 
 
 @jobs_bp.route("/<job_id>/log")
-def log(job_id):
+def log(job_id: str) -> Response:
     """Polling endpoint — returns current log lines and status as JSON."""
     job = job_queue.get(job_id)
     if job is None:
@@ -112,7 +114,7 @@ def log(job_id):
 
 
 @jobs_bp.route("/<job_id>/stream")
-def stream(job_id):
+def stream(job_id: str) -> Response:
     """SSE log stream — not yet implemented."""
     abort(501, description="SSE streaming is not yet implemented.")
 

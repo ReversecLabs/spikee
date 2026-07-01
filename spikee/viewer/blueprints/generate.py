@@ -6,13 +6,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
 import markdown as md_lib
 
 from spikee.utilities.files import read_jsonl_file
 from spikee.utilities.modules import collect_datasets, collect_modules, collect_seeds
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
+from spikee.viewer.blueprints._forms import FormValidationError, GenerateForm
 from spikee.generator import resolve_seed_folder
 from spikee.viewer.job_queue import job_queue, spawn_job
 
@@ -93,6 +94,12 @@ def _normalize_row(row: dict, file_type: str) -> dict:
 
 def _load_seed_detail(seed_name: str) -> dict | None:
     """Read a seed folder from disk and return structured file info."""
+    # Prevent path traversal: resolve and verify the path stays inside datasets/
+    datasets_dir = (Path(os.getcwd()) / "datasets").resolve()
+    seed_path = (datasets_dir / seed_name).resolve()
+    if not str(seed_path).startswith(str(datasets_dir) + os.sep):
+        return None
+
     try:
         # collect_seeds() returns bare names; resolve_seed_folder expects "datasets/<name>"
         folder = Path(str(resolve_seed_folder(f"datasets/{seed_name}")))
@@ -282,17 +289,20 @@ def _load_dataset_entries(dataset_name: str, page: int = 1) -> dict | None:
 
 @generate_bp.route("/")
 @generate_bp.route("")
-def index():
+def index() -> Response:
+    """Redirect to the generate run page."""
     return redirect(url_for("generate.run"))
 
 
 @generate_bp.route("/seeds")
-def seeds():
+def seeds() -> str:
+    """Render the seed folder browser."""
     return render_template("generate/seeds.html", seeds=_collect_seeds_with_meta())
 
 
 @generate_bp.route("/seeds/<seed_name>")
-def seed_detail(seed_name):
+def seed_detail(seed_name: str) -> str:
+    """Render the detail view for a seed folder, showing all contained files."""
     detail = _load_seed_detail(seed_name)
     if detail is None:
         abort(404, description=f"Seed folder '{seed_name}' not found.")
@@ -300,12 +310,14 @@ def seed_detail(seed_name):
 
 
 @generate_bp.route("/datasets")
-def datasets():
+def datasets() -> str:
+    """Render the dataset browser listing all generated datasets."""
     return render_template("generate/datasets.html", datasets=_collect_datasets_with_meta())
 
 
 @generate_bp.route("/datasets/<path:dataset_name>")
-def dataset_detail(dataset_name):
+def dataset_detail(dataset_name: str) -> str:
+    """Render a paginated view of a single dataset's entries."""
     page   = max(1, int(request.args.get("page", 1)))
     result = _load_dataset_entries(dataset_name, page)
     if result is None:
@@ -325,7 +337,8 @@ def dataset_detail(dataset_name):
 
 
 @generate_bp.route("/run", methods=["GET"])
-def run():
+def run() -> str:
+    """Render the dataset generation form."""
     return render_template(
         "generate/run.html",
         seeds=_collect_seeds_with_meta(),
@@ -333,7 +346,7 @@ def run():
 
 
 @generate_bp.route("/partials/plugins-list")
-def plugins_list_partial():
+def plugins_list_partial() -> str:
     """HTMX partial — returns plugin button list HTML or a polling spinner."""
     if not _module_cache.is_type_ready("plugins"):
         return render_template("partials/_picker_loading.html",
@@ -344,85 +357,15 @@ def plugins_list_partial():
 
 
 @generate_bp.route("/run", methods=["POST"])
-def run_post():
-    f = request.form
+def run_post() -> Response:
+    """Handle dataset generation form submission, create a job, and redirect to its detail page."""
+    try:
+        form = GenerateForm.from_form(request.form)
+    except FormValidationError as exc:
+        abort(400, description=str(exc))
+        return  # unreachable; satisfies type checkers
 
-    seed_folder = f.get("seed_folder", "").strip()
-    if not seed_folder:
-        abort(400, description="seed_folder is required.")
-
-    # Build CLI args list
-    args = ["generate", "--seed-folder", f"datasets/{seed_folder}"]
-
-    # Positions (checkboxes — multiple values)
-    positions = f.getlist("positions")
-    if positions:
-        args += ["--positions"] + positions
-
-    # Injection delimiters
-    if delimiters := f.get("injection_delimiters", "").strip():
-        args += ["--injection-delimiters", delimiters]
-
-    # Spotlighting data markers
-    if markers := f.get("spotlighting_data_markers", "").strip():
-        args += ["--spotlighting-data-markers", markers]
-
-    # Format
-    if fmt := f.get("format", "").strip():
-        args += ["--format", fmt]
-
-    # Include flags
-    if f.get("include_system_message"):
-        args.append("--include-system-message")
-    if f.get("include_standalone_inputs"):
-        args.append("--include-standalone-inputs")
-
-    # Plugins: textarea value, one entry per line (each line may contain ~ for pipes)
-    # The form encodes piped groups with ~ but the CLI expects | as the pipe separator
-    # All independent plugins go as space-separated values after a single --plugins flag
-    plugin_lines = [ln.strip().replace("~", "|") for ln in f.get("plugins", "").splitlines() if ln.strip()]
-    if plugin_lines:
-        args += ["--plugins"] + plugin_lines
-
-    # Plugin options: textarea, convert newlines to semicolons
-    if plugin_opts := ";".join(
-        ln.strip() for ln in f.get("plugin_options", "").splitlines() if ln.strip()
-    ):
-        args += ["--plugin-options", plugin_opts]
-
-    if f.get("plugin_only"):
-        args.append("--plugin-only")
-
-    # Filtering
-    if languages := f.get("languages", "").strip():
-        args += ["--languages", languages]
-    if not f.get("match_languages"):       # checkbox unchecked = exclude mode
-        args += ["--match-languages", "false"]
-    if instr_filter := f.get("instruction_filter", "").strip():
-        args += ["--instruction-filter", instr_filter]
-    if jb_filter := f.get("jailbreak_filter", "").strip():
-        args += ["--jailbreak-filter", jb_filter]
-    if fixes := f.get("include_fixes", "").strip():
-        args += ["--include-fixes", fixes]
-
-    # Threads
-    if threads := f.get("threads", "").strip():
-        try:
-            t = int(threads)
-            if t > 1:
-                args += ["--threads", str(t)]
-        except ValueError:
-            pass
-
-    # Tag
-    if tag := f.get("tag", "").strip():
-        args += ["--tag", tag]
-
-    job = job_queue.create(
-        type="generate",
-        name=seed_folder + (f" [{tag}]" if tag else ""),
-        args=args,
-    )
+    args = form.to_cli_args()
+    job = job_queue.create(type="generate", name=form.job_name, args=args)
     spawn_job(job)
     return redirect(url_for("jobs.detail", job_id=job.id))
-
