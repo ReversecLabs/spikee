@@ -22,6 +22,7 @@ from spikee.viewer.blueprints.test import test_bp
 from spikee.viewer.blueprints.jobs import jobs_bp
 from spikee.viewer.blueprints.settings import settings_bp
 from spikee.viewer.blueprints import _cache as _module_cache
+from spikee.viewer.job_queue import init_job_queue
 
 
 # Directories that must exist in CWD for it to be considered a valid workspace
@@ -56,7 +57,7 @@ def _validate_workspace(cwd: Path) -> None:
         sys.exit(1)
 
 
-def create_app(truncate_length: int = 500) -> Flask:
+def create_app(truncate_length: int = 500, db_path: str | None = None) -> Flask:
     """Create and configure the Flask application."""
 
     viewer_dir = Path(__file__).parent
@@ -97,6 +98,10 @@ def create_app(truncate_length: int = 500) -> Flask:
 
     app.jinja_env.globals["csrf_token"] = lambda: g.csrf_token
 
+    # Initialise job queue (with optional DB persistence) before blueprints
+    # so that all blueprint imports reference the updated singleton.
+    init_job_queue(db_path=db_path)
+
     # Register blueprints
     app.register_blueprint(results_bp,  url_prefix="/results")
     app.register_blueprint(generate_bp, url_prefix="/generate")
@@ -132,7 +137,7 @@ class Viewer:
 
     def __init__(self, args):
         _validate_workspace(Path(os.getcwd()))
-        self.app = create_app(truncate_length=args.truncate)
+        self.app = create_app(truncate_length=args.truncate, db_path=args.database)
         self._args = args
 
     def run(self):

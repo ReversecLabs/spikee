@@ -537,6 +537,12 @@ def main():
         default=500,
         help="Truncate long text entries in the web UI (default: 500 chars, 0 to disable)",
     )
+    parser_viewer.add_argument(
+        "--database",
+        type=str,
+        default=None,
+        help="Path to SQLite database for job persistence (created if absent)",
+    )
 
     # --- convert-to-excel
     parser_convert_to_excel = subparsers_results.add_parser(

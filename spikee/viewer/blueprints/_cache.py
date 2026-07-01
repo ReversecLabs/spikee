@@ -10,7 +10,7 @@ import threading
 
 from spikee.utilities.modules import collect_modules
 
-from spikee.viewer.blueprints._tags import TAG_COLOURS, _compute_tags
+from spikee.viewer.blueprints._tags import _compute_tags
 
 _MODULE_TYPES = ("plugins", "attacks", "targets", "judges")
 
