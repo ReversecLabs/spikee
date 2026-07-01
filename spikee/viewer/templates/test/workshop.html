@@ -1,0 +1,408 @@
+{% extends "test/base.html" %}
+{% set active_test_page = "workshop" %}
+{% block title %}Test — Target Workshop | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-semibold mb-0">Target Workshop</h5>
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-spikee px-4" id="send-btn">Send</button>
+            <span id="send-status" class="text-muted small"></span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        {# ── LEFT COLUMN: target card + pipeline card ────────────────────── #}
+        <div class="col-12 col-lg-5 d-flex flex-column gap-3">
+
+            {# Target card #}
+            <div class="card spikee-card">
+                <div class="card-header py-2 px-3 small fw-semibold">Target</div>
+                <div class="card-body py-3 px-3 d-flex flex-column gap-3">
+
+                    {# Target selector #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="target">Target</label>
+                        <select class="form-select form-select-sm" id="target"
+                                hx-get="/test/partials/targets-options"
+                                hx-trigger="load"
+                                hx-swap="innerHTML">
+                            <option value="" disabled selected>Loading targets…</option>
+                        </select>
+                        <div class="form-text mt-1">Built-in or workspace target module.</div>
+                    </div>
+
+                    {# Target options #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="target_options">Target Options</label>
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               id="target_options" placeholder="model=openai/gpt-4o">
+                        <div class="form-text mt-1">e.g. <code>model=openai/gpt-4o</code></div>
+                    </div>
+
+                </div>
+            </div>
+
+            {# Pipeline card #}
+            <div class="card spikee-card">
+                <div class="card-header py-2 px-3 small fw-semibold">Pipeline <span class="fw-normal text-muted">(optional)</span></div>
+                <div class="card-body py-3 px-3 d-flex flex-column gap-3">
+
+                    {# Plugin list #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Available Plugins</label>
+                        <input type="text" class="form-control form-control-sm mb-2"
+                               id="plugin_search" placeholder="Search…"
+                               oninput="filterPlugins(this.value)" autocomplete="off">
+                        <div class="border rounded px-2 pt-2 pb-1"
+                             style="max-height:280px;overflow-y:auto" id="plugin-list">
+                            {% set local_plugins = plugins | selectattr("source", "eq", "local") | list %}
+                            {% set builtin_plugins = plugins | selectattr("source", "eq", "builtin") | list %}
+                            {% if local_plugins %}
+                            <div class="plugin-item mb-1">
+                                <span class="text-muted" style="font-size:0.7rem">&#9472; local &#9472;</span>
+                            </div>
+                            {% for p in local_plugins %}
+                            <div class="plugin-item mb-2">
+                                <button type="button" data-plugin="{{ p.name }}"
+                                        class="btn btn-outline-secondary w-100 text-start small py-2 px-2"
+                                        style="border-radius:6px">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <span class="font-monospace fw-semibold" style="font-size:0.78rem">{{ p.name }}</span>
+                                        {% for tag in p.tags %}
+                                        <span class="badge text-bg-{{ tag.colour }}" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>
+                                        {% endfor %}
+                                        {% if p.llm_required %}
+                                        <span class="badge text-bg-warning" style="font-size:0.6rem;font-family:sans-serif">LLM</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if p.description %}
+                                    <div class="text-muted" style="font-size:0.72rem;line-height:1.35;font-family:sans-serif;font-weight:400">{{ p.description }}</div>
+                                    {% endif %}
+                                    {% if p.options %}
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        {% for opt in p.options %}
+                                        <code style="font-size:0.65rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">{{ opt }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% if builtin_plugins %}
+                            {% if local_plugins %}
+                            <div class="plugin-item mb-1">
+                                <span class="text-muted" style="font-size:0.7rem">&#9472; built-in &#9472;</span>
+                            </div>
+                            {% endif %}
+                            {% for p in builtin_plugins %}
+                            <div class="plugin-item mb-2">
+                                <button type="button" data-plugin="{{ p.name }}"
+                                        class="btn btn-outline-secondary w-100 text-start small py-2 px-2"
+                                        style="border-radius:6px">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <span class="font-monospace fw-semibold" style="font-size:0.78rem">{{ p.name }}</span>
+                                        {% for tag in p.tags %}
+                                        <span class="badge text-bg-{{ tag.colour }}" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>
+                                        {% endfor %}
+                                        {% if p.llm_required %}
+                                        <span class="badge text-bg-warning" style="font-size:0.6rem;font-family:sans-serif">LLM</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if p.description %}
+                                    <div class="text-muted" style="font-size:0.72rem;line-height:1.35;font-family:sans-serif;font-weight:400">{{ p.description }}</div>
+                                    {% endif %}
+                                    {% if p.options %}
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        {% for opt in p.options %}
+                                        <code style="font-size:0.65rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">{{ opt }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% if not plugins %}
+                            <span class="text-muted small">No plugins found.</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-text mt-1">Click a plugin to add it to the pipeline.</div>
+                    </div>
+
+                    {# Pipeline chip zone #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Pipeline</label>
+                        <div id="pipeline-zone"
+                             class="border rounded p-2 d-flex flex-wrap align-items-center gap-1"
+                             style="min-height:40px">
+                        </div>
+                        <div class="form-text mt-1">Plugins run left-to-right before the input is sent.</div>
+                        <input type="hidden" id="pipeline-value" value="">
+                    </div>
+
+                    {# Plugin options #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="plugin_options">Plugin Options</label>
+                        <textarea class="form-control form-control-sm font-monospace"
+                                  id="plugin_options" rows="2"
+                                  placeholder="caesar:shift=13&#10;tts:voice=alloy"></textarea>
+                        <div class="form-text mt-1">Format: <code>plugin:key=value</code>, one per line.</div>
+                    </div>
+
+                    {# Exclude patterns #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="exclude_patterns">Exclude from Transformation</label>
+                        <textarea class="form-control form-control-sm font-monospace"
+                                  id="exclude_patterns" rows="2"
+                                  placeholder="CANARY&#10;\{\{.*?\}\}"></textarea>
+                        <div class="form-text mt-1">Regex patterns to preserve unchanged, one per line.</div>
+                    </div>
+
+                </div>
+            </div>
+
+            {# Logging card #}
+            <div class="card spikee-card">
+                <div class="card-header py-2 px-3 small fw-semibold">Logging</div>
+                <div class="card-body py-3 px-3 d-flex flex-column gap-3">
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="log_enabled" checked>
+                        <label class="form-check-label small" for="log_enabled">Log sends to results file</label>
+                    </div>
+
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="log_tag">Tag <span class="fw-normal text-muted">(optional)</span></label>
+                        <input type="text" class="form-control form-control-sm" id="log_tag"
+                               placeholder="e.g. recon-run-1">
+                        <div class="form-text mt-1">Appended to the log filename.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="btn btn-xs btn-spikee" id="new-log-btn">New Log</button>
+                    </div>
+
+                    <div id="log-file-row" class="d-none">
+                        <div class="text-muted small mb-1">Current log file</div>
+                        <code id="log-file-display" class="small" style="word-break:break-all"></code>
+                    </div>
+
+                    <div id="log-count-display" class="text-muted small d-none"></div>
+                    <div id="log-error-display" class="text-danger small d-none"></div>
+
+                </div>
+            </div>
+
+        </div>
+
+        {# ── RIGHT COLUMN: input + output ────────────────────────────────── #}
+        <div class="col-12 col-lg-7 d-flex flex-column gap-3">
+
+            {# Input #}
+            <div class="card spikee-card">
+                <div class="card-header py-2 px-3 small fw-semibold">Input</div>
+                <div class="card-body py-3 px-3">
+                    <textarea class="form-control form-control-sm font-monospace"
+                              id="input_text" rows="6"
+                              placeholder="Enter prompt to send to the target…"></textarea>
+                </div>
+            </div>
+
+            {# Output #}
+            <div class="card spikee-card flex-grow-1">
+                <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between">
+                    <span class="small fw-semibold">Response</span>
+                    <span id="guardrail-badge" class="badge text-bg-warning d-none">Guardrail triggered</span>
+                </div>
+                <div class="card-body py-3 px-3" id="output-area">
+                    <span class="text-muted small">Response will appear here.</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Pipeline chip zone ────────────────────────────────────────────────────────
+
+const pipelineZone = document.getElementById('pipeline-zone');
+const pipelineVal  = document.getElementById('pipeline-value');
+
+function buildPipelineValue() {
+    const chips = Array.from(pipelineZone.querySelectorAll('.plugin-chip'))
+                       .map(c => c.dataset.name);
+    pipelineVal.value = chips.join('|');
+}
+
+function refreshSeparators() {
+    pipelineZone.querySelectorAll('.pipe-sep').forEach(s => s.remove());
+    const chips = pipelineZone.querySelectorAll('.plugin-chip');
+    chips.forEach((chip, i) => {
+        if (i > 0) {
+            const sep = document.createElement('span');
+            sep.className = 'pipe-sep text-muted small px-1';
+            sep.textContent = '|';
+            sep.style.pointerEvents = 'none';
+            pipelineZone.insertBefore(sep, chip);
+        }
+    });
+}
+
+function makeChip(name) {
+    const chip = document.createElement('span');
+    chip.className = 'plugin-chip d-inline-flex align-items-center gap-1 badge rounded-pill border fw-normal font-monospace';
+    chip.style.cssText = 'font-size:0.78rem;padding:4px 8px;background:var(--bs-light);color:var(--bs-dark)';
+    chip.dataset.name = name;
+    chip.innerHTML = `${escHtml(name)}<span class="pipe-remove" title="Remove" style="cursor:pointer;opacity:.5;font-size:.9rem;line-height:1;margin-left:4px">×</span>`;
+    chip.querySelector('.pipe-remove').onclick = () => {
+        chip.remove();
+        refreshSeparators();
+        buildPipelineValue();
+    };
+    return chip;
+}
+
+function addPlugin(name) {
+    pipelineZone.appendChild(makeChip(name));
+    refreshSeparators();
+    buildPipelineValue();
+}
+
+function filterPlugins(q) {
+    const term = q.toLowerCase();
+    document.querySelectorAll('#plugin-list .plugin-item').forEach(el => {
+        const btn = el.querySelector('button');
+        if (!btn) return;
+        el.style.display = btn.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+}
+
+document.getElementById('plugin-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-plugin]');
+    if (!btn) return;
+    addPlugin(btn.dataset.plugin);
+});
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+
+const sendBtn        = document.getElementById('send-btn');
+const statusEl       = document.getElementById('send-status');
+const outputArea     = document.getElementById('output-area');
+const guardrailBadge = document.getElementById('guardrail-badge');
+const logFileRow     = document.getElementById('log-file-row');
+const logFileDisplay = document.getElementById('log-file-display');
+const logCountEl     = document.getElementById('log-count-display');
+const logErrorEl     = document.getElementById('log-error-display');
+const csrfToken      = document.querySelector('meta[name="csrf-token"]').content;
+
+sendBtn.addEventListener('click', async () => {
+    const target           = document.getElementById('target').value;
+    const target_options   = document.getElementById('target_options').value.trim();
+    const input_text       = document.getElementById('input_text').value;
+    const pipeline         = pipelineVal.value.trim();
+    const plugin_options   = document.getElementById('plugin_options').value.trim();
+    const exclude_patterns = document.getElementById('exclude_patterns').value.trim();
+    const log_enabled      = document.getElementById('log_enabled').checked;
+    const log_tag          = document.getElementById('log_tag').value.trim();
+
+    if (!target) {
+        setStatus('Select a target first.', 'text-warning');
+        return;
+    }
+    if (!input_text) {
+        setStatus('Input is empty.', 'text-warning');
+        return;
+    }
+
+    sendBtn.disabled = true;
+    setStatus('Sending…', 'text-muted');
+    outputArea.innerHTML = '<span class="text-muted small">Waiting for response…</span>';
+    guardrailBadge.classList.add('d-none');
+    logErrorEl.classList.add('d-none');
+
+    try {
+        const resp = await fetch('/test/workshop/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                target, target_options,
+                input_text, pipeline, plugin_options, exclude_patterns,
+                log_enabled, log_tag,
+            }),
+        });
+
+        const data = await resp.json();
+
+        if (data.error) {
+            setStatus('Error', 'text-danger');
+            outputArea.innerHTML = `<pre class="text-danger mb-0 small">${escHtml(data.error)}</pre>`;
+        } else if (data.guardrail) {
+            setStatus('Guardrail triggered', 'text-warning');
+            guardrailBadge.classList.remove('d-none');
+            outputArea.innerHTML = data.response
+                ? `<pre class="mb-0 small" style="white-space:pre-wrap;word-break:break-all">${escHtml(data.response)}</pre>`
+                : '<span class="text-muted small">No response body returned.</span>';
+        } else {
+            setStatus('Done', 'text-success');
+            outputArea.innerHTML = `<pre class="mb-0 small" style="white-space:pre-wrap;word-break:break-all">${escHtml(data.response)}</pre>`;
+        }
+
+        // Update logging UI
+        if (data.log_file) {
+            logFileDisplay.textContent = data.log_file;
+            logFileRow.classList.remove('d-none');
+            logCountEl.textContent = data.log_count + ' entr' + (data.log_count === 1 ? 'y' : 'ies') + ' logged';
+            logCountEl.classList.remove('d-none');
+        }
+        if (data.log_error) {
+            logErrorEl.textContent = data.log_error;
+            logErrorEl.classList.remove('d-none');
+        }
+
+    } catch (err) {
+        setStatus('Request failed', 'text-danger');
+        outputArea.innerHTML = `<pre class="text-danger mb-0 small">${escHtml(String(err))}</pre>`;
+    } finally {
+        sendBtn.disabled = false;
+    }
+});
+
+// ── New Log button ────────────────────────────────────────────────────────────
+
+document.getElementById('new-log-btn').addEventListener('click', async () => {
+    await fetch('/test/workshop/new-log', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+    });
+    logFileDisplay.textContent = '';
+    logFileRow.classList.add('d-none');
+    logCountEl.classList.add('d-none');
+    logErrorEl.classList.add('d-none');
+});
+
+function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = `small ${cls}`;
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+</script>
+{% endblock %}

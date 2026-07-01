@@ -5,6 +5,10 @@
 <div class="spikee-subnav">
     <ul class="nav gap-1">
         <li class="nav-item">
+            <a class="nav-link {% if active_test_page == 'workshop' %}active{% endif %}"
+               href="/test/workshop">Target Workshop</a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {% if active_test_page == 'run' %}active{% endif %}"
                href="/test/run">Test</a>
         </li>
