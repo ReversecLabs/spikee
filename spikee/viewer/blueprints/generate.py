@@ -59,21 +59,19 @@ def _collect_datasets_with_meta() -> list[dict]:
     return result
 
 
-def _collect_modules(module_type: str, exclude_labels: list[str] | None = None) -> list[dict]:
-    """Return modules of given type as [{name, local, tags}] dicts."""
-    exclude_labels = exclude_labels or []
-    _all, local_names, builtin_names = collect_modules(module_type)
-    result = []
-    for name in sorted(local_names) + sorted(builtin_names):
-        is_local = name in local_names
-        tags = [t for t in _module_tags(name, module_type) if t["label"] not in exclude_labels]
-        result.append({"name": name, "local": is_local, "tags": tags})
-    return result
+def _collect_plugins() -> dict:
+    """Return plugins as {local: [{name, tags}], builtin: [{name, tags}]}."""
+    _all, local_names, builtin_names = collect_modules("plugins")
+    exclude = {"Single-Turn"}
 
+    def _entry(name: str) -> dict:
+        tags = [t for t in _module_tags(name, "plugins") if t["label"] not in exclude]
+        return {"name": name, "tags": tags}
 
-def _collect_plugins() -> list[dict]:
-    """Return plugins as [{name, local, tags}] dicts, local first then built-in."""
-    return _collect_modules("plugins", exclude_labels=["Single-Turn"])
+    return {
+        "local":   [_entry(n) for n in sorted(local_names)],
+        "builtin": [_entry(n) for n in sorted(builtin_names)],
+    }
 
 
 def _normalize_row(row: dict, file_type: str) -> dict:

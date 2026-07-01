@@ -9,7 +9,6 @@
     <button type="button" data-attack="{{ a.name }}"
             class="attack-picker-btn btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
         {{ a.name }}
-        <span class="badge bg-success ms-1" style="font-size:0.6rem;font-family:sans-serif">local</span>
         {% for tag in a.tags %}<span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
     </button>
 </div>

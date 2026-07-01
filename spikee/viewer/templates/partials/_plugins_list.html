@@ -1,16 +1,29 @@
 {# partials/_plugins_list.html
    Inner content of the plugin picker scrollable div.
-   Expects: plugins — list of {name, local, tags}
+   Expects: plugins — {local: [{name, tags}], builtin: [...]}
 #}
-{% if plugins %}
-    {% for plugin in plugins %}
-    <div class="plugin-item mb-1">
-        <button type="button" data-plugin="{{ plugin.name }}"
-                class="btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
-            {{ plugin.name }}{% if plugin.local %} <span class="badge bg-success text-white ms-1" style="font-size:0.6rem;font-family:sans-serif">local</span>{% endif %}{% for tag in plugin.tags %} <span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
-        </button>
-    </div>
-    {% endfor %}
-{% else %}
-    <span class="text-muted small">No plugins found.</span>
+{% if plugins.local %}
+<div class="plugin-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; local &#9472;</span></div>
+{% for p in plugins.local %}
+<div class="plugin-item mb-1">
+    <button type="button" data-plugin="{{ p.name }}"
+            class="btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
+        {{ p.name }}{% for tag in p.tags %} <span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
+    </button>
+</div>
+{% endfor %}
+{% endif %}
+{% if plugins.builtin %}
+{% if plugins.local %}<div class="plugin-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; built-in &#9472;</span></div>{% endif %}
+{% for p in plugins.builtin %}
+<div class="plugin-item mb-1">
+    <button type="button" data-plugin="{{ p.name }}"
+            class="btn btn-xs btn-outline-secondary w-100 text-start font-monospace small py-1 px-2">
+        {{ p.name }}{% for tag in p.tags %} <span class="badge text-bg-{{ tag.colour }} ms-1" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>{% endfor %}
+    </button>
+</div>
+{% endfor %}
+{% endif %}
+{% if not plugins.local and not plugins.builtin %}
+<span class="text-muted small">No plugins found.</span>
 {% endif %}

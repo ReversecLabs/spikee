@@ -39,7 +39,7 @@
                         <div class="form-text">Parallel plugin threads.</div>
                     </div>
                     <div class="col-12 col-md-3">
-                        <label class="form-label small fw-semibold" for="tag">Tag <span class="text-muted fw-normal">(optional)</span></label>
+                        <label class="form-label small fw-semibold" for="tag">Tag</label>
                         <input type="text" class="form-control form-control-sm" id="tag"
                                name="tag" placeholder="e.g. experiment-1">
                         <div class="form-text">Appended to output filename.</div>
@@ -48,73 +48,6 @@
             </div>
         </div>
 
-        {# ================================================================
-           INJECTION
-        ================================================================ #}
-        <div class="card spikee-card mb-3">
-            <div class="card-header py-2 px-3 small fw-semibold">Injection</div>
-            <div class="card-body py-3 px-3">
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small fw-semibold">Positions</label>
-                        <div class="d-flex flex-wrap gap-3">
-                            {% for pos in ['start', 'middle', 'end'] %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="positions"
-                                       value="{{ pos }}" id="pos_{{ pos }}"
-                                       {% if pos == 'end' %}checked{% endif %}>
-                                <label class="form-check-label small" for="pos_{{ pos }}">{{ pos }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <div class="form-text">Where to inject the payload.</div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small fw-semibold" for="injection_delimiters">Injection Delimiters</label>
-                        <input type="text" class="form-control form-control-sm font-monospace"
-                               id="injection_delimiters" name="injection_delimiters"
-                               placeholder="\nINJECTION_PAYLOAD\n">
-                        <div class="form-text">Comma-separated delimiter patterns.</div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small fw-semibold" for="spotlighting_data_markers">Spotlighting Data Markers</label>
-                        <input type="text" class="form-control form-control-sm font-monospace"
-                               id="spotlighting_data_markers" name="spotlighting_data_markers"
-                               placeholder="\nDOCUMENT\n">
-                        <div class="form-text">Comma-separated data markers.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {# ================================================================
-           FORMAT
-        ================================================================ #}
-        <div class="card spikee-card mb-3">
-            <div class="card-header py-2 px-3 small fw-semibold">Format</div>
-            <div class="card-body py-3 px-3">
-                <div class="d-flex flex-wrap align-items-end gap-4">
-                    <div>
-                        <label class="form-label small fw-semibold mb-1" for="format">Output Format</label>
-                        <select class="form-select form-select-sm" id="format" name="format" style="width:auto">
-                            <option value="user-input" selected>user-input (default)</option>
-                            <option value="full-prompt">full-prompt</option>
-                            <option value="burp">burp</option>
-                        </select>
-                    </div>
-                    <div class="d-flex flex-wrap gap-3 pb-1">
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="checkbox" id="include_system_message" name="include_system_message">
-                            <label class="form-check-label small" for="include_system_message">Include system message</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="checkbox" id="include_standalone_inputs" name="include_standalone_inputs">
-                            <label class="form-check-label small" for="include_standalone_inputs">Include standalone inputs</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         {# ================================================================
            PLUGINS
@@ -173,10 +106,78 @@
         </div>
 
         {# ================================================================
+           FORMAT
+        ================================================================ #}
+        <div class="card spikee-card mb-3">
+            <div class="card-header py-2 px-3 small fw-semibold">Format</div>
+            <div class="card-body py-3 px-3">
+                <div class="d-flex flex-wrap align-items-end gap-4">
+                    <div>
+                        <label class="form-label small fw-semibold mb-1" for="format">Output Format</label>
+                        <select class="form-select form-select-sm" id="format" name="format" style="width:auto">
+                            <option value="user-input" selected>user-input (default)</option>
+                            <option value="full-prompt">full-prompt</option>
+                            <option value="burp">burp</option>
+                        </select>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 pb-1">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="include_system_message" name="include_system_message">
+                            <label class="form-check-label small" for="include_system_message">Include system message</label>
+                        </div>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="include_standalone_inputs" name="include_standalone_inputs">
+                            <label class="form-check-label small" for="include_standalone_inputs">Include standalone inputs</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ================================================================
+           INJECTION
+        ================================================================ #}
+        <div class="card spikee-card mb-3">
+            <div class="card-header py-2 px-3 small fw-semibold">Injection</div>
+            <div class="card-body py-3 px-3">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold">Positions</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            {% for pos in ['start', 'middle', 'end'] %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="positions"
+                                       value="{{ pos }}" id="pos_{{ pos }}"
+                                       {% if pos == 'end' %}checked{% endif %}>
+                                <label class="form-check-label small" for="pos_{{ pos }}">{{ pos }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-text">Where to inject the payload.</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold" for="injection_delimiters">Injection Delimiters</label>
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               id="injection_delimiters" name="injection_delimiters"
+                               placeholder="\nINJECTION_PAYLOAD\n">
+                        <div class="form-text">Comma-separated delimiter patterns.</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold" for="spotlighting_data_markers">Spotlighting Data Markers</label>
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               id="spotlighting_data_markers" name="spotlighting_data_markers"
+                               placeholder="\nDOCUMENT\n">
+                        <div class="form-text">Comma-separated data markers.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ================================================================
            FILTERING
         ================================================================ #}
         <div class="card spikee-card mb-3">
-            <div class="card-header py-2 px-3 small fw-semibold">Filtering <span class="fw-normal text-muted">(optional)</span></div>
+            <div class="card-header py-2 px-3 small fw-semibold">Filtering</div>
             <div class="card-body py-3 px-3">
                 <div class="row g-3">
                     {# Languages + match toggle side by side #}
