@@ -29,6 +29,14 @@ from .list import (
 )
 from .viewer.app import Viewer
 
+from .debug import (
+    debug_module_target,
+    debug_module_judge,
+    debug_module_plugin,
+    debug_module_attack,
+    debug_module_provider,
+)
+
 banner = r"""
    _____ _____ _____ _  ________ ______
   / ____|  __ \_   _| |/ /  ____|  ____|
@@ -88,7 +96,7 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
-    # === [INIT] Sub-command (NEW) ==============================================
+    #region === [INIT] Sub-command (NEW) ==============================================
     parser_init = subparsers.add_parser(
         "init", help="Initialize a local SPIKEE workspace"
     )
@@ -104,7 +112,7 @@ def main():
         help="Copy built-in modules to local workspace (default: none)",
     )
 
-    # === [GENERATE] Sub-command ===============================================
+    #region === [GENERATE] Sub-command ===============================================
     parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
     subparsers_generate = parser_generate.add_subparsers(
         dest="generate_command", help="Generation sub-commands"
@@ -243,8 +251,9 @@ def main():
         default=None,
         help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
+    #endregion
 
-    # === [TEST] Sub-command ===================================================
+    #region === [TEST] Sub-command ===================================================
     parser_test = subparsers.add_parser(
         "test", help="Test the dataset against a target"
     )
@@ -354,8 +363,9 @@ def main():
         action="store_true",
         help="Create new results file, do not attempt to resume",
     )
+    #endregion
 
-    # === [RESULTS] Sub-command ================================================
+    #region === [RESULTS] Sub-command ================================================
     parser_results = subparsers.add_parser("results", help="Analyze or convert results")
     subparsers_results = parser_results.add_subparsers(
         dest="results_command", help="Results sub-commands"
@@ -506,6 +516,7 @@ def main():
     parser_dataset_comparison.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
+    #endregion
 
     # === [WebUI] Sub-command ================================================
     parser_viewer = subparsers.add_parser(
@@ -551,8 +562,9 @@ def main():
     parser_convert_to_excel.add_argument(
         "--result-file", type=str, required=True, help="Path to the results JSONL file"
     )
+    #endregion
 
-    # === [LIST] Sub-command ================================================
+    #region === [LIST] Sub-command ================================================
     parser_list = subparsers.add_parser(
         "list",
         help="List seeds, datasets, judges, targets, plugins, attacks, or providers",
@@ -577,6 +589,123 @@ def main():
             action="store_true",
             help="Include descriptions of modules where available",
         )
+    #endregion
+
+    #region === [DEBUG] Sub-command ================================================
+    parser_debug = subparsers.add_parser("debug", help="Debugging and testing utilities")
+
+    debug_subparsers = parser_debug.add_subparsers(dest="debug_command", help="Debugging sub-commands")
+    
+    # -- module debug --
+    module_subparser = debug_subparsers.add_parser("module", help="Debug module")
+    module_subparsers = module_subparser.add_subparsers(dest="module_type", help="Type of module to debug")
+
+    target_subparser = module_subparsers.add_parser("targets", help="Debug target module")
+    judge_subparser = module_subparsers.add_parser("judges", help="Debug judge module")
+    plugin_subparser = module_subparsers.add_parser("plugins", help="Debug plugin module")
+    attack_subparser = module_subparsers.add_parser("attacks", help="Debug attack module")
+    provider_subparser = module_subparsers.add_parser("providers", help="Debug provider module")
+
+    for subparser in [target_subparser, judge_subparser, plugin_subparser, attack_subparser, provider_subparser]:
+        subparser.add_argument(
+            "-m", "--module",
+            type=str,
+            required=True,
+            help="Name of the module to debug",
+        )
+        subparser.add_argument(
+            "-i", "--input",
+            type=str,
+            default="",
+            required=True,
+            help="Input string for the module (if applicable)",
+        )
+    
+    # Target-specific arguments
+    target_subparser.add_argument(
+        "--system-message",
+        type=str,
+        default=None,
+        help="System message for the target module (if applicable)",
+    )
+    target_subparser.add_argument(
+        "--target-options",
+        type=str,
+        default=None,
+        help="Options to pass to the target module (if applicable)",
+    )
+
+    # Judge-specific arguments
+    judge_subparser.add_argument(
+        "--judge-options",
+        type=str,
+        default=None,
+        help="Options to pass to the judge module (if applicable)",
+    )
+    judge_subparser.add_argument(
+        "--judge-args",
+        type=str,
+        default=None,
+        help="Additional arguments for the judge module (if applicable)",
+    )
+    judge_subparser.add_argument(
+        "-o", "--output",
+        type=str,
+        default="",
+        required=True,
+        help="Output file for the judge module (if applicable)",
+    )
+
+    # Plugin-specific arguments
+    plugin_subparser.add_argument(
+        "--plugin-options",
+        type=str,
+        default=None,
+        help="Options to pass to the plugin module (if applicable)",
+    )
+    plugin_subparser.add_argument(
+        "--exclude-patterns",
+        action="append",
+        default=None,
+        help="Regex patterns to exclude from plugin transformation (if applicable)",
+    )
+
+    # Attack-specific arguments
+    attack_subparser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        required=True,
+        help="Target for the attack module (if applicable)",
+    )
+    attack_subparser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=10,
+        help="Maximum iterations for the attack module (if applicable)",
+    )
+    attack_subparser.add_argument(
+        "--attack-options",
+        type=str,
+        default=None,
+        help="Options to pass to the attack module (if applicable)",
+    )
+    
+    # Provider-specific arguments
+    provider_subparser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Maximum tokens for the provider module (if applicable)",
+    )
+    provider_subparser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Temperature for the provider module (if applicable)",
+    )
+
+    #endregion
 
     args = convert_to_new_args(parser.parse_args())
 
@@ -658,6 +787,25 @@ def main():
             list_providers(args)
         else:
             parser_list.print_help()
+    
+    elif args.command == "debug":
+        if args.debug_command == "module":
+            if args.module_type == "targets":
+                debug_module_target(args)
+            elif args.module_type == "judges":
+                debug_module_judge(args)
+            elif args.module_type == "plugins":
+                debug_module_plugin(args)
+            elif args.module_type == "attacks":
+                debug_module_attack(args)
+            elif args.module_type == "providers":
+                debug_module_provider(args)
+            else:
+                print("[debug] ERROR: Unknown module type specified.")
+                parser_debug.print_help()
+        else:
+            parser_debug.print_help()
+
     else:
         parser.print_help()
         sys.exit(1)
@@ -681,9 +829,6 @@ def init_workspace(force=False, include_builtin="none"):
     # We'll do this by manually copying sub-items, skipping if they exist.
     for item in src_folder.iterdir():
         destination = workspace_dest / item.name
-
-        if item.name == "viewer":
-            continue
 
         if destination.exists() and not force:
             print(f"[init] '{destination}' already exists. Use --force to overwrite.")

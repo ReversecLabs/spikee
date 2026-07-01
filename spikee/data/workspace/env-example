@@ -1,3 +1,5 @@
+PROVIDER_DEBUG=false
+
 # Anthropic
 ANTHROPIC_API_KEY=
 
