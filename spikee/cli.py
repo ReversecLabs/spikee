@@ -507,35 +507,35 @@ def main():
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
 
-    # === [Viewer] Sub-command ================================================
+    # === [WebUI] Sub-command ================================================
     parser_viewer = subparsers.add_parser(
-        "viewer",
-        help="Launch the Spikee web viewer (run from a workspace directory)",
+        "webui",
+        help="Launch the Spikee web UI (run from a workspace directory)",
     )
     parser_viewer.add_argument(
         "--host",
         type=str,
         default="127.0.0.1",
-        help="Host address for the viewer (default: 127.0.0.1)",
+        help="Host address for the web UI (default: 127.0.0.1)",
     )
     parser_viewer.add_argument(
         "-p",
         "--port",
         type=int,
         default=8080,
-        help="Port number for the viewer (default: 8080)",
+        help="Port number for the web UI (default: 8080)",
     )
     parser_viewer.add_argument(
         "-d",
         "--debug",
         action="store_true",
-        help="Run the viewer in debug mode with hot-reloading (default: False)",
+        help="Run the web UI in debug mode with hot-reloading (default: False)",
     )
     parser_viewer.add_argument(
         "--truncate",
         type=int,
         default=500,
-        help="Truncate long text entries in the viewer (default: 500 chars, 0 to disable)",
+        help="Truncate long text entries in the web UI (default: 500 chars, 0 to disable)",
     )
 
     # --- convert-to-excel
@@ -631,7 +631,7 @@ def main():
         else:
             parser_results.print_help()
 
-    elif args.command == "viewer":
+    elif args.command == "webui":
         viewer = Viewer(args)
         viewer.run()
 
