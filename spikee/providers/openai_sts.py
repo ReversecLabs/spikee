@@ -10,16 +10,16 @@ Additional Args:
 import asyncio
 import base64
 import os
-from typing import Union, Dict, Sequence, Optional, Set
+from typing import Union, Dict, Optional, Set
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio, get_content
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio, get_content
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -101,8 +101,8 @@ class OpenAISTSProvider(Provider):
         combined_audio = b"".join(audio_chunks)
         return base64.b64encode(combined_audio).decode("utf-8")
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
+    def _invoke(
+        self, messages: MessageHint
     ) -> AIMessage:
         """Invoke OpenAI STS via the Realtime API. Takes audio input, returns audio output."""
         msg, system_msg = single_message(messages, system_prompt=True)

@@ -125,6 +125,12 @@ You can override the default API timeout (typically 600 seconds) across all Spik
 SPIKEE_API_TIMEOUT=1200.0 spikee test --dataset my_dataset.jsonl --target llm_provider
 ```
 
+## Debugging Provider Calls
+
+Setting `PROVIDER_DEBUG=true` in your environment (or `.env` file) enables verbose prompt and response logging for every provider call. Each message sent to and received from the LLM will be printed to the console, prefixed with the provider class name.
+
+This is useful for verifying the exact messages being sent to the LLM, especially when debugging custom targets, attacks, or judges that use `get_llm()` internally.
+
 ## Implementing Built-In LLM Utilities
 Spikee's built-in LLM utility is implemented within `Provider` modules, and can be obtained using the `get_llm()` function from `spikee/utilities/llm.py`.
 
@@ -149,22 +155,44 @@ print(response)  # Should print "Paris"
 ## Creating Custom Provider Modules
 Custom provider modules are located within the `providers/` directory of your Spikee workspace, and identify themselves by their filename (e.g., `bedrock.py` has the provider prefix `bedrock/`).
 
+> **Note:** `invoke()` is a legacy implementation and should not be overridden in subclasses. Implement **`_invoke()`** instead — it is called internally by `invoke()`, which handles debug logging and error wrapping.
+
+### `ProviderError`
+
+When an unrecoverable error occurs inside `_invoke()`, raise a `ProviderError` rather than a generic exception. This gives callers structured access to the prompt, response, and error metadata.
+
+```python
+from spikee.templates.provider import ProviderError
+
+# Raise with full context
+raise ProviderError(
+    "Received empty response due to max_tokens budget exceeded during thinking.",
+    prompt=messages,      # MessageHint — the input that caused the error
+    response=response,    # AIMessage | None — the (partial) response if available
+    metadata={"finish_reason": "length"},  # any extra diagnostic data
+)
+```
+
+Exceptions that are not already `ProviderError` instances are automatically caught by `invoke()` and re-raised as `ProviderError`, so you only need to raise it explicitly when you want to attach context (e.g., provider-specific validation failures).
+
+### Provider Template
+
 The following template demonstrates how to create a custom provider module by inheriting from the `Provider` base class:
 
 ```python
-from spikee.templates.provider import Provider
+from spikee.templates.provider import Provider, ProviderError
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, AIMessage, MessageHint
+from spikee.utilities.hinting import ModuleDescriptionHint
 
-from typing import List, Tuple, Dict, Union, Any
+from typing import Dict, Union, Any
 
 
 class ExampleProvider(Provider):
 
-    
     @property
     def default_model(self) -> str:
-        # If default_mode is not defined, the first model in the models dict will be used as the default
+        # If default_model is not defined, the first model in the models dict will be used as the default
         return "mock"
 
     @property
@@ -186,7 +214,7 @@ class ExampleProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "Sample LLM Provider, always returns 'Hello, world!'"
 
-    def invoke(self, messages: Union[str, List[Union[Message, dict, tuple, str]]]) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Return 'Hello, world!' regardless of the input."""
 
         # Convert messages into a standard dict format
@@ -197,9 +225,14 @@ class ExampleProvider(Provider):
         return AIMessage(content="Hello, world!", original_response=...)
 ```
 
-LLM Providers utilising an OpenAI-compatible API can also inherit from `AnyLLMCustomProvider` - this is an example for Google Gemini: 
+### Inheriting from `AnyLLMCustomProvider`
+
+LLM Providers utilising an OpenAI-compatible API can also inherit from `AnyLLMCustomProvider` — this is an example for a custom Google Gemini provider:
+
 ```python
 from spikee.providers.custom import AnyLLMCustomProvider
+from spikee.templates.provider import ProviderError
+from spikee.utilities.llm_message import AIMessage, MessageHint
 from typing import Dict, Union
 import os
 
@@ -233,3 +266,14 @@ class AnyLLMGoogleProvider(AnyLLMCustomProvider):
     @property
     def api_key(self) -> Union[str, None]:
         return os.getenv("GOOGLE_API_KEY", None)
+```
+
+#### `response_validation()` Hook
+
+Providers that inherit from `AnyLLMCustomProvider` (the OpenAI-compatible base) can override `response_validation()` to add provider-specific checks after a response is received. The default implementation is a no-op.
+
+```python
+def response_validation(self, messages: MessageHint, response: AIMessage) -> None:
+    """Called by _invoke() after a successful API call. Raise ProviderError on invalid responses."""
+    pass
+```
