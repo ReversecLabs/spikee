@@ -73,6 +73,54 @@ class TestSourceArguments:
             f"Expected 2 standalone entries, got {len(standalone_entries)}"
         )
 
+    def test_standalone_preserves_instruction_and_jailbreak_type(
+        self, run_spikee, workspace_dir
+    ):
+        """Regression test: standalone entries must preserve instruction_type and jailbreak_type.
+
+        Verifies that instruction_type and jailbreak_type from standalone seed entries
+        are carried through to the generated dataset. These fields are critical for
+        downstream analysis (e.g., spikee results analyze breakdown by type).
+
+        Regression for: d7defec (PR #74) which hardcoded both fields to None.
+        """
+        output_file = spikee_generate_cli(
+            run_spikee,
+            workspace_dir,
+            additional_args=["--include-standalone-inputs"],
+        )
+
+        dataset = read_jsonl_file(output_file)
+
+        # Filter to standalone entries only (document_id is None for standalone)
+        standalone_entries = [e for e in dataset if e.get("document_id") is None]
+        assert len(standalone_entries) == 2, (
+            f"Expected 2 standalone entries, got {len(standalone_entries)}"
+        )
+
+        # Build a lookup by id for deterministic checks
+        by_id = {e["long_id"]: e for e in standalone_entries}
+
+        # standalone-en seed has instruction_type="exfil", jailbreak_type="direct"
+        en_entry = by_id.get("standalone-en")
+        assert en_entry is not None, "Missing standalone-en entry"
+        assert en_entry["instruction_type"] == "exfil", (
+            f"Expected instruction_type 'exfil', got '{en_entry['instruction_type']}'"
+        )
+        assert en_entry["jailbreak_type"] == "direct", (
+            f"Expected jailbreak_type 'direct', got '{en_entry['jailbreak_type']}'"
+        )
+
+        # standalone-it seed has instruction_type="harmful", jailbreak_type="roleplay"
+        it_entry = by_id.get("standalone-it")
+        assert it_entry is not None, "Missing standalone-it entry"
+        assert it_entry["instruction_type"] == "harmful", (
+            f"Expected instruction_type 'harmful', got '{it_entry['instruction_type']}'"
+        )
+        assert it_entry["jailbreak_type"] == "roleplay", (
+            f"Expected jailbreak_type 'roleplay', got '{it_entry['jailbreak_type']}'"
+        )
+
     def test_include_system_message_flag(self, run_spikee, workspace_dir):
         """Test --include-system-message adds system messages to entries."""
         output_file = spikee_generate_cli(

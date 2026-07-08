@@ -685,3 +685,114 @@ class TestEntryEdgeCases:
         output = entry.to_entry()
         assert output["content"] == "test_audio"
         assert output["content_type"] == "audio"
+
+
+class TestStandaloneWorkerMetadata:
+    """Regression tests for _process_standalone_worker preserving seed metadata.
+
+    Regression for: d7defec (PR #74) which hardcoded jailbreak_type and
+    instruction_type to None for standalone entries.
+    """
+
+    def test_standalone_worker_preserves_instruction_type(self):
+        """Standalone worker must carry instruction_type from seed data."""
+        from spikee.generator import _process_standalone_worker
+
+        perm = {
+            "attack": {
+                "id": "test-standalone-01",
+                "text": "standalone attack text",
+                "judge_name": "canary",
+                "judge_args": "test-flag",
+                "instruction_type": "exfil",
+                "lang": "en",
+            },
+            "plugins": [(None, None)],
+            "prefixes": [None],
+            "suffixes": [None],
+        }
+
+        entries = _process_standalone_worker(perm, plugin_options_map={})
+        assert len(entries) == 1
+
+        output = entries[0].to_attack()
+        assert output["instruction_type"] == "exfil", (
+            f"Expected instruction_type 'exfil', got '{output['instruction_type']}'"
+        )
+
+    def test_standalone_worker_preserves_jailbreak_type(self):
+        """Standalone worker must carry jailbreak_type from seed data."""
+        from spikee.generator import _process_standalone_worker
+
+        perm = {
+            "attack": {
+                "id": "test-standalone-02",
+                "text": "standalone jailbreak text",
+                "judge_name": "llm_judge_harmful",
+                "judge_args": "",
+                "jailbreak_type": "roleplay",
+                "lang": "en",
+            },
+            "plugins": [(None, None)],
+            "prefixes": [None],
+            "suffixes": [None],
+        }
+
+        entries = _process_standalone_worker(perm, plugin_options_map={})
+        assert len(entries) == 1
+
+        output = entries[0].to_attack()
+        assert output["jailbreak_type"] == "roleplay", (
+            f"Expected jailbreak_type 'roleplay', got '{output['jailbreak_type']}'"
+        )
+
+    def test_standalone_worker_preserves_both_types(self):
+        """Standalone worker must carry both instruction_type and jailbreak_type."""
+        from spikee.generator import _process_standalone_worker
+
+        perm = {
+            "attack": {
+                "id": "test-standalone-03",
+                "text": "full metadata standalone",
+                "judge_name": "canary",
+                "judge_args": "flag",
+                "instruction_type": "harmful",
+                "jailbreak_type": "direct",
+                "lang": "en",
+            },
+            "plugins": [(None, None)],
+            "prefixes": [None],
+            "suffixes": [None],
+        }
+
+        entries = _process_standalone_worker(perm, plugin_options_map={})
+        assert len(entries) == 1
+
+        output = entries[0].to_attack()
+        assert output["instruction_type"] == "harmful"
+        assert output["jailbreak_type"] == "direct"
+
+    def test_standalone_worker_defaults_missing_types_to_none(self):
+        """Standalone worker should default to None when types are absent from seed."""
+        from spikee.generator import _process_standalone_worker
+
+        perm = {
+            "attack": {
+                "id": "test-standalone-04",
+                "text": "no type metadata",
+                "judge_name": "canary",
+                "judge_args": "flag",
+                "lang": "en",
+            },
+            "plugins": [(None, None)],
+            "prefixes": [None],
+            "suffixes": [None],
+        }
+
+        entries = _process_standalone_worker(perm, plugin_options_map={})
+        assert len(entries) == 1
+
+        output = entries[0].to_attack()
+        assert output["instruction_type"] is None
+        assert output["jailbreak_type"] is None
+
