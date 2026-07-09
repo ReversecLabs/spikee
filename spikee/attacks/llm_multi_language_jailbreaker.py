@@ -201,6 +201,7 @@ class LLMMultiLanguageJailbreaker(Attack):
                                 attempts_bar.total = max(
                                     0, attempts_bar.total - remaining
                                 )
+                                attempts_bar.refresh()
                     return i, True, attack_prompt, last_response
 
             except Exception as e:

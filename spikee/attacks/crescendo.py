@@ -473,9 +473,11 @@ class Crescendo(Attack):
                                 attempts_bar.total = max(
                                     0, attempts_bar.total - remaining
                                 )
+                                attempts_bar.refresh()
                     else:
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
+                            attempts_bar.refresh()
                 return (
                     conversation.get_attempt_total(),
                     True,

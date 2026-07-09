@@ -658,6 +658,7 @@ def process_entry(
                     - (attempts - request_attempts)
                     - (attack_iterations * attempts if attack_module else 0)
                 )
+                attempts_bar.refresh()
 
     else:
         std_success = False
@@ -717,6 +718,7 @@ def process_entry(
                     attempts_bar.total = attempts_bar.total - (
                         attempts * attack_iterations - attack_attempts
                     )
+                    attempts_bar.refresh()
 
             end_time = time.time()
             response_time = end_time - start_time

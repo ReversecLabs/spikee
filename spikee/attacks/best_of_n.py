@@ -107,6 +107,7 @@ class BestOfNAttack(Attack):
                     with bar_lock:
                         remaining = max_iterations - i
                         attempts_bar.total = attempts_bar.total - remaining
+                        attempts_bar.refresh()
                 return i, True, candidate_text, response
 
         return max_iterations, False, last_payload, last_response
