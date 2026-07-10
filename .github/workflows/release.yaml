@@ -7,6 +7,10 @@ on:
         description: "Type of release (major | minor | patch)"
         required: true
         default: "patch"
+      skip_tests:
+        description: "Skip tests (yes | no)"
+        required: false
+        default: "no"
 
 permissions:
   contents: write  # needed to push commit + tag
@@ -14,12 +18,13 @@ permissions:
 
 jobs:
   tests:
+    if: github.event.inputs.skip_tests != 'yes'
     uses: ./.github/workflows/tests.yaml
 
   release:
     needs: tests
+    if: always() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with:
