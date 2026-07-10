@@ -8,9 +8,10 @@ on:
         required: true
         default: "patch"
       skip_tests:
-        description: "Skip tests (yes | no)"
+        description: "Skip tests"
         required: false
-        default: "no"
+        default: false
+        type: boolean
 
 permissions:
   contents: write  # needed to push commit + tag
@@ -18,12 +19,19 @@ permissions:
 
 jobs:
   tests:
-    if: github.event.inputs.skip_tests != 'yes'
+    if: github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/tests.yaml
 
-  release:
+  gate:
+    runs-on: ubuntu-latest
     needs: tests
-    if: always() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') && github.ref == 'refs/heads/main'
+    if: always() && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+    steps:
+      - run: echo "Gate passed"
+
+  release:
+    needs: gate
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
