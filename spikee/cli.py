@@ -92,6 +92,11 @@ def main():
         action="store_true",
         help="Suppress banner and informational messages",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
