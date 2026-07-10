@@ -14,24 +14,16 @@ on:
         type: boolean
 
 permissions:
-  contents: write  # needed to push commit + tag
-  pull-requests: write  # needed to open the post-release dev-bump PR
+  contents: write  # push commit + tag, bump develop
 
 jobs:
   tests:
     if: github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/tests.yaml
 
-  gate:
-    runs-on: ubuntu-latest
-    needs: tests
-    if: always() && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
-    steps:
-      - run: echo "Gate passed"
-
   release:
-    needs: gate
-    if: github.ref == 'refs/heads/main'
+    needs: tests
+    if: always() && (github.event.inputs.skip_tests == 'true' || needs.tests.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -227,6 +219,7 @@ jobs:
           mv "$new_file" CHANGELOG.md
 
       - name: Commit and tag
+        id: tag
         shell: bash
         run: |
           VERSION="${{ steps.bump.outputs.new_version }}"
@@ -248,38 +241,41 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Open dev-bump PR to develop
+      - name: Bump develop to next dev version
+        if: always() && steps.tag.outcome == 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
-          BRANCH="chore/bump-${NEXT_DEV}"
+          export NEXT_DEV
 
-          # Fetch develop so we can branch from it
+          # Fetch and checkout develop directly
           git fetch origin develop
-          git checkout -b "${BRANCH}" origin/develop
+          git checkout develop
+          git pull origin develop
 
           python - <<EOF
-          import toml, pathlib, re
+          import toml, pathlib, re, os
+          next_dev = os.environ["NEXT_DEV"]
           root = pathlib.Path(".")
 
           # pyproject.toml
           pp = root / "pyproject.toml"
           data = toml.load(pp.open())
-          data["project"]["version"] = "${NEXT_DEV}"
+          data["project"]["version"] = next_dev
           pp.write_text(toml.dumps(data))
 
           # __init__.py
           initp = root / "spikee" / "__init__.py"
-          initp.write_text('__version__ = "${NEXT_DEV}"\n')
+          initp.write_text(f'__version__ = "{next_dev}"\n')
 
           # README.md
           readme = root / "README.md"
           if readme.exists():
               txt = readme.read_text()
               new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
-                                   rf"\g<1>${NEXT_DEV}\3", txt, count=1)
+                                   rf"\g<1>{next_dev}\3", txt, count=1)
               if n:
                   readme.write_text(new_txt)
                   print("Updated README.md to next dev version.")
@@ -291,10 +287,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml spikee/__init__.py README.md
           git commit -m "chore: bump version to ${NEXT_DEV}"
-          git push origin "${BRANCH}"
-
-          gh pr create \
-            --base develop \
-            --head "${BRANCH}" \
-            --title "chore: bump version to ${NEXT_DEV}" \
-            --body "Automated post-release version bump from the release workflow."
+          git push origin develop
