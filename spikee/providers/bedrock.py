@@ -112,9 +112,7 @@ class AnyLLMBedrockProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for AWS Bedrock models via any-llm."
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AnyLLM Bedrock LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)

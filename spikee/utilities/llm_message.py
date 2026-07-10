@@ -45,7 +45,8 @@ class AIMessage(Message):
     @property
     def original_response(self) -> Any:
         return self.metadata.get("original_response", None)
-    
+
+
 MessageHint = Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
 
 

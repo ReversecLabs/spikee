@@ -82,9 +82,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
             ModuleTag.LLM_TTS,
         ], "TTS Provider for ElevenLabs text-to-speech models."
 
-    def _validate_messages(
-        self, messages: MessageHint
-    ) -> str:
+    def _validate_messages(self, messages: MessageHint) -> str:
         """Extract text from messages."""
         msg, _ = single_message(messages)
 
@@ -93,9 +91,7 @@ class ElevenLabsTTSProvider(StreamingProvider):
 
         return get_content(msg.content)
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke ElevenLabs TTS with the provided text. Returns base64-encoded audio."""
 
         text = self._validate_messages(messages)

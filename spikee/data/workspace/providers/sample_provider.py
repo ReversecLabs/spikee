@@ -50,9 +50,7 @@ class AnyLLMSampleProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "Sample provider for OpenAI API based AnyLLM providers."
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Return Mock Message"""
 
         # upgraded_messages = agent_framework_message_translation(upgrade_messages(messages))

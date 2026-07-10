@@ -61,9 +61,7 @@ class AnyLLMGroqProvider(Provider):
     def get_description(self) -> ModuleDescriptionHint:
         return [ModuleTag.LLM], "LLM Provider for Groq models via any-llm."
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AnyLLM Groq LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)

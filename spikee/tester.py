@@ -299,9 +299,7 @@ def _load_results_file(resume_file, attack_module, attack_iters):
         already_done = no_attack + with_attack * attack_iters
         entries_done = no_attack  # actual dataset entries completed
 
-        print(
-            f"[Resume] Found {entries_done} completed entries in {resume_file}."
-        )
+        print(f"[Resume] Found {entries_done} completed entries in {resume_file}.")
     return completed_ids, results, already_done, entries_done
 
 

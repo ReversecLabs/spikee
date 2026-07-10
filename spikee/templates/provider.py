@@ -8,13 +8,22 @@ from spikee.templates.module import Module
 from spikee.utilities.llm_message import Message, AIMessage, MessageHint
 from spikee.utilities.hinting import ModuleOptionsHint, get_content
 
+
 class ProviderError(Exception):
     """Custom exception for provider-related errors."""
-    def __init__(self, message, prompt: MessageHint = "", response: Union[AIMessage, None] = None, metadata: dict = {}):
+
+    def __init__(
+        self,
+        message,
+        prompt: MessageHint = "",
+        response: Union[AIMessage, None] = None,
+        metadata: dict = {},
+    ):
         super().__init__(message)
         self.prompt = prompt
         self.response = response
         self.metadata = metadata
+
 
 class Provider(Module, ABC):
     @property
@@ -42,7 +51,7 @@ class Provider(Module, ABC):
     def logprobs_models(self) -> List[str]:
         """Override in subclass to specify which models support logprobs."""
         return []
-    
+
     @property
     def debug_prompt(self) -> bool:
         """Global flag to enable debug prompt logging, reads from PROVIDER_DEBUG."""
@@ -69,28 +78,30 @@ class Provider(Module, ABC):
     ) -> None:
         """Sets up the provider with the specified model and parameters."""
 
-    def invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def invoke(self, messages: MessageHint) -> AIMessage:
         """
         Invokes the provider with the given messages returning an AIMessage response, and implements management logic.
-        
-        Legacy providers 
+
+        Legacy providers
         """
 
         if self.debug_prompt:
             if isinstance(messages, list):
                 for message in messages:
-                    print(f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(message)}")
-            
+                    print(
+                        f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(message)}"
+                    )
+
             else:
-                print(f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(messages)}")
+                print(
+                    f"[{self.__class__.__name__} DEBUG] Prompt: {self.__extract_content(messages)}"
+                )
 
         try:
             response = self._invoke(messages)
         except ProviderError as e:
             raise e
-        
+
         except Exception as e:
             raise ProviderError(
                 f"A generic error occurred while invoking the provider: {str(e)}",
@@ -100,22 +111,20 @@ class Provider(Module, ABC):
             ) from e
 
         if self.debug_prompt:
-            print(f"[{self.__class__.__name__} DEBUG] Response: {self.__extract_content(response) if response else 'No response'}")
+            print(
+                f"[{self.__class__.__name__} DEBUG] Response: {self.__extract_content(response) if response else 'No response'}"
+            )
 
         return response
-    
+
     def __extract_content(self, message):
 
         if isinstance(message, Message):
             message = message.content
-        
+
         return get_content(message)
-        
 
-
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Internal abstract method to invoke the provider; should be implemented by subclasses."""
         raise ProviderError(
             "The '_invoke' method must be implemented by subclasses of Provider.",
@@ -123,7 +132,6 @@ class Provider(Module, ABC):
             response=None,
             metadata={"error_type": "NotImplementedError"},
         )
-        
 
     def async_call(self, fun: Callable, **params) -> Any:
 
