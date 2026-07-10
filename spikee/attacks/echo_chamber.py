@@ -1082,7 +1082,6 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                     last_message_id = sentences_message_id
                     continue
 
-
             return (
                 conversation.get_attempt_total(),
                 False,

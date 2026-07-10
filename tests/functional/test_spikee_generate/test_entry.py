@@ -795,4 +795,3 @@ class TestStandaloneWorkerMetadata:
         output = entries[0].to_attack()
         assert output["instruction_type"] is None
         assert output["jailbreak_type"] is None
-

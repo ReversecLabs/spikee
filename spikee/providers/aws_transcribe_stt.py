@@ -160,9 +160,7 @@ class AWSTranscribeSTTProvider(Provider):
 
         return " ".join(transcript_parts).strip()
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AWS Transcribe streaming STT with base64-encoded audio. Returns transcribed text."""
 
         msg, _ = single_message(messages)

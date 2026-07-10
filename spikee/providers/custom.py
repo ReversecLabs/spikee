@@ -77,9 +77,7 @@ class AnyLLMCustomProvider(Provider):
             ModuleTag.LLM
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
@@ -90,14 +88,16 @@ class AnyLLMCustomProvider(Provider):
             messages=formatted_messages,
             **self.options,
         )
-        
-        response = AIMessage(content=response.choices[0].message.content, original_response=response)
+
+        response = AIMessage(
+            content=response.choices[0].message.content, original_response=response
+        )
 
         self.response_validation(messages, response)
 
         return response
-    
+
     def response_validation(self, messages: MessageHint, response: AIMessage) -> None:
         """Abstract validation method for subclasses to implement specific response validation logic. Otherwise validations common OpenAI compatible API errors."""
-        
+
         pass

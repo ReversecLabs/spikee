@@ -125,7 +125,9 @@ class HomoglyphPlugin(BasicPlugin):
 
         rng = random.Random(seed)
         return "".join(
-            self.CONFUSABLES[c] if (c in self.CONFUSABLES and rng.random() < ratio) else c
+            self.CONFUSABLES[c]
+            if (c in self.CONFUSABLES and rng.random() < ratio)
+            else c
             for c in text
         )
 

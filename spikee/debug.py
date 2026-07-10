@@ -22,6 +22,7 @@ from spikee.utilities.hinting import get_content
 from spikee.judge import call_judge
 from spikee.utilities.llm import get_llm
 
+
 def debug_module_target(args):
     """
     Debug a target module by sending a single input and printing the response.
@@ -41,13 +42,16 @@ def debug_module_target(args):
 
     if args.system_message:
         target_args["system_message"] = args.system_message
-    
+
     if args.target_options:
         target_args["target_options"] = args.target_options
 
     response = target.process_input(args.input, **target_args)
 
-    print(f"[{target.__class__.__name__}] Response: {get_content(response) if response else 'No response'}")
+    print(
+        f"[{target.__class__.__name__}] Response: {get_content(response) if response else 'No response'}"
+    )
+
 
 def debug_module_judge(args):
     """
@@ -72,7 +76,7 @@ def debug_module_judge(args):
 
     if args.output:
         judge_args["llm_output"] = args.output
-    
+
     else:
         raise ValueError("Judges require an output argument to evaluate the response.")
 
@@ -81,10 +85,11 @@ def debug_module_judge(args):
 
     if args.judge_args:
         judge_args["judge_args"] = args.judge_args
-    
+
     response = judge.judge(args.input, **judge_args)
 
     print(f"[{judge.__class__.__name__}] Judge Result: {response}")
+
 
 def debug_module_plugin(args):
     """
@@ -112,7 +117,10 @@ def debug_module_plugin(args):
 
     response = plugin.transform(args.input, **plugin_args)
 
-    print(f"[{plugin.__class__.__name__}] Plugin Response: {get_content(response) if response else 'No response'}")
+    print(
+        f"[{plugin.__class__.__name__}] Plugin Response: {get_content(response) if response else 'No response'}"
+    )
+
 
 def debug_module_attack(args):
     """
@@ -151,14 +159,16 @@ def debug_module_attack(args):
         entry = json.loads(base64.b64decode(args.input).decode("utf-8"))
     except (json.JSONDecodeError, base64.binascii.Error):
         raise ValueError("Attack input must be a valid base64-encoded JSON entry.")
-    
+
     missing_entry_args = []
     for arg in ["id", "long_id", "content", "content_type", "judge_name", "judge_args"]:
         if arg not in entry:
             missing_entry_args.append(arg)
-    
+
     if len(missing_entry_args) > 0:
-        raise ValueError(f"Missing required entry arguments for attack: {', '.join(missing_entry_args)}")
+        raise ValueError(
+            f"Missing required entry arguments for attack: {', '.join(missing_entry_args)}"
+        )
 
     attack_args = {}
 
@@ -173,7 +183,10 @@ def debug_module_attack(args):
 
     response = attack.attack(entry, **attack_args)
 
-    print(f"[{attack.__class__.__name__}] Attack Response: {str(response) if response else 'No response'}")
+    print(
+        f"[{attack.__class__.__name__}] Attack Response: {str(response) if response else 'No response'}"
+    )
+
 
 def debug_module_provider(args):
     """
@@ -195,7 +208,9 @@ def debug_module_provider(args):
     provider_args = {}
 
     if args.module is None:
-        raise ValueError("Providers require a model argument to specify the LLM model to use.")
+        raise ValueError(
+            "Providers require a model argument to specify the LLM model to use."
+        )
 
     provider_args["max_tokens"] = args.max_tokens
     provider_args["temperature"] = args.temperature
@@ -206,11 +221,14 @@ def debug_module_provider(args):
     )
 
     if provider is None:
-        raise ValueError("No provider could be loaded. Please check the module name and ensure it is a valid LLM provider.")
+        raise ValueError(
+            "No provider could be loaded. Please check the module name and ensure it is a valid LLM provider."
+        )
 
     response = provider.invoke(args.input)
 
     response = response.content
 
-    print(f"[{provider.__class__.__name__}] Provider Response: {get_content(response) if response else 'No response'}")
-
+    print(
+        f"[{provider.__class__.__name__}] Provider Response: {get_content(response) if response else 'No response'}"
+    )
