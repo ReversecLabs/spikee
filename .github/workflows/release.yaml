@@ -46,6 +46,12 @@ jobs:
             *) echo "Invalid release_type. Use: major | minor | patch"; exit 1;;
           esac
 
+      - name: Merge develop into main (fast-forward only)
+        shell: bash
+        run: |
+          git fetch origin develop
+          git merge --ff-only origin/develop
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
