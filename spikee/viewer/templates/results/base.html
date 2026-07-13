@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set active_section = "results" %}
+
+{% block subnav %}
+<div class="spikee-subnav">
+    <ul class="nav gap-1 me-auto">
+        <li class="nav-item">
+            <a class="nav-link {% if active_results_page == 'overview' %}active{% endif %}"
+               href="/results/overview{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}">
+                Overview
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if active_results_page == 'entries' %}active{% endif %}"
+               href="/results/entries{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}">
+                Entries
+            </a>
+        </li>
+    </ul>
+
+    <!-- File selector + refresh -->
+    <div class="d-flex align-items-center gap-2">
+        <form method="get" action="{{ request.path }}" class="d-flex align-items-center gap-2 mb-0">
+            <label class="text-muted small mb-0 text-nowrap">Result file:</label>
+            <select class="form-select form-select-sm spikee-file-select" name="result_file"
+                    onchange="this.form.submit()" style="min-width:220px; max-width:360px;">
+                {% if result_file_tree %}
+                    {# Count total files across all folders #}
+                    {% set total_files = result_file_tree | map(attribute=1) | map('length') | sum %}
+                    <option value="combined" {% if selected_file == 'combined' %}selected{% endif %}>
+                        All files ({{ total_files }})
+                    </option>
+                    {% for folder, files in result_file_tree %}
+                        {% if folder %}
+                            {# Folder — selecting it is a combined load for that folder #}
+                            <option value="folder:{{ folder }}"
+                                    {% if selected_file == 'folder:' ~ folder %}selected{% endif %}>
+                                {{ folder }}/ &nbsp;({{ files|length }} files)
+                            </option>
+                            {% for f in files %}
+                            <option value="{{ f }}"
+                                    {% if selected_file == f %}selected{% endif %}
+                                    style="padding-left:1.5rem">
+                                &nbsp;&nbsp;&nbsp;&nbsp;{{ f }}
+                            </option>
+                            {% endfor %}
+                        {% else %}
+                            {# Root-level files #}
+                            {% for f in files %}
+                            <option value="{{ f }}" {% if selected_file == f %}selected{% endif %}>
+                                {{ f }}
+                            </option>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <option value="combined">No result files found</option>
+                {% endif %}
+            </select>
+        </form>
+
+        <form method="post" action="/results/refresh" class="mb-0">
+            <input type="hidden" name="return_url" value="{{ request.full_path }}">
+            <button type="submit" class="btn btn-sm btn-outline-light" title="Rescan results folder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                     class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

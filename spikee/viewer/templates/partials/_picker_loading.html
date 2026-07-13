@@ -1,0 +1,14 @@
+{# partials/_picker_loading.html
+   Polling spinner returned by partial routes while the module cache is warming.
+   target_id  — id of the element that hx-swaps this partial
+   poll_url   — URL to keep polling
+   label      — human name shown in "Loading <label>…"
+#}
+<div id="{{ target_id }}"
+     hx-get="{{ poll_url }}"
+     hx-trigger="every 500ms"
+     hx-swap="outerHTML"
+     class="d-flex align-items-center gap-2 text-muted small p-2">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Loading {{ label }}…
+</div>

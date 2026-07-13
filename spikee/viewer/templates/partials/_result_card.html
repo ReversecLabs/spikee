@@ -1,0 +1,66 @@
+{# partials/_result_card.html
+   Compact card shown in the entries list.
+   Expects: id (str), entry (dict), selected_file, truncated=True
+   Optional: bulk_form=True to render the checkbox (set by entries page)
+#}
+{% from "partials/_macros.html" import entry_state, entry_label %}
+{% set _is_combined = selected_file == 'combined' or (selected_file and selected_file.startswith('folder:')) %}
+{% set _src = source_label(entry) if _is_combined else '' %}
+{% set _state = entry_state(entry) %}
+
+<div class="card spikee-card mb-2 overflow-hidden">
+    <div class="card-header py-0 px-0 d-flex align-items-stretch entry-header-{{ _state }}">
+
+        {# ---- Checkbox (only on entries list page) ---- #}
+        {% if bulk_form %}
+        <label class="d-flex align-items-center px-2 flex-shrink-0 cursor-pointer"
+               style="border-right:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.08);"
+               title="Select entry"
+               onclick="event.stopPropagation()">
+            <input type="checkbox" name="entry_ids" value="{{ id }}"
+                   class="entry-checkbox form-check-input mt-0"
+                   style="width:1rem;height:1rem;">
+        </label>
+        {% endif %}
+
+        {# ---- Clickable header strip ---- #}
+        <a href="/results/entry/{{ id }}{% if selected_file %}?result_file={{ selected_file }}{% endif %}"
+           class="flex-grow-1 py-2 px-3 d-flex justify-content-between align-items-center text-decoration-none entry-header-{{ _state }}">
+            <span class="text-truncate me-2 small fw-semibold">
+                #{{ entry.id }}{% if entry.long_id %} &mdash; {{ entry.long_id }}{% endif %}
+            </span>
+            <span class="d-flex align-items-center gap-2 flex-shrink-0">
+                {% if _src %}
+                <span class="entry-badge rounded-pill px-2 small fw-normal font-monospace opacity-75"
+                      style="font-size:0.65rem">{{ _src }}</span>
+                {% endif %}
+                <span class="entry-badge rounded-pill px-3 text-nowrap small fw-bold">
+                    {{ entry_label(entry) }}
+                </span>
+            </span>
+        </a>
+    </div>
+
+    {# ---- Card body: badges + truncated input/response ---- #}
+    <div class="card-body py-2 px-3">
+        {# Tag badges #}
+        <div class="d-flex flex-wrap gap-1 mb-2">
+            {% if entry.judge_name and entry.judge_name not in ('', 'None', none) %}
+                <span class="badge bg-info text-dark">{{ entry.judge_name }}</span>
+            {% endif %}
+            {% if entry.attack_name and entry.attack_name not in ('', 'None', none) %}
+                <span class="badge bg-success">{{ entry.attack_name }}</span>
+            {% endif %}
+            {% if entry.plugin and entry.plugin not in ('', 'None', none) %}
+                <span class="badge bg-secondary">{{ entry.plugin }}</span>
+            {% endif %}
+            {% if entry.lang and entry.lang not in ('', 'None', none) %}
+                <span class="badge bg-light text-dark border">{{ entry.lang }}</span>
+            {% endif %}
+        </div>
+
+        {% set truncated = true %}
+        {% include "partials/_input.html" %}
+        {% include "partials/_response.html" %}
+    </div>
+</div>

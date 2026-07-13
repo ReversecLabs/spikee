@@ -1,0 +1,234 @@
+{% extends "results/base.html" %}
+{% set active_results_page = "entries" %}
+
+{% block title %}Results — Entries | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+{# ── Pagination macro — rendered both above and below the cards ── #}
+{% macro pagination_bar() %}
+{% if total_pages > 1 %}
+{% set base_url = '/results/entries?result_file=' ~ ((selected_file or 'combined') | urlencode) ~ (('&custom_search=' ~ (custom_search | urlencode)) if custom_search else '') ~ '&per_page=' ~ per_page %}
+<nav class="d-flex align-items-center justify-content-between my-2" aria-label="Entries pagination">
+    <div>
+        {% if page > 1 %}
+        <a href="{{ base_url }}&page={{ page - 1 }}" class="btn btn-sm btn-outline-secondary">&larr; Prev</a>
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary" disabled>&larr; Prev</button>
+        {% endif %}
+    </div>
+
+    <ul class="pagination pagination-sm mb-0">
+        {% set window = 3 %}
+        {% set start  = [1, page - window] | max %}
+        {% set end    = [total_pages, page + window] | min %}
+        {% if start > 1 %}
+        <li class="page-item"><a class="page-link" href="{{ base_url }}&page=1">1</a></li>
+        {% if start > 2 %}
+        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        {% endif %}
+        {% endif %}
+        {% for p in range(start, end + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ base_url }}&page={{ p }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        {% if end < total_pages %}
+        {% if end < total_pages - 1 %}
+        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        {% endif %}
+        <li class="page-item"><a class="page-link" href="{{ base_url }}&page={{ total_pages }}">{{ total_pages }}</a></li>
+        {% endif %}
+    </ul>
+
+    <div class="d-flex align-items-center gap-2">
+        <form method="get" action="/results/entries" class="d-flex align-items-center gap-1 mb-0">
+            <input type="hidden" name="result_file"   value="{{ selected_file or 'combined' }}">
+            <input type="hidden" name="custom_search" value="{{ custom_search or '' }}">
+            <input type="hidden" name="page"          value="1">
+            <select name="per_page" class="form-select form-select-sm"
+                    onchange="this.form.submit()" style="width:auto">
+                {% for n in [25, 50, 100, 200] %}
+                <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }} / page</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if page < total_pages %}
+        <a href="{{ base_url }}&page={{ page + 1 }}" class="btn btn-sm btn-outline-secondary">Next &rarr;</a>
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary" disabled>Next &rarr;</button>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
+{% endmacro %}
+
+    {# ================================================================
+       FILTER BAR — search input + quick chips in one row
+    ================================================================ #}
+    <div class="card spikee-card mb-2">
+        <div class="card-body py-2 px-3">
+            <form method="get" action="/results/entries"
+                  id="filterForm"
+                  class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <input type="hidden" name="result_file" value="{{ selected_file or 'combined' }}">
+
+                {# Search input #}
+                <div class="flex-grow-1 position-relative" style="min-width:260px">
+                    <input type="text" class="form-control form-control-sm font-monospace"
+                           name="custom_search" id="searchInput"
+                           placeholder="e.g. plugin:base64 | jailbreak_type:dan | !error"
+                           value="{{ custom_search or '' }}"
+                           autocomplete="off">
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-spikee px-3">Search</button>
+                <a href="/results/entries?result_file={{ selected_file or 'combined' }}"
+                   class="btn btn-sm btn-outline-secondary">Clear</a>
+
+                <span class="ms-auto text-muted small fw-semibold">
+                    {{ total }} entr{{ 'y' if total == 1 else 'ies' }}
+                    {% if total_pages > 1 %}
+                    <span class="fw-normal">&nbsp;— page {{ page }}/{{ total_pages }}</span>
+                    {% endif %}
+                </span>
+            </form>
+
+            {# ── Quick-add chips ── #}
+            <div class="d-flex flex-wrap align-items-center gap-1">
+                <span class="small text-muted me-1" style="white-space:nowrap">Quick add:</span>
+                {% for label, token in [
+                    ("Success",      "success:True"),
+                    ("Failure",      "success:False"),
+                    ("Guardrail",    "guardrail:True"),
+                    ("No Guardrail", "!guardrail"),
+                    ("Error",        "error:True"),
+                    ("No Error",     "!error"),
+                ] %}
+                <button type="button" class="btn btn-xs search-chip"
+                        onclick="appendSearch('{{ token }}')"
+                        title="{{ token }}">{{ label }}</button>
+                {% endfor %}
+                <span class="vr mx-1"></span>
+                {% for label, token in [
+                    ("plugin:",      "plugin:"),
+                    ("attack:",      "attack_name:"),
+                    ("jailbreak:",   "jailbreak_type:"),
+                    ("instruction:", "instruction_type:"),
+                    ("lang:",        "lang:"),
+                    ("id:",          "id:"),
+                ] %}
+                <button type="button" class="btn btn-xs search-chip search-chip-field"
+                        onclick="appendSearch('{{ token }}')"
+                        title="Filter by {{ label }}">{{ label }}</button>
+                {% endfor %}
+                <span class="vr mx-1"></span>
+                <span class="small text-muted font-monospace">
+                    <code>a|b</code> OR &nbsp;<code>a b</code> AND &nbsp;<code>!term</code> NOT
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {# ── Top pagination ── #}
+    {{ pagination_bar() }}
+
+    {# ================================================================
+       BULK FORM — wraps all cards; toolbar + checkboxes inside
+    ================================================================ #}
+    {% if entries %}
+    <form id="bulkForm" method="post" action="/results/bulk">
+        <input type="hidden" name="result_file" value="{{ selected_file or 'combined' }}">
+        <input type="hidden" name="return_url"
+               value="{{ request.full_path if request.query_string else request.path }}">
+
+        {# ── Bulk action toolbar ── #}
+        <div class="d-flex align-items-center gap-2 mb-2 px-1" id="bulkToolbar">
+            <span class="small text-muted me-1">Select:</span>
+            <button type="button" class="btn btn-xs btn-outline-secondary"
+                    onclick="setAllChecked(true)">All</button>
+            <button type="button" class="btn btn-xs btn-outline-secondary"
+                    onclick="setAllChecked(false)">None</button>
+            <span class="vr mx-1"></span>
+            <span class="small text-muted" id="selectedCount">0 selected</span>
+            <span class="vr mx-1"></span>
+            <button type="submit" name="action" value="rejudge"
+                    class="btn btn-xs btn-warning"
+                    onclick="return confirmBulk('rejudge')">
+                Re-judge selected
+            </button>
+            <button type="submit" name="action" value="toggle"
+                    class="btn btn-xs btn-success"
+                    onclick="return confirmBulk('toggle')">
+                Toggle success
+            </button>
+        </div>
+
+        {# ── Entry cards ── #}
+        {% set bulk_form = true %}
+        {% for id, entry in entries.items() %}
+            {% include "partials/_result_card.html" %}
+        {% endfor %}
+    </form>
+
+    {% else %}
+        <div class="text-center text-muted py-5">
+            <p class="mb-1">No entries match your search.</p>
+            {% if custom_search %}
+            <a href="/results/entries?result_file={{ selected_file or 'combined' }}"
+               class="btn btn-sm btn-outline-secondary mt-2">Clear filter</a>
+            {% else %}
+            <p class="small">No result files found in <code>results/</code>.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# ── Bottom pagination ── #}
+    {{ pagination_bar() }}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function appendSearch(token) {
+    const input = document.getElementById('searchInput');
+    const current = input.value.trim();
+    if (current === '') {
+        input.value = token;
+    } else {
+        const endsWithColon = token.endsWith(':');
+        input.value = current + (endsWithColon ? ' ' : '|') + token;
+    }
+    input.focus();
+    if (!token.endsWith(':')) {
+        document.getElementById('filterForm').submit();
+    }
+}
+
+function setAllChecked(checked) {
+    document.querySelectorAll('.entry-checkbox').forEach(cb => cb.checked = checked);
+    updateCount();
+}
+
+function updateCount() {
+    const n = document.querySelectorAll('.entry-checkbox:checked').length;
+    const el = document.getElementById('selectedCount');
+    if (el) el.textContent = n + ' selected';
+}
+
+function confirmBulk(action) {
+    const n = document.querySelectorAll('.entry-checkbox:checked').length;
+    if (n === 0) { alert('No entries selected.'); return false; }
+    return confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' ' + n + ' entr' + (n === 1 ? 'y' : 'ies') + '?');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.entry-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateCount);
+    });
+});
+</script>
+{% endblock %}
+

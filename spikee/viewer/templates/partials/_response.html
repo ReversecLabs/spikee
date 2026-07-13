@@ -1,0 +1,51 @@
+{# partials/_response.html
+   Renders the response / error / guardrail section of a result entry.
+   Expects: entry, truncated (bool), process_text(), text_to_colour()
+#}
+{% if entry.guardrail %}
+    <div class="alert alert-warning mt-3 py-2" role="alert" style="border-left: 4px solid #ffc107;">
+        <div class="fw-semibold mb-1">Guardrail Triggered</div>
+        <div class="code-block">{{ entry.guardrail_categories|e if entry.guardrail_categories is not none else "—" }}</div>
+    </div>
+
+{% elif entry.error and entry.error != "" %}
+    <div class="alert alert-danger mt-3 py-2" role="alert" style="border-left: 4px solid #dc3545;">
+        <div class="fw-semibold mb-1">Error</div>
+        <div class="code-block">{{ process_text(entry.error, truncated=truncated)|e }}</div>
+    </div>
+
+{% elif entry.response is sequence and entry.response is not string %}
+    {# List of messages — render as conversation thread #}
+    <div class="border-start border-secondary ps-3 mt-2">
+        <div class="meta-label mb-1">Response</div>
+        <div class="conversation-thread">
+            {% for message in entry.response %}
+                {% if message is mapping %}
+                    <div class="conv-message">
+                        {% for key, value in message.items() %}
+                        <div class="conv-role" style="color: {{ text_to_colour(key) }};">{{ key | upper }}</div>
+                        <div class="code-block conv-content">{{ process_text(value, truncated=truncated)|e }}</div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="conv-message">
+                        <div class="code-block conv-content">{{ process_text(message, truncated=truncated)|e }}</div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+{% elif entry.response is mapping %}
+    {# Dict response — pretty-printed JSON #}
+    <div class="border-start border-secondary ps-3 mt-2">
+        <div class="meta-label mb-1">Response — structured JSON object</div>
+        <div class="code-block json-pretty" data-json="{{ entry.response | tojson | e }}"></div>
+    </div>
+
+{% else %}
+    <div class="border-start border-secondary ps-3 mt-2">
+        <div class="meta-label mb-1">Response</div>
+        <div class="code-block">{{ process_text(entry.response, truncated=truncated)|e }}</div>
+    </div>
+{% endif %}

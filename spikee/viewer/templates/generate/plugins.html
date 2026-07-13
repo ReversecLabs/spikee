@@ -1,0 +1,320 @@
+{% extends "generate/base.html" %}
+{% set active_generate_page = "plugins" %}
+{% block title %}Generate — Plugin Workshop | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-semibold mb-0">Plugin Workshop</h5>
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-spikee px-4" id="run-btn">Run</button>
+            <span id="run-status" class="text-muted small"></span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        {# ── LEFT COLUMN: plugin picker + detail + pipeline ──────────────── #}
+        <div class="col-12 col-lg-5">
+            <div class="card spikee-card h-100">
+                <div class="card-header py-2 px-3 small fw-semibold">Pipeline</div>
+                <div class="card-body py-3 px-3 d-flex flex-column gap-3">
+
+                    {# Plugin list #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Available Plugins</label>
+                        <input type="text" class="form-control form-control-sm mb-2"
+                               id="plugin_search" placeholder="Search…"
+                               oninput="filterPlugins(this.value)" autocomplete="off">
+                        <div class="border rounded px-2 pt-2 pb-1"
+                             style="max-height:360px;overflow-y:auto" id="plugin-list">
+                            {% set local_plugins = plugins | selectattr("source", "eq", "local") | list %}
+                            {% set builtin_plugins = plugins | selectattr("source", "eq", "builtin") | list %}
+                            {% if local_plugins %}
+                            <div class="plugin-item mb-1">
+                                <span class="text-muted" style="font-size:0.7rem">&#9472; local &#9472;</span>
+                            </div>
+                            {% for p in local_plugins %}
+                            <div class="plugin-item mb-2">
+                                <button type="button" data-plugin="{{ p.name }}"
+                                        class="btn btn-outline-secondary w-100 text-start small py-2 px-2"
+                                        style="border-radius:6px">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <span class="font-monospace fw-semibold" style="font-size:0.78rem">{{ p.name }}</span>
+                                        {% for tag in p.tags %}
+                                        <span class="badge text-bg-{{ tag.colour }}" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>
+                                        {% endfor %}
+                                        {% if p.llm_required %}
+                                        <span class="badge text-bg-warning" style="font-size:0.6rem;font-family:sans-serif">LLM</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if p.description %}
+                                    <div class="text-muted" style="font-size:0.72rem;line-height:1.35;font-family:sans-serif;font-weight:400">{{ p.description }}</div>
+                                    {% endif %}
+                                    {% if p.options %}
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        {% for opt in p.options %}
+                                        <code style="font-size:0.65rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">{{ opt }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% if builtin_plugins %}
+                            {% if local_plugins %}
+                            <div class="plugin-item mb-1">
+                                <span class="text-muted" style="font-size:0.7rem">&#9472; built-in &#9472;</span>
+                            </div>
+                            {% endif %}
+                            {% for p in builtin_plugins %}
+                            <div class="plugin-item mb-2">
+                                <button type="button" data-plugin="{{ p.name }}"
+                                        class="btn btn-outline-secondary w-100 text-start small py-2 px-2"
+                                        style="border-radius:6px">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <span class="font-monospace fw-semibold" style="font-size:0.78rem">{{ p.name }}</span>
+                                        {% for tag in p.tags %}
+                                        <span class="badge text-bg-{{ tag.colour }}" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>
+                                        {% endfor %}
+                                        {% if p.llm_required %}
+                                        <span class="badge text-bg-warning" style="font-size:0.6rem;font-family:sans-serif">LLM</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if p.description %}
+                                    <div class="text-muted" style="font-size:0.72rem;line-height:1.35;font-family:sans-serif;font-weight:400">{{ p.description }}</div>
+                                    {% endif %}
+                                    {% if p.options %}
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        {% for opt in p.options %}
+                                        <code style="font-size:0.65rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">{{ opt }}</code>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% if not plugins %}
+                            <span class="text-muted small">No plugins found.</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-text mt-1">Click a plugin to add it to the pipeline.</div>
+                    </div>
+
+                    {# Pipeline chip zone #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Pipeline</label>
+                        <div id="pipeline-zone"
+                             class="border rounded p-2 d-flex flex-wrap align-items-center gap-1"
+                             style="min-height:40px">
+                        </div>
+                        <div class="form-text mt-1">Plugins run left-to-right, output of each feeds the next.</div>
+                        <input type="hidden" id="pipeline-value" value="">
+                    </div>
+
+                    {# Plugin options #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1"
+                               for="plugin_options">Plugin Options</label>
+                        <textarea class="form-control form-control-sm font-monospace"
+                                  id="plugin_options" rows="3"
+                                  placeholder="caesar:shift=13&#10;tts:voice=alloy"></textarea>
+                        <div class="form-text mt-1">
+                            Format: <code>plugin:key=value</code>, one per line.
+                        </div>
+                    </div>
+
+                    {# Exclude from transformation #}
+                    <div>
+                        <label class="form-label small fw-semibold mb-1"
+                               for="exclude_patterns">Exclude from Transformation</label>
+                        <textarea class="form-control form-control-sm font-monospace"
+                                  id="exclude_patterns" rows="2"
+                                  placeholder="CANARY&#10;\{\{.*?\}\}"></textarea>
+                        <div class="form-text mt-1">
+                            Regex patterns to preserve unchanged, one per line.
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        {# ── RIGHT COLUMN: input + output ────────────────────────────────── #}
+        <div class="col-12 col-lg-7 d-flex flex-column gap-3">
+
+            {# Input #}
+            <div class="card spikee-card">
+                <div class="card-header py-2 px-3 small fw-semibold">Input</div>
+                <div class="card-body py-3 px-3">
+                    <textarea class="form-control form-control-sm font-monospace"
+                              id="input_text" rows="6"
+                              placeholder="Enter text to transform…">The quick brown fox jumped over the lazy dog&#39;s back 1234567890.</textarea>
+                </div>
+            </div>
+
+            {# Output #}
+            <div class="card spikee-card flex-grow-1">
+                <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between">
+                    <span class="small fw-semibold">Output</span>
+                    <span id="output-count" class="badge bg-secondary rounded-pill d-none"></span>
+                </div>
+                <div class="card-body py-3 px-3" id="output-area">
+                    <span class="text-muted small">Results will appear here.</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Plugin list: click to add to pipeline ────────────────────────────────────
+
+const pipelineZone  = document.getElementById('pipeline-zone');
+const pipelineVal   = document.getElementById('pipeline-value');
+
+document.getElementById('plugin-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-plugin]');
+    if (!btn) return;
+    addPlugin(btn.dataset.plugin);
+});
+
+function filterPlugins(q) {
+    const term = q.toLowerCase();
+    document.querySelectorAll('#plugin-list .plugin-item').forEach(el => {
+        const btn = el.querySelector('button');
+        if (!btn) return; // separator rows
+        el.style.display = btn.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+}
+
+// ── Pipeline chip zone ────────────────────────────────────────────────────────
+
+function buildPipelineValue() {
+    const chips = Array.from(pipelineZone.querySelectorAll('.plugin-chip'))
+                       .map(c => c.dataset.name);
+    pipelineVal.value = chips.join('|');
+}
+
+function refreshSeparators() {
+    pipelineZone.querySelectorAll('.pipe-sep').forEach(s => s.remove());
+    const chips = pipelineZone.querySelectorAll('.plugin-chip');
+    chips.forEach((chip, i) => {
+        if (i > 0) {
+            const sep = document.createElement('span');
+            sep.className = 'pipe-sep text-muted small px-1';
+            sep.textContent = '|';
+            sep.style.pointerEvents = 'none';
+            pipelineZone.insertBefore(sep, chip);
+        }
+    });
+}
+
+function makeChip(name) {
+    const chip = document.createElement('span');
+    chip.className = 'plugin-chip d-inline-flex align-items-center gap-1 badge rounded-pill border fw-normal font-monospace';
+    chip.style.cssText = 'font-size:0.78rem;padding:4px 8px;background:var(--bs-light);color:var(--bs-dark)';
+    chip.dataset.name = name;
+    chip.innerHTML = `${escHtml(name)}<span class="pipe-remove" title="Remove" style="cursor:pointer;opacity:.5;font-size:.9rem;line-height:1;margin-left:4px">×</span>`;
+    chip.querySelector('.pipe-remove').onclick = () => {
+        chip.remove();
+        refreshSeparators();
+        buildPipelineValue();
+    };
+    return chip;
+}
+
+function addPlugin(name) {
+    pipelineZone.appendChild(makeChip(name));
+    refreshSeparators();
+    buildPipelineValue();
+}
+
+// ── Run pipeline ──────────────────────────────────────────────────────────────
+
+const runBtn     = document.getElementById('run-btn');
+const statusEl   = document.getElementById('run-status');
+const outputArea = document.getElementById('output-area');
+const countBadge = document.getElementById('output-count');
+const csrfToken  = document.querySelector('meta[name="csrf-token"]').content;
+
+runBtn.addEventListener('click', async () => {
+    const pipeline        = pipelineVal.value.trim();
+    const plugin_options  = document.getElementById('plugin_options').value.trim();
+    const input_text      = document.getElementById('input_text').value;
+    const exclude_patterns = document.getElementById('exclude_patterns').value.trim();
+
+    if (!pipeline) {
+        setStatus('Add at least one plugin to the pipeline.', 'text-warning');
+        return;
+    }
+
+    runBtn.disabled = true;
+    setStatus('Running…', 'text-muted');
+    outputArea.innerHTML = '<span class="text-muted small">Running…</span>';
+    countBadge.classList.add('d-none');
+
+    try {
+        const resp = await fetch('/generate/plugins/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({ pipeline, plugin_options, input_text, exclude_patterns }),
+        });
+
+        const data = await resp.json();
+
+        if (data.error) {
+            setStatus('Error', 'text-danger');
+            outputArea.innerHTML = `<pre class="text-danger mb-0 small">${escHtml(data.error)}</pre>`;
+            countBadge.classList.add('d-none');
+        } else {
+            const n = data.count;
+            setStatus(`${n} output${n !== 1 ? 's' : ''}`, 'text-success');
+            countBadge.textContent = n;
+            countBadge.classList.remove('d-none');
+
+            if (n === 0) {
+                outputArea.innerHTML = '<span class="text-muted small">Plugin returned no output.</span>';
+            } else if (n === 1) {
+                outputArea.innerHTML = `<pre class="mb-0 small" style="white-space:pre-wrap;word-break:break-all">${escHtml(data.outputs[0])}</pre>`;
+            } else {
+                outputArea.innerHTML = data.outputs.map((out, i) =>
+                    `<details class="mb-2"${i === 0 ? ' open' : ''}>
+                        <summary class="small fw-semibold" style="cursor:pointer">Variant ${i + 1}</summary>
+                        <pre class="mt-1 mb-0 small border rounded p-2" style="white-space:pre-wrap;word-break:break-all">${escHtml(out)}</pre>
+                    </details>`
+                ).join('');
+            }
+        }
+    } catch (err) {
+        setStatus('Request failed', 'text-danger');
+        outputArea.innerHTML = `<pre class="text-danger mb-0 small">${escHtml(String(err))}</pre>`;
+    } finally {
+        runBtn.disabled = false;
+    }
+});
+
+function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = `small ${cls}`;
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+</script>
+{% endblock %}

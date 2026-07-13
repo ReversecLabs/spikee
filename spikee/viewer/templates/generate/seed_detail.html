@@ -1,0 +1,93 @@
+{% extends "generate/base.html" %}
+{% set active_generate_page = "seeds" %}
+{% block title %}Seeds — {{ seed_name }} | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    {# ── Header ── #}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <a href="/generate/seeds" class="btn btn-sm btn-outline-secondary">&larr; All Seeds</a>
+        <h5 class="fw-semibold mb-0 ms-1">{{ seed_name }}</h5>
+        {% if detail.description %}
+        <span class="text-muted small">— {{ detail.description }}</span>
+        {% endif %}
+        <div class="ms-auto">
+            <a href="/generate/run?seed_folder={{ seed_name }}" class="btn btn-sm btn-spikee">
+                Generate dataset &rarr;
+            </a>
+        </div>
+    </div>
+
+    {# ── File cards ── #}
+    {% for file in detail.files %}
+    <div class="card spikee-card mb-3">
+        <div class="card-header py-2 px-3 d-flex align-items-center gap-2">
+            <span class="badge {{ file.badge }}">{{ file.label }}</span>
+            <code class="small">{{ file.name }}</code>
+            <span class="ms-auto text-muted small">{{ file.entries }} entr{{ 'y' if file.entries == 1 else 'ies' }}</span>
+            {% if file.preview %}
+            <button class="btn btn-xs btn-outline-secondary d-flex align-items-center gap-1"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapse-{{ loop.index }}"
+                    aria-expanded="{% if loop.first %}true{% else %}false{% endif %}"
+                    onclick="this.querySelector('.toggle-icon').classList.toggle('bi-chevron-down'); this.querySelector('.toggle-icon').classList.toggle('bi-chevron-up');">
+                <i class="bi toggle-icon {% if loop.first %}bi-chevron-up{% else %}bi-chevron-down{% endif %}"></i>
+                <span>Preview</span>
+            </button>
+            {% endif %}
+        </div>
+
+        {% if file.preview %}
+        <div class="collapse {% if loop.first %}show{% endif %}" id="collapse-{{ loop.index }}">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle text-start mb-0">
+                    {% set col_labels = {'id': '#', 'type': 'Type', 'lang': 'Lang', 'text': 'Text preview'} %}
+                    <thead class="table-light border-bottom">
+                        <tr>
+                            {% for col in file.columns %}
+                            <th class="{% if loop.first %}ps-3 {% endif %}text-muted small fw-semibold"
+                                style="{% if col != 'text' %}width:{{ file.col_widths[col] }}{% endif %}">{{ col_labels[col] }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in file.preview %}
+                        <tr>
+                            {% for col in file.columns %}
+                            {% if col == 'id' %}
+                            <td class="ps-3 text-muted small font-monospace">{{ row.id }}</td>
+                            {% elif col == 'type' %}
+                            <td><span class="badge bg-light text-dark border small">{{ row.type }}</span></td>
+                            {% elif col == 'lang' %}
+                            <td class="small text-muted">{{ row.lang or '—' }}</td>
+                            {% elif col == 'text' %}
+                            <td class="small" style="word-break:break-word;white-space:normal">{{ row.text }}</td>
+                            {% endif %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {# ── README ── #}
+    {% if detail.readme_html %}
+    <div class="card spikee-card mb-3">
+        <div class="card-header py-2 px-3 d-flex align-items-center gap-2">
+            <i class="bi bi-file-text"></i>
+            <span class="small fw-semibold">README</span>
+        </div>
+        <div class="card-body px-4 py-3 readme-content">
+            {{ detail.readme_html | safe }}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

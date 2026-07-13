@@ -1,0 +1,84 @@
+{# partials/_breakdown_card.html
+   Stacked bar breakdown. No legend — colours match Overview stat cards exactly.
+   Bootstrap semantic colours:
+     Success  → #198754  (bg-success)
+     Failure  → #6c757d  (bg-secondary)
+     Guardrail→ #ffc107  (bg-warning)
+     Error    → #dc3545  (bg-danger)
+   Columns: Total | GTR% (if present) | ASR
+   Rows sorted by ASR descending.
+   row = (label, total, successes, asr_pct[, gtr_count])
+#}
+{% if rows %}
+{% set sorted_rows = rows | sort(attribute=3, reverse=true) %}
+{% set max_total   = rows | map(attribute=1) | max %}
+{% set has_gtr     = rows[0]|length > 4 %}
+<div class="card spikee-card h-100">
+    <div class="card-header py-2 px-3 small fw-semibold d-flex justify-content-between align-items-center">
+        <span>Breakdown by {{ title }}</span>
+        <div class="d-flex gap-2">
+            <span class="meta-label mb-0" style="width:52px;text-align:right">Total</span>
+            {% if has_gtr %}
+            <span class="meta-label mb-0" style="width:48px;text-align:right">GTR</span>
+            {% endif %}
+            <span class="meta-label mb-0" style="width:54px;text-align:right">ASR</span>
+        </div>
+    </div>
+    <div class="card-body py-2 px-3">
+        {% for row in sorted_rows %}
+            {% set label    = row[0] %}
+            {% set total    = row[1] %}
+            {% set succ     = row[2] %}
+            {% set asr      = row[3] %}
+            {% set gtr_n    = row[4] if has_gtr else 0 %}
+            {% set succ_pct = ((succ  / total * 100) if total > 0 else 0) | round(1) %}
+            {% set gtr_pct  = ((gtr_n / total * 100) if (has_gtr and total > 0) else 0) | round(1) %}
+            {% set full_pct = ((total / max_total * 100)) | round(1) %}
+            {# ASR text uses same colour as success bar — green when high, grey when low #}
+            {% set asr_col  = "#198754" if asr >= 50 else ("#ffc107" if asr >= 20 else "#6c757d") %}
+            <div class="d-flex align-items-center mb-2 gap-2">
+                <div class="breakdown-label text-truncate small font-monospace text-muted"
+                     title="{{ label }}">{{ label }}</div>
+
+                {# Track — width proportional to this row's share of the largest total.
+                   Base fill = failure colour (#6c757d).
+                   Guardrail fill (amber) sits on top, width = succ + gtr stacked.
+                   Success fill (green) sits on top of that. #}
+                <div class="flex-grow-1 position-relative rounded"
+                     style="height:14px; background:#e9ecef;">
+
+                    {# Failure (light grey) track — full_pct wide, solid #}
+                    <div class="position-absolute top-0 start-0 h-100 rounded"
+                         style="width:{{ full_pct }}%; background:#dee2e6;"></div>
+
+                    {# Guardrail (warning) layer — stacked on top of failure #}
+                    {% if has_gtr and gtr_pct > 0 %}
+                    <div class="position-absolute top-0 start-0 h-100"
+                         style="width:{{ (succ_pct + gtr_pct) | round(1) }}%;
+                                background:#ffc107;
+                                border-radius:4px {{ '0 0' if (succ_pct + gtr_pct) < full_pct else '4px 4px' }} 4px;"></div>
+                    {% endif %}
+
+                    {# Success (green) layer — on top #}
+                    {% if succ_pct > 0 %}
+                    <div class="position-absolute top-0 start-0 h-100"
+                         style="width:{{ succ_pct }}%;
+                                background:#198754;
+                                border-radius:4px {{ '0 0' if succ_pct < full_pct else '4px 4px' }} 4px;"></div>
+                    {% endif %}
+                </div>
+
+                <div class="small text-muted text-end" style="width:52px;white-space:nowrap">{{ total }}</div>
+                {% if has_gtr %}
+                <div class="small fw-semibold text-end" style="width:48px; color:#664d03;">
+                    {{ "%.1f"|format(gtr_pct) }}%
+                </div>
+                {% endif %}
+                <div class="small fw-semibold text-end" style="width:54px; color:{{ asr_col }};">
+                    {{ "%.1f"|format(asr) }}%
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
