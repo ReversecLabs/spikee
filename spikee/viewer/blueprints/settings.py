@@ -5,7 +5,6 @@ from flask import Blueprint, Response, current_app, jsonify, render_template, re
 settings_bp = Blueprint("settings", __name__)
 
 
-
 @settings_bp.route("/")
 def index() -> str:
     """Render the settings page."""
@@ -20,6 +19,7 @@ def refresh_modules() -> Response:
     _module_cache.reset_cache()
 
     import threading
+
     threading.Thread(
         target=_module_cache.warm_cache, daemon=True, name="module-cache-warmer"
     ).start()

@@ -12,7 +12,16 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from flask import Blueprint, Response, abort, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import (
@@ -34,6 +43,7 @@ _RESULT_PREFIXES = ("results", "rejudge", "extract")
 
 
 # ── File scanning ─────────────────────────────────────────────────────────────
+
 
 def scan_result_files() -> None:
     """
@@ -65,7 +75,9 @@ def scan_result_files() -> None:
                     key = f"{item.name}/{extract_resource_name(str(child))}"
                     new_files[key] = child
 
-    loaded_files = new_files  # single atomic assignment — readers see old or new, never partial
+    loaded_files = (
+        new_files  # single atomic assignment — readers see old or new, never partial
+    )
 
 
 def _build_file_tree() -> List[Tuple[str, List[str]]]:
@@ -103,7 +115,7 @@ def _files_for_selection(selected: str) -> Dict[str, Path]:
     if selected == "combined":
         return dict(loaded_files)
     if selected.startswith("folder:"):
-        folder = selected[len("folder:"):]
+        folder = selected[len("folder:") :]
         return {k: v for k, v in loaded_files.items() if k.startswith(folder + "/")}
     if selected in loaded_files:
         return {selected: loaded_files[selected]}
@@ -111,6 +123,7 @@ def _files_for_selection(selected: str) -> Dict[str, Path]:
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def _load_result_data(
     files: Dict[str, Path],
@@ -123,9 +136,12 @@ def _load_result_data(
     so that multiple routes reading the same files don't re-parse them.
     """
     # Build a stable, short cache key from the sorted file paths
-    cache_key = "_lrd_" + hashlib.md5(
-        "_".join(sorted(str(p) for p in files.values())).encode()
-    ).hexdigest()
+    cache_key = (
+        "_lrd_"
+        + hashlib.md5(
+            "_".join(sorted(str(p) for p in files.values())).encode()
+        ).hexdigest()
+    )
     cached = getattr(g, cache_key, None)
     if cached is not None:
         return cached
@@ -164,7 +180,7 @@ def _load_result_data(
 
 def _highlight_headings(text: str) -> str:
     """Escape plain text and wrap known heading markers in markup for display.
-    
+
     This prevents XSS attacks from LLM responses while still allowing
     formatted result output.
     """
@@ -180,9 +196,11 @@ def _highlight_headings(text: str) -> str:
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
+
 def _get_truncate_length() -> Optional[int]:
     """Get the global truncate length from Flask app config."""
     from flask import current_app
+
     return current_app.jinja_env.globals.get("truncate_length")
 
 
@@ -206,7 +224,7 @@ def _truncate(text: str, length: Optional[int]) -> str:
 
 def _text_to_colour(text: str) -> str:
     """Generate a deterministic color from text using MD5 hash.
-    
+
     Returns an RGB hex color string suitable for use in CSS.
     Colors are constrained to a readable range (NOT too dark, NOT too bright).
     """
@@ -220,9 +238,11 @@ def _text_to_colour(text: str) -> str:
     return f"#{clamp(r):02x}{clamp(g):02x}{clamp(b):02x}"
 
 
-def _process_standardised_conversation(conversation_data: str, truncated: bool = False) -> str:
+def _process_standardised_conversation(
+    conversation_data: str, truncated: bool = False
+) -> str:
     """Render conversation data as HTML with proper formatting.
-    
+
     Handles both structured conversation data (dict/list) and plain strings.
     Includes XSS防护 by escaping content.
     """
@@ -237,22 +257,22 @@ def _process_standardised_conversation(conversation_data: str, truncated: bool =
             parts = [
                 f'<div class="code-block result-input">'
                 f'<strong style="color:{_text_to_colour(str(k))};">'
-                f'{_html.escape(str(k))}:</strong> '
-                f'{_html.escape(_process_text(str(v), truncated))}</div>'
+                f"{_html.escape(str(k))}:</strong> "
+                f"{_html.escape(_process_text(str(v), truncated))}</div>"
                 for k, v in message["data"].items()
             ]
             body = "".join(parts)
         elif isinstance(message["data"], list):
             parts = [
                 f'<div class="code-block result-input">'
-                f'{_html.escape(_process_text(str(item), truncated))}</div>'
+                f"{_html.escape(_process_text(str(item), truncated))}</div>"
                 for item in message["data"]
             ]
             body = "".join(parts)
         else:
             body = (
                 f'<div class="code-block result-input">'
-                f'{_html.escape(_process_text(str(message["data"]), truncated))}</div>'
+                f"{_html.escape(_process_text(str(message['data']), truncated))}</div>"
             )
         return (
             f'<li class="mb-2" id={node} value={node}>'
@@ -272,18 +292,19 @@ def _process_standardised_conversation(conversation_data: str, truncated: bool =
 
 # ── Stats extraction from ResultProcessor ────────────────────────────────────
 
+
 def _extract_stats(rp: ResultProcessor) -> dict:
     """Extract statistics from ResultProcessor for display.
-    
+
     Returns a dict with:
         total, successes, failures, guardrails, errors
         asr (float), gtr (float)
     """
     total = rp.total_entries
-    succ  = rp.successful_groups
-    fail  = rp.failed_groups
+    succ = rp.successful_groups
+    fail = rp.failed_groups
     guard = rp.guardrail_groups
-    err   = rp.error_groups
+    err = rp.error_groups
 
     asr = f"{rp.attack_success_rate:.1f}%"
     gtr = f"{(guard / total * 100):.1f}%" if total and guard else "0.0%"
@@ -310,16 +331,16 @@ def _extract_breakdowns(rp: ResultProcessor):
         rp.generate_detailed_breakdowns()
 
     FIELD_LABELS = {
-        "plugin":                   "Plugin",
-        "attack_name":              "Attack",
-        "jailbreak_type":           "Jailbreak Type",
-        "instruction_type":         "Instruction Type",
-        "task_type":                "Task Type",
-        "lang":                     "Language",
-        "position":                 "Position",
-        "injection_delimiters":     "Injection Delimiters",
+        "plugin": "Plugin",
+        "attack_name": "Attack",
+        "jailbreak_type": "Jailbreak Type",
+        "instruction_type": "Instruction Type",
+        "task_type": "Task Type",
+        "lang": "Language",
+        "position": "Position",
+        "injection_delimiters": "Injection Delimiters",
         "spotlighting_data_markers": "Spotlighting Markers",
-        "suffix_id":                "Suffix",
+        "suffix_id": "Suffix",
     }
 
     show_gtr = rp.guardrail_groups > 0
@@ -349,9 +370,11 @@ def _extract_breakdowns(rp: ResultProcessor):
 
 # ── Context processor (helpers available in all results templates) ─────────────
 
+
 @results_bp.context_processor
 def _inject_helpers():
     """Inject shared template helpers into all results blueprint templates."""
+
     def _source_label(entry: dict) -> str:
         """Return a short display name for an entry's source file."""
         sf = entry.get("source_file", "")
@@ -366,6 +389,7 @@ def _inject_helpers():
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
 
 @results_bp.route("/")
 @results_bp.route("")
@@ -393,7 +417,10 @@ def overview() -> str:
         )
 
     if not files:
-        abort(404, description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.")
+        abort(
+            404,
+            description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.",
+        )
 
     entries, processor_output, rp = _load_result_data(files)
     stats = _extract_stats(rp)
@@ -412,14 +439,17 @@ def overview() -> str:
 @results_bp.route("/entries")
 def entries() -> str:
     """Render a paginated, filterable list of result entries."""
-    selected      = request.args.get("result_file", "combined")
+    selected = request.args.get("result_file", "combined")
     custom_search = request.args.get("custom_search", "")
     try:
         per_page = max(1, min(int(request.args.get("per_page", 100)), 500))
-        page     = max(1, int(request.args.get("page", 1)))
+        page = max(1, int(request.args.get("page", 1)))
     except ValueError:
-        abort(400, description="Invalid pagination parameters — 'page' and 'per_page' must be integers.")
-    files        = _files_for_selection(selected)
+        abort(
+            400,
+            description="Invalid pagination parameters — 'page' and 'per_page' must be integers.",
+        )
+    files = _files_for_selection(selected)
 
     if not loaded_files:
         return render_template(
@@ -428,11 +458,17 @@ def entries() -> str:
             selected_file=selected,
             entries={},
             custom_search=custom_search,
-            page=1, per_page=per_page, total=0, total_pages=1,
+            page=1,
+            per_page=per_page,
+            total=0,
+            total_pages=1,
         )
 
     if not files:
-        abort(404, description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.")
+        abort(
+            404,
+            description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.",
+        )
 
     all_entries, _output, _rp = _load_result_data(files)
 
@@ -450,9 +486,7 @@ def entries() -> str:
                 clause_queries.append(generate_query("custom", terms))
 
             def _matches(e):
-                return any(
-                    extract_entries(e, "custom", q) for q in clause_queries
-                )
+                return any(extract_entries(e, "custom", q) for q in clause_queries)
 
             matching = {eid: e for eid, e in all_entries.items() if _matches(e)}
         else:
@@ -461,11 +495,11 @@ def entries() -> str:
         abort(400, description=str(exc))
 
     # Paginate
-    total        = len(matching)
-    total_pages  = max(1, (total + per_page - 1) // per_page)
-    page         = min(page, total_pages)
-    offset       = (page - 1) * per_page
-    items        = list(matching.items())
+    total = len(matching)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    offset = (page - 1) * per_page
+    items = list(matching.items())
     page_entries = dict(items[offset : offset + per_page])
 
     return render_template(
@@ -488,7 +522,10 @@ def entry(entry_id: str) -> str:
     files = _files_for_selection(selected)
 
     if not files:
-        abort(404, description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.")
+        abort(
+            404,
+            description=f"Result file '{selected}' not found. Use the selector to choose a valid file or refresh to rescan.",
+        )
 
     all_entries, _output, _rp = _load_result_data(files)
     entry_data = all_entries.get(entry_id)
@@ -502,6 +539,7 @@ def entry(entry_id: str) -> str:
         id=entry_id,
         entry=entry_data,
     )
+
 
 def _find_entry_in_files(entry_id: str, selected: str) -> Tuple[Dict[str, Any], str]:
     """
@@ -520,7 +558,7 @@ def _find_entry_in_files(entry_id: str, selected: str) -> Tuple[Dict[str, Any], 
         prefix = f"{resource_name}-"
         if not entry_id.startswith(prefix):
             continue
-        row_id = entry_id[len(prefix):]
+        row_id = entry_id[len(prefix) :]
         rows = read_jsonl_file(str(path))
         for row in rows:
             if str(row["id"]) == row_id:
@@ -531,11 +569,13 @@ def _find_entry_in_files(entry_id: str, selected: str) -> Tuple[Dict[str, Any], 
 
 # ── POST endpoints ────────────────────────────────────────────────────────────
 
+
 def _safe_return_url(url: str, default: str) -> str:
     """Reject external / protocol-relative redirects to prevent open-redirect attacks."""
     if url and url.startswith("/") and not url.startswith("//"):
         return url
     return default
+
 
 @results_bp.route("/entry/<path:entry_id>/toggle", methods=["POST"])
 def toggle(entry_id: str) -> Response:
@@ -577,9 +617,9 @@ def bulk() -> Response:
       result_file — which file selection was active
       return_url  — where to redirect afterwards
     """
-    selected   = request.form.get("result_file", "combined")
-    action     = request.form.get("action", "")
-    entry_ids  = request.form.getlist("entry_ids")
+    selected = request.form.get("result_file", "combined")
+    action = request.form.get("action", "")
+    entry_ids = request.form.getlist("entry_ids")
     return_url = request.form.get("return_url", "/results/entries")
 
     if not entry_ids or action not in ("rejudge", "toggle"):
@@ -597,7 +637,7 @@ def bulk() -> Response:
         for resource_name, path in files.items():
             prefix = f"{resource_name}-"
             if eid.startswith(prefix):
-                row_id = eid[len(prefix):]
+                row_id = eid[len(prefix) :]
                 by_source[str(path)][row_id] = None
                 break
 

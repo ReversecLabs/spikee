@@ -8,21 +8,21 @@ from spikee.utilities.modules import get_description_from_module, load_module_fr
 
 # Bootstrap badge colour for each ModuleTag value.
 TAG_COLOURS: dict[str, str] = {
-    "Encoding":           "secondary",
-    "Formatting":         "secondary",
-    "Obfuscation":        "secondary",
+    "Encoding": "secondary",
+    "Formatting": "secondary",
+    "Obfuscation": "secondary",
     "Social Engineering": "info",
-    "Translation":        "info",
-    "LLM":                "warning",
-    "LLM-TTS":            "warning",
-    "LLM-STT":            "warning",
-    "LLM-STS":            "warning",
-    "ML":                 "warning",
-    "Image":              "primary",
-    "Audio":              "primary",
-    "Attack-Based":       "danger",
-    "Multi-Turn":         "success",
-    "Single-Turn":        "light",
+    "Translation": "info",
+    "LLM": "warning",
+    "LLM-TTS": "warning",
+    "LLM-STT": "warning",
+    "LLM-STS": "warning",
+    "ML": "warning",
+    "Image": "primary",
+    "Audio": "primary",
+    "Attack-Based": "danger",
+    "Multi-Turn": "success",
+    "Single-Turn": "light",
 }
 
 

@@ -7,6 +7,7 @@ user first navigates to /generate or /test the module tags are ready.
 All mutable state (_store and _type_ready) is protected by a single lock
 (_store_lock). _all_ready is a threading.Event and is inherently thread-safe.
 """
+
 from __future__ import annotations
 
 import sys
@@ -22,7 +23,7 @@ _MODULE_TYPES = ("plugins", "attacks", "targets", "judges")
 # _store and _type_ready are both guarded by _store_lock.
 # _all_ready is a threading.Event — its own internal lock makes it safe.
 
-_store: dict[str, list[dict]] = {}          # "{module_type}/{name}" → [{label, colour}]
+_store: dict[str, list[dict]] = {}  # "{module_type}/{name}" → [{label, colour}]
 _store_lock = threading.Lock()
 _type_ready: dict[str, bool] = {t: False for t in _MODULE_TYPES}
 _all_ready = threading.Event()
@@ -30,15 +31,19 @@ _all_ready = threading.Event()
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+
 def _evict_sys_modules(module_type: str) -> None:
     """Remove all cached entries for a module type from sys.modules."""
     prefix = f"spikee.{module_type}."
-    to_delete = [k for k in sys.modules if k == f"spikee.{module_type}" or k.startswith(prefix)]
+    to_delete = [
+        k for k in sys.modules if k == f"spikee.{module_type}" or k.startswith(prefix)
+    ]
     for key in to_delete:
         del sys.modules[key]
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def warm_cache() -> None:
     """Load all module tags into _store. Meant to run in a daemon thread."""

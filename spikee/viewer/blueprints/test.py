@@ -6,11 +6,23 @@ from __future__ import annotations
 import os
 import threading
 
-from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from spikee.utilities.modules import collect_datasets, collect_modules
 from spikee.utilities.modules import (
-    get_description_from_module, get_options_from_module, load_module_from_path,
+    get_description_from_module,
+    get_options_from_module,
+    load_module_from_path,
 )
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
@@ -24,6 +36,7 @@ _log_lock = threading.Lock()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _collect_datasets() -> list[str]:
     """Return a list of dataset filenames available in CWD/datasets/."""
@@ -63,12 +76,13 @@ def _collect_modules_for_target(module_type: str, rich: bool = False) -> dict:
         return entry
 
     return {
-        "local":   [_entry(m) for m in sorted(local_names)],
+        "local": [_entry(m) for m in sorted(local_names)],
         "builtin": [_entry(m) for m in sorted(builtin_names)],
     }
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
 
 @test_bp.route("/")
 @test_bp.route("")
@@ -90,24 +104,31 @@ def run() -> str:
 def targets_options_partial() -> str:
     """HTMX partial — returns <option>/<optgroup> HTML for the target <select>."""
     if not _module_cache.is_type_ready("targets"):
-        return render_template("partials/_picker_loading.html",
-                               target_id="target",
-                               poll_url="/test/partials/targets-options",
-                               label="targets")
-    return render_template("partials/_targets_options.html",
-                            targets=_collect_modules_for_target("targets"))
+        return render_template(
+            "partials/_picker_loading.html",
+            target_id="target",
+            poll_url="/test/partials/targets-options",
+            label="targets",
+        )
+    return render_template(
+        "partials/_targets_options.html", targets=_collect_modules_for_target("targets")
+    )
 
 
 @test_bp.route("/partials/attacks-list")
 def attacks_list_partial() -> str:
     """HTMX partial — returns attack button list HTML or a polling spinner."""
     if not _module_cache.is_type_ready("attacks"):
-        return render_template("partials/_picker_loading.html",
-                               target_id="attack-list",
-                               poll_url="/test/partials/attacks-list",
-                               label="attacks")
-    return render_template("partials/_attacks_list.html",
-                            attacks=_collect_modules_for_target("attacks", rich=True))
+        return render_template(
+            "partials/_picker_loading.html",
+            target_id="attack-list",
+            poll_url="/test/partials/attacks-list",
+            label="attacks",
+        )
+    return render_template(
+        "partials/_attacks_list.html",
+        attacks=_collect_modules_for_target("attacks", rich=True),
+    )
 
 
 @test_bp.route("/run", methods=["POST"])
@@ -129,6 +150,7 @@ def run_post() -> Response:
 def workshop() -> str:
     """Render the test workshop — send a single prompt through a plugin pipeline to a target."""
     from spikee.viewer.blueprints.generate import _collect_plugins_detail
+
     return render_template(
         "test/workshop.html",
         plugins=_collect_plugins_detail(),
@@ -158,63 +180,114 @@ def workshop_run() -> Response:
     from spikee.generator import apply_plugin, load_plugins, parse_plugin_options
 
     data = request.get_json(silent=True) or {}
-    target_name     = (data.get("target") or "").strip()
-    target_options  = (data.get("target_options") or "").strip() or None
-    input_text      = data.get("input_text", "")
-    pipeline_str    = (data.get("pipeline") or "").strip()
-    options_raw     = (data.get("plugin_options") or "").strip()
-    exclude_raw     = (data.get("exclude_patterns") or "").strip()
-    log_enabled     = bool(data.get("log_enabled", False))
-    log_tag         = (data.get("log_tag") or "").strip() or None
+    target_name = (data.get("target") or "").strip()
+    target_options = (data.get("target_options") or "").strip() or None
+    input_text = data.get("input_text", "")
+    pipeline_str = (data.get("pipeline") or "").strip()
+    options_raw = (data.get("plugin_options") or "").strip()
+    exclude_raw = (data.get("exclude_patterns") or "").strip()
+    log_enabled = bool(data.get("log_enabled", False))
+    log_tag = (data.get("log_tag") or "").strip() or None
 
     if not target_name:
-        return jsonify({"response": None, "guardrail": False, "error": "No target specified.",
-                        "log_file": None, "log_count": 0, "log_error": None})
+        return jsonify(
+            {
+                "response": None,
+                "guardrail": False,
+                "error": "No target specified.",
+                "log_file": None,
+                "log_count": 0,
+                "log_error": None,
+            }
+        )
     if not input_text:
-        return jsonify({"response": None, "guardrail": False, "error": "Input text is empty.",
-                        "log_file": None, "log_count": 0, "log_error": None})
+        return jsonify(
+            {
+                "response": None,
+                "guardrail": False,
+                "error": "Input text is empty.",
+                "log_file": None,
+                "log_count": 0,
+                "log_error": None,
+            }
+        )
 
     # ── Apply plugin pipeline (optional) ──────────────────────────────────────
     text = input_text
     if pipeline_str:
         options_normalised = ";".join(
-            ln.strip() for ln in options_raw.replace(";", "\n").splitlines() if ln.strip()
+            ln.strip()
+            for ln in options_raw.replace(";", "\n").splitlines()
+            if ln.strip()
         )
         plugin_option_map = parse_plugin_options(options_normalised)
-        exclude_patterns = [ln.strip() for ln in exclude_raw.splitlines() if ln.strip()] or None
+        exclude_patterns = [
+            ln.strip() for ln in exclude_raw.splitlines() if ln.strip()
+        ] or None
 
         try:
             plugins_loaded = load_plugins([pipeline_str])
         except SystemExit:
-            return jsonify({"response": None, "guardrail": False,
-                            "error": f"Failed to load plugin(s): {pipeline_str}",
-                            "log_file": None, "log_count": 0, "log_error": None})
+            return jsonify(
+                {
+                    "response": None,
+                    "guardrail": False,
+                    "error": f"Failed to load plugin(s): {pipeline_str}",
+                    "log_file": None,
+                    "log_count": 0,
+                    "log_error": None,
+                }
+            )
         except Exception as exc:
-            return jsonify({"response": None, "guardrail": False, "error": str(exc),
-                            "log_file": None, "log_count": 0, "log_error": None})
+            return jsonify(
+                {
+                    "response": None,
+                    "guardrail": False,
+                    "error": str(exc),
+                    "log_file": None,
+                    "log_count": 0,
+                    "log_error": None,
+                }
+            )
 
         if plugins_loaded:
             plugin_name, plugin_module = plugins_loaded[0]
             try:
                 results = apply_plugin(
-                    plugin_name, plugin_module, text,
+                    plugin_name,
+                    plugin_module,
+                    text,
                     exclude_patterns=exclude_patterns,
                     plugin_option_map=plugin_option_map,
                 )
                 if results:
                     text = str(get_content(results[0]))
             except Exception as exc:
-                return jsonify({"response": None, "guardrail": False,
-                                "error": f"Plugin error: {exc}",
-                                "log_file": None, "log_count": 0, "log_error": None})
+                return jsonify(
+                    {
+                        "response": None,
+                        "guardrail": False,
+                        "error": f"Plugin error: {exc}",
+                        "log_file": None,
+                        "log_count": 0,
+                        "log_error": None,
+                    }
+                )
 
     # ── Call target ───────────────────────────────────────────────────────────
     try:
         target_mod = load_module_from_path(target_name, "targets")
     except Exception as exc:
-        return jsonify({"response": None, "guardrail": False,
-                        "error": f"Failed to load target '{target_name}': {exc}",
-                        "log_file": None, "log_count": 0, "log_error": None})
+        return jsonify(
+            {
+                "response": None,
+                "guardrail": False,
+                "error": f"Failed to load target '{target_name}': {exc}",
+                "log_file": None,
+                "log_count": 0,
+                "log_error": None,
+            }
+        )
 
     response_str: str | None = None
     guardrail = False
@@ -233,7 +306,10 @@ def workshop_run() -> Response:
             response_str = str(get_content(raw))
 
     except Exception as exc:
-        if type(exc).__name__ == "GuardrailTrigger" or "guardrail" in type(exc).__name__.lower():
+        if (
+            type(exc).__name__ == "GuardrailTrigger"
+            or "guardrail" in type(exc).__name__.lower()
+        ):
             guardrail = True
             response_str = str(exc) or "Guardrail triggered."
         else:
@@ -295,13 +371,27 @@ def workshop_run() -> Response:
             log_error = f"Log write failed: {exc}"
 
     if call_error:
-        return jsonify({"response": None, "guardrail": False, "error": call_error,
-                        "log_file": log_file_name, "log_count": log_count,
-                        "log_error": log_error})
+        return jsonify(
+            {
+                "response": None,
+                "guardrail": False,
+                "error": call_error,
+                "log_file": log_file_name,
+                "log_count": log_count,
+                "log_error": log_error,
+            }
+        )
 
-    return jsonify({"response": response_str, "guardrail": guardrail, "error": None,
-                    "log_file": log_file_name, "log_count": log_count,
-                    "log_error": log_error})
+    return jsonify(
+        {
+            "response": response_str,
+            "guardrail": guardrail,
+            "error": None,
+            "log_file": log_file_name,
+            "log_count": log_count,
+            "log_error": log_error,
+        }
+    )
 
 
 @test_bp.route("/workshop/new-log", methods=["POST"])

@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS jobs (
 @dataclass
 class Job:
     id: str
-    type: str                   # "generate" | "test"
-    name: str                   # human-readable label
-    status: str                 # "running" | "success" | "failed"
+    type: str  # "generate" | "test"
+    name: str  # human-readable label
+    status: str  # "running" | "success" | "failed"
     created_at: datetime
-    args: list                  # CLI args list (after "spikee --quiet")
+    args: list  # CLI args list (after "spikee --quiet")
     log: list = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
     returncode: Optional[int] = None
@@ -83,9 +83,7 @@ class JobQueue:
         """Restore all jobs from the database into memory on startup."""
         with self._connect() as conn:
             conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                "SELECT * FROM jobs ORDER BY created_at ASC"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM jobs ORDER BY created_at ASC").fetchall()
 
         for row in rows:
             log_lines = row["log"].split("\n") if row["log"] else []
@@ -222,7 +220,7 @@ def spawn_job(job: Job) -> None:
             [spikee_exe, "--quiet"] + job.args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=False,          # binary — we decode manually to handle \r correctly
+            text=False,  # binary — we decode manually to handle \r correctly
             cwd=os.getcwd(),
         )
         job.process = proc
@@ -247,8 +245,8 @@ def spawn_job(job: Job) -> None:
                 # Process all complete "lines" handling \r\n, \n, and bare \r.
                 while True:
                     rn = buf.find("\r\n")
-                    r  = buf.find("\r")
-                    n  = buf.find("\n")
+                    r = buf.find("\r")
+                    n = buf.find("\n")
 
                     candidates = [
                         (pos, kind)
@@ -268,7 +266,7 @@ def spawn_job(job: Job) -> None:
                         else:
                             job.log.append(line)
 
-                    buf = buf[pos + (2 if kind == "rn" else 1):]
+                    buf = buf[pos + (2 if kind == "rn" else 1) :]
 
             # flush any remaining buffered text
             if buf:

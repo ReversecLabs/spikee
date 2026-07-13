@@ -6,13 +6,25 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 import markdown as md_lib
 
 from spikee.utilities.files import read_jsonl_file
 from spikee.utilities.modules import (
-    collect_datasets, collect_modules, collect_seeds,
-    get_description_from_module, get_options_from_module, load_module_from_path,
+    collect_datasets,
+    collect_modules,
+    collect_seeds,
+    get_description_from_module,
+    get_options_from_module,
+    load_module_from_path,
 )
 from spikee.viewer.blueprints._shared import module_tags as _module_tags
 from spikee.viewer.blueprints import _cache as _module_cache
@@ -29,19 +41,20 @@ _DATASET_PAGE = 100  # rows shown per dataset detail page
 # Files recognised inside a seed folder, in display order.
 # Maps filename → (type_key, badge_classes, label)
 _SEED_FILES = {
-    "jailbreaks.jsonl":             ("jailbreaks",     "bg-danger",             "Jailbreaks"),
-    "instructions.jsonl":           ("instructions",   "bg-warning text-dark",  "Instructions"),
-    "standalone_user_inputs.jsonl": ("standalone",     "bg-info text-dark",     "Standalone"),
-    "standalone_attacks.jsonl":     ("standalone",     "bg-info text-dark",     "Standalone"),
-    "base_user_inputs.jsonl":       ("documents",      "bg-primary",            "Documents"),
-    "base_documents.jsonl":         ("documents",      "bg-primary",            "Documents"),
-    "adv_prefixes.jsonl":           ("adv_fixes",      "bg-secondary",          "Adv Prefixes"),
-    "adv_suffixes.jsonl":           ("adv_fixes",      "bg-secondary",          "Adv Suffixes"),
-    "system_messages.toml":         ("system_messages","bg-secondary",          "System Messages"),
+    "jailbreaks.jsonl": ("jailbreaks", "bg-danger", "Jailbreaks"),
+    "instructions.jsonl": ("instructions", "bg-warning text-dark", "Instructions"),
+    "standalone_user_inputs.jsonl": ("standalone", "bg-info text-dark", "Standalone"),
+    "standalone_attacks.jsonl": ("standalone", "bg-info text-dark", "Standalone"),
+    "base_user_inputs.jsonl": ("documents", "bg-primary", "Documents"),
+    "base_documents.jsonl": ("documents", "bg-primary", "Documents"),
+    "adv_prefixes.jsonl": ("adv_fixes", "bg-secondary", "Adv Prefixes"),
+    "adv_suffixes.jsonl": ("adv_fixes", "bg-secondary", "Adv Suffixes"),
+    "system_messages.toml": ("system_messages", "bg-secondary", "System Messages"),
 }
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _collect_seeds_with_meta() -> list[dict]:
     """Return seed names from CWD/datasets/ as list of dicts."""
@@ -94,7 +107,7 @@ def _collect_plugins() -> dict:
         }
 
     return {
-        "local":   [_entry(n) for n in sorted(local_names)],
+        "local": [_entry(n) for n in sorted(local_names)],
         "builtin": [_entry(n) for n in sorted(builtin_names)],
     }
 
@@ -116,7 +129,9 @@ def _collect_plugins_detail() -> list[dict]:
 
     plugins = []
     for name in sorted(_all):
-        tags = [t for t in _module_tags(name, "plugins") if t["label"] not in exclude_tags]
+        tags = [
+            t for t in _module_tags(name, "plugins") if t["label"] not in exclude_tags
+        ]
         source = "local" if name in local_set else "builtin"
 
         description = ""
@@ -135,14 +150,16 @@ def _collect_plugins_detail() -> list[dict]:
         except Exception:
             pass
 
-        plugins.append({
-            "name":         name,
-            "source":       source,
-            "tags":         tags,
-            "description":  description,
-            "options":      options,
-            "llm_required": llm_required,
-        })
+        plugins.append(
+            {
+                "name": name,
+                "source": source,
+                "tags": tags,
+                "description": description,
+                "options": options,
+                "llm_required": llm_required,
+            }
+        )
 
     return plugins
 
@@ -150,14 +167,18 @@ def _collect_plugins_detail() -> list[dict]:
 def _normalize_row(row: dict, file_type: str) -> dict:
     """Normalise a raw JSONL row to a consistent preview dict."""
     text = (
-        row.get("text") or row.get("content") or row.get("document")
-        or row.get("instruction") or row.get("suffix") or row.get("prefix")
+        row.get("text")
+        or row.get("content")
+        or row.get("document")
+        or row.get("instruction")
+        or row.get("suffix")
+        or row.get("prefix")
         or ""
     )
     if isinstance(text, (dict, list)):
         text = str(text)
     return {
-        "id":   row.get("id", "—"),
+        "id": row.get("id", "—"),
         "type": row.get("jailbreak_type") or row.get("instruction_type") or "",
         "lang": row.get("lang", ""),
         "text": str(text)[:300],
@@ -203,10 +224,12 @@ def _load_seed_detail(seed_name: str) -> dict | None:
                 entries = len(configs)
                 preview = [
                     {
-                        "id":   i + 1,
+                        "id": i + 1,
                         "type": "",
                         "lang": "",
-                        "text": str(cfg.get("system_message", ""))[:300].replace("\n", " "),
+                        "text": str(cfg.get("system_message", ""))[:300].replace(
+                            "\n", " "
+                        ),
                     }
                     for i, cfg in enumerate(configs)
                 ]
@@ -216,7 +239,9 @@ def _load_seed_detail(seed_name: str) -> dict | None:
 
         # Detect which columns actually contain data (in display order)
         _col_order = ["id", "type", "lang", "text"]
-        columns = [c for c in _col_order if any(str(row.get(c, "")).strip() for row in preview)]
+        columns = [
+            c for c in _col_order if any(str(row.get(c, "")).strip() for row in preview)
+        ]
 
         # Compute pixel widths for fixed columns based on max content length.
         # 'text' fills remaining space (no fixed width).
@@ -231,22 +256,25 @@ def _load_seed_detail(seed_name: str) -> dict | None:
             px = max(max(max_val, header_len) * _ch_px + 16, _col_min.get(col, 40))
             col_widths[col] = f"{px}px"
 
-        files.append({
-            "name":      fname,
-            "type":      ftype,
-            "badge":     fbadge,
-            "label":     flabel,
-            "entries":   entries,
-            "preview":   preview,
-            "columns":   columns,
-            "col_widths": col_widths,
-        })
+        files.append(
+            {
+                "name": fname,
+                "type": ftype,
+                "badge": fbadge,
+                "label": flabel,
+                "entries": entries,
+                "preview": preview,
+                "columns": columns,
+                "col_widths": col_widths,
+            }
+        )
 
     readme_html = None
     readme_path = folder / "README.md"
     if readme_path.is_file():
         try:
             import re as _re
+
             source = readme_path.read_text(encoding="utf-8")
             readme_html = md_lib.markdown(
                 source,
@@ -300,64 +328,104 @@ def _load_dataset_entries(dataset_name: str, page: int = 1) -> dict | None:
     except Exception:
         return None
 
-    total       = len(rows)
+    total = len(rows)
     total_pages = max(1, (total + _DATASET_PAGE - 1) // _DATASET_PAGE)
-    page        = max(1, min(page, total_pages))
-    offset      = (page - 1) * _DATASET_PAGE
-    page_rows   = rows[offset : offset + _DATASET_PAGE]
+    page = max(1, min(page, total_pages))
+    offset = (page - 1) * _DATASET_PAGE
+    page_rows = rows[offset : offset + _DATASET_PAGE]
 
     # Normalise entries: resolve content field, keep all relevant keys
-    _col_order = ["id", "jailbreak_type", "instruction_type", "lang", "plugin", "position", "content"]
+    _col_order = [
+        "id",
+        "jailbreak_type",
+        "instruction_type",
+        "lang",
+        "plugin",
+        "position",
+        "content",
+    ]
     normalised = []
     for r in page_rows:
-        normalised.append({
-            "id":               r.get("id", "—"),
-            "jailbreak_type":   r.get("jailbreak_type", ""),
-            "instruction_type": r.get("instruction_type", ""),
-            "lang":             r.get("lang", ""),
-            "plugin":           r.get("plugin", ""),
-            "position":         r.get("position", ""),
-            "content":          str(r.get("content") or r.get("text") or "")[:400],
-        })
+        normalised.append(
+            {
+                "id": r.get("id", "—"),
+                "jailbreak_type": r.get("jailbreak_type", ""),
+                "instruction_type": r.get("instruction_type", ""),
+                "lang": r.get("lang", ""),
+                "plugin": r.get("plugin", ""),
+                "position": r.get("position", ""),
+                "content": str(r.get("content") or r.get("text") or "")[:400],
+            }
+        )
 
     # Detect which columns have at least one non-empty value across ALL rows (not just page)
     full_sample = rows[:500]  # sample up to 500 rows for column detection
     columns = [
-        c for c in _col_order
-        if any(str(r.get("content") or r.get("text") or "" if c == "content" else r.get(c, "")).strip()
-               for r in full_sample)
+        c
+        for c in _col_order
+        if any(
+            str(
+                r.get("content") or r.get("text") or ""
+                if c == "content"
+                else r.get(c, "")
+            ).strip()
+            for r in full_sample
+        )
     ]
 
     # Compute pixel widths for fixed columns
-    _col_labels = {"id": "#", "jailbreak_type": "Jailbreak", "instruction_type": "Instruction",
-                   "lang": "Lang", "plugin": "Plugin", "position": "Position", "content": "Content"}
-    _col_min    = {"id": 36, "lang": 42, "position": 60, "plugin": 60, "jailbreak_type": 70, "instruction_type": 80}
-    _ch_px      = 8
-    col_widths  = {}
+    _col_labels = {
+        "id": "#",
+        "jailbreak_type": "Jailbreak",
+        "instruction_type": "Instruction",
+        "lang": "Lang",
+        "plugin": "Plugin",
+        "position": "Position",
+        "content": "Content",
+    }
+    _col_min = {
+        "id": 36,
+        "lang": 42,
+        "position": 60,
+        "plugin": 60,
+        "jailbreak_type": 70,
+        "instruction_type": 80,
+    }
+    _ch_px = 8
+    col_widths = {}
     for col in columns:
         if col == "content":
             continue
         header_len = len(_col_labels[col])
         max_val = max(
-            (len(str(r.get("content") or r.get("text") or "" if col == "content" else r.get(col, "")))
-             for r in full_sample),
+            (
+                len(
+                    str(
+                        r.get("content") or r.get("text") or ""
+                        if col == "content"
+                        else r.get(col, "")
+                    )
+                )
+                for r in full_sample
+            ),
             default=0,
         )
         px = max(max(max_val, header_len) * _ch_px + 16, _col_min.get(col, 40))
         col_widths[col] = f"{px}px"
 
     return {
-        "total":       total,
+        "total": total,
         "total_pages": total_pages,
-        "page":        page,
-        "entries":     normalised,
-        "columns":     columns,
-        "col_widths":  col_widths,
-        "col_labels":  _col_labels,
+        "page": page,
+        "entries": normalised,
+        "columns": columns,
+        "col_widths": col_widths,
+        "col_labels": _col_labels,
     }
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
 
 @generate_bp.route("/")
 @generate_bp.route("")
@@ -398,13 +466,15 @@ def plugins_run() -> Response:
     from spikee.generator import apply_plugin, load_plugins, parse_plugin_options
 
     data = request.get_json(silent=True) or {}
-    pipeline_str   = (data.get("pipeline") or "").strip()
-    options_raw    = (data.get("plugin_options") or "").strip()
-    input_text     = data.get("input_text", "")
-    exclude_raw    = (data.get("exclude_patterns") or "").strip()
+    pipeline_str = (data.get("pipeline") or "").strip()
+    options_raw = (data.get("plugin_options") or "").strip()
+    input_text = data.get("input_text", "")
+    exclude_raw = (data.get("exclude_patterns") or "").strip()
 
     # Parse exclude patterns — one regex per non-empty line
-    exclude_patterns = [ln.strip() for ln in exclude_raw.splitlines() if ln.strip()] or None
+    exclude_patterns = [
+        ln.strip() for ln in exclude_raw.splitlines() if ln.strip()
+    ] or None
 
     if not pipeline_str:
         return jsonify({"outputs": [], "count": 0, "error": "No plugins specified."})
@@ -421,7 +491,13 @@ def plugins_run() -> Response:
         # pipeline_str is already in the |-separated format load_plugins expects
         plugins_loaded = load_plugins([pipeline_str])
     except SystemExit:
-        return jsonify({"outputs": [], "count": 0, "error": f"Failed to load plugin(s): {pipeline_str}"})
+        return jsonify(
+            {
+                "outputs": [],
+                "count": 0,
+                "error": f"Failed to load plugin(s): {pipeline_str}",
+            }
+        )
     except Exception as exc:
         return jsonify({"outputs": [], "count": 0, "error": str(exc)})
 
@@ -443,6 +519,7 @@ def plugins_run() -> Response:
 
     # Coerce Content objects to plain strings
     from spikee.utilities.hinting import get_content
+
     outputs = [str(get_content(r)) for r in results]
 
     return jsonify({"outputs": outputs, "count": len(outputs), "error": None})
@@ -454,19 +531,23 @@ def seed_detail(seed_name: str) -> str:
     detail = _load_seed_detail(seed_name)
     if detail is None:
         abort(404, description=f"Seed folder '{seed_name}' not found.")
-    return render_template("generate/seed_detail.html", seed_name=seed_name, detail=detail)
+    return render_template(
+        "generate/seed_detail.html", seed_name=seed_name, detail=detail
+    )
 
 
 @generate_bp.route("/datasets")
 def datasets() -> str:
     """Render the dataset browser listing all generated datasets."""
-    return render_template("generate/datasets.html", datasets=_collect_datasets_with_meta())
+    return render_template(
+        "generate/datasets.html", datasets=_collect_datasets_with_meta()
+    )
 
 
 @generate_bp.route("/datasets/<path:dataset_name>")
 def dataset_detail(dataset_name: str) -> str:
     """Render a paginated view of a single dataset's entries."""
-    page   = max(1, int(request.args.get("page", 1)))
+    page = max(1, int(request.args.get("page", 1)))
     result = _load_dataset_entries(dataset_name, page)
     if result is None:
         abort(404, description=f"Dataset '{dataset_name}' not found.")
@@ -497,10 +578,12 @@ def run() -> str:
 def plugins_list_partial() -> str:
     """HTMX partial — returns plugin button list HTML or a polling spinner."""
     if not _module_cache.is_type_ready("plugins"):
-        return render_template("partials/_picker_loading.html",
-                               target_id="plugin-list",
-                               poll_url="/generate/partials/plugins-list",
-                               label="plugins")
+        return render_template(
+            "partials/_picker_loading.html",
+            target_id="plugin-list",
+            poll_url="/generate/partials/plugins-list",
+            label="plugins",
+        )
     return render_template("partials/_plugins_list.html", plugins=_collect_plugins())
 
 

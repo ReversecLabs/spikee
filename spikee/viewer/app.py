@@ -91,9 +91,8 @@ def create_app(truncate_length: int = 500, db_path: str | None = None) -> Flask:
             session["_csrf_token"] = secrets.token_hex(32)
         g.csrf_token = session["_csrf_token"]
         if request.method == "POST":
-            token = (
-                request.form.get("_csrf_token")
-                or request.headers.get("X-CSRFToken", "")
+            token = request.form.get("_csrf_token") or request.headers.get(
+                "X-CSRFToken", ""
             )
             if not token or token != session.get("_csrf_token", ""):
                 abort(403, description="Invalid CSRF token.")
@@ -105,10 +104,10 @@ def create_app(truncate_length: int = 500, db_path: str | None = None) -> Flask:
     init_job_queue(db_path=db_path)
 
     # Register blueprints
-    app.register_blueprint(results_bp,  url_prefix="/results")
+    app.register_blueprint(results_bp, url_prefix="/results")
     app.register_blueprint(generate_bp, url_prefix="/generate")
-    app.register_blueprint(test_bp,     url_prefix="/test")
-    app.register_blueprint(jobs_bp,     url_prefix="/jobs")
+    app.register_blueprint(test_bp, url_prefix="/test")
+    app.register_blueprint(jobs_bp, url_prefix="/jobs")
     app.register_blueprint(settings_bp, url_prefix="/settings")
 
     # Root route — Spikee landing page
@@ -122,10 +121,12 @@ def create_app(truncate_length: int = 500, db_path: str | None = None) -> Flask:
     def cache_status():
         """Return the current module cache warming status as JSON."""
         from flask import jsonify
+
         return jsonify(_module_cache.status_dict())
 
     # Start background module-tag cache warmer
     import threading as _threading
+
     _threading.Thread(
         target=_module_cache.warm_cache, daemon=True, name="module-cache-warmer"
     ).start()

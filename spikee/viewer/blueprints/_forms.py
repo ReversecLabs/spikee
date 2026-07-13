@@ -25,6 +25,7 @@ _VALID_POSITIONS: frozenset[str] = frozenset({"start", "middle", "end"})
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _require(value: str, field_name: str) -> str:
     """Return *value* stripped, or raise FormValidationError if empty."""
     stripped = value.strip() if value else ""
@@ -52,7 +53,9 @@ def _optional_str(value: str) -> str:
     return value.strip() if value else ""
 
 
-def _parse_positive_int(value: str, field_name: str, default: int | None = None) -> int | None:
+def _parse_positive_int(
+    value: str, field_name: str, default: int | None = None
+) -> int | None:
     """Parse *value* as a positive integer.
 
     Returns *default* if *value* is empty.  Raises FormValidationError for
@@ -70,7 +73,9 @@ def _parse_positive_int(value: str, field_name: str, default: int | None = None)
     return v
 
 
-def _parse_non_negative_float(value: str, field_name: str, default: float = 0.0) -> float:
+def _parse_non_negative_float(
+    value: str, field_name: str, default: float = 0.0
+) -> float:
     """Parse *value* as a non-negative float.  Returns *default* if empty."""
     stripped = value.strip() if value else ""
     if not stripped:
@@ -84,7 +89,9 @@ def _parse_non_negative_float(value: str, field_name: str, default: float = 0.0)
     return v
 
 
-def _parse_non_negative_float(value: str, field_name: str, default: float = 0.0) -> float:
+def _parse_non_negative_float(
+    value: str, field_name: str, default: float = 0.0
+) -> float:
     """Parse *value* as a non-negative float.  Returns *default* if empty."""
     stripped = value.strip() if value else ""
     if not stripped:
@@ -99,6 +106,7 @@ def _parse_non_negative_float(value: str, field_name: str, default: float = 0.0)
 
 
 # ── Generate form ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class GenerateForm:
@@ -141,9 +149,7 @@ class GenerateForm:
         threads = _parse_positive_int(f.get("threads", ""), "Threads")
 
         plugin_lines = [
-            ln.strip()
-            for ln in f.get("plugins", "").splitlines()
-            if ln.strip()
+            ln.strip() for ln in f.get("plugins", "").splitlines() if ln.strip()
         ]
         plugin_options = ";".join(
             ln.strip() for ln in f.get("plugin_options", "").splitlines() if ln.strip()
@@ -153,7 +159,9 @@ class GenerateForm:
             seed_folder=seed_folder,
             positions=positions,
             injection_delimiters=_optional_str(f.get("injection_delimiters", "")),
-            spotlighting_data_markers=_optional_str(f.get("spotlighting_data_markers", "")),
+            spotlighting_data_markers=_optional_str(
+                f.get("spotlighting_data_markers", "")
+            ),
             format=_optional_str(f.get("format", "")),
             include_system_message=bool(f.get("include_system_message")),
             include_standalone_inputs=bool(f.get("include_standalone_inputs")),
@@ -216,6 +224,7 @@ class GenerateForm:
 
 # ── Test form ─────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TestForm:
     """Validated form data for ``POST /test/run``."""
@@ -257,14 +266,24 @@ class TestForm:
         datasets = datasets_raw
 
         threads = _parse_positive_int(f.get("threads", "4"), "Threads", default=4) or 4
-        attempts = _parse_positive_int(f.get("attempts", "1"), "Attempts", default=1) or 1
-        max_retries = _parse_positive_int(f.get("max_retries", "3"), "Max retries", default=3) or 3
-        throttle = _parse_non_negative_float(f.get("throttle", "0"), "Throttle", default=0.0)
+        attempts = (
+            _parse_positive_int(f.get("attempts", "1"), "Attempts", default=1) or 1
+        )
+        max_retries = (
+            _parse_positive_int(f.get("max_retries", "3"), "Max retries", default=3)
+            or 3
+        )
+        throttle = _parse_non_negative_float(
+            f.get("throttle", "0"), "Throttle", default=0.0
+        )
 
         attack = _optional_str(f.get("attack", ""))
-        attack_iterations = _parse_positive_int(
-            f.get("attack_iterations", "10"), "Attack iterations", default=10
-        ) or 10
+        attack_iterations = (
+            _parse_positive_int(
+                f.get("attack_iterations", "10"), "Attack iterations", default=10
+            )
+            or 10
+        )
         attack_options = _optional_str(f.get("attack_options", ""))
         attack_only = bool(f.get("attack_only"))
 
@@ -278,7 +297,10 @@ class TestForm:
             except ValueError:
                 raise FormValidationError("Sample must be a number between 0 and 1.")
 
-        sample_seed = _parse_positive_int(f.get("sample_seed", "42"), "Sample seed", default=42) or 42
+        sample_seed = (
+            _parse_positive_int(f.get("sample_seed", "42"), "Sample seed", default=42)
+            or 42
+        )
 
         resume = _optional_str(f.get("resume", "no"))
         if resume not in ("auto", "no"):
@@ -355,4 +377,6 @@ class TestForm:
             if len(self.datasets) == 1
             else f"{len(self.datasets)} datasets"
         )
-        return f"{self.target} \u2190 {ds_label}" + (f" [{self.tag}]" if self.tag else "")
+        return f"{self.target} \u2190 {ds_label}" + (
+            f" [{self.tag}]" if self.tag else ""
+        )

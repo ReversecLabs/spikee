@@ -10,7 +10,7 @@ from spikee.viewer.blueprints._tags import _get_tag_label, _get_tag_colour
 
 def module_tags(name: str, module_type: str) -> list[dict]:
     """Return sorted [{label, colour}] tag list for *name* / *module_type*.
-    
+
     Checks the background cache first; falls back to a live load on cache miss
     (covers the startup race window before warm_cache() has reached this entry).
     """
@@ -26,7 +26,7 @@ def module_tags(name: str, module_type: str) -> list[dict]:
 
 def _compute_tags_live(name: str, module_type: str) -> list[dict]:
     """Live tag computation for cache-miss fallback.
-    
+
     Loads the module directly and extracts its DESCRIPTION tuple.
     Returns empty list on any error.
     """
