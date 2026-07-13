@@ -43,14 +43,16 @@ class AnyLLMGoogleProvider(AnyLLMCustomProvider):
     def api_key(self) -> Union[str, None]:
         return os.getenv("GOOGLE_API_KEY", None)
 
-
     def response_validation(self, messages: MessageHint, response: AIMessage) -> None:
         original_response = response.metadata.get("original_response", None)
         if original_response is None:
             return
-        
+
         # Validate 'finish_reason' == length - due to max_tokens being hit during thinking, resulting in no response
-        if original_response.choices[0].finish_reason == "length" and original_response.choices[0].message.content is None:
+        if (
+            original_response.choices[0].finish_reason == "length"
+            and original_response.choices[0].message.content is None
+        ):
             raise ProviderError(
                 f"Received empty response from google/{self.model}, due to low max_token budget being used for thinking.",
                 prompt=messages,

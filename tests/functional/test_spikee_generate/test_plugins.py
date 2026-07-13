@@ -210,8 +210,14 @@ class TestApplyPlugin:
 
         text = "the quick brown fox"
         opts = {"homoglyph": "ratio=0.5,seed=42"}
-        first = [get_content(r) for r in apply_plugin(plugin_name, plugin_module, text, None, opts)]
-        second = [get_content(r) for r in apply_plugin(plugin_name, plugin_module, text, None, opts)]
+        first = [
+            get_content(r)
+            for r in apply_plugin(plugin_name, plugin_module, text, None, opts)
+        ]
+        second = [
+            get_content(r)
+            for r in apply_plugin(plugin_name, plugin_module, text, None, opts)
+        ]
 
         assert first == second  # reproducible
         assert any(out != text for out in first)  # something was substituted

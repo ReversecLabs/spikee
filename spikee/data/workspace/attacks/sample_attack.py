@@ -136,8 +136,10 @@ class SampleAttack(Attack):
                 if call_judge(entry, response):
                     if attempts_bar:
                         # If we finish early, update the progress bar to remove iterations we did not run
-                        remaining = max_iterations - i
-                        attempts_bar.total = attempts_bar.total - remaining
+                        with bar_lock:
+                            remaining = max_iterations - i
+                            attempts_bar.total = attempts_bar.total - remaining
+                            attempts_bar.refresh()
                     return i, True, candidate_text, response
             except Exception as e:
                 last_response = str(e)

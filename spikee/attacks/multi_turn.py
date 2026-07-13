@@ -86,6 +86,7 @@ class MultiTurnAttack(Attack):
                 with bar_lock:
                     remaining = max_iterations - count
                     attempts_bar.total = attempts_bar.total - remaining
+                    attempts_bar.refresh()
 
             return len(original_text), success, {"conversation": conversation}, response
         except Exception as e:

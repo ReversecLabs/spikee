@@ -77,9 +77,7 @@ class OpenAITTSProvider(StreamingProvider):
             ModuleTag.LLM_TTS,
         ], "TTS Provider for OpenAI text-to-speech models."
 
-    def _validate_messages(
-        self, messages: MessageHint
-    ) -> Tuple[str, str]:
+    def _validate_messages(self, messages: MessageHint) -> Tuple[str, str]:
         """Validate and extract instruction and text from messages."""
         msg, instruction = single_message(messages)
 
@@ -93,9 +91,7 @@ class OpenAITTSProvider(StreamingProvider):
 
         return instruction, get_content(msg.content)
 
-    def _invoke(
-        self, messages: MessageHint
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke OpenAI TTS with the provided text. Returns audio bytes in metadata."""
 
         instruction, text = self._validate_messages(messages)

@@ -93,10 +93,15 @@ def main():
         action="store_true",
         help="Suppress banner and informational messages",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
-    #region === [INIT] Sub-command (NEW) ==============================================
+    # region === [INIT] Sub-command (NEW) ==============================================
     parser_init = subparsers.add_parser(
         "init", help="Initialize a local SPIKEE workspace"
     )
@@ -112,7 +117,7 @@ def main():
         help="Copy built-in modules to local workspace (default: none)",
     )
 
-    #region === [GENERATE] Sub-command ===============================================
+    # region === [GENERATE] Sub-command ===============================================
     parser_generate = subparsers.add_parser("generate", help="Generate a dataset")
     subparsers_generate = parser_generate.add_subparsers(
         dest="generate_command", help="Generation sub-commands"
@@ -251,9 +256,9 @@ def main():
         default=None,
         help='Plugin-specific options as "plugin1:option1,option2;plugin2:option2"',
     )
-    #endregion
+    # endregion
 
-    #region === [TEST] Sub-command ===================================================
+    # region === [TEST] Sub-command ===================================================
     parser_test = subparsers.add_parser(
         "test", help="Test the dataset against a target"
     )
@@ -363,9 +368,9 @@ def main():
         action="store_true",
         help="Create new results file, do not attempt to resume",
     )
-    #endregion
+    # endregion
 
-    #region === [RESULTS] Sub-command ================================================
+    # region === [RESULTS] Sub-command ================================================
     parser_results = subparsers.add_parser("results", help="Analyze or convert results")
     subparsers_results = parser_results.add_subparsers(
         dest="results_command", help="Results sub-commands"
@@ -516,7 +521,7 @@ def main():
     parser_dataset_comparison.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
-    #endregion
+    # endregion
 
     # === [WebUI] Sub-command ================================================
     parser_viewer = subparsers.add_parser(
@@ -562,9 +567,9 @@ def main():
     parser_convert_to_excel.add_argument(
         "--result-file", type=str, required=True, help="Path to the results JSONL file"
     )
-    #endregion
+    # endregion
 
-    #region === [LIST] Sub-command ================================================
+    # region === [LIST] Sub-command ================================================
     parser_list = subparsers.add_parser(
         "list",
         help="List seeds, datasets, judges, targets, plugins, attacks, or providers",
@@ -589,38 +594,60 @@ def main():
             action="store_true",
             help="Include descriptions of modules where available",
         )
-    #endregion
+    # endregion
 
-    #region === [DEBUG] Sub-command ================================================
-    parser_debug = subparsers.add_parser("debug", help="Debugging and testing utilities")
+    # region === [DEBUG] Sub-command ================================================
+    parser_debug = subparsers.add_parser(
+        "debug", help="Debugging and testing utilities"
+    )
 
-    debug_subparsers = parser_debug.add_subparsers(dest="debug_command", help="Debugging sub-commands")
-    
+    debug_subparsers = parser_debug.add_subparsers(
+        dest="debug_command", help="Debugging sub-commands"
+    )
+
     # -- module debug --
     module_subparser = debug_subparsers.add_parser("module", help="Debug module")
-    module_subparsers = module_subparser.add_subparsers(dest="module_type", help="Type of module to debug")
+    module_subparsers = module_subparser.add_subparsers(
+        dest="module_type", help="Type of module to debug"
+    )
 
-    target_subparser = module_subparsers.add_parser("targets", help="Debug target module")
+    target_subparser = module_subparsers.add_parser(
+        "targets", help="Debug target module"
+    )
     judge_subparser = module_subparsers.add_parser("judges", help="Debug judge module")
-    plugin_subparser = module_subparsers.add_parser("plugins", help="Debug plugin module")
-    attack_subparser = module_subparsers.add_parser("attacks", help="Debug attack module")
-    provider_subparser = module_subparsers.add_parser("providers", help="Debug provider module")
+    plugin_subparser = module_subparsers.add_parser(
+        "plugins", help="Debug plugin module"
+    )
+    attack_subparser = module_subparsers.add_parser(
+        "attacks", help="Debug attack module"
+    )
+    provider_subparser = module_subparsers.add_parser(
+        "providers", help="Debug provider module"
+    )
 
-    for subparser in [target_subparser, judge_subparser, plugin_subparser, attack_subparser, provider_subparser]:
+    for subparser in [
+        target_subparser,
+        judge_subparser,
+        plugin_subparser,
+        attack_subparser,
+        provider_subparser,
+    ]:
         subparser.add_argument(
-            "-m", "--module",
+            "-m",
+            "--module",
             type=str,
             required=True,
             help="Name of the module to debug",
         )
         subparser.add_argument(
-            "-i", "--input",
+            "-i",
+            "--input",
             type=str,
             default="",
             required=True,
             help="Input string for the module (if applicable)",
         )
-    
+
     # Target-specific arguments
     target_subparser.add_argument(
         "--system-message",
@@ -649,7 +676,8 @@ def main():
         help="Additional arguments for the judge module (if applicable)",
     )
     judge_subparser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=str,
         default="",
         required=True,
@@ -690,7 +718,7 @@ def main():
         default=None,
         help="Options to pass to the attack module (if applicable)",
     )
-    
+
     # Provider-specific arguments
     provider_subparser.add_argument(
         "--max-tokens",
@@ -705,7 +733,7 @@ def main():
         help="Temperature for the provider module (if applicable)",
     )
 
-    #endregion
+    # endregion
 
     args = convert_to_new_args(parser.parse_args())
 
@@ -719,8 +747,11 @@ def main():
     if args.command == "init":
         # Guard against running init inside the spikee source package directory
         cwd = Path(os.getcwd())
-        if (cwd / "cli.py").exists() and (cwd / "tester.py").exists()  and (cwd / "generator.py").exists():
-
+        if (
+            (cwd / "cli.py").exists()
+            and (cwd / "tester.py").exists()
+            and (cwd / "generator.py").exists()
+        ):
             if not args.force:
                 print(
                     "[init] ERROR: It looks like you are running 'spikee init' within the Spikee sourcecode directory (e.g. ./spikee/)."
@@ -734,7 +765,7 @@ def main():
                 print("[init]   spikee init\n")
                 print("[init] Use --force to override warnings.")
                 sys.exit(1)
-            
+
             else:
                 print(
                     "[init] WARNING: You are running 'spikee init' inside the Spikee sourcecode directory with --force. This will overwrite Spikee's source code with workspace files. Proceeding with initialization..."
@@ -787,7 +818,7 @@ def main():
             list_providers(args)
         else:
             parser_list.print_help()
-    
+
     elif args.command == "debug":
         if args.debug_command == "module":
             if args.module_type == "targets":
