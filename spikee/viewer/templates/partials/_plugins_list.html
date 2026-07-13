@@ -1,0 +1,42 @@
+{# partials/_plugins_list.html
+   Inner content of the plugin picker scrollable div.
+   Expects: plugins — {local: [{name, tags, description, options, llm_required}], builtin: [...]}
+#}
+{% macro plugin_btn(p) %}
+<div class="plugin-item mb-2">
+    <button type="button" data-plugin="{{ p.name }}"
+            class="btn btn-outline-secondary w-100 text-start small py-2 px-2"
+            style="border-radius:6px">
+        <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+            <span class="font-monospace fw-semibold" style="font-size:0.78rem">{{ p.name }}</span>
+            {% for tag in p.tags %}
+            <span class="badge text-bg-{{ tag.colour }}" style="font-size:0.6rem;font-family:sans-serif">{{ tag.label }}</span>
+            {% endfor %}
+            {% if p.llm_required %}
+            <span class="badge text-bg-warning" style="font-size:0.6rem;font-family:sans-serif">LLM</span>
+            {% endif %}
+        </div>
+        {% if p.description %}
+        <div class="text-muted" style="font-size:0.72rem;line-height:1.35;font-family:sans-serif;font-weight:400">{{ p.description }}</div>
+        {% endif %}
+        {% if p.options %}
+        <div class="mt-1 d-flex flex-wrap gap-1">
+            {% for opt in p.options %}
+            <code style="font-size:0.65rem;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">{{ opt }}</code>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </button>
+</div>
+{% endmacro %}
+{% if plugins.local %}
+<div class="plugin-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; local &#9472;</span></div>
+{% for p in plugins.local %}{{ plugin_btn(p) }}{% endfor %}
+{% endif %}
+{% if plugins.builtin %}
+{% if plugins.local %}<div class="plugin-item mb-1"><span class="text-muted" style="font-size:0.7rem">&#9472; built-in &#9472;</span></div>{% endif %}
+{% for p in plugins.builtin %}{{ plugin_btn(p) }}{% endfor %}
+{% endif %}
+{% if not plugins.local and not plugins.builtin %}
+<span class="text-muted small">No plugins found.</span>
+{% endif %}

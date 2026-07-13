@@ -1,0 +1,96 @@
+{% extends "generate/base.html" %}
+{% set active_generate_page = "datasets" %}
+{% block title %}Dataset — {{ dataset_name }} | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    {# ── Header ── #}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <a href="/generate/datasets" class="btn btn-sm btn-outline-secondary">&larr; All Datasets</a>
+        <h5 class="fw-semibold mb-0 ms-1 font-monospace" style="font-size:0.95rem">{{ dataset_name }}</h5>
+        <span class="badge bg-secondary rounded-pill">{{ meta.entry_count }} entries</span>
+        <div class="ms-auto">
+            <a href="/test/run?dataset={{ dataset_name }}" class="btn btn-sm btn-spikee">
+                Test this dataset &rarr;
+            </a>
+        </div>
+    </div>
+
+    {# ── Pagination ── #}
+    {% if total_pages > 1 %}
+    {% set base_url = '/generate/datasets/' ~ dataset_name %}
+    <nav class="d-flex align-items-center justify-content-between my-3" aria-label="Dataset pagination">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ base_url }}?page={{ page - 1 }}" class="btn btn-sm btn-outline-secondary">&larr; Prev</a>
+            {% else %}
+            <button class="btn btn-sm btn-outline-secondary" disabled>&larr; Prev</button>
+            {% endif %}
+        </div>
+        <span class="small text-muted">Page {{ page }} / {{ total_pages }} &mdash; {{ total }} entries</span>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ base_url }}?page={{ page + 1 }}" class="btn btn-sm btn-outline-secondary">Next &rarr;</a>
+            {% else %}
+            <button class="btn btn-sm btn-outline-secondary" disabled>Next &rarr;</button>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {# ── Entries table ── #}
+    <div class="card spikee-card">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle text-start mb-0">
+                <thead class="table-light border-bottom">
+                    <tr>
+                        {% for col in columns %}
+                        <th class="{% if loop.first %}ps-3 {% endif %}text-muted small fw-semibold"
+                            style="{% if col != 'content' %}width:{{ col_widths[col] }}{% endif %}">{{ col_labels[col] }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        {% for col in columns %}
+                        {% if col == 'id' %}
+                        <td class="ps-3 text-muted small font-monospace">{{ entry.id }}</td>
+                        {% elif col == 'jailbreak_type' %}
+                        <td>{% if entry.jailbreak_type %}<span class="badge bg-light text-dark border small">{{ entry.jailbreak_type }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+                        {% elif col == 'instruction_type' %}
+                        <td>{% if entry.instruction_type %}<span class="badge bg-light text-dark border small">{{ entry.instruction_type }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+                        {% elif col == 'lang' %}
+                        <td class="small text-muted">{{ entry.lang or '—' }}</td>
+                        {% elif col == 'plugin' %}
+                        <td>{% if entry.plugin %}<span class="badge bg-secondary small">{{ entry.plugin }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+                        {% elif col == 'position' %}
+                        <td class="small text-muted">{{ entry.position or '—' }}</td>
+                        {% elif col == 'content' %}
+                        <td class="small" style="word-break:break-word;white-space:normal">{{ entry.content or '—' }}</td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{{ columns | length }}" class="text-center text-muted py-4 small">
+                            No entries found in this dataset.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if total_pages > 1 and page < total_pages %}
+                    <tr>
+                        <td colspan="{{ columns | length }}" class="ps-3 text-muted small border-top fst-italic">
+                            Showing {{ entries | length }} of {{ total }} entries.
+                            <a href="/generate/datasets/{{ dataset_name }}?page={{ page + 1 }}">Next page &rarr;</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

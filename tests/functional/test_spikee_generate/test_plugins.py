@@ -171,6 +171,58 @@ class TestApplyPlugin:
         assert isinstance(result, list)
         assert any("h3ll0" in get_content(r) for r in result)
 
+    def test_homoglyph_default_full_substitution(self, workspace_dir):
+        """homoglyph substitutes every mappable Latin char with a confusable by default."""
+        os.chdir(workspace_dir)  # Ensure we're in the workspace for plugin loading
+
+        plugins = load_plugins(["homoglyph"])
+        plugin_name, plugin_module = plugins[0]
+
+        result = apply_plugin(plugin_name, plugin_module, "paypal", None, None)
+
+        assert isinstance(result, list)
+        outputs = [get_content(r) for r in result]
+        # 'p'->U+0440, 'a'->U+0430, 'y'->U+0443; 'l' has no mapping and is preserved.
+        expected = "раураl"
+        assert any(out == expected for out in outputs)
+        # Visually identical to "paypal" but contains no ASCII letters except 'l'.
+        assert any(out != "paypal" and len(out) == len("paypal") for out in outputs)
+
+    def test_homoglyph_ratio_zero_is_noop(self, workspace_dir):
+        """ratio=0.0 leaves the input unchanged (no substitution)."""
+        os.chdir(workspace_dir)  # Ensure we're in the workspace for plugin loading
+
+        plugins = load_plugins(["homoglyph"])
+        plugin_name, plugin_module = plugins[0]
+
+        result = apply_plugin(
+            plugin_name, plugin_module, "paypal", None, {"homoglyph": "ratio=0.0"}
+        )
+
+        assert [get_content(r) for r in result] == ["paypal"]
+
+    def test_homoglyph_partial_ratio_is_reproducible_with_seed(self, workspace_dir):
+        """A fixed seed yields deterministic partial substitution that differs from input."""
+        os.chdir(workspace_dir)  # Ensure we're in the workspace for plugin loading
+
+        plugins = load_plugins(["homoglyph"])
+        plugin_name, plugin_module = plugins[0]
+
+        text = "the quick brown fox"
+        opts = {"homoglyph": "ratio=0.5,seed=42"}
+        first = [
+            get_content(r)
+            for r in apply_plugin(plugin_name, plugin_module, text, None, opts)
+        ]
+        second = [
+            get_content(r)
+            for r in apply_plugin(plugin_name, plugin_module, text, None, opts)
+        ]
+
+        assert first == second  # reproducible
+        assert any(out != text for out in first)  # something was substituted
+        assert any(out != text and len(out) == len(text) for out in first)  # 1:1 length
+
     def test_upper_legacy_matches_oop(self, workspace_dir):
         """test_upper_legacy (module-level function) produces the same output as the OOP version."""
         os.chdir(workspace_dir)  # Ensure we're in the workspace for plugin loading

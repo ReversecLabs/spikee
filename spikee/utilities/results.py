@@ -606,19 +606,24 @@ class ResultProcessor:
         output += f"\nTotal Unique Entries: {self.total_entries}"
 
         if self.has_dynamic_attacks:
-            output += f"\nSuccessful Attacks (Total): {self.successful_groups} [{(self.successful_groups / self.total_entries) * 100:.2f}%]"
-            output += f"\n  - Initially Successful: {self.initially_successful_groups} [{(self.initially_successful_groups / self.total_entries) * 100:.2f}%]"
-            output += f"\n  - Only Successful with Dynamic Attack: {self.attack_only_successful_groups} [{(self.attack_only_successful_groups / self.total_entries) * 100:.2f}%]"
+            output += f"\nSuccessful Attacks (Total): {self.successful_groups} [{(self.successful_groups / self.total_entries) * 100:.2f}% ASR]"
+            output += f"\n  - Initially Successful: {self.initially_successful_groups} [{(self.initially_successful_groups / self.total_entries) * 100:.2f}% ASR]"
+            output += f"\n  - Only Successful with Dynamic Attack: {self.attack_only_successful_groups} [{(self.attack_only_successful_groups / self.total_entries) * 100:.2f}% ASR]"
         else:
-            output += f"\nSuccessful Attacks: {self.successful_groups} [{(self.successful_groups / self.total_entries) * 100:.2f}%]"
+            output += f"\nSuccessful Attacks: {self.successful_groups} [{(self.successful_groups / self.total_entries) * 100:.2f}% ASR]"
 
         output += f"\nFailed Attacks: {self.failed_groups} [{(self.failed_groups / self.total_entries) * 100:.2f}%]"
         output += f"\nErrors: {self.error_groups} [{(self.error_groups / self.total_entries) * 100:.2f}%]"
 
         if self.guardrail_groups > 0:
-            output += f"\nGuardrail Triggers: {self.guardrail_groups} [{(self.guardrail_groups / self.total_entries) * 100:.2f}%]"
+            output += f"\nGuardrail Triggers: {self.guardrail_groups} [{(self.guardrail_groups / self.total_entries) * 100:.2f}% GTR]"
         output += f"\nTotal Attempts: {self.total_attempts}"
-        output += f"\nAttack Success Rate (ASR): {self.attack_success_rate:.2f}%"
+
+        output += (
+            "\n\nKey: ASR = Attack Success Rate"
+            + (", GTR = Guardrail Trigger Rate" if self.guardrail_groups > 0 else "")
+            + "\n"
+        )
 
         # Dynamic attack statistics
         if self.attack_types:
@@ -647,7 +652,7 @@ class ResultProcessor:
                 "Successes",
                 "Attempts",
                 "Guardrail",
-                "Success Rate",
+                "ASR",
             ]
             output += "\n" + tabulate(table, headers=headers) + "\n"
 
@@ -907,6 +912,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                     "initial_successes": 0,
                     "attack_only_successes": 0,
                     "attempts": 0,
+                    "guardrails": 0,
                 }
             )
             for field in breakdown_fields
@@ -944,6 +950,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
             attack_success = any(e.get("success", False) for e in attack_entries)
             overall_success = initial_success or attack_success
             attack_only_success = not initial_success and attack_success
+            group_has_guardrail = any(e.get("guardrail", False) for e in entries)
 
             # Total attempts for this group
             group_attempts = sum(e.get("attempts", 1) for e in entries)
@@ -977,6 +984,8 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                     self._breakdowns[field][value]["initial_successes"] += 1
                 if attack_only_success:
                     self._breakdowns[field][value]["attack_only_successes"] += 1
+                if group_has_guardrail:
+                    self._breakdowns[field][value]["guardrails"] += 1
 
         # Output breakdowns
         output = ""
@@ -986,6 +995,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
             if data:
                 output += f"\n=== Breakdown by {field.replace('_', ' ').title()} ==="
                 table = []
+                show_gtr = self.guardrail_groups > 0
 
                 if self.has_dynamic_attacks:
                     # Full version with attack statistics
@@ -995,6 +1005,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                         initial_successes = stats["initial_successes"]
                         attack_only_successes = stats["attack_only_successes"]
                         attempts = stats["attempts"]
+                        guardrails = stats["guardrails"]
 
                         success_rate = (successes / total) * 100 if total else 0
                         initial_success_rate = (
@@ -1005,19 +1016,21 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                         )
 
                         escaped_value = escape_special_chars(value)
-                        table.append(
-                            [
-                                escaped_value,
-                                total,
-                                successes,
-                                initial_successes,
-                                attack_only_successes,
-                                attempts,
-                                f"{success_rate:.2f}%",
-                                f"{initial_success_rate:.2f}%",
-                                f"{attack_improvement:.2f}%",
-                            ]
-                        )
+                        row = [
+                            escaped_value,
+                            total,
+                            successes,
+                            initial_successes,
+                            attack_only_successes,
+                            attempts,
+                            f"{success_rate:.2f}%",
+                            f"{initial_success_rate:.2f}%",
+                            f"{attack_improvement:.2f}%",
+                        ]
+                        if show_gtr:
+                            guardrail_rate = (guardrails / total) * 100 if total else 0
+                            row += [guardrails, f"{guardrail_rate:.2f}%"]
+                        table.append(row)
 
                     # Sort the table by overall success rate descending
                     table.sort(key=lambda x: float(x[6].strip("%")), reverse=True)
@@ -1028,29 +1041,34 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                         "Initial Successes",
                         "Attack-Only Successes",
                         "Attempts",
-                        "Success Rate",
-                        "Initial Success Rate",
+                        "ASR",
+                        "Initial ASR",
                         "Attack Improvement",
                     ]
+                    if show_gtr:
+                        headers += ["Guardrail", "GTR"]
                 else:
                     # Simplified version without attack statistics
                     for value, stats in data.items():
                         total = stats["total"]
                         successes = stats["successes"]
                         attempts = stats["attempts"]
+                        guardrails = stats["guardrails"]
 
                         success_rate = (successes / total) * 100 if total else 0
 
                         escaped_value = escape_special_chars(value)
-                        table.append(
-                            [
-                                escaped_value,
-                                total,
-                                successes,
-                                attempts,
-                                f"{success_rate:.2f}%",
-                            ]
-                        )
+                        row = [
+                            escaped_value,
+                            total,
+                            successes,
+                            attempts,
+                            f"{success_rate:.2f}%",
+                        ]
+                        if show_gtr:
+                            guardrail_rate = (guardrails / total) * 100 if total else 0
+                            row += [guardrails, f"{guardrail_rate:.2f}%"]
+                        table.append(row)
 
                     # Sort the table by success rate descending
                     table.sort(key=lambda x: float(x[4].strip("%")), reverse=True)
@@ -1059,8 +1077,10 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                         "Total",
                         "Successes",
                         "Attempts",
-                        "Success Rate",
+                        "ASR",
                     ]
+                    if show_gtr:
+                        headers += ["Guardrail", "GTR"]
 
                 output += "\n" + tabulate(table, headers=headers) + "\n"
 
@@ -1192,7 +1212,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                 "Initial Successes",
                 "Attack-Only Successes",
                 "Attempts",
-                "Success Rate",
+                "ASR",
                 "Initial Rate",
                 "Attack Improvement",
             ]
@@ -1234,7 +1254,7 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
                 "Total",
                 "Successes",
                 "Attempts",
-                "Success Rate",
+                "ASR",
             ]
 
         output += "\n" + tabulate(table, headers=headers) + "\n"

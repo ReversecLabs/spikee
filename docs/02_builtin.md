@@ -129,6 +129,7 @@ The following list provides an overview of each build-in plugin, further informa
 | `caesar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
 | `decimal` | Encoding | Encodes text as space-separated ASCII/Unicode decimal codepoint values. | `hint` (show the literal plaintext string `decimal` in the encoded output, default true) |
 | `hex` | Encoding | Encodes text into its hexadecimal representation. | N/A |
+| `homoglyph` | Encoding, Obfuscation | Substitutes Latin characters with visually-identical Unicode confusables (Cyrillic/Greek). Output looks unchanged to a human but uses different code points, evading ASCII keyword/regex filters. | `ratio` (fraction of mappable characters to substitute, 0.0-1.0, default: 1.0)<br> `seed` (optional integer seed for reproducible partial substitution) |
 | `morse` | Encoding | Encodes text into Morse code. | N/A |
 | `octal` | Encoding | Encodes text as space-separated ASCII/Unicode octal codepoint values. | `hint` (show the literal plaintext string `octal` in the encoded output, default true) |
 | `best_of_n` | Obfuscation, Attack-Based | Implements ["Best-of-N Jailbreaking" John Hughes et al., 2024](https://arxiv.org/html/2412.03556v1#A1) to apply character scrambling, random capitalization, and character noising. | `variants` (number of variations to generate, default: 50) |
@@ -154,7 +155,7 @@ spikee generate --seed ./seeds-cybersec-2026-01 \
 ```
 
 ## Built-in Attacks
-Spikee includes several built-in dynamic attacks, that will iteratively modify prompts/documents until they succeed (or run out of iterations). These are located within the `spikee/attacks/` folder, and can be listed at any time with `spikee list attacks`.
+Spikee includes several built-in dynamic attacks, that will iteratively modify prompts/documents until they succeed (or run out of iterations). These are located within the `spikee/attacks/` and `workspace/attacks` folders, and can be listed at any time with `spikee list attacks`.
 
 You can customize the behavior of attacks using the following command-line options:
 * `--attack-iterations`: Specifies the maximum number of iterations for each attack (default: 1000).
@@ -178,7 +179,7 @@ You can customize the behavior of attacks using the following command-line optio
 | `llm_poetry_jailbreaker` | Social Engineering, LLM | Generates jailbreak attempts in the form of poetry or rhymes. | `model` (The LLM model to use for generating attacks) |
 | `crescendo` | Social Engineering, LLM | Implements the [Crescendo Attack](https://arxiv.org/abs/2404.01833). A multi-turn jailbreak that leverages an LLM Agent to prompt the target with seemingly benign prompts, gradually escalating the conversation by referencing the model's replies progressively leading to a successful jailbreak. | N/A |
 | `echo_chamber` | Social Engineering, LLM | Implements the [Echo Chamber Attack](https://arxiv.org/pdf/2601.05742). A multi-turn attack that uses an LLM Agent to create a feedback loop, where the model's own responses are fed back into itself in order to bypass guardrails and achieve jailbreaks. | N/A |
-| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2404.02151). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
+| `goat` | Social Engineering, LLM | Implements the [GOAT Attack](https://arxiv.org/abs/2410.01606) (Generative Offensive Agent Tester). A multi-turn attack using an LLM acting as an automated red teaming agent, that can implement a range of adversarial prompting and jailbreaking techniques to achieve an objective. | See file for target specific configuration using `APPLICATION_CONFIG` and `APPLICATION_GUARDRAILS`. |
 | `multi_turn` | Multi-Turn | Sequentially sends a predefined list of user prompts to the target LLM, from a simplistic multi-turn dataset. | N/A |
 | `rag_poisoner` | LLM | Injects fake RAG context that appears to be legitimate document snippets supporting the attack objective. | `model` (The LLM model to use for generating attacks) |
 

@@ -1,0 +1,28 @@
+{# jobs/list_partial.html — HTMX polling target.
+   Returns a complete <tbody> (outerHTML swap) so the HTMX attributes are preserved
+   after each poll. Rendered by GET /jobs/list-partial.
+#}
+{% from "partials/_macros.html" import status_badge, type_badge %}
+<tbody id="jobs-tbody"
+       hx-get="/jobs/list-partial"
+       hx-trigger="every 3s [hasRunningJobs()]"
+       hx-swap="outerHTML">
+    {% for job in jobs %}
+    <tr>
+        <td class="ps-3 text-muted small font-monospace">{{ loop.index }}</td>
+        <td>{{ type_badge(job.type) }}</td>
+        <td class="small fw-semibold text-break">{{ job.name }}</td>
+        <td>{{ status_badge(job.status) }}</td>
+        <td class="small text-muted text-nowrap">
+            {{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+        </td>
+        <td class="text-end pe-3">
+            <a href="/jobs/{{ job.id }}" class="btn btn-xs btn-outline-secondary">View</a>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="6" class="text-center text-muted py-4 small">No jobs.</td>
+    </tr>
+    {% endfor %}
+</tbody>

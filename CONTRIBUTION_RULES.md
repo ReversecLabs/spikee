@@ -4,89 +4,42 @@ This document defines how commits should be named and which ones appear in the c
 
 Consistent commit naming keeps release notes clear and meaningful for users, while avoiding noise from internal work.
 
----
-
 ## Commit Message Format
 
-Each commit message starts with one of the keywords below, followed by a short description in plain English.
+Each commit message starts with one of the keywords below (all lowercase), followed by a short description in plain English.
 
-Example:
-```
+All commit type prefixes must be lowercase.
 
-feat: add --auto-resume flag for interrupted tests
-fix: avoid crash when results folder is missing
-change: rename --standalone-attacks to --include-standalone-inputs
-dataset: refresh base_user_inputs.jsonl with updated prompts
-dev: refactor result parser for readability
-docs: clarify README usage examples
+### Commit Types
 
-```
+| Type | Description | Changelog |
+|------|-------------|-----------|
+| `feat:` | New features or major improvements visible to users | ✓ |
+| `fix:` | Bug fixes — things that were broken now behave correctly | ✓ |
+| `change:` | Non-breaking behavior or UX changes users will notice | ✓ |
+| `dataset:` | Changes to bundled datasets, prompts, or test seeds | ✓ |
+| `dev:` | Internal maintenance, refactors, or tooling changes with no user-facing impact | ✗ |
+| `docs:` | Documentation changes — READMEs, examples, or guides | ✓ |
 
----
+### Examples
 
-## Commit Types
-
-### `feat:`  
-New features or major improvements visible to users.  
-Examples:
 - `feat: add --auto-resume flag`
-- `feat: improve CLI progress display`
-
-### `fix:`  
-Bug fixes — things that were broken now behave correctly.  
-Examples:
 - `fix: avoid crash when results folder is missing`
-- `fix: correct default output path`
-
-### `change:`  
-Non-breaking behavior or UX changes that users will notice.  
-Examples:
 - `change: enable language matching by default`
-- `change: rename CLI flag for clarity`
-
-### `dataset:`  
-Changes to bundled datasets, prompts, or test seeds that affect tool behavior or evaluation results.  
-Examples:
 - `dataset: update base_user_inputs.jsonl`
-- `dataset: correct mislabeled input samples`
-
-### `dev:`  
-Internal maintenance, refactors, or cosmetic changes with no user-facing impact.  
-Examples:
 - `dev: refactor runner for simplicity`
-- `dev: rename variables for clarity`
-
-### `docs:`  
-Documentation changes — READMEs, examples, or guides.  
-Examples:
-- `docs: update usage examples`
-- `docs: fix changelog typo`
+- `docs: clarify README usage examples`
 
 ---
 
-## Changelog Inclusion
+## Pull Requests
 
-Commits included in **CHANGELOG.md**:
-```
-
-feat, fix, change, dataset
-
-```
-
-Commits excluded from the changelog:
-```
-
-dev, docs
-
-```
-
----
+- PR titles must follow the same `type: description` format.
+- All PRs should be made to the `develop` branch.
 
 ## General Rules
 
 - Keep commit messages **under 80 characters**.
 - Use **imperative mood** (`add`, `fix`, `update`, not `added` or `fixed`).
 - Write clear, self-contained commits — one logical change per commit.
-- Avoid merging work with vague messages like “misc updates” or “wip”.
-
-
+- Avoid merging work with vague messages like "misc updates" or "wip".

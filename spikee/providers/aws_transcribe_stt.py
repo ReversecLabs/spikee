@@ -19,21 +19,20 @@ Authentication via environment variables:
 import asyncio
 import base64
 import os
-from typing import Optional, Set, Union, List, Dict, Sequence
+from typing import Optional, Set, Union, List, Dict
 
 from spikee.templates.provider import Provider
 from spikee.utilities.hinting import (
     ModuleDescriptionHint,
     ModuleOptionsHint,
-    Content,
     Audio,
 )
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
     AIMessage,
     HumanMessage,
-    Message,
     single_message,
+    MessageHint,
 )
 
 
@@ -161,9 +160,7 @@ class AWSTranscribeSTTProvider(Provider):
 
         return " ".join(transcript_parts).strip()
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AWS Transcribe streaming STT with base64-encoded audio. Returns transcribed text."""
 
         msg, _ = single_message(messages)

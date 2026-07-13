@@ -8,17 +8,17 @@ Additional Args:
 import base64
 from io import BytesIO
 import os
-from typing import Union, Dict, Sequence
+from typing import Union, Dict
 
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content, Audio
+from spikee.utilities.hinting import ModuleDescriptionHint, Audio
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.llm_message import (
-    Message,
     single_message,
     AIMessage,
     HumanMessage,
+    MessageHint,
 )
 
 
@@ -67,9 +67,7 @@ class OpenAISTTProvider(Provider):
             ModuleTag.LLM_STT,
         ], "STT Provider for OpenAI speech-to-text models."
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke OpenAI STT with the provided audio. Returns transcribed text in metadata."""
 
         msg, _ = single_message(messages)

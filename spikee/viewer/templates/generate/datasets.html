@@ -1,0 +1,52 @@
+{% extends "generate/base.html" %}
+{% set active_generate_page = "datasets" %}
+{% block title %}Generate — Datasets | SPIKEE{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-semibold mb-0">Generated Datasets</h5>
+        <span class="badge bg-secondary rounded-pill">{{ datasets | length }}</span>
+    </div>
+
+    {% if datasets %}
+    <div class="card spikee-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light border-bottom">
+                    <tr>
+                        <th class="ps-3 text-muted small fw-semibold">Filename</th>
+                        <th class="text-muted small fw-semibold" style="width:110px">Entries</th>
+                        <th style="width:80px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ds in datasets %}
+                    <tr>
+                        <td class="ps-3 small font-monospace text-break">
+                            <a href="/generate/datasets/{{ ds.name }}" class="text-decoration-none">{{ ds.name }}</a>
+                        </td>
+                        <td class="small fw-semibold">{{ ds.entry_count | default('—') }}</td>
+                        <td class="text-end pe-3">
+                            <a href="/generate/datasets/{{ ds.name }}"
+                               class="btn btn-xs btn-outline-secondary me-1">View</a>
+                            <a href="/test/run?dataset={{ ds.name }}"
+                               class="btn btn-xs btn-outline-spikee">Test &rarr;</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+        <p class="fw-semibold mb-1">No datasets found.</p>
+        <p class="small mb-3">Run Generate to create a dataset from a seed folder.</p>
+        <a href="/generate/run" class="btn btn-sm btn-spikee">Generate a dataset</a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

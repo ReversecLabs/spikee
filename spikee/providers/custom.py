@@ -1,11 +1,11 @@
 import os
 from any_llm import AnyLLM
-from typing import Union, Any, Dict, Sequence
+from typing import Union, Any, Dict
 
 from spikee.templates.provider import Provider
-from spikee.utilities.hinting import ModuleDescriptionHint, Content
+from spikee.utilities.hinting import ModuleDescriptionHint
 from spikee.utilities.enums import ModuleTag
-from spikee.utilities.llm_message import format_messages, Message, AIMessage
+from spikee.utilities.llm_message import format_messages, AIMessage, MessageHint
 
 
 class AnyLLMCustomProvider(Provider):
@@ -77,9 +77,7 @@ class AnyLLMCustomProvider(Provider):
             ModuleTag.LLM
         ], f"LLM Provider for {self.name} (OpenAI based API) via any-llm."
 
-    def invoke(
-        self, messages: Union[str, Sequence[Union[Message, dict, tuple, str, Content]]]
-    ) -> AIMessage:
+    def _invoke(self, messages: MessageHint) -> AIMessage:
         """Invoke AnyLLM, for OpenAI based API LLM with the provided messages."""
 
         formatted_messages = format_messages(messages)
@@ -91,13 +89,15 @@ class AnyLLMCustomProvider(Provider):
             **self.options,
         )
 
-        content = response.choices[0].message.content
-
-        if content is None:
-            raise ValueError(
-                f"Received empty response from {self.model}, commonly due to max_tokens budget being used for thinking. Consider reviewing your choice of model or increase max_tokens if applicable."
-            )
-
-        return AIMessage(
+        response = AIMessage(
             content=response.choices[0].message.content, original_response=response
         )
+
+        self.response_validation(messages, response)
+
+        return response
+
+    def response_validation(self, messages: MessageHint, response: AIMessage) -> None:
+        """Abstract validation method for subclasses to implement specific response validation logic. Otherwise validations common OpenAI compatible API errors."""
+
+        pass

@@ -3,6 +3,7 @@ import inspect
 import json
 import time
 import asyncio
+import threading
 from collections import defaultdict
 from typing import Union, List
 from tabulate import tabulate
@@ -521,7 +522,8 @@ def _process_permutation_worker(
 
     Returns a list of Entry objects for this permutation.
     """
-    asyncio.set_event_loop(asyncio.new_event_loop())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     entries = []
 
@@ -712,6 +714,8 @@ def _process_permutation_worker(
 
         traceback.print_exc()
         return []
+    finally:
+        loop.close()
 
     return entries
 
@@ -723,7 +727,8 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
 
     Returns a list of entry dicts for this standalone attack.
     """
-    asyncio.set_event_loop(asyncio.new_event_loop())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     entries = []
 
@@ -799,8 +804,8 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
                 judge_name=attack["judge_name"],
                 judge_args=attack["judge_args"],
                 position=None,
-                jailbreak_type=None,
-                instruction_type=None,
+                jailbreak_type=attack.get("jailbreak_type", None),
+                instruction_type=attack.get("instruction_type", None),
                 injection_pattern=None,
                 spotlighting_data_markers=None,
                 exclude_from_transformations_regex=exclude_patterns,
@@ -821,6 +826,8 @@ def _process_standalone_worker(perm, plugin_options_map) -> List[Entry]:
 
         traceback.print_exc()
         return []
+    finally:
+        loop.close()
 
     return entries
 
@@ -874,9 +881,18 @@ def process_standalone_attacks(
     new_entries = []
 
     if num_threads > 1:
+        _thread_local = threading.local()
 
         def thread_init():
-            asyncio.set_event_loop(asyncio.new_event_loop())
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            _thread_local.asyncio_loop = loop
+
+        def thread_cleanup():
+            loop = getattr(_thread_local, "asyncio_loop", None)
+            if loop is not None:
+                loop.close()
+                asyncio.set_event_loop(None)
 
         with ThreadPoolExecutor(
             max_workers=num_threads, initializer=thread_init
@@ -912,6 +928,8 @@ def process_standalone_attacks(
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
                 bar.close()
+                for thread in executor._threads:
+                    thread_cleanup()
 
     else:
         bar = tqdm(total=len(permutations), desc="Standalone Attacks")
@@ -1020,9 +1038,18 @@ def generate_variations(
 
     if num_threads > 1:
         # Parallel processing
+        _thread_local = threading.local()
+
         def thread_init():
-            """Each worker thread gets its own asyncio event loop."""
-            asyncio.set_event_loop(asyncio.new_event_loop())
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            _thread_local.asyncio_loop = loop
+
+        def thread_cleanup():
+            loop = getattr(_thread_local, "asyncio_loop", None)
+            if loop is not None:
+                loop.close()
+                asyncio.set_event_loop(None)
 
         with ThreadPoolExecutor(
             max_workers=num_threads, initializer=thread_init
@@ -1060,6 +1087,8 @@ def generate_variations(
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
                 bar.close()
+                for thread in executor._threads:
+                    thread_cleanup()
 
     else:
         # Sequential processing (original logic)

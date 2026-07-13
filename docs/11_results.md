@@ -166,20 +166,23 @@ spikee results dataset-comparison --dataset-file datasets/cybersec-2026-01-*.jso
                                   --number 10
 ```
 
-# The `spikee viewer results` Command
-This command processes results files and displays them in a Flask web application for interactive exploration.
+# The `spikee webui` Command
+Launches the Spikee web UI — a browser-based interface for the full Spikee workflow. Run it from a workspace directory (one initialised with `spikee init`).
 
-## Set-Up
-```bash
-# Add viewer components to workspace
-spikee init --include-viewer
-
-```
+The web UI covers:
+- **Generate** — configure and launch dataset generation jobs
+- **Test** — configure and launch test runs against targets
+- **Jobs** — monitor running jobs with live log output, cancel or re-run them
+- **Results** — explore, filter, and bulk-action test results interactively
 
 ## Usage Examples
 ```bash
-spikee viewer results --result-file results/results_cybersec-2025-04-*.jsonl 
+# Launch on the default host and port (127.0.0.1:8080)
+spikee webui
 
-# Specify a different host and port (Defaults, host=127.0.0.1, port=8080)
-spikee viewer --host 192.168.1.10 --port 8081 results --result-file results/results_cybersec-2025-04-*.jsonl 
+# Bind to all interfaces on a custom port
+spikee webui --host 0.0.0.0 -p 8081
+
+# Persist job history to a SQLite database across restarts
+spikee webui --database jobs.db
 ```
