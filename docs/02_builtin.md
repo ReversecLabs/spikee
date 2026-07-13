@@ -79,6 +79,7 @@ These evaluate responses based on simple criteria.
 
 * `canary`: Checks if a predefined canary string is present in the response.
 * `regex`: Uses regular expressions to identify specific patterns in the response.
+* `secret_leak`: Flags leaked secrets/PII (AWS keys, JWTs, OpenAI/Anthropic keys, PEM private keys, emails, Luhn-valid credit cards, IPv4 addresses). Useful for scoring data-exfiltration objectives. Scans all categories by default; a subset can be selected via `judge_args` or `--judge-options`.
 
 **LLM Judges**
 Some test cases, success cannot be determined by a simple keyword or pattern. For instance, did the model's response contain harmful advice, or did it refuse to answer a question on a restricted topic?
