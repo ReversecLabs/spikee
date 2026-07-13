@@ -7,21 +7,36 @@ on:
         description: "Type of release (major | minor | patch)"
         required: true
         default: "patch"
+      skip_tests:
+        description: "Skip tests"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write  # needed to push commit + tag
+  contents: write  # push commit + tag, bump develop
 
 jobs:
   tests:
+    if: github.event.inputs.skip_tests != 'true'
     uses: ./.github/workflows/tests.yaml
 
   release:
     needs: tests
+    if: always() && (github.event.inputs.skip_tests == 'true' || needs.tests.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Enforce main branch
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "ERROR: Release workflow must be run from main (got ${GITHUB_REF})"
+            exit 1
+          fi
 
       - name: Validate input
         shell: bash
@@ -35,22 +50,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-
-      - name: Install linters
-        run: pip install ruff
-
-      - name: Auto-format, sort imports, and fix lint
-        shell: bash
-        run: |
-          ruff format .
-          ruff check --fix .
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add -A
-            git commit -m "style: auto-format & lint via ruff"
-            git push
-          fi
 
       - name: Install tools
         run: pip install toml
@@ -88,7 +87,7 @@ jobs:
               elif release_type == "minor":
                   minor, patch = minor + 1, 0
               else:  # patch
-                  pass # drop -dev
+                  pass # drop -dev suffix only
           else:
               if release_type == "major":
                   major, minor, patch = major + 1, 0, 0
@@ -133,6 +132,15 @@ jobs:
           echo "new_version=$(cat NEW_VERSION.txt)" >> $GITHUB_OUTPUT
           echo "next_dev_version=$(cat NEXT_DEV_VERSION.txt)" >> $GITHUB_OUTPUT
 
+      - name: Duplicate-tag guard
+        shell: bash
+        run: |
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          if git tag -l "v${VERSION}" | grep -q "v${VERSION}"; then
+            echo "ERROR: Tag v${VERSION} already exists. Aborting to avoid broken state."
+            exit 1
+          fi
+
       - name: Prepend release section to CHANGELOG.md
         shell: bash
         run: |
@@ -140,8 +148,8 @@ jobs:
           VERSION="${{ steps.bump.outputs.new_version }}"
           release_date="$(date -u +%Y-%m-%d)"
 
-          # Determine previous tag if any
-          if prev_tag=$(git describe --tags --abbrev=0 2>/dev/null); then
+          # Determine previous tag on main
+          if prev_tag=$(git describe --tags --abbrev=0 origin/main 2>/dev/null); then
             range="${prev_tag}..HEAD"
           else
             range="HEAD"
@@ -161,7 +169,7 @@ jobs:
               fix:*|bug:*|bugfix:*)  FIXES+=("${s#*: }") ;;
               change:*)  CHANGES+=("${s#*: }") ;;
               dataset:*) DATASETS+=("${s#*: }") ;;
-              *) ;; # ignore dev:, docs:, chore:, etc.
+              *) ;; # ignore dev:, docs:, chore:, style:, etc.
             esac
           done
 
@@ -209,8 +217,9 @@ jobs:
             fi
           } > "$new_file"
           mv "$new_file" CHANGELOG.md
-      
+
       - name: Commit and tag
+        id: tag
         shell: bash
         run: |
           VERSION="${{ steps.bump.outputs.new_version }}"
@@ -219,7 +228,7 @@ jobs:
           git add pyproject.toml spikee/__init__.py README.md CHANGELOG.md || true
           git commit -m "Release ${VERSION}" || echo "No changes to commit."
           git tag "v${VERSION}"
-          git push origin HEAD --tags
+          git push origin main --tags
 
       - name: Install build tools
         run: pip install --upgrade build twine
@@ -232,39 +241,50 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Bump to next dev version
+      - name: Bump develop to next dev version
+        if: always() && steps.tag.outcome == 'success'
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
+          export NEXT_DEV
+
+          # Fetch and checkout develop directly
+          git fetch origin develop
+          git checkout develop
+          git pull origin develop
+
           python - <<EOF
-          import toml, pathlib, re
+          import toml, pathlib, re, os
+          next_dev = os.environ["NEXT_DEV"]
           root = pathlib.Path(".")
-          
+
           # pyproject.toml
           pp = root / "pyproject.toml"
           data = toml.load(pp.open())
-          data["project"]["version"] = "${NEXT_DEV}"
+          data["project"]["version"] = next_dev
           pp.write_text(toml.dumps(data))
-          
+
           # __init__.py
           initp = root / "spikee" / "__init__.py"
-          initp.write_text('__version__ = "${NEXT_DEV}"\n')
+          initp.write_text(f'__version__ = "{next_dev}"\n')
 
           # README.md
           readme = root / "README.md"
           if readme.exists():
               txt = readme.read_text()
               new_txt, n = re.subn(r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
-                                   rf"\g<1>${NEXT_DEV}\3", txt, count=1)
+                                   rf"\g<1>{next_dev}\3", txt, count=1)
               if n:
                   readme.write_text(new_txt)
                   print("Updated README.md to next dev version.")
               else:
                   print("NOTE: README.md version pattern not found; left unchanged.")
           EOF
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml spikee/__init__.py README.md
           git commit -m "chore: bump version to ${NEXT_DEV}"
-          git push origin HEAD
+          git push origin develop
