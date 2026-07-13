@@ -254,12 +254,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEXT_DEV="${{ steps.bump.outputs.next_dev_version }}"
+          VERSION="${{ steps.bump.outputs.new_version }}"
           export NEXT_DEV
 
-          # Fetch and checkout develop directly
+          # Fetch and checkout develop, then merge the release commit from main
           git fetch origin develop
           git checkout develop
           git pull origin develop
+          git merge --ff-only origin/main || git merge -m "chore: merge release ${VERSION} into develop" origin/main
 
           python - <<EOF
           import toml, pathlib, re, os
