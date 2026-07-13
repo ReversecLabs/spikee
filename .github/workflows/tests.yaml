@@ -1,4 +1,4 @@
-name: Functional Tests
+name: Lint & Functional Tests
 
 on:
   workflow_dispatch:
@@ -6,16 +6,59 @@ on:
   pull_request:
     branches:
       - main
+      - develop
   push:
     branches:
       - main
+      - develop
+
+permissions:
+  contents: write  # needed for lint job to push auto-fix commits back to the PR branch
 
 jobs:
-  functional-tests:
+  lint:
     runs-on: ubuntu-latest
+    # Skipped on workflow_call (release) — lint is not part of the release process
+    if: github.event_name != 'workflow_call'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Auto-format, sort imports, and fix lint
+        shell: bash
+        run: |
+          ruff format .
+          ruff check --fix .
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "style: auto-format & lint via ruff"
+            git push
+          fi
+
+  functional-tests:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    # Always run tests; if lint ran it must have succeeded; if lint was skipped (workflow_call) run anyway
+    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # On PRs, check out the head ref so we get any lint-fix commits
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
