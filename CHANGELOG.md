@@ -1,6 +1,47 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.9.1] - 2026-07-13
+
+### Features
+
+- add --version arg
+- add manual prompting functionality
+- webui plugin workshop
+- add SQLite database support for job persistence
+- add rerun functionality for jobs
+- implement plugin/attack refresh and truncation settings page
+- add lazy loading for plugin and attack moduletags
+- spikee ui - phase 4 (test)
+- spikee ui - phase 3 (generate + jobs)
+- spikee ui - phase 1 (results)
+- spikee ui - phase 0 (wireframe)
+- implement response validation and enhance debug logging in providers
+- module debug command
+- add homoglyph encoding plugin (Unicode confusables)
+- add spikee init error for sourcecode
+- add interactive docs
+
+### Fixes
+
+- force progress bar refresh after early completion updates in attack modules and tester
+- ensure standalone entries preserve instruction_type and jailbreak_type from seed data
+- delay progress bar updates in echo_chamber attack to prevent premature incrementing
+- webui bugs
+- btn ui
+- Ensure asyncio event loops are properly closed in worker threads
+- update result viewer function references from string_to_colour to text_to_colour
+- improve async call cleanup by forcing garbage collection and handling pending tasks
+
+### Changes
+
+- refactor plugin and attack handling in generation UI
+- update 'spikee viewer' to 'spikee webui'
+- add `_invoke` function to providers to enable built-in debugging and management.
+- add MessageHint
+- Update module description in homoglyph.py
+- add GTR to breakdowns and update overview labels
+
 ## [0.9.0] - 2026-07-13
 
 ## [0.8.0] - 2026-05-19
