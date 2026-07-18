@@ -124,6 +124,7 @@ The following list provides an overview of each build-in plugin, further informa
 | `1337` | Encoding | Transforms text into "leet speak" by replacing certain letters with numbers or symbols. | N/A |
 | `ascii_smuggler` | Encoding | Transforms ASCII text into a series of Unicode rags that are generally invisible to most UI elements (bypassing content filters). | N/A |
 | `atbash` | Encoding | Transforms the input text with the Atbash cipher. Maps each letter to its counterpart on the other end of the alphabet (A <->Z, B<->Y, etc.), preserving case. | `hint` (show the literal plaintext string `atbash` in the encoded output, default true)  |
+| `base32` | Encoding | Encodes text using Base32 encoding (A-Z2-7 alphabet), tokenising differently from Base64. | N/A |
 | `base64` | Encoding | Encodes text using Base64 encoding. | N/A |
 | `binary` | Encoding | Encodes text as space-separated ASCII/Unicode binary codepoint values (8 bits each).| N/A  |
 | `caesar` | Encoding | Applies a Caesar cipher to the text, shifting letters by a specified number of positions. | `shift` (number of positions to shift, default: 3) |
