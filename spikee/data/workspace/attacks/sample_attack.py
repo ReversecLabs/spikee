@@ -52,7 +52,11 @@ from collections.abc import Callable
 
 from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
-from spikee.utilities.hinting import AttackResponseHint, ModuleOptionsHint
+from spikee.utilities.hinting import (
+    AttackAttempt,
+    AttackResponseHint,
+    ModuleOptionsHint,
+)
 
 
 class SampleAttack(Attack):
@@ -69,6 +73,7 @@ class SampleAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Executes a dynamic attack on the given entry.
@@ -104,6 +109,7 @@ class SampleAttack(Attack):
         # Use the payload if present; otherwise, operate on the full input.
         base = payload if payload else original_text
 
+        history = []
         last_response = ""
         candidate_text = original_text  # default fallback
 
@@ -133,19 +139,34 @@ class SampleAttack(Attack):
 
                 last_response = response
                 # Determine if this candidate is successful using the provided call_judge() function.
-                if call_judge(entry, response):
+                success = call_judge(entry, response)
+                if return_all_attempts:
+                    history.append(AttackAttempt(candidate_text, response, success))
+                if success:
                     if attempts_bar:
                         # If we finish early, update the progress bar to remove iterations we did not run
                         with bar_lock:
                             remaining = max_iterations - i
                             attempts_bar.total = attempts_bar.total - remaining
                             attempts_bar.refresh()
+                    if return_all_attempts:
+                        return history
                     return i, True, candidate_text, response
             except Exception as e:  # noqa: BLE001
                 last_response = str(e)
+                if return_all_attempts:
+                    history.append(
+                        AttackAttempt(
+                            candidate_text, last_response, False, error=str(e)
+                        )
+                    )
             if attempts_bar:
                 with bar_lock:
                     attempts_bar.update(1)
             # Implement throttling: wait briefly before next attempt.
             # time.sleep(0.5)
+        if return_all_attempts:
+            return history or [
+                AttackAttempt(candidate_text, last_response, False, attempts=0)
+            ]
         return max_iterations, False, candidate_text, last_response

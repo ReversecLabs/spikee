@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import re
 from collections import defaultdict
 
 from jinja2 import Template
@@ -40,51 +41,38 @@ def preprocess_results(results):
 
 
 # -- RESULT HELPERS --
-def group_entries_with_attacks(results):
-    """
-    Group original entries with their corresponding dynamic attack entries.
+def is_attack_entry(entry):
+    """Recognize explicit metadata first, with a fallback for old result files."""
+    if "attack_parent_id" in entry:
+        return True
+    if "attack_name" in entry:
+        return entry["attack_name"] not in (None, "", "None")
+    return bool(re.fullmatch(r".+-attack(?:-\d+)?", str(entry["id"])))
 
-    Returns:
-        dict: A mapping from original IDs to a list of entries (original + attacks)
-        dict: A mapping from attack IDs to their original ID
-    """
+
+def attack_parent_id(entry):
+    if "result_parent_id" in entry:
+        return entry["result_parent_id"]
+    if "attack_parent_id" in entry:
+        return entry["attack_parent_id"]
+    entry_id = entry.get("original_id", entry["id"])
+    if is_attack_entry(entry):
+        match = re.fullmatch(r"(.+)-attack(?:-\d+)?", str(entry_id))
+        if match:
+            return match[1]
+    return entry_id
+
+
+def group_entries_with_attacks(results):
+    """Group results by dataset parent and source, including extracted histories."""
     groups = defaultdict(list)
     attack_to_original = {}
-
-    # First pass - identify all entries
     for entry in results:
-        entry_id = entry["id"]
-        source_file = entry.get(
-            "source_file", None
-        )  # Used for combined result analysis
-
-        # Check if this is an attack entry
-        if isinstance(entry_id, str) and "-attack" in entry_id:
-            # Extract the original ID from the attack ID
-            original_id_str = entry_id.split("-attack")[0]
-            # Convert to the same type as the original ID (int or str)
-            try:
-                original_id = int(original_id_str)
-            except ValueError:
-                original_id = original_id_str
-
-            if source_file is not None:  # For consistent key lookup
-                str_original_id = str(original_id) + "-" + source_file
-                str_entry_id = str(entry_id) + "-" + source_file
-            else:
-                str_original_id = str(original_id)
-                str_entry_id = str(entry_id)
-
-            groups[str_original_id].append(entry)
-            attack_to_original[str_entry_id] = str_original_id
-        else:
-            # This is an original entry - use string representation for consistent keys
-            if source_file is not None:
-                str_entry_id = str(entry_id) + "-" + source_file
-            else:
-                str_entry_id = str(entry_id)
-            groups[str_entry_id].append(entry)
-
+        source = entry.get("result_origin", entry.get("source_file"))
+        key = (str(attack_parent_id(entry)), source)
+        groups[key].append(entry)
+        if is_attack_entry(entry):
+            attack_to_original[(str(entry["id"]), source)] = key
     return groups, attack_to_original
 
 
@@ -379,11 +367,7 @@ class ResultProcessor:
             self.total_attempts += group_attempts
 
             # Check if any entry in this group is a dynamic attack
-            attack_entries = [
-                e
-                for e in entries
-                if isinstance(e["id"], str) and "-attack" in str(e["id"])
-            ]
+            attack_entries = [e for e in entries if is_attack_entry(e)]
             if attack_entries:
                 self.has_dynamic_attacks = True
 
@@ -391,11 +375,7 @@ class ResultProcessor:
             attack_success = any(e.get("success", False) for e in attack_entries)
 
             # Check initial success (original entry without attack)
-            initial_entries = [
-                e
-                for e in entries
-                if not (isinstance(e["id"], str) and "-attack" in str(e["id"]))
-            ]
+            initial_entries = [e for e in entries if not is_attack_entry(e)]
 
             # Check if any of the initial entries were successful
             initial_success = any(e.get("success", False) for e in initial_entries)
@@ -414,23 +394,21 @@ class ResultProcessor:
                 for entry in entries
             )
 
-            # Track attack types
+            # One attack evaluation per dataset parent and attack type, whether
+            # represented by one row or an entire trace.
+            by_attack = defaultdict(list)
             for attack_entry in attack_entries:
-                attack_name = attack_entry.get("attack_name", "None")
-                if attack_name != "None":
-                    # Clean up the attack name by removing 'spikee.' prefix
-                    clean_attack_name = attack_name.replace(
-                        "spikee.attacks.", ""
-                    ).replace("spikee.", "")
-                    self.attack_types[clean_attack_name]["total"] += 1
-                    self.attack_types[clean_attack_name]["attempts"] += (
-                        attack_entry.get("attempts", 1)
-                    )
-                    if attack_entry.get("success", False):
-                        self.attack_types[clean_attack_name]["successes"] += 1
-
-                    elif attack_entry.get("guardrail", False):
-                        self.attack_types[clean_attack_name]["guardrail"] += 1
+                name = attack_entry.get("attack_name", "None")
+                if name not in (None, "", "None"):
+                    by_attack[
+                        name.replace("spikee.attacks.", "").replace("spikee.", "")
+                    ].append(attack_entry)
+            for name, rows in by_attack.items():
+                stats = self.attack_types[name]
+                stats["total"] += 1
+                stats["attempts"] += sum(r.get("attempts", 1) for r in rows)
+                stats["successes"] += int(any(r.get("success") for r in rows))
+                stats["guardrail"] += int(all(r.get("guardrail") for r in rows))
 
             # Increment appropriate counters
             if group_success:
@@ -446,24 +424,26 @@ class ResultProcessor:
             else:
                 self.failed_groups += 1
 
-            # Increment guardrail categories
-            for entry in entries:
-                if entry.get("guardrail", False):
-                    categories = entry.get("guardrail_categories", {})
-                    for category, triggered in categories.items():
-                        if triggered:
-                            if category not in self.guardrail_categories:
-                                self.guardrail_categories[category] = 0
-                            self.guardrail_categories[category] += 1
+            # Category rates use dataset groups as their denominator. Repeated
+            # triggers in a retained history must not inflate them above 100%.
+            categories = {
+                category
+                for entry in entries
+                if entry.get("guardrail", False)
+                for category, triggered in (
+                    entry.get("guardrail_categories") or {}
+                ).items()
+                if triggered
+            }
+            for category in categories:
+                self.guardrail_categories[category] = (
+                    self.guardrail_categories.get(category, 0) + 1
+                )
 
             # Store the original entry's features to use in breakdowns
             # (We use the original entry for consistency)
             original_entry = next(
-                (
-                    e
-                    for e in entries
-                    if not isinstance(e["id"], str) or "-attack" not in str(e["id"])
-                ),
+                (e for e in entries if not is_attack_entry(e)),
                 entries[0],
             )
             self.group_features[original_id] = original_entry
@@ -684,18 +664,10 @@ class ResultProcessor:
                 entry.get("attempts", 1) for entry in entries
             )
 
-            attack_entries = [
-                e
-                for e in entries
-                if isinstance(e["id"], str) and "-attack" in str(e["id"])
-            ]
+            attack_entries = [e for e in entries if is_attack_entry(e)]
             attack_success = any(e.get("success", False) for e in attack_entries)
 
-            initial_entries = [
-                e
-                for e in entries
-                if not (isinstance(e["id"], str) and "-attack" in str(e["id"]))
-            ]
+            initial_entries = [e for e in entries if not is_attack_entry(e)]
             initial_success = any(e.get("success", False) for e in initial_entries)
 
             group_success = initial_success or attack_success
@@ -943,16 +915,8 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
             entries = self._entry_groups[original_id]
 
             # Check success types
-            initial_entries = [
-                e
-                for e in entries
-                if not (isinstance(e["id"], str) and "-attack" in str(e["id"]))
-            ]
-            attack_entries = [
-                e
-                for e in entries
-                if isinstance(e["id"], str) and "-attack" in str(e["id"])
-            ]
+            initial_entries = [e for e in entries if not is_attack_entry(e)]
+            attack_entries = [e for e in entries if is_attack_entry(e)]
 
             initial_success = any(e.get("success", False) for e in initial_entries)
             attack_success = any(e.get("success", False) for e in attack_entries)
@@ -1307,7 +1271,7 @@ def extract_entries(entry, category="success", custom_query=None):
                 return True
 
         case "failure":
-            if not entry.get("success", False):
+            if entry.get("success", False) is False:
                 return True
 
         case "error":

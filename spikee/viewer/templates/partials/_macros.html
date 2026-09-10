@@ -4,6 +4,7 @@
   {%- if entry.success %}success
   {%- elif entry.guardrail %}guardrail
   {%- elif entry.error and entry.error != '' %}error
+  {%- elif entry.success is none %}unjudged
   {%- else %}failure{%- endif -%}
 {% endmacro %}
 
@@ -11,6 +12,7 @@
   {%- if entry.success %}SUCCESS
   {%- elif entry.guardrail %}GUARDRAIL
   {%- elif entry.error and entry.error != '' %}ERROR
+  {%- elif entry.success is none %}UNJUDGED
   {%- else %}FAILED{%- endif -%}
 {% endmacro %}
 

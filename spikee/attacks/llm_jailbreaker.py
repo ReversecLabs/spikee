@@ -17,6 +17,7 @@ from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -156,6 +157,7 @@ class LLMJailbreaker(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Executes a jailbreak attack sequence.
@@ -172,12 +174,19 @@ class LLMJailbreaker(Attack):
             raise ValueError("LLMJailbreaker Attack only supports text content type.")
 
         if not objective:
+            if return_all_attempts:
+                return [
+                    AttackAttempt(
+                        "", "No objective provided in entry", False, attempts=0
+                    )
+                ]
             return 0, False, "", "No objective provided in entry"
 
         # Initialize the LLM
         llm = get_llm(model_name, max_tokens=400)
 
         # Track previous attack attempts to avoid repetition
+        history = []
         previous_attempts = []
         last_response = ""
         attack_prompt = ""
@@ -185,12 +194,14 @@ class LLMJailbreaker(Attack):
         # Try different attack variations
         # Note: range is 1-indexed to match nice user-facing counting
         for i in range(1, max_iterations + 1):
+            candidate = ""
             try:
                 # Generate a new attack prompt
                 attack_prompt = self._generate_jailbreak_attack(
                     llm, objective, previous_attempts
                 )
 
+                candidate = attack_prompt
                 # Send the attack prompt to the target
                 last_response = process_target_content(
                     target_module.process_input(
@@ -205,7 +216,10 @@ class LLMJailbreaker(Attack):
                 )
 
                 # Determine if the attack was successful
-                if call_judge(entry, last_response):
+                success = call_judge(entry, last_response)
+                if return_all_attempts:
+                    history.append(AttackAttempt(attack_prompt, last_response, success))
+                if success:
                     if attempts_bar:
                         # Update progress bar to show we finished early
                         with bar_lock:
@@ -215,10 +229,16 @@ class LLMJailbreaker(Attack):
                                     0, attempts_bar.total - remaining
                                 )
                                 attempts_bar.refresh()
+                    if return_all_attempts:
+                        return history
                     return i, True, attack_prompt, last_response
 
             except Exception as e:  # noqa: BLE001
                 last_response = f"Error during attack attempt {i}: {e!s}"
+                if return_all_attempts:
+                    history.append(
+                        AttackAttempt(candidate, last_response, False, error=str(e))
+                    )
                 # If generation fails, we might as well stop or continue.
                 # Here we continue logging the error.
                 print(f"[LLMJailbreaker] Error: {e}")
@@ -229,4 +249,8 @@ class LLMJailbreaker(Attack):
                     attempts_bar.update(1)
 
         # If we've exhausted all attempts
+        if return_all_attempts:
+            return history or [
+                AttackAttempt(attack_prompt, last_response, False, attempts=0)
+            ]
         return max_iterations, False, attack_prompt, last_response

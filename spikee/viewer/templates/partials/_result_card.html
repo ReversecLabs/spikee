@@ -50,6 +50,7 @@
             {% endif %}
             {% if entry.attack_name and entry.attack_name not in ('', 'None', none) %}
                 <span class="badge bg-success">{{ entry.attack_name }}</span>
+                {% if entry.attack_attempt %}<span class="badge bg-secondary">Attempt {{ entry.attack_attempt }} · Dataset #{{ entry.attack_parent_id }}</span>{% endif %}
             {% endif %}
             {% if entry.plugin and entry.plugin not in ('', 'None', none) %}
                 <span class="badge bg-secondary">{{ entry.plugin }}</span>

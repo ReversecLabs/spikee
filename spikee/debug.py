@@ -170,18 +170,20 @@ def debug_module_attack(args):
             f"Missing required entry arguments for attack: {', '.join(missing_entry_args)}"
         )
 
-    attack_args = {}
+    from spikee.utilities.attack import invoke_attack
 
     target = load_module_from_path(args.target, "targets")
-    attack_args["target_module"] = target
-
-    attack_args["max_iterations"] = args.max_iterations
-    attack_args["call_judge"] = call_judge
-
-    if args.attack_options:
-        attack_args["attack_options"] = args.attack_options
-
-    response = attack.attack(entry, **attack_args)
+    response = invoke_attack(
+        attack.attack,
+        entry,
+        target,
+        call_judge,
+        args.max_iterations,
+        None,
+        None,
+        args.attack_options,
+        getattr(args, "attack_return_all_attempts", False),
+    )
 
     print(
         f"[{attack.__class__.__name__}] Attack Response: {str(response) if response else 'No response'}"

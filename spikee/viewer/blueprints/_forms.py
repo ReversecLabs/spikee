@@ -225,6 +225,7 @@ class TestForm:
     attack_iterations: int
     attack_options: str
     attack_only: bool
+    attack_return_all_attempts: bool
     sample: float | None
     sample_seed: int
     resume: str
@@ -303,6 +304,7 @@ class TestForm:
             attack_iterations=attack_iterations,
             attack_options=attack_options,
             attack_only=attack_only,
+            attack_return_all_attempts=bool(f.get("attack_return_all_attempts")),
             sample=sample,
             sample_seed=sample_seed,
             resume=resume,
@@ -335,6 +337,8 @@ class TestForm:
                 args += ["--attack-iterations", str(self.attack_iterations)]
             if self.attack_options:
                 args += ["--attack-options", self.attack_options]
+            if self.attack_return_all_attempts:
+                args.append("--attack-return-all-attempts")
             if self.attack_only:
                 args.append("--attack-only")
 

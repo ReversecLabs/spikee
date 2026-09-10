@@ -47,6 +47,7 @@ from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -96,7 +97,9 @@ class RandomSuffixSearch(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
+        history = []
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError(
@@ -145,6 +148,7 @@ class RandomSuffixSearch(Attack):
                 original_text, adv, payload=payload_field
             )
 
+            error = None
             try:
                 # Call process_input. The wrapper guarantees a tuple is returned.
                 response = process_target_content(
@@ -155,8 +159,12 @@ class RandomSuffixSearch(Attack):
 
                 success = call_judge(entry, response)
             except Exception as e:  # noqa: BLE001
+                error = str(e)
                 success = False
                 response = str(e)
+
+            if return_all_attempts:
+                history.append(AttackAttempt(candidate, response, success, error=error))
 
             # Update progress bar safely.
             if attempts_bar:
@@ -169,6 +177,10 @@ class RandomSuffixSearch(Attack):
                         remaining = max_iterations - i
                         attempts_bar.total = attempts_bar.total - remaining
                         attempts_bar.refresh()
+                if return_all_attempts:
+                    return history
                 return i, True, candidate, response
 
+        if return_all_attempts:
+            return history or [AttackAttempt(candidate, response, False, attempts=0)]
         return max_iterations, False, candidate, response

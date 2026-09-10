@@ -32,6 +32,7 @@ from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -64,7 +65,9 @@ class BestOfNAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
+        history = []
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError("Best-Of-N Attack only supports text content type.")
@@ -86,6 +89,7 @@ class BestOfNAttack(Attack):
                 candidate_text = self._generate_variant(original_text, exclusions)
             last_payload = candidate_text
 
+            error = None
             try:
                 response = process_target_content(
                     target_module.process_input(candidate_text, system_message)
@@ -93,9 +97,15 @@ class BestOfNAttack(Attack):
                 last_response = response
                 success = call_judge(entry, response)
             except Exception as e:  # noqa: BLE001
+                error = str(e)
                 success = False
                 last_response = str(e)
                 print(f"[Best-Of-N] Entry ID {entry['id']}: {e}")
+
+            if return_all_attempts:
+                history.append(
+                    AttackAttempt(candidate_text, last_response, success, error=error)
+                )
 
             if attempts_bar:
                 with bar_lock:
@@ -108,8 +118,14 @@ class BestOfNAttack(Attack):
                         remaining = max_iterations - i
                         attempts_bar.total = attempts_bar.total - remaining
                         attempts_bar.refresh()
+                if return_all_attempts:
+                    return history
                 return i, True, candidate_text, response
 
+        if return_all_attempts:
+            return history or [
+                AttackAttempt(last_payload, last_response, False, attempts=0)
+            ]
         return max_iterations, False, last_payload, last_response
 
     def _scramble_payload_only(self, original_text, payload, exclusions):

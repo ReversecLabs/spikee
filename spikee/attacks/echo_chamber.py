@@ -14,6 +14,7 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import AdvancedTargetWrapper, GuardrailTrigger
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -580,7 +581,13 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
     # region Target Prompts
 
     def get_seed_sentences(
-        self, target, llm, spikee_session_id: str, keywords: list[str], attempt: int
+        self,
+        target,
+        llm,
+        spikee_session_id: str,
+        keywords: list[str],
+        attempt: int,
+        history: list[AttackAttempt] | None = None,
     ) -> tuple[str, list[str]]:
 
         if attempt <= len(SENTENCE_PREFIXES):
@@ -604,11 +611,25 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                 + json.dumps({"keywords": keywords})
             )
 
-        response = process_target_content(
-            target.process_input(
-                prompt, spikee_session_id=spikee_session_id, backtrack=False
+        current = None
+        if history is not None:
+            current = AttackAttempt(prompt, "", None)
+            history.append(current)
+        try:
+            response = process_target_content(
+                target.process_input(
+                    prompt, spikee_session_id=spikee_session_id, backtrack=False
+                )
             )
-        )
+        except Exception as e:
+            if current is not None:
+                current.error = str(e)
+                if isinstance(e, GuardrailTrigger):
+                    current.guardrail = True
+                    current.guardrail_categories = e.categories
+            raise
+        if current is not None:
+            current.response = response
 
         try:
             seed_sentences = extract_json_or_fail(response).get("sentences", None)
@@ -635,6 +656,7 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Performs the Echo Chamber attack on the target module.
@@ -696,6 +718,8 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
         seed_target_refusal = 0  # Tracks target refusals to generate seeds
         refusal_count = -1
         order = None
+        history = []
+        current = None
         _first_iteration = True
         try:
             while max_iterations - conversation.get_attempt_total() > 0:
@@ -708,10 +732,13 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                         attempts_bar.update(1)
                 _first_iteration = False
 
+                current = None
                 prompt_message_id = last_message_id
 
                 # Handle backtrack
                 if backtrack and not backtrack_support:
+                    if return_all_attempts:
+                        return history
                     return (
                         conversation.get_attempt_total(),
                         False,
@@ -734,6 +761,7 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                             spikee_session_id=spikee_session_id,
                             keywords=list(set(keywords)),
                             attempt=seed_target_refusal,
+                            history=history if return_all_attempts else None,
                         )
                         backtrack = False
 
@@ -804,6 +832,12 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                         {"role": "user", "content": prompt},
                         attempt=True,
                     )
+
+                    if return_all_attempts and history:
+                        seed_record = history[-1]
+                        seed_record.input = self.standardised_input_return(
+                            seed_record.input, conversation, objective
+                        )
 
                     # 1.3) Seed relevance check
                     refusal, explanation = self.evaluate_seed_alignment(
@@ -946,6 +980,15 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                             attempt=True,
                         )
 
+                        if return_all_attempts:
+                            current = AttackAttempt(
+                                self.standardised_input_return(
+                                    prompt, conversation, objective
+                                ),
+                                "",
+                                None,
+                            )
+                            history.append(current)
                         last_response = process_target_content(
                             target_module.process_input(
                                 prompt,
@@ -953,9 +996,15 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                                 backtrack=backtrack,
                             )
                         )
+                        if current is not None:
+                            current.response = last_response
                         backtrack = False
 
                     except GuardrailTrigger as e:
+                        if current is not None:
+                            current.error = str(e)
+                            current.guardrail = True
+                            current.guardrail_categories = e.categories
                         if self.debug:
                             print(
                                 f"[Echo Chamber] Guardrail triggered (Entry {entry['id']}). Retrying..."
@@ -975,6 +1024,8 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                         continue
 
                     except Exception as e:  # noqa: BLE001
+                        if current is not None:
+                            current.error = str(e)
                         if self.debug:
                             print(
                                 f"[Echo Chamber] Error during attack (Entry {entry['id']}): {e}"
@@ -1008,7 +1059,10 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                         "Agent LLM refused to evaluate refusal.",
                     )
 
-                if success and call_judge(entry, last_response):
+                judge_success = call_judge(entry, last_response) if success else None
+                if current is not None:
+                    current.success = judge_success
+                if judge_success:
                     last_message_id = conversation.add_message(
                         last_message_id,
                         {
@@ -1021,6 +1075,11 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                             },
                         },
                     )
+                    if return_all_attempts:
+                        current.input = self.standardised_input_return(
+                            prompt, conversation, objective
+                        )
+                        return history
                     return (
                         conversation.get_attempt_total(),
                         True,
@@ -1073,6 +1132,11 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                     )
 
                 # Skip to next best sentence
+                if current is not None:
+                    current.input = self.standardised_input_return(
+                        prompt, conversation, objective
+                    )
+
                 if (
                     refusal_count > 2
                     or conversation.get_path_attempts(last_message_id) >= self.max_turns
@@ -1089,6 +1153,10 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
                     last_message_id = sentences_message_id
                     continue
 
+            if return_all_attempts:
+                return history or [
+                    AttackAttempt(objective, last_response, False, attempts=0)
+                ]
             return (
                 conversation.get_attempt_total(),
                 False,
@@ -1106,6 +1174,15 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
             print("=== BEGIN TRACEBACK ===")
             traceback.print_exc()
             print("=== END TRACEBACK ===")
+
+            if return_all_attempts:
+                if current is not None and current.success is None:
+                    current.error = str(e)
+                else:
+                    history.append(
+                        AttackAttempt(objective, "", False, attempts=0, error=str(e))
+                    )
+                return history
 
             return (
                 conversation.get_attempt_total(),

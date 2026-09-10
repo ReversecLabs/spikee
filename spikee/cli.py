@@ -344,6 +344,11 @@ def main():
         help="Only run the attack module without standard attempts",
     )
     parser_test.add_argument(
+        "--attack-return-all-attempts",
+        action="store_true",
+        help="Retain every attempt from supporting attacks (default: one representative result)",
+    )
+    parser_test.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
     )
     parser_test.add_argument(
@@ -717,6 +722,12 @@ def main():
         type=str,
         default=None,
         help="Options to pass to the attack module (if applicable)",
+    )
+
+    attack_subparser.add_argument(
+        "--attack-return-all-attempts",
+        action="store_true",
+        help="Return history from supporting attack modules",
     )
 
     # Provider-specific arguments

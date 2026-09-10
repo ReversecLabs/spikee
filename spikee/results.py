@@ -19,8 +19,11 @@ from .utilities.files import (
 )
 from .utilities.results import (
     ResultProcessor,
+    attack_parent_id,
     extract_entries,
     generate_query,
+    group_entries_with_attacks,
+    is_attack_entry,
     preprocess_results,
 )
 
@@ -260,6 +263,8 @@ def extract_results(args):
 
             if extract_entries(entry, category, custom_query):
                 id_count += 1
+                entry["result_parent_id"] = attack_parent_id(entry)
+                entry["result_origin"] = entry.get("result_origin", result_file)
                 entry["original_id"] = entry["id"]
                 entry["id"] = id_count
                 entry["long_id"] = f"{entry['long_id']}_extracted_{source}"
@@ -285,10 +290,35 @@ def dataset_comparison(args):
     )
     results = {}
     for result_file in result_files:
-        file_results = {
-            r.get("long_id", "").removesuffix("-ERROR"): r
-            for r in read_jsonl_file(result_file)
-        }
+        rows = read_jsonl_file(result_file)
+        groups, _ = group_entries_with_attacks(rows)
+        file_results = {}
+        dataset_ids = {str(e["id"]): e["long_id"] for e in dataset}
+        for group in groups.values():
+            original = next((r for r in group if not is_attack_entry(r)), None)
+            parent_long_id = next(
+                (
+                    r["attack_parent_long_id"]
+                    for r in group
+                    if "attack_parent_long_id" in r
+                ),
+                None,
+            )
+            if parent_long_id is None and original:
+                parent_long_id = original.get("long_id", "").removesuffix("-ERROR")
+            if parent_long_id is None:
+                # Legacy attack-only files have no parent long_id. Verify the
+                # old attack suffix against the dataset before associating it.
+                candidate = dataset_ids.get(str(attack_parent_id(group[0])))
+                if candidate and any(
+                    r.get("long_id", "").removesuffix("-ERROR")
+                    == candidate + "-" + str(r.get("attack_name"))
+                    for r in group
+                ):
+                    parent_long_id = candidate
+            if parent_long_id is not None:
+                result = file_results.setdefault(parent_long_id, {"success": False})
+                result["success"] |= any(r.get("success", False) for r in group)
         results[result_file] = file_results
 
     print(

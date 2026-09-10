@@ -11,7 +11,7 @@ Both Dynamic Attacks and Plugins can generate variations of a payload, but they 
 *   **Dynamic Attacks (Real-Time Transformation):**
     *   **When they run:** During `spikee test`, but *only if* the initial, standard prompt fails.
     *   **What they do:** Generate and test variations one by one in real-time. The attack stops as soon as a variation succeeds.
-    *   **Result:** Only the first successful variation (or the final failed attempt) is logged. This is useful for efficiently finding *any* successful bypass, potentially with adaptive logic that learns from previous failed attempts.
+    *   **Result:** By default, only the first successful variation (or the final failed attempt) is logged. With `--attack-return-all-attempts`, supporting attacks retain every attempted variation. This is useful for efficiently finding *any* successful bypass, potentially with adaptive logic that learns from previous failed attempts.
 
 *   **Plugins (Pre-Test Transformation):**
     *   **When they run:** During `spikee generate`.
@@ -122,18 +122,72 @@ This is the core of every dynamic attack script. It contains the logic for gener
 
 ### Return Value
 
-The `attack` function must return a tuple containing four elements:
+By default, the `attack` function returns the existing tuple containing four elements:
 1.  `int`: The total number of iterations that were attempted.
 2.  `bool`: The final success flag (`True` if any iteration succeeded).
 3.  `Content`: The payload of the **last** attempted iteration.
 4.  `Content`: The response from the **last** attempted iteration.
+
+## Retaining All Attempts
+
+Use `spikee test --attack <name> --attack-return-all-attempts` to retain each attempted input and response. Omitting the flag preserves the single representative result. This changes recording, not the search budget, target calls, judge calls, or early stopping.
+
+Existing class-based and function-based attacks that do not accept the new argument still load and run. Spikee inspects the signature, forwards `return_all_attempts` only when explicitly declared, and supports both `attack_option` and `attack_options`. If tracing is requested from an unsupported module, the CLI warns and retains its representative result; it cannot reconstruct discarded history.
+
+### Explicitly collect and return attempts
+
+Each supporting attack declares `return_all_attempts=False`, owns a local history list, appends records inside its loop, and chooses what to return at every exit. Spikee does not intercept target or judge calls to construct the history.
+
+```python
+from spikee.utilities.hinting import AttackAttempt
+
+def attack(entry, target_module, call_judge, max_iterations,
+           attempts_bar=None, bar_lock=None, attack_options=None,
+           return_all_attempts=False):
+    history = []
+    last_input, last_response = "", ""
+    for count in range(1, max_iterations + 1):
+        last_input = f"{entry['content']} — variant {count}"
+        error = None
+        try:
+            last_response, _ = target_module.process_input(last_input)
+            success = call_judge(entry, last_response)
+        except Exception as exc:
+            last_response, success, error = str(exc), False, str(exc)
+        if return_all_attempts:
+            history.append(AttackAttempt(last_input, last_response, success, error=error))
+        if attempts_bar is not None:
+            with bar_lock:
+                attempts_bar.update(1)
+        if success:
+            if return_all_attempts:
+                return history
+            return count, True, last_input, last_response
+    if return_all_attempts:
+        return history or [AttackAttempt(last_input, last_response, False, attempts=0)]
+    return max_iterations, False, last_input, last_response
+```
+
+For multi-turn calls, use `spikee_session_id` and `backtrack` as usual. The attack explicitly stores the actual turn input and the conversation snapshot at that point. Use the existing `standardised_input_return` to serialize conversation graphs, or deep-copy mutable lists. Keep abandoned attempts when backtracking. A turn not passed to the judge has `success=None` (unjudged); do not add judge calls just to populate the history.
+
+`AttackAttempt` fields are `input`, `response`, `success` (`True`, `False`, or `None`), `attempts` (non-negative integer, default 1), and optional `error`, `response_time`, `guardrail`, and `guardrail_categories`. Input can be `Content` or the existing standardized dictionary with `input`, `conversation`, and `objective`. Copy mutable conversation state when appending records. Return a nonempty list; if no iteration was attempted, return a zero-attempt diagnostic record. Return collected records on handled failures rather than discarding them. Do not include both per-attempt records and an aggregate summary in the list.
+
+**Counts are additive:** a row representing one attack iteration has `attempts=1`, not the cumulative loop index. For 20 iterations, the default tuple reports 20; the expanded list has 20 records each reporting 1. An iteration that fails during prompt generation can still consume the attack's iteration budget; record that error explicitly and use the same counting convention in both return formats. These counts are not a transport-request audit. The runner assigns the separate `attack_attempt` ordinal and keeps it unique across repeated invocations under `--attempts`. Results, including multimodal content, use the normal result serialization.
+
+### Result identity and persistence
+
+Representative IDs remain `<dataset-id>-attack`. Expanded IDs are `<dataset-id>-attack-1`, `<dataset-id>-attack-2`, etc. Their `long_id` values append `-attempt-<n>` to the normal attack long ID. Expanded records include `attack_parent_id`, `attack_parent_long_id`, `attack_attempt`, `attack_invocation`, and `attack_result_format="attempt"`. An unsupported legacy module under the flag produces `attack_result_format="representative"` instead.
+
+All-attempts runs set `entry_complete=False` on all rows belonging to an entry except its last row, which is `True`. Resume drops incomplete groups and reruns those dataset entries; it does not resume inside an attack. A completed representative result is not retroactively expanded when resuming with the flag: use `--no-auto-resume` for a fresh traced run. Histories are returned in memory when the attack finishes, so process termination before return can still lose that invocation's history.
+
+See [Results Analysis](11_results.md) for grouping, extraction, and counting rules. Old and new result formats may coexist in a file.
 
 ## Implementation Guidelines
 
 1.  **Modify the Payload**: It is best practice to modify the `entry['payload']` and substitute it back into `entry.get('content', entry.get('text'))`. This focuses the attack on the malicious part while preserving the surrounding document structure.
 2.  **Respect `max_iterations`**: Your main loop must not exceed this value.
 3.  **Update Progress Bar**: Call `attempts_bar.update(1)` inside the `bar_lock` for every iteration to keep the UI in sync.
-4.  **Handle Early Exit**: If an attack succeeds, break the loop. Before returning, you should adjust the progress bar's total to reflect the skipped iterations. This keeps the ETA accurate.
+4.  **Handle Early Exit**: If an attack succeeds, break the loop. Spikee reconciles the shared progress total with the returned attempt count. Existing modules that adjust their local progress total remain supported; do not modify a shared global progress bar.
 5.  **Be Stateless**: An attack function should not carry state between different dataset entries. All necessary information should come from the `entry` dictionary.
 
 ## Multi-Turn Dynamic Attacks

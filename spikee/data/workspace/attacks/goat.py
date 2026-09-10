@@ -16,6 +16,7 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -335,6 +336,7 @@ class GOAT(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Run the GOAT attack: multi-turn adversarial conversation using toolbox techniques.
@@ -358,11 +360,14 @@ class GOAT(Attack):
         last_response = ""
         backtrack = False
 
+        history = []
+        current = None
         # Main attack loop
         try:
             for turn in range(max_iterations):
                 prompt_message_id = last_message_id
 
+                current = None
                 # Generate next attacker question and reasoning
                 question = self._generate_question(
                     llm,
@@ -390,6 +395,15 @@ class GOAT(Attack):
                     last_message_id, message, attempt=True
                 )
 
+                if return_all_attempts:
+                    current = AttackAttempt(
+                        self.standardised_input_return(
+                            question["next_question"], conversation, objective
+                        ),
+                        "",
+                        None,
+                    )
+                    history.append(current)
                 # Query the target model and add response
                 response = target_module.process_input(
                     question["next_question"],
@@ -404,6 +418,12 @@ class GOAT(Attack):
                 last_message_id = conversation.add_message(
                     last_message_id, {"role": "assistant", "content": last_response}
                 )
+
+                if current is not None:
+                    current.response = last_response
+                    current.input = self.standardised_input_return(
+                        question["next_question"], conversation, objective
+                    )
 
                 # Refusal
                 refusal, refusal_explanation = self.evaluate_refusal(
@@ -430,7 +450,15 @@ class GOAT(Attack):
                     self.__refusals = self.__refusals[-5:]
 
                 # Success
-                if call_judge(entry, last_response):
+                success = call_judge(entry, last_response)
+                if current is not None:
+                    current.success = success
+                    current.input = self.standardised_input_return(
+                        question["next_question"], conversation, objective
+                    )
+                if success:
+                    if return_all_attempts:
+                        return history
                     return (
                         conversation.get_attempt_total(),
                         True,
@@ -455,8 +483,20 @@ class GOAT(Attack):
             traceback.print_exc()
 
             print(f"[GOAT] Attack failed with error: {e}")
+            if return_all_attempts:
+                if current is not None:
+                    current.error = str(e)
+                else:
+                    history.append(
+                        AttackAttempt(objective, "", False, attempts=0, error=str(e))
+                    )
+                return history
             raise
 
+        if return_all_attempts:
+            return history or [
+                AttackAttempt(objective, last_response, False, attempts=0)
+            ]
         # Refusal or Max_Turns
         return (
             conversation.get_attempt_total(),

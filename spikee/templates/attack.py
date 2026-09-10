@@ -44,11 +44,16 @@ class Attack(Module, ABC):
         attempts_bar=None,
         bar_lock=None,
         attack_options=None,
+        return_all_attempts=False,
     ) -> AttackResponseHint:
         """
         Performs attack on the target module.
 
         Returns:
+            Legacy implementations may omit return_all_attempts. Supporting attacks
+            return list[AttackAttempt] when requested, with additive attempts counts.
+            Otherwise return the existing tuple:
+
             AttackResponseHint / Tuple[int, bool, Union[Content, Dict[str, Any]], Content]: A tuple containing:
                 - Total number of messages in the conversation (int)
                 - Success status of the attack (bool)

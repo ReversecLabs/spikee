@@ -367,3 +367,6 @@
 .page-link:hover {
     color: var(--spikee-accent-lt);
 }
+
+/* Retained intermediate turns that the attack did not judge. */
+.entry-header-unjudged { background: #e9ecef; color: #495057; }

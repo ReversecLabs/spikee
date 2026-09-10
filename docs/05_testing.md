@@ -131,3 +131,17 @@ spikee test
     --no-auto-resume
 
 ```
+## Retain every dynamic attack attempt
+
+By default, dynamic attacks keep one representative result per dataset entry: the successful attempt, or the final failed attempt. To retain intermediate attempts from supporting attacks:
+
+```bash
+spikee test --dataset datasets/my-dataset.jsonl --target my_target \
+    --attack best_of_n --attack-iterations 20 --attack-return-all-attempts
+```
+
+The flag also works with `--attack-only` and repeated invocations using `--attempts`. In the web UI, select **Retain all attack attempts**. Neither choice changes attack stopping conditions or adds target/judge calls. Full histories take more memory and result-file space, especially with conversation snapshots. Older custom attacks without history support remain callable; Spikee warns and saves their representative result.
+
+Twenty attack attempts contribute 20 to total attempts in either mode. Standard attempts are counted separately. Expanded result IDs are unique and remain associated with their source dataset entry. See [Dynamic Attacks](08_dynamic_attacks.md#retaining-all-attempts) and [Results Analysis](11_results.md).
+
+Resume keeps completed entries in their existing format. To collect history for entries previously completed in representative mode, start a fresh run with `--no-auto-resume`. An incomplete traced group is rerun as a whole; transport retries are not separate retained candidates.

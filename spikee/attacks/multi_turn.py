@@ -1,11 +1,13 @@
 import traceback
 import uuid
 from collections.abc import Callable
+from copy import deepcopy
 
 from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.utilities.hinting import (
+    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -36,6 +38,7 @@ class MultiTurnAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_options: str = "",
+        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
@@ -48,6 +51,8 @@ class MultiTurnAttack(Attack):
                 "For MultiTurn Attack, 'text' field must be a list of strings representing the conversation turns."
             )
 
+        history = []
+        current = None
         # Attempt multi-turn attack
         try:
             system_message = entry.get("system_message", None)
@@ -55,9 +60,17 @@ class MultiTurnAttack(Attack):
             conversation = []
 
             count = 0
-            for message in original_text:
+            response = ""
+            for message in original_text[:max_iterations]:
                 # Send message and handle history
                 conversation.append({"role": "user", "content": message})
+                if return_all_attempts:
+                    current = AttackAttempt(
+                        {"input": message, "conversation": deepcopy(conversation)},
+                        "",
+                        None,
+                    )
+                    history.append(current)
                 response = process_target_content(
                     target_module.process_input(
                         input_text=message,
@@ -68,10 +81,12 @@ class MultiTurnAttack(Attack):
 
                 conversation.append({"role": "assistant", "content": response})
 
+                if return_all_attempts:
+                    current.response = response
+                    current.input["conversation"] = deepcopy(conversation)
+
                 # Implement Max Iteration
                 count += 1
-                if count > max_iterations:
-                    break
 
                 # Update attempts bar
                 if attempts_bar:
@@ -87,7 +102,19 @@ class MultiTurnAttack(Attack):
                     attempts_bar.total = attempts_bar.total - remaining
                     attempts_bar.refresh()
 
-            return len(original_text), success, {"conversation": conversation}, response
+            if return_all_attempts:
+                if history:
+                    history[-1].success = success
+                return history or [AttackAttempt("", response, success, attempts=0)]
+            return count, success, {"conversation": conversation}, response
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
+            if return_all_attempts:
+                if current is not None:
+                    current.error = str(e)
+                else:
+                    history.append(
+                        AttackAttempt("", "", False, attempts=0, error=str(e))
+                    )
+                return history
             return 0, False, f"Error during multi-turn attack: {e!s}", ""
