@@ -110,7 +110,7 @@ def debug_module_plugin(args):
     plugin_args = {}
 
     if args.plugin_options:
-        plugin_args["plugin_options"] = args.plugin_options
+        plugin_args["plugin_option"] = args.plugin_options
 
     if args.exclude_patterns:
         plugin_args["exclude_patterns"] = args.exclude_patterns

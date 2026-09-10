@@ -242,6 +242,7 @@ class OpusTranslator(Plugin):
             target_specs = [t.strip() for t in targets_str.split("+")]
 
         translations = []
+        translation_errors = []
 
         for target_spec in target_specs:
             try:
@@ -263,12 +264,19 @@ class OpusTranslator(Plugin):
                     )
 
                 translations.append(result)
-            except RuntimeError:
+            except RuntimeError as error:
+                translation_errors.append(f"{target_spec}: {error}")
                 continue
 
         if len(translations) == 1:
             return translations[0]
-        return translations if translations else content
+        if translations:
+            return translations
+
+        raise RuntimeError(
+            "[OpusTranslator] All requested translations failed: "
+            + "; ".join(translation_errors)
+        )
 
 
 if __name__ == "__main__":
