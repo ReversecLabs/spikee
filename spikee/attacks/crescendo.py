@@ -423,7 +423,7 @@ class Crescendo(Attack):
         llm = get_llm(model, max_tokens=None)
 
         # Variables
-        conversation = StandardisedConversation({"objective": objective})
+        conversation = StandardisedConversation({})
         last_message_id = conversation.get_root_id()  # last message id
         last_response = ""  # last LLM response
 

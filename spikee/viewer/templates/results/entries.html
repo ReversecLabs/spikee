@@ -144,7 +144,7 @@
                value="{{ request.full_path if request.query_string else request.path }}">
 
         {# ── Bulk action toolbar ── #}
-        <div class="d-flex align-items-center gap-2 mb-2 px-1" id="bulkToolbar">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 px-1" id="bulkToolbar">
             <span class="small text-muted me-1">Select:</span>
             <button type="button" class="btn btn-xs btn-outline-secondary"
                     onclick="setAllChecked(true)">All</button>
@@ -163,6 +163,28 @@
                     onclick="return confirmBulk('toggle')">
                 Toggle success
             </button>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <span class="small text-muted">Conversations:</span>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.conversation-card').forEach(item => item.open = true)">
+                    Expand all
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.conversation-card').forEach(item => item.open = false)">
+                    Collapse all
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted">Attempt history:</span>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.attempt-history, details.attempt-history-item').forEach(item => item.open = true)">
+                    Expand all
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.attempt-history, details.attempt-history-item').forEach(item => item.open = false)">
+                    Collapse all
+                </button>
+            </div>
         </div>
 
         {# ── Entry cards ── #}

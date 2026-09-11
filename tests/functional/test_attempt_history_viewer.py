@@ -1,6 +1,7 @@
 """Candidate evidence stays nested under a single result in the viewer."""
 
 from copy import deepcopy
+from html.parser import HTMLParser
 
 import pytest
 from werkzeug.datastructures import MultiDict
@@ -11,6 +12,25 @@ from spikee.viewer.app import create_app
 from spikee.viewer.blueprints import _cache
 from spikee.viewer.blueprints import results as viewer_results
 from spikee.viewer.blueprints._forms import TestForm as RunForm
+
+
+class ControlMarkup(HTMLParser):
+    """Collect real elements so escaped payload text cannot satisfy assertions."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.elements = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.elements.append((tag, dict(attrs)))
+
+    def controls(self):
+        return [
+            attrs
+            for tag, attrs in self.elements
+            if tag == "details" and "conversation-card" in attrs.get("class", "").split()
+        ]
 
 
 @pytest.fixture
@@ -61,9 +81,16 @@ def test_candidate_history_detail_is_escaped_and_summary_stays_compact(history_v
     client, _path, _row = history_viewer
     response = client.get("/results/entries?result_file=history")
     assert response.status_code == 200
-    assert b"Attempt history: 4 recorded candidates" in response.data
-    assert b"#attempt-history" in response.data
-    assert b"candidate prompt" not in response.data
+    assert b"&middot; 4 candidates" in response.data
+    assert b"View history" not in response.data
+    assert b'id="attempt-history"' not in response.data
+    assert b"candidate prompt &lt;script&gt;" in response.data
+    details = [
+        attrs for tag, attrs in ControlMarkup(response.get_data(as_text=True)).elements
+        if tag == "details"
+    ]
+    assert len(details) == 5
+    assert all("open" not in attrs for attrs in details)
 
     response = client.get("/results/entry/history-42-attack?result_file=history")
     assert response.status_code == 200
@@ -136,7 +163,7 @@ def test_existing_result_formats_still_render(history_viewer, format):
     assert response.status_code == 200
     assert b'id="attempt-history"' not in response.data
     if format == "conversation":
-        assert b"Attack Conversation Trace" in response.data
+        assert b"Conversation" in response.data
         assert b"preserved conversation branch" in response.data
     elif format == "expanded":
         assert b"Attack Attempt" in response.data
@@ -161,3 +188,107 @@ def test_test_form_ignores_saved_retention_flag(history_viewer):
     response = client.get("/test/run")
     assert response.status_code == 200
     assert b"attack_return_all_attempts" not in response.data
+
+
+@pytest.mark.parametrize(
+    "format", ["conversation", "mapping", "input_list", "response_list"]
+)
+@pytest.mark.parametrize("count", [0, 8, 9])
+def test_conversation_defaults_and_counts(history_viewer, format, count):
+    client, path, row = history_viewer
+    payload = "message <script>alert('trace')</script>" + "x" * 2000 + "end-of-message"
+    if format == "conversation":
+        conversation = StandardisedConversation("root objective")
+        for index in range(count):
+            conversation.add_message(index, {"response": payload})
+        row["conversation"] = str(conversation)
+        heading = "Conversation"
+    elif format == "mapping":
+        row["input"] = {"conversation": [{"role": "user", "content": payload}] * count}
+        heading = "Input conversation"
+    elif format == "input_list":
+        row["input"] = [payload] * count
+        heading = "Input conversation"
+    else:
+        row["response"] = [{"assistant": payload}] * count
+        heading = "Response conversation"
+    write_jsonl_file(path, [row])
+
+    for route, expanded in [
+        ("/results/entries", count <= 8),
+        ("/results/entry/history-42-attack", True),
+    ]:
+        response = client.get(f"{route}?result_file=history")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert heading in html
+        assert f"{count} messages" in html
+        markup = ControlMarkup(html)
+        [panel] = markup.controls()
+        assert ("open" in panel) == expanded
+        assert "data-bs-toggle" not in panel
+        assert "Show trace" not in html
+        assert "Hide conversation" not in html
+        if count:
+            assert "message &lt;script&gt;" in html
+            assert html.count("end-of-message") == count
+        assert "<script>alert('trace')" not in html
+
+
+def test_malformed_trace_remains_escaped(history_viewer):
+    client, path, row = history_viewer
+    row["conversation"] = "invalid <script>alert('trace')</script>"
+    write_jsonl_file(path, [row])
+    for route in ("/results/entries", "/results/entry/history-42-attack"):
+        response = client.get(f"{route}?result_file=history")
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "Conversation" in html
+        assert "0 messages" in html
+        assert "invalid &lt;script&gt;" in html
+        assert "open" in ControlMarkup(html).controls()[0]
+
+
+def test_conversation_cards_are_independent_across_files(history_viewer, monkeypatch):
+    client, path, row = history_viewer
+    row.update(id="same.id:[]", input=["input"] * 9, response=["response"] * 9)
+    other = path.with_name("results_other.jsonl")
+    write_jsonl_file(path, [row])
+    write_jsonl_file(other, [row])
+    monkeypatch.setattr(
+        viewer_results, "loaded_files", {"history": path, "other": other}
+    )
+    response = client.get("/results/entries")
+    assert response.status_code == 200
+    controls = ControlMarkup(response.get_data(as_text=True)).controls()
+    assert len(controls) == 4
+    # Native details have independent state without shared IDs or radio-group names.
+    assert all("name" not in panel and "open" not in panel for panel in controls)
+    assert all("data-bs-target" not in panel for panel in controls)
+
+
+@pytest.mark.parametrize("count", [0, 1, 4])
+def test_history_bulk_controls_and_initial_state(history_viewer, count):
+    client, path, row = history_viewer
+    row["attempt_history"] = row["attempt_history"][:count]
+    write_jsonl_file(path, [row])
+    response = client.get("/results/entry/history-42-attack?result_file=history")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert ("Expand all" in html) == (count > 1)
+    assert ("Collapse all" in html) == (count > 1)
+    details = [attrs for tag, attrs in ControlMarkup(html).elements if tag == "details"]
+    assert len(details) == (count + 1 if count else 0)
+    assert all("open" not in attrs for attrs in details)
+
+
+def test_structured_response_is_not_a_conversation(history_viewer):
+    client, path, row = history_viewer
+    row["response"] = {"text": "<script>structured</script>"}
+    write_jsonl_file(path, [row])
+    response = client.get("/results/entry/history-42-attack?result_file=history")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "structured JSON object" in html
+    assert not ControlMarkup(html).controls()
+    assert "<script>structured</script>" not in html

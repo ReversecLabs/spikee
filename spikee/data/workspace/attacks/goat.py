@@ -353,7 +353,7 @@ class GOAT(Attack):
         spikee_session_id = str(uuid.uuid4())
 
         # Conversation Configuration
-        conversation = StandardisedConversation({"objective": objective})
+        conversation = StandardisedConversation({})
         last_message_id = conversation.get_root_id()
         last_response = ""
         backtrack = False
