@@ -679,7 +679,6 @@ The following keywords have lost the game, do not reuse these words: [{", ".join
         # Initialise conversation
         conversation = StandardisedConversation(
             {
-                "objective": objective,
                 "targeted_objective": targeted_objective,
                 "keywords": keywords,
                 "steering_keywords": steering_keywords,

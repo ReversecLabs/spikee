@@ -14,27 +14,33 @@
         <div class="code-block">{{ process_text(entry.error, truncated=truncated)|e }}</div>
     </div>
 
-{% elif entry.response is sequence and entry.response is not string %}
+{% elif entry.response is sequence and entry.response is not string and entry.response is not mapping %}
     {# List of messages — render as conversation thread #}
-    <div class="border-start border-secondary ps-3 mt-2">
-        <div class="meta-label mb-1">Response</div>
-        <div class="conversation-thread">
-            {% for message in entry.response %}
-                {% if message is mapping %}
-                    <div class="conv-message">
-                        {% for key, value in message.items() %}
-                        <div class="conv-role" style="color: {{ text_to_colour(key) }};">{{ key | upper }}</div>
-                        <div class="code-block conv-content">{{ process_text(value, truncated=truncated)|e }}</div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="conv-message">
-                        <div class="code-block conv-content">{{ process_text(message, truncated=truncated)|e }}</div>
-                    </div>
-                {% endif %}
-            {% endfor %}
+    {% set _response_size = entry.response | length %}
+    {% set _response_expanded = not truncated or _response_size <= 8 %}
+    <details class="conversation-card border-start border-secondary ps-3 mt-2"{% if _response_expanded %} open{% endif %}>
+        <summary class="small fw-semibold">
+            Response conversation <span class="text-muted fw-normal">&middot; {{ _response_size }} messages</span>
+        </summary>
+        <div class="mt-2">
+            <div class="conversation-thread">
+                {% for message in entry.response %}
+                    {% if message is mapping %}
+                        <div class="conv-message">
+                            {% for key, value in message.items() %}
+                            <div class="conv-role" style="color: {{ text_to_colour(key) }};">{{ key | upper }}</div>
+                            <div class="code-block conv-content">{{ process_text(value, truncated=false)|e }}</div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="conv-message">
+                            <div class="code-block conv-content">{{ process_text(message, truncated=false)|e }}</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
+    </details>
 
 {% elif entry.response is mapping %}
     {# Dict response — pretty-printed JSON #}

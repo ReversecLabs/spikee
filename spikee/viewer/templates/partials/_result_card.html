@@ -63,11 +63,6 @@
         {% set truncated = true %}
         {% include "partials/_input.html" %}
         {% include "partials/_response.html" %}
-        {% if entry.attempt_history %}
-        <a class="small d-inline-block mt-2"
-           href="/results/entry/{{ id }}{% if selected_file %}?result_file={{ selected_file | urlencode }}{% endif %}#attempt-history">
-            Attempt history: {{ entry.attempt_history | length }} recorded candidate{{ 's' if entry.attempt_history | length != 1 else '' }}
-        </a>
-        {% endif %}
+        {% include "partials/_attempt_history.html" %}
     </div>
 </div>

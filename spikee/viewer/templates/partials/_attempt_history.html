@@ -1,12 +1,24 @@
 {# Optional candidate history belongs to this result, not separate result entries. #}
 {% if entry.attempt_history %}
-<details id="attempt-history" class="border rounded p-3 mt-3">
-    <summary class="fw-semibold">
-        Attempt history <span class="text-muted fw-normal">({{ entry.attempt_history | length }} recorded)</span>
+<details{% if not truncated | default(false) %} id="attempt-history"{% endif %} class="attempt-history border-start border-secondary ps-3 mt-2">
+    <summary class="small fw-semibold">
+        Attempt history <span class="text-muted fw-normal">&middot; {{ entry.attempt_history | length }} candidate{{ 's' if entry.attempt_history | length != 1 else '' }}</span>
     </summary>
     <div class="small text-muted mt-2">Inputs and responses recorded during this attack.</div>
+    {% if entry.attempt_history | length > 1 %}
+    <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="this.closest('.attempt-history').querySelectorAll('details.attempt-history-item').forEach(item => item.open = true)">
+            Expand all
+        </button>
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="this.closest('.attempt-history').querySelectorAll('details.attempt-history-item').forEach(item => item.open = false)">
+            Collapse all
+        </button>
+    </div>
+    {% endif %}
     {% for attempt in entry.attempt_history %}
-    <details class="border-top pt-2 mt-2">
+    <details class="attempt-history-item border-top pt-2 mt-2">
         <summary class="small fw-semibold">
             Candidate {{ loop.index }}
             {% if attempt.error %}

@@ -290,6 +290,17 @@ def _process_standardised_conversation(
     return f'<ol class="ps-3 mt-2">{render_node(0)}</ol>'
 
 
+def _conversation_message_count(conversation_data: str) -> int:
+    """Return the number of non-root messages in a standardised conversation."""
+    try:
+        conversation = StandardisedConversation()
+        conversation.add_conversation(conversation_data)
+        return conversation.get_message_total()
+    except (json.JSONDecodeError, Exception):  # noqa: BLE001
+        return 0
+
+
+
 # ── Stats extraction from ResultProcessor ────────────────────────────────────
 
 
@@ -383,6 +394,7 @@ def _inject_helpers():
     return {
         "process_text": _process_text,
         "process_standardised_conversation": _process_standardised_conversation,
+        "conversation_message_count": _conversation_message_count,
         "text_to_colour": _text_to_colour,
         "source_label": _source_label,
     }
