@@ -149,18 +149,17 @@ spikee results rejudge --results-file results.jsonl
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
 
 ### `extract`
-Searches for result entries by category or search term and extracts them to another JSONL file - [Link](./11_results.md#the-extract-command)
+Searches for result entries with an SFL query and extracts them to another JSONL file - [Link](./11_results.md#the-extract-command)
 
 ```bash
-spikee results extract --results-file results.jsonl --category "success"
+spikee results extract --result-file results.jsonl --query "success = true"
 ```
 
 | Argument            | Description                                            |
 | ------------------- | ------------------------------------------------------ |
-| `--results-file`    | Path to a results JSONL file |
-| `--results-folder`  | Path to a folder containing multiple results JSONL files |
-| `--category`        | Extracts prompts by category: success (default), failure, error, guardrail, no-guardrail, custom |
-| `--custom-search`   | Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match |
+| `--result-file`     | Path to a results JSONL file |
+| `--result-folder`   | Path to a folder containing multiple results JSONL files |
+| `--query`           | Required Spikee Filter Language (SFL) query |
 | `--tag`             | Include a tag at the end of the results filename          |
 
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)

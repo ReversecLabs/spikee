@@ -77,6 +77,17 @@ def history_viewer(monkeypatch, tmp_path):
     return app.test_client(), path, row
 
 
+def test_entries_shows_sfl_syntax_errors_inline(history_viewer):
+    client, _path, _row = history_viewer
+    response = client.get(
+        "/results/entries?result_file=history&custom_search=success%20%3D"
+    )
+
+    assert response.status_code == 200
+    assert b"SFL syntax error at character 10" in response.data
+    assert b'value="success ="' in response.data
+
+
 def test_candidate_history_detail_is_escaped_and_summary_stays_compact(history_viewer):
     client, _path, _row = history_viewer
     response = client.get("/results/entries?result_file=history")

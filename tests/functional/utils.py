@@ -152,11 +152,10 @@ def spikee_analyze_cli(
 def spikee_extract_cli(
     run_spikee,
     workspace_dir,
-    result_files: List[Path] = [],
-    category: str = "success",
-    custom_search: List[str] = [],
+    result_files: List[Path],
+    query: str,
 ):
-    """Helper function to run `spikee results extract`.
+    """Helper function to run `spikee results extract` with an SFL query.
 
     Returns (list[Path] of new extract files, CompletedProcess result).
     """
@@ -176,10 +175,7 @@ def spikee_extract_cli(
         elif result_file.is_dir():
             additional_args.extend(["--result-folder", str(result_file)])
 
-    command = ["results", "extract", "--category", category, *additional_args]
-
-    for search in custom_search:
-        command.extend(["--custom-search", search])
+    command = ["results", "extract", *additional_args, "--query", query]
 
     result = run_spikee(command, cwd=workspace_dir)
 

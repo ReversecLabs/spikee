@@ -516,8 +516,7 @@ def test_backtrack_preserves_abandoned_attempt(monkeypatch, entry, trace, tmp_pa
         SimpleNamespace(
             result_file=[str(path)],
             result_folder=None,
-            category="success",
-            custom_search=None,
+            query="success = true",
             tag="conversation",
         )
     )
@@ -954,7 +953,7 @@ def test_nested_history_extract_and_rejudge(run_spikee, workspace_dir, entry):
     path.parent.mkdir(exist_ok=True)
     write_jsonl_file(path, [row])
     run_spikee(
-        ["results", "extract", "--result-file", str(path), "--category", "success"],
+        ["results", "extract", "--result-file", str(path), "--query", "success = true"],
         cwd=workspace_dir,
     )
     extracted = read_jsonl_file(

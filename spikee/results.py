@@ -218,29 +218,11 @@ def extract_results(args):
         args.result_file, args.result_folder, file_type="results"
     )
 
-    # Category validation
-    category = args.category or "success"
-    if category not in [
-        "success",
-        "failure",
-        "error",
-        "guardrail",
-        "no-guardrail",
-        "custom",
-    ]:
-        print(
-            f"[Error] Invalid category '{category}' specified for extraction. Must be one of: success, failure, error, guardrail, no-guardrail, custom."
-        )
+    try:
+        query = generate_query(args.query)
+    except ValueError as exc:
+        print(f"[Error] {exc}")
         sys.exit(1)
-
-    # Custom Category
-    custom_query = None
-    if args.category == "custom":
-        if args.custom_search is None:
-            print("[Error] Custom search requires the --custom_value to be specified.")
-            sys.exit(1)
-        else:
-            custom_query = generate_query(category, args.custom_search.split(","))
 
     # Print overview
     print("[Overview] Results will be extracted from the following file(s): ")
@@ -261,7 +243,7 @@ def extract_results(args):
             total_count += 1
             entry["source_file"] = result_file
 
-            if extract_entries(entry, category, custom_query):
+            if extract_entries(entry, query):
                 id_count += 1
                 entry["result_parent_id"] = attack_parent_id(entry)
                 entry["result_origin"] = entry.get("result_origin", result_file)
@@ -272,7 +254,7 @@ def extract_results(args):
 
     # Output File
     tag = validate_and_get_tag(args.tag)
-    output_file = prepare_output_file("results", "extract", category, None, tag)
+    output_file = prepare_output_file("results", "extract", "sfl", None, tag)
     write_jsonl_file(output_file, matching_entries)
 
     print(

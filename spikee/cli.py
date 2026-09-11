@@ -442,7 +442,8 @@ def main():
 
     # --- extract
     parser_extract = subparsers_results.add_parser(
-        "extract", help="Extract categories of prompts from results JSONL files."
+        "extract",
+        help="Extract prompts matching an SFL query from results JSONL files.",
     )
     parser_extract.add_argument(
         "--result-file",
@@ -457,16 +458,10 @@ def main():
         help="Path to a results folder containing multiple JSONL files",
     )
     parser_extract.add_argument(
-        "--category",
-        choices=["success", "failure", "error", "guardrail", "no-guardrail", "custom"],
-        default="success",
-        help="Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom",
-    )
-    parser_extract.add_argument(
-        "--custom-search",
+        "--query",
         type=str,
-        default=None,
-        help="Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match",
+        required=True,
+        help="SFL query, e.g. 'success = true AND response LIKE \"%%canary%%\"'.",
     )
     parser_extract.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
