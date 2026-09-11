@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   prepare-release:
@@ -233,11 +232,8 @@ jobs:
           } > "$new_file"
           mv "$new_file" CHANGELOG.md
 
-      - name: Create release pull request
-        id: create-release-branch
+      - name: Push release branch for manual pull request
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.bump.outputs.new_version }}"
           RELEASE_BRANCH="release/v${VERSION}"
@@ -253,15 +249,10 @@ jobs:
           git add pyproject.toml spikee/__init__.py README.md CHANGELOG.md
           git commit -m "Release ${VERSION}"
           git push origin "${RELEASE_BRANCH}"
-          echo "release_branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
-
-          gh pr create \
-            --base main \
-            --head "${RELEASE_BRANCH}" \
-            --title "Release ${VERSION}" \
-            --body "Prepares release ${VERSION} from develop. Merging this pull request will trigger package publication and the next development-version bump."
-
-      - name: Delete release branch after failure
-        if: failure() && steps.create-release-branch.outputs.release_branch != ''
-        shell: bash
-        run: git push origin --delete "${{ steps.create-release-branch.outputs.release_branch }}"
+          printf '%s\n' \
+            "Release pull request ready:" \
+            "  URL: https://github.com/${GITHUB_REPOSITORY}/compare/main...${RELEASE_BRANCH}?expand=1" \
+            "  Base: main" \
+            "  Head: ${RELEASE_BRANCH}" \
+            "  Title: Release ${VERSION}" \
+            "  Body: Prepares release ${VERSION} from develop. Merging this pull request will trigger package publication and the next development-version bump."
