@@ -1,10 +1,12 @@
 import asyncio
 import inspect
+import json
 import multiprocessing
 import os
 import random
 import re
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -298,7 +300,7 @@ def _load_results_file(resume_file, attack_module, attack_iters):
     completed_ids, results, already_done, entries_done = set(), [], 0, 0
 
     # Load Resume File, if selected.
-    if resume_file and os.path.exists(resume_file):
+    if resume_file:
         results = read_jsonl_file(resume_file)
         groups, _ = group_entries_with_attacks(results)
         complete_groups = [
@@ -314,6 +316,42 @@ def _load_results_file(resume_file, attack_module, attack_iters):
 
         print(f"[Resume] Found {entries_done} completed entries in {resume_file}.")
     return completed_ids, results, already_done, entries_done
+
+
+def _prepare_resume_file(resume_file, completed_ids):
+    """Keep completed rows in place and ensure the next append starts a new line."""
+    path = Path(resume_file).resolve()
+    lines = path.read_bytes().splitlines(keepends=True)
+    completed_ids = {str(entry_id) for entry_id in completed_ids}
+    retained = [
+        line
+        for line in lines
+        if not line.strip() or str(attack_parent_id(json.loads(line))) in completed_ids
+    ]
+    if len(retained) != len(lines):
+        # Older expanded histories can contain an unfinished entry. Resume has
+        # always retried these entries; remove their old rows before appending
+        # replacements, without risking completed results on an interrupted write.
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=path.parent, delete=False
+            ) as output:
+                temporary = Path(output.name)
+                output.writelines(retained)
+                if retained and not retained[-1].endswith(b"\n"):
+                    output.write(b"\n")
+                output.flush()
+                os.fsync(output.fileno())
+            temporary.chmod(path.stat().st_mode)
+            os.replace(temporary, path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    else:
+        with path.open("ab") as output:
+            if lines and not lines[-1].endswith(b"\n"):
+                output.write(b"\n")
 
 
 # endregion
@@ -1105,16 +1143,19 @@ def test_dataset(args):
             )
             continue
 
-        # Create new results file and for resume, write existing results
-        target_name_full = _build_target_name(args.target, args.target_options)
-        output_file = prepare_output_file(
-            "results",
-            "results",
-            target_name_full,
-            dataset,
-            tag,
-        )
-        write_jsonl_file(output_file, results)
+        if current_resume_file:
+            output_file = current_resume_file
+            _prepare_resume_file(output_file, completed_ids)
+        else:
+            target_name_full = _build_target_name(args.target, args.target_options)
+            output_file = prepare_output_file(
+                "results",
+                "results",
+                target_name_full,
+                dataset,
+                tag,
+            )
+            write_jsonl_file(output_file, [])
 
         # 3. Run tests
         total_attempts = _calculate_total_attempts(

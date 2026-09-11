@@ -21,7 +21,12 @@ from spikee.utilities.hinting import (
     ModuleOptionsHint,
 )
 from spikee.utilities.llm import get_llm
-from spikee.utilities.modules import extract_json_or_fail, parse_options
+from spikee.utilities.llm_response import (
+    LLMResponseError,
+    parse_json_object,
+    query_structured_response,
+)
+from spikee.utilities.modules import parse_options
 
 # Enhanced system prompt for more effective attacks
 GOAT_SYSTEM_PROMPT = """
@@ -273,30 +278,22 @@ class GOAT(Attack):
             {"role": "user", "content": json.dumps(payload)},
         ]
 
-        # Generate the next question
-        attempts = 0
-        last_error = ""
-        last_response = ""
-        while attempts < LLM_AGENT_RETRY:
-            attempts += 1
-            response = llm.invoke(messages).content
-            if isinstance(response, str):
-                response = response.strip()
-
-            try:
-                result = extract_json_or_fail(response)
-            except Exception as e:  # noqa: BLE001
-                last_error = str(e)
-                last_response = response
-                continue
-
-            if all(
-                key in result
-                for key in ["observation", "thought", "strategy", "next_question"]
-            ) and (
-                APPLICATION_GUARDRAILS is None or "guardrail_bypass_strategy" in result
-            ):
-                return result
+        keys = ["observation", "thought", "strategy", "next_question"]
+        if APPLICATION_GUARDRAILS is not None:
+            keys.append("guardrail_bypass_strategy")
+        try:
+            return query_structured_response(
+                llm,
+                messages,
+                lambda text: parse_json_object(
+                    text, required_keys=keys, string_keys=("next_question",)
+                ),
+                context="goat.generate",
+                max_attempts=LLM_AGENT_RETRY,
+            )
+        except LLMResponseError as exc:
+            last_error = str(exc)
+            last_response = exc.response
 
         refuse, explanation = self.evaluate_refusal(llm, str(messages), last_response)
         if refuse:
@@ -316,11 +313,14 @@ class GOAT(Attack):
             },
         ]
 
-        res = llm.invoke(messages).content
-        if isinstance(res, str):
-            res = res.strip()
-
-        result = extract_json_or_fail(res)
+        result = query_structured_response(
+            llm,
+            messages,
+            lambda text: parse_json_object(
+                text, required_keys=("answered", "explanation")
+            ),
+            context="goat.refusal",
+        )
         answered = result.get("answered", False)
         explanation = result.get("explanation", "")
 

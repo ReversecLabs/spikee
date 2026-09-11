@@ -21,6 +21,11 @@ from spikee.utilities.hinting import (
 )
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.llm_response import (
+    LLMResponseError,
+    parse_json_object,
+    query_structured_response,
+)
 from spikee.utilities.modules import extract_json_or_fail, parse_options
 
 ECHO_CHAMBER_SYSTEM_PROMPT = """
@@ -306,24 +311,19 @@ class EchoChamber(Attack):
     def _query_attacker_llm(
         self, llm, messages: list[object], keys: list[str], refusal_query: bool = False
     ) -> dict:
-        attempts = 0
-        last_error = ""
-        last_response = ""
-        while attempts < self.stage_attempts:
-            attempts += 1
-            response = llm.invoke(messages).content
-            if isinstance(response, str):
-                response = response.strip()
-
-            try:
-                result = extract_json_or_fail(response)
-            except Exception as e:  # noqa: BLE001
-                last_error = str(e)
-                last_response = response
-                continue
-
-            if all(key in result for key in keys):
-                return result
+        try:
+            return query_structured_response(
+                llm,
+                messages,
+                lambda text: parse_json_object(text, required_keys=keys),
+                context="echo_chamber.refusal"
+                if refusal_query
+                else "echo_chamber.generate",
+                max_attempts=self.stage_attempts,
+            )
+        except LLMResponseError as exc:
+            last_error = str(exc)
+            last_response = exc.response
 
         # Ensure attack does not infinitely loops on refusal evaluation
         if refusal_query:

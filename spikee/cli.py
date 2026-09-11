@@ -314,7 +314,7 @@ def main():
         "--resume-file",
         type=str,
         default=None,
-        help="Path to a results JSONL file to resume from. Only works with a single dataset.",
+        help="Resume by appending to this results JSONL file. Only works with a single dataset.",
     )
     parser_test.add_argument(
         "--throttle",

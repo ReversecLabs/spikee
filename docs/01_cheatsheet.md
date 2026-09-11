@@ -110,7 +110,7 @@ spikee test --dataset my_dataset.jsonl --target my_target
 
 | **Resume Arguments** | Description                                                                   | Docs     |
 | -------------------- | ----------------------------------------------------------------------------- | -------- |
-| `--resume-file`      | Path to a results JSONL file to resume from. Only works with a single dataset | [Link](./05_testing.md#resume) |
+| `--resume-file`      | Append to an existing results JSONL file. Only works with a single dataset | [Link](./05_testing.md#resume) |
 | `--auto-resume`      | Silently pick the latest matching results file if present                     | [Link](./05_testing.md#resume) |
 | `--no-auto-resume`   | Create new results file, do not attempt to resume                             | [Link](./05_testing.md#resume) |
 
@@ -134,7 +134,7 @@ spikee results analyze --results-file results.jsonl
 (NB, Result file/folder args can be used multiple times to specify multiple datasets, but at least one is **required**)
 
 ### `rejudge`
-Rejudges a results file - [Link](./09_judges.md#2-perform-rejudging)
+Rejudges a results file - [Link](./09_judges.md#re-judging)
 
 ```bash
 spikee results rejudge --results-file results.jsonl
@@ -186,4 +186,3 @@ spikee webui --host 0.0.0.0 -p 8081
 # Persist job history across restarts
 spikee webui --database jobs.db
 ```
-

@@ -15,7 +15,6 @@ Set SPIKEE_ATTACK_HISTORY=false to omit history without changing attack executio
 
 # TODO: Update to modern OOP LLM
 
-import json
 import random
 from collections.abc import Callable
 
@@ -31,6 +30,11 @@ from spikee.utilities.hinting import (
 )
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage, SystemMessage
+from spikee.utilities.llm_response import (
+    LLMResponseError,
+    parse_jsonl_variations,
+    query_structured_response,
+)
 
 
 class PromptDecompositionAttack(Attack):
@@ -123,6 +127,19 @@ class PromptDecompositionAttack(Attack):
 
         return variations
 
+    @staticmethod
+    def _query_variations(llm, messages):
+        try:
+            return query_structured_response(
+                llm,
+                messages,
+                parse_jsonl_variations,
+                context="prompt_decomposition.generate",
+                format_hint="JSONL: one object with a nonempty 'variation' string per line",
+            )
+        except LLMResponseError as exc:
+            return exc.partial or []
+
     def _generate_variants_llm(
         self, text: str, mode: str, max_iterations: int
     ) -> list[str]:
@@ -167,18 +184,7 @@ class PromptDecompositionAttack(Attack):
         ]
 
         try:
-            response = llm.invoke(messages).content.strip()
-
-            lines = response.splitlines()
-            variations = []
-
-            for line in lines:
-                try:
-                    data = json.loads(line)
-                    if "variation" in data:
-                        variations.append(data["variation"])
-                except json.JSONDecodeError:
-                    continue  # Skip malformed lines
+            variations = self._query_variations(llm, messages)
 
             # If we didn't get enough variations, try to generate more with different styles
             if len(variations) < max_iterations:
@@ -199,17 +205,7 @@ class PromptDecompositionAttack(Attack):
                         SystemMessage(system_message),
                         HumanMessage(additional_prompt),
                     ]
-                    additional_response = llm.invoke(
-                        additional_messages
-                    ).content.strip()
-
-                    for line in additional_response.splitlines():
-                        try:
-                            data = json.loads(line)
-                            if "variation" in data:
-                                variations.append(data["variation"])
-                        except json.JSONDecodeError:
-                            continue
+                    variations.extend(self._query_variations(llm, additional_messages))
                 except Exception:  # noqa: BLE001
                     pass  # Ignore errors in the additional generation
 

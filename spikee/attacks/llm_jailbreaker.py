@@ -26,7 +26,8 @@ from spikee.utilities.hinting import (
 )
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
-from spikee.utilities.modules import extract_json_or_fail, parse_options
+from spikee.utilities.llm_response import parse_json_object, query_structured_response
+from spikee.utilities.modules import parse_options
 
 # LLM Jailbreaker prompt template
 SPIKEE_LLM_JAILBREAKER_PROMPT = """
@@ -140,14 +141,13 @@ class LLMJailbreaker(Attack):
             )
         )
 
-        # Call the model via .invoke and get content
-        response = llm.invoke([prompt]).content.strip()
-
-        obj = extract_json_or_fail(response)
-        attack_prompt = obj.get("attack_prompt", "")
-        if not attack_prompt:
-            raise RuntimeError("LLM failed to produce an attack prompt")
-        return attack_prompt.strip()
+        obj = query_structured_response(
+            llm,
+            [prompt],
+            lambda text: parse_json_object(text, string_keys=("attack_prompt",)),
+            context="llm_jailbreaker.generate",
+        )
+        return obj["attack_prompt"].strip()
 
     def attack(
         self,
@@ -184,7 +184,7 @@ class LLMJailbreaker(Attack):
             )
 
         # Initialize the LLM
-        llm = get_llm(model_name, max_tokens=400)
+        llm = get_llm(model_name, max_tokens=None)
 
         # Track previous attack attempts to avoid repetition
         previous_attempts = []

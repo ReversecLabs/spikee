@@ -116,7 +116,7 @@ def spikee_test_cli(
             results.append(Path(workspace_dir / file_path))
 
     assert len(results) > 0, (
-        f"Expected at least one new results file to be generated, but found {len(results)}. New results: {results}"
+        f"Expected at least one results file to be reported, but found {len(results)}. Results: {results}"
     )
     return list(results), result
 

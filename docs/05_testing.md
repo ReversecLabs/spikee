@@ -109,8 +109,10 @@ spikee test
 ```
 
 ### Resume
+Resuming appends new results to the selected file, including with `--auto-resume` or the interactive picker. Completed entries are skipped; repeated resumes do not create additional results files. An unfinished entry is retried from the start, with any older incomplete history rows replaced. Use `--no-auto-resume` to start a fresh file.
+
 By default, Spikee will analyse the workspace results folder to identify an previously executed test files with a matching name pattern. It will then display an interactive prompt to start a new test or to continue a previous test. The following flags can be used to control this behavior:
-- `--resume-file` - specify a path to a results JSONL file to resume from. Only works with a single dataset.
+- `--resume-file` - append to an existing results JSONL file. Only works with a single dataset. A missing or malformed file raises an error.
 - `--auto-resume` - silently pick the latest matching results file if present
 - `--no-auto-resume` - create new results file, do not attempt to resume
 
