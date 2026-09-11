@@ -3,7 +3,7 @@
 The `spikee results` command includes several tools to aid in the analysis of test results.
 * `spikee results analyze`: Processes results files to provide a detailed breakdown of performance statistics.
 * `spikee results rejudge`: See [re-judging](<./08_judges.md#Re-judging>), revaluate results using a different judge or options.
-* `spikee results extract`: Extracts user-defined categories of results from results files for further analysis.
+* `spikee results extract`: Extracts SFL-matched results from result files for further analysis.
 * `spikee results dataset-comparison`: Compares the results of a single dataset across multiple targets to identify trends or differences in performance.
 * `spikee results convert-to-excel`: Converts results files into Excel format.
 
@@ -104,42 +104,45 @@ The results from `spikee` can help you answer key security questions, but it's i
 *   **Severity Not Measured:** The success rate does not measure the *impact* or *severity* of a successful attack. A successful "data exfiltration" attack is likely more severe than a successful "make a joke" attack, but both count as one success in the statistics. Manual review of successful attacks in the `results.jsonl` file is essential to understand the true risk.
 
 # The `extract` Command
-This command is used to extract specific categories of results from one or more results files for further analysis. It allows you to filter results based on success, failure, errors, guardrail triggers, or custom search queries.
+This command extracts results from one or more results files using a required Spikee Filter Language (SFL) query.
 
 ## Usage Examples
 ```bash
 # Extract all successful attacks to a new dataset file for further analysis
 spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
-                       --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl
-                       --category success
+                       --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl \
+                       --query "success = true"
 ```
 
 ```bash
-# Extract custom search query for further analysis
+# Extract successful results whose response includes a canary
 spikee results extract --result-file results/results_llm_provider_cybersec-2026-01-*.jsonl \
                        --result-file results/results_llm_provider_simsonsun-high-quality-jailbreaks-*.jsonl \
-                       --category custom \
-                       --custom-search "error:Guardrail was triggered by the target"
+                       --query "success = true AND response LIKE \"%canary%\""
 ```
 
-## Extraction Categories
-The `extract` command supports several categories for filtering results:
-*   **success:** Extracts all successful entries.
-*   **failure:** Extracts all failed entries.
-*   **errors:** Extracts all entries containing errors.
-*   **guardrail:** Extracts all entries where a guardrail was triggered.
-*   **no-guardrail:** Extracts all entries where a guardrail was not triggered.
-*   **custom:** Extracts entries matching a user-defined search query. 
+### Spikee Filter Language (SFL)
+The `extract` command requires one SFL expression through `--query`. SFL is also used by the Results page in the WebUI. It replaces the earlier extraction categories, `field:value`, `!term`, whitespace-AND, and pipe-OR search syntax.
 
-### Custom Search Query
-When using the `custom` category, you can specify a search query using the `--custom-search` flag.
+Use `AND`, `OR`, `NOT`, and parentheses to combine conditions. Operators are case-insensitive; `NOT` binds first, followed by `AND`, then `OR`.
 
-Valid `--custom-search` queries include:
-*  `search_term`: Searches all entry fields for the specified search_term.
-*  `field:search_term`: Searches a specific field within an entry for the search_term.
-*  `!search_term` or `!field:search_term`: Inverse search
+| Query | Matches |
+| --- | --- |
+| `success = true` | Successful entries |
+| `success = false` | Failed entries |
+| `error AND error != "No response received"` | Entries with a recorded error |
+| `guardrail = true` | Entries blocked by a guardrail |
+| `guardrail = false OR NOT guardrail EXISTS` | Entries not blocked by a guardrail |
+| `response != "I cannot respond to that"` | Entries with a different response |
+| `response LIKE "%canary%"` | Case-insensitive SQL-style wildcard match; `%` is any sequence and `_` is one character |
+| `attempts >= 3` | Numeric comparison; supports `<`, `<=`, `>`, and `>=` |
+| `tags HAS "canary"` | Case-insensitive membership in a list, tuple, or set |
+| `guardrail_categories` | Entries where the field exists and is not `null` |
+| `NOT error` | Entries without an error field value |
+| `meta.model = "gpt-4o"` | A nested dictionary field, addressed with a dot path |
+| `"refusal" OR guardrail` | Text anywhere in entry values, or a non-null `guardrail` field |
 
-Multiple `--custom-search` flags can be provided to add multiple search conditions. Entries must match *all* provided conditions to be included in the output.
+Unquoted `true`, `false`, `null`, and numbers are typed literals. Quoted values are case-insensitive strings. A standalone quoted string searches all entry values but not field names. Missing fields never match comparisons, including `!=`. Use `LIKE` with `%` wildcards for string matching; `CONTAINS` is not an SFL operator.
 
 # The `dataset-comparison` Command
 This command is used to compare the results of a single dataset across multiple targets. It helps identify trends or differences in performance between different target configurations.

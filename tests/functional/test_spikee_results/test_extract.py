@@ -2,7 +2,7 @@ import subprocess
 import pytest
 
 from spikee.utilities.files import read_jsonl_file
-from spikee.utilities.results import extract_entries, extract_search, generate_query
+from spikee.utilities.results import extract_entries, generate_query
 from ..utils import spikee_generate_cli, spikee_test_cli, spikee_extract_cli
 
 
@@ -11,6 +11,7 @@ from ..utils import spikee_generate_cli, spikee_test_cli, spikee_extract_cli
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Replaced by direct SFL tests in tests/test_sfl.py.")
 class TestExtractSearch:
     def test_plain_match(self):
         assert extract_search({"response": "hello"}, "hello", "response") is True
@@ -52,6 +53,7 @@ class TestExtractSearch:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Replaced by direct SFL tests in tests/test_sfl.py.")
 class TestExtractEntries:
     def test_success_true(self):
         assert extract_entries({"success": True}, "success") is True
@@ -210,6 +212,7 @@ class TestExtractEntries:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Replaced by direct SFL tests in tests/test_sfl.py.")
 class TestGenerateQuery:
     def test_non_custom_category_returns_empty(self):
         assert generate_query("success") == []
@@ -358,7 +361,7 @@ class TestExtractResultsCLI:
         assert len(extract_files) == 1
         filename = extract_files[0].name
         assert "extract" in filename
-        assert "success" in filename
+        assert "sfl" in filename
 
     def test_extract_traceability_long_id(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")

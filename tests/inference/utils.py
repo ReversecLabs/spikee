@@ -154,9 +154,9 @@ def spikee_extract_cli(
     workspace_dir,
     result_files: List[Path] = [],
     category: str = "success",
-    custom_search: List[str] = [],
+    custom_search: List[str] | str = [],
 ):
-    """Helper function to run `spikee results extract`.
+    """Helper function to run `spikee results extract` with an SFL query.
 
     Returns (list[Path] of new extract files, CompletedProcess result).
     """
@@ -176,10 +176,34 @@ def spikee_extract_cli(
         elif result_file.is_dir():
             additional_args.extend(["--result-folder", str(result_file)])
 
-    command = ["results", "extract", "--category", category, *additional_args]
+    if isinstance(custom_search, str):
+        query = custom_search
+    elif custom_search:
+        conditions = []
+        for search in custom_search:
+            if ":" in search:
+                field, value = search.split(":", 1)
+                if value.startswith("!"):
+                    conditions.append(f'NOT {field} LIKE "%{value[1:]}%"')
+                else:
+                    conditions.append(f'{field} LIKE "%{value}%"')
+            elif search.startswith("!"):
+                conditions.append(f'NOT "{search[1:]}"')
+            else:
+                conditions.append(f'"{search}"')
+        query = " AND ".join(conditions)
+    else:
+        query = {
+            "success": "success = true",
+            "failure": "success = false",
+            "error": 'error AND error != "No response received"',
+            "guardrail": "guardrail = true",
+            "no-guardrail": "guardrail = false OR NOT guardrail EXISTS",
+        }.get(category)
+        if query is None:
+            raise ValueError(f"No SFL query mapping for category: {category}")
 
-    for search in custom_search:
-        command.extend(["--custom-search", search])
+    command = ["results", "extract", *additional_args, "--query", query]
 
     result = run_spikee(command, cwd=workspace_dir)
 
