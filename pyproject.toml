@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spikee"
-version = "0.9.2"
+version = "0.9.3-dev"
 description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -33,11 +33,11 @@ spikee = "spikee.cli:main"
 [tool.ruff]
 include = [ "**/*.py",]
 
-[tool.setuptools.package-data]
-spikee = [ "data/**/*", "viewer/**/*",]
-
 [tool.ruff.lint]
 ignore = [ "S110",]
+
+[tool.setuptools.package-data]
+spikee = [ "data/**/*", "viewer/**/*",]
 
 [tool.setuptools.packages.find]
 include = [ "spikee*",]
