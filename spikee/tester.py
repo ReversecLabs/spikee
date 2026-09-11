@@ -672,23 +672,23 @@ def _attack_result(
     response_type = (
         get_content_type(response) if isinstance(response, Content) else "text"
     )
-    row = dict(
-        id=f"{entry['id']}-attack",
-        long_id=entry["long_id"] + "-" + attack_name + ("-ERROR" if error else ""),
-        success=success,
-        input=get_content(payload) if isinstance(payload, Content) else str(payload),
-        input_type=input_type,
-        response=get_content(response)
+    row = {
+        "id": f"{entry['id']}-attack",
+        "long_id": entry["long_id"] + "-" + attack_name + ("-ERROR" if error else ""),
+        "success": success,
+        "input": get_content(payload) if isinstance(payload, Content) else str(payload),
+        "input_type": input_type,
+        "response": get_content(response)
         if isinstance(response, Content)
         else str(response),
-        response_type=response_type,
-        response_time=response_time,
-        attempts=attempts,
-        lang=entry.get("lang", "en"),
-        error=error,
-        attack_name=attack_name,
-        attack_options=options,
-    )
+        "response_type": response_type,
+        "response_time": response_time,
+        "attempts": attempts,
+        "lang": entry.get("lang", "en"),
+        "error": error,
+        "attack_name": attack_name,
+        "attack_options": options,
+    }
     row.update(
         {
             key: entry.get(key)
