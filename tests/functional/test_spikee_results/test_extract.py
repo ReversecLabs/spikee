@@ -279,7 +279,7 @@ class TestExtractResultsCLI:
             run_spikee, workspace_dir, "always_success"
         )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="success"
+            run_spikee, workspace_dir, result_files=results_files, query="success = true"
         )
 
         assert len(extract_files) == 1
@@ -292,7 +292,7 @@ class TestExtractResultsCLI:
             run_spikee, workspace_dir, "always_refuse"
         )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="failure"
+            run_spikee, workspace_dir, result_files=results_files, query="success = false"
         )
 
         assert len(extract_files) == 1
@@ -305,7 +305,7 @@ class TestExtractResultsCLI:
             run_spikee, workspace_dir, "partial_success"
         )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="success"
+            run_spikee, workspace_dir, result_files=results_files, query="success = true"
         )
 
         assert len(extract_files) == 1
@@ -318,7 +318,7 @@ class TestExtractResultsCLI:
             run_spikee, workspace_dir, "always_guardrail"
         )
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="guardrail"
+            run_spikee, workspace_dir, result_files=results_files, query="guardrail = true"
         )
 
         assert len(extract_files) == 1
@@ -332,7 +332,7 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="no-guardrail",
+            query="guardrail = false OR NOT guardrail EXISTS",
         )
 
         assert len(extract_files) == 1
@@ -342,7 +342,10 @@ class TestExtractResultsCLI:
     def test_extract_error(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_error")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="error"
+            run_spikee,
+            workspace_dir,
+            result_files=results_files,
+            query='error AND error != "No response received"',
         )
 
         assert len(extract_files) == 1
@@ -355,7 +358,7 @@ class TestExtractResultsCLI:
     def test_extract_output_file_created(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="success"
+            run_spikee, workspace_dir, result_files=results_files, query="success = true"
         )
 
         assert len(extract_files) == 1
@@ -367,7 +370,7 @@ class TestExtractResultsCLI:
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         source = results_files[0].stem  # filename without .jsonl
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="success"
+            run_spikee, workspace_dir, result_files=results_files, query="success = true"
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -376,13 +379,13 @@ class TestExtractResultsCLI:
     def test_extract_original_id_preserved(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
-            run_spikee, workspace_dir, result_files=results_files, category="success"
+            run_spikee, workspace_dir, result_files=results_files, query="success = true"
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert all("original_id" in e for e in extracted)
 
-    def test_extract_custom_field_match(self, run_spikee, workspace_dir):
+    def test_extract_sfl_field_match(self, run_spikee, workspace_dir):
         results_files, entries = self._run_test(
             run_spikee, workspace_dir, "always_success"
         )
@@ -391,37 +394,35 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK"],
+            query='response LIKE "%EN-CHECK%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == len(entries)
 
-    def test_extract_custom_inverted_no_match(self, run_spikee, workspace_dir):
+    def test_extract_sfl_negated_field_no_match(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:!EN-CHECK"],
+            query='NOT response LIKE "%EN-CHECK%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == 0
 
-    def test_extract_invalid_category_fails(self, run_spikee, workspace_dir):
+    def test_extract_invalid_sfl_fails(self, run_spikee, workspace_dir):
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         with pytest.raises(subprocess.CalledProcessError):
             spikee_extract_cli(
                 run_spikee,
                 workspace_dir,
                 result_files=results_files,
-                category="invalid_xyz",
+                query="success =",
             )
 
-    def test_extract_custom_multi_both_match(self, run_spikee, workspace_dir):
+    def test_extract_sfl_multiple_conditions_match(self, run_spikee, workspace_dir):
         # Two conditions both satisfied by the canary response
         results_files, entries = self._run_test(
             run_spikee, workspace_dir, "always_success"
@@ -430,28 +431,26 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK", "response:IT-CHECK"],
+            query='response LIKE "%EN-CHECK%" AND response LIKE "%IT-CHECK%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == len(entries)
 
-    def test_extract_custom_multi_second_fails(self, run_spikee, workspace_dir):
+    def test_extract_sfl_multiple_conditions_no_match(self, run_spikee, workspace_dir):
         # Second condition kills all matches — term not in any response
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK", "response:ABSENT_TERM_XYZ"],
+            query='response LIKE "%EN-CHECK%" AND response LIKE "%ABSENT_TERM_XYZ%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == 0
 
-    def test_extract_custom_multi_field_and_success(self, run_spikee, workspace_dir):
+    def test_extract_sfl_multiple_fields_match(self, run_spikee, workspace_dir):
         # Cross-field: response term + success field (coerced to "True" by str())
         results_files, entries = self._run_test(
             run_spikee, workspace_dir, "always_success"
@@ -460,14 +459,13 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK", "success:True"],
+            query='response LIKE "%EN-CHECK%" AND success = true',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == len(entries)
 
-    def test_extract_custom_multi_inverted_plus_match(self, run_spikee, workspace_dir):
+    def test_extract_sfl_negated_condition_match(self, run_spikee, workspace_dir):
         # Normal condition passes AND inverted condition passes (absent term)
         results_files, entries = self._run_test(
             run_spikee, workspace_dir, "always_success"
@@ -476,22 +474,20 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK", "response:!ABSENT_TERM_XYZ"],
+            query='response LIKE "%EN-CHECK%" AND NOT response LIKE "%ABSENT_TERM_XYZ%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
         assert len(extracted) == len(entries)
 
-    def test_extract_custom_multi_inverted_kills_all(self, run_spikee, workspace_dir):
+    def test_extract_sfl_negated_condition_no_match(self, run_spikee, workspace_dir):
         # Contradictory: normal passes but inverted of the same term fails
         results_files, _ = self._run_test(run_spikee, workspace_dir, "always_success")
         extract_files, _ = spikee_extract_cli(
             run_spikee,
             workspace_dir,
             result_files=results_files,
-            category="custom",
-            custom_search=["response:EN-CHECK", "response:!EN-CHECK"],
+            query='response LIKE "%EN-CHECK%" AND NOT response LIKE "%EN-CHECK%"',
         )
 
         extracted = read_jsonl_file(str(extract_files[0]))
@@ -524,7 +520,7 @@ class TestExtractResultsCLI:
             run_spikee,
             workspace_dir,
             result_files=[results_folder],
-            category="success",
+            query="success = true",
         )
 
         assert len(extract_files) == 1
