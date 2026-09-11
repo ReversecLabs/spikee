@@ -300,7 +300,6 @@ def _conversation_message_count(conversation_data: str) -> int:
         return 0
 
 
-
 # ── Stats extraction from ResultProcessor ────────────────────────────────────
 
 
