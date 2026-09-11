@@ -20,6 +20,7 @@ class Attack(Module, ABC):
         input: Content,
         conversation: StandardisedConversation | None = None,
         objective: Content | None = None,
+        attempt_history: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Standardise the return format for attacks."""
         standardised_return = {
@@ -31,6 +32,9 @@ class Attack(Module, ABC):
 
         if objective:
             standardised_return["objective"] = str(objective)
+
+        if attempt_history is not None:
+            standardised_return["attempt_history"] = attempt_history
 
         return standardised_return
 
@@ -44,19 +48,15 @@ class Attack(Module, ABC):
         attempts_bar=None,
         bar_lock=None,
         attack_options=None,
-        return_all_attempts=False,
     ) -> AttackResponseHint:
         """
         Performs attack on the target module.
 
         Returns:
-            Legacy implementations may omit return_all_attempts. Supporting attacks
-            return list[AttackAttempt] when requested, with additive attempts counts.
-            Otherwise return the existing tuple:
-
             AttackResponseHint / Tuple[int, bool, Union[Content, Dict[str, Any]], Content]: A tuple containing:
-                - Total number of messages in the conversation (int)
+                - Total number of attack iterations used (int)
                 - Success status of the attack (bool)
-                - Input (Str or Dict) - Use standardised_input_return to format Dict
+                - Input (Str or Dict) - Use standardised_input_return for optional
+                  conversation, objective, and attempt_history fields.
                 - Last response from the target module (str)
         """

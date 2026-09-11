@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spikee"
-version = "0.9.2-dev"
+version = "0.9.2"
 description = "Spikee - Simple Prompt Injection Kit for Evaluation and Exploitation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,15 +30,15 @@ all = [ "any-llm-sdk[azure,azureopenai,bedrock,ollama,groq]==1.13.0",]
 [project.scripts]
 spikee = "spikee.cli:main"
 
+[tool.ruff]
+include = [ "**/*.py",]
+
 [tool.setuptools.package-data]
 spikee = [ "data/**/*", "viewer/**/*",]
+
+[tool.ruff.lint]
+ignore = [ "S110",]
 
 [tool.setuptools.packages.find]
 include = [ "spikee*",]
 exclude = [ "datasets*", "results*", "targets*", "plugins*", "attacks*", "judges*", "templates*", "utilities*",]
-
-[tool.ruff]
-include = [ "**/*.py",]
-
-[tool.ruff.lint]
-ignore = [ "S110",]

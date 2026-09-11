@@ -1,5 +1,9 @@
 PROVIDER_DEBUG=false
 
+# Optional candidate history from supporting single-turn attacks (enabled by default).
+# Set false, 0, no, or off to omit it. Conversation logging is unaffected.
+SPIKEE_ATTACK_HISTORY=true
+
 # Anthropic
 ANTHROPIC_API_KEY=
 

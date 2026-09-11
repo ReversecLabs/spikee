@@ -182,7 +182,6 @@ def debug_module_attack(args):
         None,
         None,
         args.attack_options,
-        getattr(args, "attack_return_all_attempts", False),
     )
 
     print(

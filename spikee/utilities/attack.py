@@ -1,10 +1,17 @@
 """Compatible attack invocation and progress accounting."""
 
 import inspect
+import os
 
 
-def accepts_attack_history(attack):
-    return "return_all_attempts" in inspect.signature(attack).parameters
+def attack_history_enabled():
+    """Whether supporting attacks should collect optional diagnostic history."""
+    return os.getenv("SPIKEE_ATTACK_HISTORY", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
 
 
 def invoke_attack(
@@ -16,7 +23,6 @@ def invoke_attack(
     bar,
     lock,
     options,
-    return_all_attempts=False,
 ):
     """Old modules receive exactly the optional arguments they declare."""
     parameters = inspect.signature(attack).parameters
@@ -25,8 +31,6 @@ def invoke_attack(
         if name in parameters:
             kwargs[name] = options
             break
-    if accepts_attack_history(attack):
-        kwargs["return_all_attempts"] = return_all_attempts
     return attack(entry, target, judge, iterations, bar, lock, **kwargs)
 
 

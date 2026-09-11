@@ -13,7 +13,12 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from spikee.utilities.enums import EntryType
-from spikee.utilities.files import read_jsonl_file, read_toml_file, write_jsonl_file
+from spikee.utilities.files import (
+    compact_filename_part,
+    read_jsonl_file,
+    read_toml_file,
+    write_jsonl_file,
+)
 from spikee.utilities.hinting import (
     Content,
     content_factory,
@@ -1355,13 +1360,14 @@ def generate_dataset(args):
 
     timestamp = int(time.time())
     seed_folder_name = os.path.basename(os.path.normpath(seed_folder))
-    output_file_name = f"{seed_folder_name.replace('seeds-', '')}-{output_format}"
+    seed_name = compact_filename_part(seed_folder_name.replace("seeds-", ""))
+    output_file_name = f"{seed_name}-{output_format}"
 
     if include_system_message:
         output_file_name += "-sys"
 
     if tag:
-        output_file_name += f"-{tag}"
+        output_file_name += f"-{compact_filename_part(tag)}"
 
     output_file_path = os.path.join("datasets", output_file_name)
 

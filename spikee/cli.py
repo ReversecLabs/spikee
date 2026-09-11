@@ -314,7 +314,7 @@ def main():
         "--resume-file",
         type=str,
         default=None,
-        help="Path to a results JSONL file to resume from. Only works with a single dataset.",
+        help="Resume by appending to this results JSONL file. Only works with a single dataset.",
     )
     parser_test.add_argument(
         "--throttle",
@@ -342,11 +342,6 @@ def main():
         "--attack-only",
         action="store_true",
         help="Only run the attack module without standard attempts",
-    )
-    parser_test.add_argument(
-        "--attack-return-all-attempts",
-        action="store_true",
-        help="Retain every attempt from supporting attacks (default: one representative result)",
     )
     parser_test.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
@@ -447,7 +442,8 @@ def main():
 
     # --- extract
     parser_extract = subparsers_results.add_parser(
-        "extract", help="Extract categories of prompts from results JSONL files."
+        "extract",
+        help="Extract prompts matching an SFL query from results JSONL files.",
     )
     parser_extract.add_argument(
         "--result-file",
@@ -462,16 +458,10 @@ def main():
         help="Path to a results folder containing multiple JSONL files",
     )
     parser_extract.add_argument(
-        "--category",
-        choices=["success", "failure", "error", "guardrail", "no-guardrail", "custom"],
-        default="success",
-        help="Extracts prompts by category: success (default), fail, error, guardrail, no-guardrail, custom",
-    )
-    parser_extract.add_argument(
-        "--custom-search",
+        "--query",
         type=str,
-        default=None,
-        help="Custom search string to filter prompts when --category=custom. Formats: 'search_string', 'field:search_string' or '!search_string' to invert match",
+        required=True,
+        help="SFL query, e.g. 'success = true AND response LIKE \"%%canary%%\"'.",
     )
     parser_extract.add_argument(
         "--tag", default=None, help="Include a tag at the end of the results filename"
@@ -722,12 +712,6 @@ def main():
         type=str,
         default=None,
         help="Options to pass to the attack module (if applicable)",
-    )
-
-    attack_subparser.add_argument(
-        "--attack-return-all-attempts",
-        action="store_true",
-        help="Return history from supporting attack modules",
     )
 
     # Provider-specific arguments

@@ -1,4 +1,4 @@
-"""History is an alternate representation of the same attack execution."""
+"""Optional history is diagnostic data inside the existing attack result."""
 
 import inspect
 import json
@@ -6,17 +6,17 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from types import SimpleNamespace
+from typing import ClassVar
 
 import pytest
-from werkzeug.datastructures import MultiDict
 
 from spikee import tester
 from spikee.attacks.multi_turn import MultiTurnAttack
-from spikee.utilities.attack import invoke_attack
+from spikee.templates.attack import Attack
+from spikee.utilities.attack import attack_history_enabled, invoke_attack
 from spikee.utilities.files import read_jsonl_file, write_jsonl_file
-from spikee.utilities.hinting import AttackAttempt, Image
-from spikee.utilities.results import ResultProcessor, extract_entries
-from spikee.viewer.blueprints._forms import TestForm as RunForm
+from spikee.utilities.hinting import Image
+from spikee.utilities.results import ResultProcessor
 
 
 class Bar:
@@ -32,85 +32,83 @@ class Bar:
 
 
 class Target:
-    config = {"single-turn": True, "multi-turn": True, "backtrack": True}
+    config: ClassVar[dict] = {
+        "single-turn": True,
+        "multi-turn": True,
+        "backtrack": True,
+    }
 
     def __init__(self, success_at=None, error_at=None):
         self.calls = []
         self.success_at = success_at
         self.error_at = error_at
 
-    def process_input(self, input_text, system_message=None, **kwargs):
+    def process_input(self, input_text, system_message=None, *_args, **kwargs):
         self.calls.append((deepcopy(input_text), kwargs))
         if len(self.calls) == self.error_at:
             raise RuntimeError("target failed")
         return ("success" if len(self.calls) == self.success_at else "refused"), {}
 
 
+@pytest.fixture
+def entry():
+    return {
+        "id": 42,
+        "long_id": "dataset-entry",
+        "content": "objective",
+        "content_type": "text",
+        "judge_name": "test",
+        "judge_args": {},
+        "judge_options": "",
+    }
+
+
 class RecordingAttack:
+    def __init__(self, collect=True):
+        self.collect = collect
+
     def attack(
-        self,
-        entry,
-        target_module,
-        call_judge,
-        max_iterations,
-        attempts_bar=None,
-        bar_lock=None,
-        attack_options=None,
-        return_all_attempts=False,
+        self, entry, target, judge, iterations, bar=None, lock=None, attack_options=None
     ):
-        history = []
-        for i in range(1, max_iterations + 1):
-            payload = f"candidate-{i}"
+        history = [] if self.collect and attack_history_enabled() else None
+        response, payload, success = "", "", False
+        for count in range(1, iterations + 1):
+            payload = f"candidate-{count}"
+            error = None
             try:
-                response, _ = target_module.process_input(payload)
-                success = call_judge(entry, response)
-            except Exception as exc:
-                if return_all_attempts:
-                    history.append(AttackAttempt(payload, "", False, error=str(exc)))
-                    return history
-                raise
-            if return_all_attempts:
-                history.append(AttackAttempt(payload, response, success))
-            if attempts_bar:
-                with bar_lock:
-                    attempts_bar.update(1)
+                response, _ = target.process_input(payload)
+                success = judge(entry, response)
+            except RuntimeError as exc:
+                response, success, error = "", False, str(exc)
+            if history is not None:
+                history.append(
+                    {
+                        "input": payload,
+                        "response": response,
+                        "success": success,
+                        "error": error,
+                    }
+                )
+            if bar:
+                bar.update(1)
             if success:
-                if attempts_bar:
-                    attempts_bar.total -= max_iterations - i
-                if return_all_attempts:
-                    return history
-                return i, True, payload, response
-        if return_all_attempts:
-            return history
-        return max_iterations, False, payload, response
-
-
-class LegacyAttack:
-    def attack(
-        self,
-        entry,
-        target_module,
-        call_judge,
-        max_iterations,
-        attempts_bar=None,
-        bar_lock=None,
-    ):
-        return RecordingAttack().attack(
-            entry, target_module, call_judge, max_iterations, attempts_bar, bar_lock
+                break
+        else:
+            count = iterations
+        return (
+            count,
+            success,
+            Attack.standardised_input_return(payload, attempt_history=history),
+            response,
         )
 
 
-@pytest.fixture
-def entry():
-    return dict(
-        id=42,
-        long_id="dataset-entry",
-        content="objective",
-        content_type="text",
-        judge_name="test",
-        judge_args={},
-        judge_options="",
-    )
+class LegacyAttack:
+    def attack(self, entry, target, judge, iterations, bar=None, lock=None):
+        count, success, payload, response = RecordingAttack(False).attack(
+            entry, target, judge, iterations, bar, lock
+        )
+        return count, success, payload["input"], response
 
 
 def run_attack(
@@ -118,13 +116,14 @@ def run_attack(
     entry,
     attack=None,
     *,
-    trace=False,
+    trace=True,
     attempts=1,
     iterations=5,
     success_at=None,
     error_at=None,
     attack_only=True,
 ):
+    monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(trace))
     monkeypatch.setattr(
         tester, "call_judge", lambda entry, response: response == "success"
     )
@@ -141,43 +140,290 @@ def run_attack(
         attack_only=attack_only,
         attempts_bar=bar,
         global_lock=threading.Lock(),
-        attack_return_all_attempts=trace,
     )
     return rows, target, bar
 
 
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (None, True),
+        ("true", True),
+        ("1", True),
+        ("false", False),
+        ("0", False),
+        ("no", False),
+        (" OFF ", False),
+    ],
+)
+def test_history_environment(monkeypatch, value, expected):
+    monkeypatch.delenv("SPIKEE_ATTACK_HISTORY", raising=False)
+    if value is not None:
+        monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", value)
+    assert attack_history_enabled() is expected
+
+
 @pytest.mark.parametrize("trace", [False, True])
 @pytest.mark.parametrize("success_at,expected", [(None, 15), (1, 1), (7, 7)])
-def test_attempt_counts_and_early_stop(monkeypatch, entry, trace, success_at, expected):
+def test_nested_history_counts_and_early_stop(
+    monkeypatch, entry, trace, success_at, expected
+):
     rows, target, bar = run_attack(
         monkeypatch, entry, trace=trace, attempts=3, success_at=success_at
     )
-    assert len(target.calls) == expected
-    assert sum(r["attempts"] for r in rows) == expected
-    assert bar.n == bar.total == expected
-    assert len(rows) == (expected if trace else 1)
-    assert len({r["id"] for r in rows}) == len(rows)
-    assert len({r["long_id"] for r in rows}) == len(rows)
-    assert rows[-1]["success"] == (success_at is not None)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["id"] == "42-attack" and row["long_id"] == "dataset-entry-mock"
+    assert row["attempts"] == len(target.calls) == bar.n == bar.total == expected
+    assert row["success"] == (success_at is not None)
+    assert "attack_attempt" not in row and "entry_complete" not in row
     if trace:
-        assert [r["attack_attempt"] for r in rows] == list(range(1, expected + 1))
-        assert all(r["attempts"] == 1 for r in rows)
-        assert rows[-1]["entry_complete"]
-        assert not any(r["entry_complete"] for r in rows[:-1])
+        assert len(row["attempt_history"]) == expected
+        assert [r["invocation"] for r in row["attempt_history"]] == [
+            i // 5 + 1 for i in range(expected)
+        ]
+        assert row["attempt_history"][-1]["response"] == row["response"]
     else:
-        assert rows[0]["id"] == "42-attack"
-        assert "entry_complete" not in rows[0]
+        assert "attempt_history" not in row
+    p = ResultProcessor(rows, "nested")
+    assert p.total_entries == 1 and p.total_attempts == expected
 
 
 @pytest.mark.parametrize("trace", [False, True])
-def test_legacy_without_parameter_still_runs(monkeypatch, entry, trace):
+def test_legacy_modules_remain_callable(monkeypatch, entry, trace):
     rows, target, bar = run_attack(
         monkeypatch, entry, LegacyAttack(), trace=trace, attempts=2
     )
-    assert len(rows) == 1
-    assert rows[0]["id"] == "42-attack"
-    assert rows[0]["attempts"] == len(target.calls) == 10
-    assert bar.n == bar.total == 10
+    assert len(rows) == 1 and rows[0]["id"] == "42-attack"
+    assert rows[0]["attempts"] == len(target.calls) == bar.total == 10
+    assert "attempt_history" not in rows[0]
+
+
+def test_history_does_not_override_top_level_outcome(monkeypatch, entry):
+    class DiagnosticOnly:
+        def attack(self, *args):
+            return (
+                20,
+                False,
+                {
+                    "input": "final",
+                    "attempt_history": [
+                        {"input": "earlier", "response": "reply", "success": True},
+                    ],
+                },
+                "final response",
+            )
+
+    rows, _, _ = run_attack(monkeypatch, entry, DiagnosticOnly())
+    p = ResultProcessor(rows, "nested")
+    assert rows[0]["success"] is False and rows[0]["attempts"] == 20
+    assert p.successful_groups == 0 and p.total_attempts == 20
+
+
+def test_history_keeps_handled_errors(monkeypatch, entry):
+    rows, target, _ = run_attack(monkeypatch, entry, error_at=2, attempts=2)
+    assert len(rows) == 1 and rows[0]["attempts"] == len(target.calls) == 10
+    assert rows[0]["attempt_history"][1]["error"] == "target failed"
+
+
+def test_history_survives_later_invocation_error(monkeypatch, entry):
+    class Failing(RecordingAttack):
+        invocations = 0
+
+        def attack(self, *args):
+            self.invocations += 1
+            if self.invocations == 2:
+                raise RuntimeError("invocation failed")
+            return super().attack(*args)
+
+    rows, target, _ = run_attack(monkeypatch, entry, Failing(), attempts=3)
+    assert (
+        len(target.calls) == len(rows[0]["attempt_history"]) == rows[0]["attempts"] == 5
+    )
+    assert rows[0]["error"] == "invocation failed"
+
+
+def test_mixed_optional_history_across_invocations(monkeypatch, entry):
+    class Mixed:
+        invocations = 0
+
+        def attack(self, *args):
+            self.invocations += 1
+            payload = {"input": f"input-{self.invocations}"}
+            if self.invocations == 2:
+                payload["attempt_history"] = [
+                    {"input": "middle", "response": "reply", "success": False}
+                ]
+            return 3, False, payload, "reply"
+
+    rows, _, _ = run_attack(monkeypatch, entry, Mixed(), attempts=3)
+    assert rows[0]["attempts"] == 9 and rows[0]["input"] == "input-3"
+    assert len(rows[0]["attempt_history"]) == 1
+    assert rows[0]["attempt_history"][0]["invocation"] == 2
+
+
+def test_nested_multimodal_history_serialization(monkeypatch, entry):
+    class Images:
+        def attack(self, *args):
+            return (
+                1,
+                True,
+                {
+                    "input": Image("aGVsbG8="),
+                    "attempt_history": [
+                        {
+                            "input": Image("aGVsbG8="),
+                            "response": "reply",
+                            "success": True,
+                        },
+                    ],
+                },
+                "reply",
+            )
+
+    rows, _, _ = run_attack(monkeypatch, entry, Images())
+    assert rows[0]["input_type"] == "image"
+    item = rows[0]["attempt_history"][0]
+    assert item["input_type"] == "image" and item["input"] == "aGVsbG8="
+    json.dumps(rows)
+
+
+@pytest.mark.parametrize(
+    "history",
+    [
+        "wrong",
+        [1],
+        [{"input": "a"}],
+        [{"input": "a", "response": "b", "success": "yes"}],
+    ],
+)
+def test_invalid_history_does_not_change_attack_result(
+    monkeypatch, entry, history, capsys
+):
+    class Invalid:
+        calls = 0
+
+        def attack(self, *args):
+            self.calls += 1
+            return 5, True, {"input": "a", "attempt_history": history}, "b"
+
+    attack = Invalid()
+    rows, _, bar = run_attack(monkeypatch, entry, attack, attempts=3)
+    assert attack.calls == 1
+    assert rows[0]["error"] is None and rows[0]["success"] is True
+    assert rows[0]["input"] == "a" and rows[0]["response"] == "b"
+    assert rows[0]["attempts"] == bar.n == bar.total == 5
+    assert "attempt_history" not in rows[0]
+    assert "Ignoring invalid attempt_history" in capsys.readouterr().out
+
+
+def test_history_snapshot_does_not_mutate_attack_owned_data(monkeypatch, entry):
+    class Reused:
+        def __init__(self):
+            self.record = {"input": ["first"], "response": "reply", "success": False}
+            self.payload = {"input": "final", "attempt_history": [self.record]}
+            self.invocation = 0
+
+        def attack(self, *args):
+            self.invocation += 1
+            self.record["input"][0] = str(self.invocation)
+            return 1, False, self.payload, "reply"
+
+    attack = Reused()
+    rows, _, _ = run_attack(monkeypatch, entry, attack, attempts=2)
+    records = rows[0]["attempt_history"]
+    assert [r["input"] for r in records] == [["1"], ["2"]]
+    assert [r["invocation"] for r in records] == [1, 2]
+    assert "invocation" not in attack.record
+    assert attack.payload["attempt_history"] == [attack.record]
+
+
+def test_standard_failures_and_nested_attack_count_once(monkeypatch, entry):
+    rows, target, _ = run_attack(monkeypatch, entry, attempts=2, attack_only=False)
+    assert [r["id"] for r in rows] == [42, "42-attack"]
+    assert [r["attempts"] for r in rows] == [2, 10]
+    assert len(rows[1]["attempt_history"]) == 10
+    p = ResultProcessor(rows, "combined")
+    assert p.total_entries == 1 and p.total_attempts == len(target.calls) == 12
+
+
+def test_options_legacy_signatures(entry):
+    def plural(e, t, j, n, b, l, attack_options=None):
+        return attack_options
+
+    def singular(e, t, j, n, b, l, attack_option=None):
+        return attack_option
+
+    def legacy(e, t, j, n, b, l):
+        return "legacy"
+
+    for function, expected in (
+        (plural, "chosen"),
+        (singular, "chosen"),
+        (legacy, "legacy"),
+    ):
+        assert (
+            invoke_attack(function, entry, None, None, 1, None, None, "chosen")
+            == expected
+        )
+
+
+def test_history_state_is_local_to_invocation(monkeypatch, entry):
+    monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", "true")
+    attack = RecordingAttack()
+
+    def run(i):
+        return attack.attack(
+            dict(entry, id=i), Target(success_at=i), lambda e, r: r == "success", 5
+        )[2]["attempt_history"]
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        histories = list(pool.map(run, [1, 2, 3]))
+    assert [len(h) for h in histories] == [1, 2, 3]
+    assert len({id(item) for h in histories for item in h}) == 6
+
+
+def test_nested_resume(monkeypatch, entry, tmp_path):
+    rows, _, _ = run_attack(monkeypatch, entry, attempts=2)
+    path = tmp_path / "results.jsonl"
+    write_jsonl_file(path, rows)
+    ids, _, count, entries = tester._load_results_file(path, RecordingAttack(), 5)
+    assert {str(i) for i in ids} == {"42"} and count == 10 and entries == 1
+
+
+@pytest.mark.parametrize("complete", [False, True])
+def test_resume_older_expanded_history(entry, tmp_path, complete):
+    rows = [
+        dict(
+            entry,
+            id=f"42-attack-{i}",
+            attack_name="mock",
+            attempts=1,
+            attack_parent_id=42,
+            attack_parent_long_id=entry["long_id"],
+            attack_attempt=i,
+            attack_result_format="attempt",
+            entry_complete=i == 2,
+        )
+        for i in (1, 2)
+    ]
+    path = tmp_path / "results.jsonl"
+    write_jsonl_file(path, rows if complete else rows[:1])
+    ids, retained, count, entries = tester._load_results_file(
+        path, RecordingAttack(), 99
+    )
+    assert {str(i) for i in ids} == ({"42"} if complete else set())
+    assert retained == (rows if complete else [])
+    assert count == (2 if complete else 0) and entries == (1 if complete else 0)
+
+
+def test_manual_multiturn_keeps_one_conversation(monkeypatch, entry):
+    entry["content"] = ["one", "two", "three"]
+    for value in ("true", "false"):
+        monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", value)
+        result = MultiTurnAttack().attack(entry, Target(), lambda e, r: False, 2)
+        assert result[0] == 2 and len(result[2]["conversation"]) == 4
+        assert "attempt_history" not in result[2]
 
 
 def test_standard_success_skips_dynamic_attack(monkeypatch, entry):
@@ -195,54 +441,10 @@ def test_standard_success_skips_dynamic_attack(monkeypatch, entry):
         attack_iterations=5,
         attempts_bar=bar,
         global_lock=threading.Lock(),
-        attack_return_all_attempts=True,
     )
     assert len(rows) == 1 and rows[0]["id"] == 42
     assert bar.n == bar.total == 1
-    assert rows[0]["entry_complete"]
-
-
-def test_intermediate_results_survive_error(monkeypatch, entry):
-    rows, target, bar = run_attack(monkeypatch, entry, trace=True, error_at=3)
-    assert [r["input"] for r in rows] == ["candidate-1", "candidate-2", "candidate-3"]
-    assert rows[0]["response"] == "refused"
-    assert rows[-1]["error"] == "target failed"
-    assert sum(r["attempts"] for r in rows) == len(target.calls) == 3
-    assert bar.total == bar.n == 3
-
-
-def test_summary_and_history_statistics_match(monkeypatch, entry):
-    summary, _, _ = run_attack(monkeypatch, entry, success_at=4)
-    history, _, _ = run_attack(monkeypatch, entry, trace=True, success_at=4)
-    base = dict(entry, attack_name="None", attempts=1, success=False)
-    processors = [
-        ResultProcessor([base, *rows], "example") for rows in (summary, history)
-    ]
-    for p in processors:
-        p.generate_output(combined=True)
-        assert p.total_entries == p.successful_groups == 1
-        assert p.total_attempts == 5
-        assert p.attack_types["mock"] == dict(
-            total=1, successes=1, attempts=4, guardrail=0
-        )
-    assert processors[0]._breakdowns == processors[1]._breakdowns
-    assert processors[0].generate_overview() == processors[1].generate_overview()
-
-
-@pytest.mark.parametrize("complete", [False, True])
-def test_resume_complete_and_partial_attack_only(
-    monkeypatch, entry, tmp_path, complete
-):
-    rows, _, _ = run_attack(monkeypatch, entry, trace=True)
-    path = tmp_path / "results.jsonl"
-    write_jsonl_file(path, rows if complete else rows[:-1])
-    ids, retained, calls, entries = tester._load_results_file(
-        path, RecordingAttack(), 99
-    )
-    assert calls == (5 if complete else 0)
-    assert entries == (1 if complete else 0)
-    assert retained == (rows if complete else [])
-    assert {str(i) for i in ids} == ({"42"} if complete else set())
+    assert "attempt_history" not in rows[0]
 
 
 def test_resume_legacy_attack_only(entry, tmp_path):
@@ -253,26 +455,15 @@ def test_resume_legacy_attack_only(entry, tmp_path):
     assert calls == 3 and entries == 1
 
 
-def test_multiturn_snapshots_and_unjudged_turns(entry):
-    entry["content"] = ["one", "two", "three"]
-    attack = MultiTurnAttack()
-    target = Target(success_at=3)
-    history = attack.attack(
-        entry, target, lambda e, r: r == "success", 3, return_all_attempts=True
-    )
-    assert len(history) == 3
-    assert [r.success for r in history] == [None, None, True]
-    assert [len(r.input["conversation"]) for r in history] == [2, 4, 6]
-    assert [r.input["input"] for r in history] == entry["content"]
-    assert not extract_entries({"success": None}, "failure")
-    legacy = attack.attack(entry, Target(success_at=3), lambda e, r: r == "success", 3)
-    assert legacy[:2] == (3, True)
-    limited = attack.attack(entry, Target(), lambda e, r: False, 2)
-    assert limited[0] == 2
+@pytest.mark.parametrize("trace", [False, True])
+def test_backtrack_preserves_abandoned_attempt(monkeypatch, entry, trace, tmp_path):
+    from flask import Flask
 
-
-def test_backtrack_preserves_abandoned_attempt(monkeypatch, entry):
     from spikee.attacks import crescendo
+
+    monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(trace))
+    from spikee.results import extract_results
+    from spikee.viewer.blueprints.results import _process_standardised_conversation
 
     monkeypatch.setattr(crescendo, "get_llm", lambda *a, **kw: object())
     attack = crescendo.Crescendo()
@@ -280,188 +471,72 @@ def test_backtrack_preserves_abandoned_attempt(monkeypatch, entry):
     monkeypatch.setattr(attack, "_generate_question", lambda *a: next(prompts))
     monkeypatch.setattr(attack, "_is_refusal", lambda *a: True)
     target = Target(success_at=2)
-    records = attack.attack(
+    returned = invoke_attack(
+        attack.attack,
         entry,
         target,
         lambda e, r: r == "success",
         2,
-        attack_option="model=mock",
-        return_all_attempts=True,
+        None,
+        None,
+        "model=mock",
     )
-    assert [r.input["input"] for r in records] == ["abandoned", "replacement"]
+    count, success, payload, response = returned
+    assert (count, success, response) == (2, True, "success")
     assert [c[1]["backtrack"] for c in target.calls] == [False, True]
-    first = json.loads(records[0].input["conversation"])
-    last = json.loads(records[1].input["conversation"])
-    assert len(first) == 3 and len(last) == 5
-    assert sum(r.attempts for r in records) == 2
-
-
-def test_options_signatures_and_explicit_history(entry):
-    def plural(
+    graph = json.loads(payload["conversation"])
+    assert len(graph) == 5
+    assert len(graph["0"]["children"]) == 2
+    assert [graph[str(i)]["data"]["content"] for i in (1, 2, 3, 4)] == [
+        "abandoned",
+        "refused",
+        "replacement",
+        "success",
+    ]
+    # The existing row format keeps the entire graph through serialization,
+    # result analysis, extraction, and rendering of abandoned branches.
+    row = tester._attack_result(
         entry,
-        target,
-        judge,
-        iters,
-        bar,
-        lock,
-        attack_options=None,
-        *,
-        return_all_attempts=False,
-    ):
-        assert attack_options == "chosen"
-        return (
-            [AttackAttempt("a", "b", False)]
-            if return_all_attempts
-            else (1, False, "a", "b")
-        )
-
-    assert isinstance(
-        invoke_attack(plural, entry, None, None, 1, None, None, "chosen", True), list
+        count,
+        success,
+        payload,
+        response,
+        "crescendo",
+        "model=mock",
     )
-
-    def singular(entry, target, judge, iters, bar, lock, attack_option=None):
-        return attack_option
-
-    assert (
-        invoke_attack(singular, entry, None, None, 1, None, None, "chosen", True)
-        == "chosen"
-    )
-    assert (
-        "return_all_attempts" in inspect.signature(RecordingAttack().attack).parameters
-    )
-
-
-def test_trace_state_is_local_to_invocation(entry):
-    attack = RecordingAttack()
-
-    def run(i):
-        return attack.attack(
-            dict(entry, id=i),
-            Target(success_at=i),
-            lambda e, r: r == "success",
-            5,
-            return_all_attempts=True,
-        )
-
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        results = list(pool.map(run, [1, 2, 3]))
-    assert [len(r) for r in results] == [1, 2, 3]
-    assert len({id(r) for history in results for r in history}) == 6
-
-
-def test_viewer_form_flag():
-    form = MultiDict(dict(target="mock", datasets="example.jsonl", attack="best_of_n"))
-    assert "--attack-return-all-attempts" not in RunForm.from_form(form).to_cli_args()
-    form["attack_return_all_attempts"] = "on"
-    assert "--attack-return-all-attempts" in RunForm.from_form(form).to_cli_args()
-
-
-def test_mixed_results_extract_compare_and_viewer(monkeypatch, entry, tmp_path):
-    from spikee.results import dataset_comparison, extract_results
-    from spikee.viewer.app import create_app
-    from spikee.viewer.blueprints import results as viewer_results
-    from spikee.viewer.blueprints import _cache
-
     monkeypatch.chdir(tmp_path)
     (tmp_path / "results").mkdir()
-    history, _, _ = run_attack(monkeypatch, entry, trace=True, success_at=3)
-    legacy = dict(
-        history[-1],
-        id="99-attack",
-        long_id="legacy-mock",
-        attempts=20,
-        success=False,
-        attack_name="mock",
-    )
-    for key in [
-        k
-        for k in legacy
-        if k.startswith("attack_") and k not in ("attack_name", "attack_options")
-    ]:
-        del legacy[key]
-    rows = [*history, legacy]
-    path = tmp_path / "results" / "results_history.jsonl"
-    write_jsonl_file(path, rows)
-    dataset = tmp_path / "dataset.jsonl"
-    write_jsonl_file(dataset, [entry])
-    # Comparison sees dynamic success even when no standard row exists.
-    dataset_comparison(
-        SimpleNamespace(
-            dataset=str(dataset),
-            result_file=[str(path)],
-            result_folder=None,
-            skip_validation=False,
-            success_definition="gt",
-            success_threshold=0.5,
-            number=0,
-            tag="history",
-        )
-    )
-    # Extraction renumbers rows but retains their common dataset identity.
+    path = tmp_path / "results" / "conversation.jsonl"
+    write_jsonl_file(path, [row])
+    saved = read_jsonl_file(path)
+    processor = ResultProcessor(saved, str(path))
+    assert processor.total_entries == processor.successful_groups == 1
+    assert processor.total_attempts == 2
     extract_results(
         SimpleNamespace(
             result_file=[str(path)],
             result_folder=None,
-            category="custom",
-            custom_search="attack_name:mock",
-            tag="history",
+            query="success = true",
+            tag="conversation",
         )
     )
-    extracted_path = next((tmp_path / "results").glob("extract*.jsonl"))
-    extracted = read_jsonl_file(extracted_path)
-    processor = ResultProcessor(extracted, str(extracted_path))
-    assert processor.total_entries == 2
-    assert processor.total_attempts == 23
-    assert processor.successful_groups == 1
-    assert len({r["id"] for r in extracted}) == 4
-    # Full application route coverage, with no background module or network work.
-    monkeypatch.setattr(_cache, "warm_cache", lambda: None)
-    app = create_app(db_path=str(tmp_path / "jobs.sqlite"))
-    app.config["TESTING"] = True
-    monkeypatch.setattr(viewer_results, "loaded_files", {"history": path})
-    client = app.test_client()
-    response = client.get("/results/entries?result_file=history&per_page=2")
-    assert response.status_code == 200
-    assert b"42-attack-1" in response.data and b"42-attack-2" in response.data
-    assert b"42-attack-3" not in response.data
-    response = client.get("/results/entry/history-42-attack-2?result_file=history")
-    assert response.status_code == 200 and b"Attack Attempt" in response.data
-    response = client.post(
-        "/results/entry/history-42-attack-2/toggle", data={"result_file": "history"}
+    extracted = read_jsonl_file(next((tmp_path / "results").glob("extract*.jsonl")))
+    assert len(extracted) == 1
+    assert json.loads(extracted[0]["conversation"]) == graph
+    app = Flask(__name__)
+    app.jinja_env.globals["truncate_length"] = 400
+    with app.app_context():
+        rendered = _process_standardised_conversation(extracted[0]["conversation"])
+    assert all(
+        text in rendered for text in ("abandoned", "refused", "replacement", "success")
     )
-    assert response.status_code in (302, 303)
-    updated = read_jsonl_file(path)
-    assert updated[1]["success"]
-    assert updated[0]["success"] == rows[0]["success"]
-    assert updated[2]["success"] == rows[2]["success"]
-    monkeypatch.setattr(viewer_results, "call_judge", lambda e, r: False)
-    response = client.post(
-        "/results/entry/history-42-attack-3/rejudge", data={"result_file": "history"}
-    )
-    assert response.status_code in (302, 303)
-    assert read_jsonl_file(path)[2]["success"] is False
 
 
-def test_explicit_multimodal_records_and_malformed_return(monkeypatch, entry):
-    class Explicit:
-        def attack(self, *args, return_all_attempts=False):
-            return [AttackAttempt(Image("aGVsbG8="), "response", False)]
-
-    rows, _, _ = run_attack(monkeypatch, entry, Explicit(), trace=True)
-    assert rows[0]["input_type"] == "image"
-    assert rows[0]["input"] == "aGVsbG8="
-
-    class Malformed:
-        def attack(self, *args, return_all_attempts=False):
-            return [AttackAttempt("input", "output", False, attempts=-1)]
-
-    rows, _, _ = run_attack(monkeypatch, entry, Malformed(), trace=True)
-    assert "non-negative integer" in rows[0]["error"]
-    assert rows[0]["attempts"] == 0
-
-
-def test_generator_error_preserves_prior_attempts(monkeypatch, entry):
+@pytest.mark.parametrize("trace", [False, True])
+def test_generator_error_preserves_conversation(monkeypatch, entry, trace):
     from spikee.attacks import crescendo
+
+    monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(trace))
 
     monkeypatch.setattr(crescendo, "get_llm", lambda *a, **kw: object())
     attack = crescendo.Crescendo()
@@ -469,297 +544,22 @@ def test_generator_error_preserves_prior_attempts(monkeypatch, entry):
     monkeypatch.setattr(attack, "_generate_question", lambda *a: next(prompts))
     monkeypatch.setattr(attack, "_is_refusal", lambda *a: False)
     target = Target()
-    records = attack.attack(
+    count, success, payload, _response = invoke_attack(
+        attack.attack,
         entry,
         target,
         lambda e, r: False,
         3,
-        attack_option="model=mock",
-        return_all_attempts=True,
+        None,
+        None,
+        "model=mock",
     )
-    assert len(records) == 2
-    assert records[0].input["input"] == "first"
-    assert records[-1].attempts == 0
-    assert records[-1].error is not None
-    assert sum(r.attempts for r in records) == len(target.calls) == 1
-
-
-def test_combined_files_do_not_merge_same_parent(monkeypatch, entry):
-    history, _, _ = run_attack(monkeypatch, entry, trace=True, success_at=2)
-    first = [dict(r, source_file="one") for r in history]
-    second = [dict(r, source_file="two", success=False) for r in history]
-    p = ResultProcessor(first + second, "combined")
-    assert p.total_entries == 2 and p.total_attempts == 4
-    assert p.successful_groups == 1
-    assert p.attack_types["mock"]["total"] == 2
-
-
-@pytest.mark.parametrize(
-    "attack_name,expanded",
-    [("best_of_n", True), ("mock_attack", False), ("mock_attack_legacy", False)],
-)
-def test_cli_trace_and_legacy_fallback(
-    run_spikee, workspace_dir, attack_name, expanded
-):
-    from .utils import spikee_generate_cli, spikee_test_cli
-
-    dataset = spikee_generate_cli(run_spikee, workspace_dir)
-    # Keep the CLI regression small, while exercising concurrent entry writes.
-    entries = read_jsonl_file(dataset)[:2]
-    write_jsonl_file(dataset, entries)
-    paths, result = spikee_test_cli(
-        run_spikee,
-        workspace_dir,
-        target="always_refuse",
-        datasets=[dataset],
-        additional_args=[
-            "--attack",
-            attack_name,
-            "--attack-only",
-            "--attack-iterations",
-            "3",
-            "--attempts",
-            "2",
-            "--attack-return-all-attempts",
-            "--threads",
-            "2",
-            "--no-auto-resume",
-        ],
-    )
-    rows = read_jsonl_file(paths[0])
-    assert len(rows) == len(entries) * (6 if expanded else 1)
-    assert sum(r["attempts"] for r in rows) == len(entries) * 6
-    assert len({r["id"] for r in rows}) == len(rows)
-    p = ResultProcessor(rows, str(paths[0]))
-    assert p.total_entries == len(entries)
-    assert next(iter(p.attack_types.values()))["total"] == len(entries)
-    if not expanded:
-        assert "retaining its representative result" in result.stdout
-    resumed = run_spikee(
-        [
-            "test",
-            "--target",
-            "always_refuse",
-            "--dataset",
-            str(dataset),
-            "--attack",
-            attack_name,
-            "--attack-only",
-            "--attack-return-all-attempts",
-            "--resume-file",
-            str(paths[0]),
-            "--no-auto-resume",
-        ],
-        cwd=workspace_dir,
-    )
-    assert "All entries have already been processed" in resumed.stdout
-
-
-SINGLE_ATTACKS = [
-    ("anti_spotlighting", "AntiSpotlightingAttack"),
-    ("best_of_n", "BestOfNAttack"),
-    ("random_suffix_search", "RandomSuffixSearch"),
-    ("prompt_decomposition", "PromptDecompositionAttack"),
-    ("llm_jailbreaker", "LLMJailbreaker"),
-    ("llm_multi_language_jailbreaker", "LLMMultiLanguageJailbreaker"),
-    ("llm_poetry_jailbreaker", "LLMPoetryJailbreaker"),
-    ("rag_poisoner", "RAGPoisoner"),
-    ("sample_attack", "SampleAttack"),
-]
-
-
-@pytest.mark.parametrize("module_name,class_name", SINGLE_ATTACKS)
-@pytest.mark.parametrize("success_at,error_at", [(None, None), (3, None), (None, 2)])
-def test_bundled_single_turn_formats_preserve_execution(
-    monkeypatch, entry, module_name, class_name, success_at, error_at
-):
-    import importlib
-    import random
-    import numpy as np
-
-    prefix = (
-        "spikee.data.workspace.attacks"
-        if module_name == "sample_attack"
-        else "spikee.attacks"
-    )
-    module = importlib.import_module(f"{prefix}.{module_name}")
-    monkeypatch.setattr(module, "get_llm", lambda *a, **kw: object(), raising=False)
-    if module_name == "random_suffix_search":
-        monkeypatch.setattr(
-            module.tiktoken,
-            "get_encoding",
-            lambda name: SimpleNamespace(
-                n_vocab=100, decode=lambda tokens: str(tokens)
-            ),
-        )
-    results = []
-    for trace in (False, True):
-        random.seed(12)
-        np.random.seed(12)
-        attack = getattr(module, class_name)()
-        target = Target(success_at=success_at, error_at=error_at)
-        for method in (
-            "_generate_jailbreak_attack",
-            "_generate_multilingual_jailbreak_attack",
-            "_generate_rag_attack",
-        ):
-            if hasattr(attack, method):
-                monkeypatch.setattr(
-                    attack, method, lambda *a: f"candidate-{len(target.calls) + 1}"
-                )
-        judge_calls = []
-
-        def judge(e, response):
-            judge_calls.append(response)
-            return response == "success"
-
-        data = dict(entry, text=entry["content"])
-        returned = attack.attack(
-            data,
-            target,
-            judge,
-            5,
-            attack_option="model=mock",
-            return_all_attempts=trace,
-        )
-        results.append((returned, target.calls, judge_calls))
-    summary, history = results[0][0], results[1][0]
-    assert isinstance(summary, tuple) and len(summary) == 4
-    assert isinstance(history, list) and all(
-        isinstance(r, AttackAttempt) for r in history
-    )
-    assert summary[0] == sum(r.attempts for r in history)
-    assert summary[1] == any(r.success for r in history)
-    assert results[0][1:] == results[1][1:]  # exact target calls and judge calls
-    assert history[-1].input == summary[2]
-    assert history[-1].response == summary[3]
-    if error_at:
-        assert history[error_at - 1].error == "target failed"
-
-
-@pytest.mark.parametrize(
-    "module_name,class_name",
-    [("crescendo", "Crescendo"), ("echo_chamber", "EchoChamber"), ("goat", "GOAT")],
-)
-@pytest.mark.parametrize("success_at", [None, 3])
-def test_bundled_adaptive_multiturn_formats_preserve_execution(
-    monkeypatch, entry, module_name, class_name, success_at
-):
-    import importlib
-    import random
-
-    prefix = (
-        "spikee.data.workspace.attacks" if module_name == "goat" else "spikee.attacks"
-    )
-    module = importlib.import_module(f"{prefix}.{module_name}")
-    monkeypatch.setattr(module, "get_llm", lambda *a, **kw: object())
-    results = []
-    for trace in (False, True):
-        random.seed(12)
-        attack = getattr(module, class_name)()
-        target = Target(success_at=success_at)
-        target.get_target = lambda: target
-        if module_name == "crescendo":
-            monkeypatch.setattr(
-                attack, "_generate_question", lambda *a: f"turn-{len(target.calls) + 1}"
-            )
-            monkeypatch.setattr(attack, "_is_refusal", lambda *a: False)
-        elif module_name == "goat":
-            monkeypatch.setattr(
-                attack,
-                "_generate_question",
-                lambda *a: dict(
-                    observation="",
-                    thought="",
-                    strategy="",
-                    next_question=f"turn-{len(target.calls) + 1}",
-                ),
-            )
-            monkeypatch.setattr(attack, "evaluate_refusal", lambda *a: (False, ""))
-        else:
-            original_call = target.process_input
-
-            def echo_response(*args, **kwargs):
-                response = original_call(*args, **kwargs)
-                return (
-                    ('{"sentences": ["one", "two", "three"]}', {})
-                    if len(target.calls) == 1
-                    else response
-                )
-
-            target.process_input = echo_response
-            monkeypatch.setattr(
-                attack, "get_targeted_objective", lambda *a: "objective"
-            )
-            monkeypatch.setattr(
-                attack, "get_keywords", lambda *a, **kw: ["one", "two", "three"]
-            )
-            monkeypatch.setattr(
-                attack, "evaluate_seed_alignment", lambda *a: (False, "")
-            )
-            monkeypatch.setattr(attack, "choose_seed_sentence", lambda *a: (1, ""))
-            monkeypatch.setattr(
-                attack, "get_next_question", lambda *a: f"turn-{len(target.calls) + 1}"
-            )
-            monkeypatch.setattr(
-                attack,
-                "evaluate_success",
-                lambda llm, obj, response: (response == "success", "High", ""),
-            )
-            monkeypatch.setattr(attack, "evaluate_refusal", lambda *a: (False, ""))
-        judge_calls = []
-
-        def judge(e, response):
-            judge_calls.append(response)
-            return response == "success"
-
-        returned = attack.attack(
-            dict(entry, text=entry["content"]),
-            target,
-            judge,
-            5,
-            attack_option="model=mock",
-            return_all_attempts=trace,
-        )
-        # Session IDs differ between runs; compare actual prompts and backtracking.
-        calls = [
-            (prompt, kwargs.get("backtrack", False)) for prompt, kwargs in target.calls
-        ]
-        results.append((returned, calls, judge_calls))
-    summary, history = results[0][0], results[1][0]
-    assert isinstance(summary, tuple)
-    assert isinstance(history, list) and all(
-        isinstance(r, AttackAttempt) for r in history
-    )
-    assert results[0][1:] == results[1][1:]
-    assert summary[0] == sum(r.attempts for r in history) == len(results[0][1])
-    assert summary[1] == any(r.success for r in history)
-    assert [
-        r.input["input"] if isinstance(r.input, dict) else r.input for r in history
-    ] == [c[0] for c in results[1][1]]
-    if module_name != "echo_chamber":
-        assert len(json.loads(history[0].input["conversation"])) < len(
-            json.loads(history[-1].input["conversation"])
-        )
-
-
-def test_handled_errors_do_not_skip_repeated_invocations(monkeypatch, entry):
-    from spikee.attacks.best_of_n import BestOfNAttack
-
-    results = []
-    for trace in (False, True):
-        rows, target, bar = run_attack(
-            monkeypatch,
-            entry,
-            BestOfNAttack(),
-            trace=trace,
-            iterations=3,
-            attempts=2,
-            error_at=3,
-        )
-        assert len(target.calls) == bar.n == bar.total == 6
-        results.append(sum(r["attempts"] for r in rows))
-    assert results == [6, 6]
+    assert count == 1 and success is False
+    graph = json.loads(payload["conversation"])
+    assert len(graph) == 3
+    assert graph["1"]["data"]["content"] == "first"
+    assert graph["2"]["data"]["content"] == "refused"
+    assert count == len(target.calls) == 1
 
 
 def test_repeated_guardrail_categories_count_dataset_groups(entry):
@@ -823,23 +623,354 @@ def test_cli_rejudge_keeps_history_ids_and_parentage(run_spikee, workspace_dir, 
     assert p.total_attempts == 3
 
 
-def test_mixed_returns_across_invocations_preserve_all_counts(monkeypatch, entry):
-    class MixedAttack:
-        def __init__(self):
-            self.invocation = 0
+@pytest.mark.parametrize(
+    "module_name,class_name",
+    [("crescendo", "Crescendo"), ("echo_chamber", "EchoChamber"), ("goat", "GOAT")],
+)
+@pytest.mark.parametrize(
+    "scenario", ["failure", "success", "refusal", "target_error", "seed_error"]
+)
+@pytest.mark.parametrize("invocations", [1, 3])
+def test_conversation_attacks_ignore_candidate_history_environment(
+    monkeypatch, entry, module_name, class_name, scenario, invocations
+):
+    import importlib
+    import random
 
-        def attack(self, *args, return_all_attempts=False):
-            self.invocation += 1
-            if self.invocation == 2:
-                return [AttackAttempt("middle", "reply", False)]
-            return 3, False, f"representative-{self.invocation}", "reply"
+    prefix = (
+        "spikee.data.workspace.attacks" if module_name == "goat" else "spikee.attacks"
+    )
+    module = importlib.import_module(f"{prefix}.{module_name}")
+    monkeypatch.setattr(module, "get_llm", lambda *a, **kw: object())
+    monkeypatch.setattr(module.uuid, "uuid4", lambda: "test-session")
+    results = []
+    for trace in (False, True):
+        random.seed(12)
+        monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(trace))
+        attack = getattr(module, class_name)()
+        assert "return_all_attempts" not in inspect.signature(attack.attack).parameters
+        target = Target(
+            success_at=3 if scenario == "success" else None,
+            error_at=2
+            if scenario == "target_error"
+            else 1
+            if scenario == "seed_error"
+            else None,
+        )
+        target.get_target = lambda target=target: target
+        if module_name == "crescendo":
+            monkeypatch.setattr(
+                attack,
+                "_generate_question",
+                lambda *a, target=target: f"turn-{len(target.calls) + 1}",
+            )
+            monkeypatch.setattr(attack, "_is_refusal", lambda *a: scenario == "refusal")
+        elif module_name == "goat":
+            monkeypatch.setattr(
+                attack,
+                "_generate_question",
+                lambda *a, target=target: {
+                    "observation": "",
+                    "thought": "",
+                    "strategy": "",
+                    "next_question": f"turn-{len(target.calls) + 1}",
+                },
+            )
+            monkeypatch.setattr(
+                attack,
+                "evaluate_refusal",
+                lambda *a: (scenario == "refusal", "refusal reason"),
+            )
+        else:
+            original_call = target.process_input
 
-    rows, _, bar = run_attack(monkeypatch, entry, MixedAttack(), trace=True, attempts=3)
-    assert [r["attempts"] for r in rows] == [3, 1, 3]
-    assert [r["attack_result_format"] for r in rows] == [
-        "representative",
-        "attempt",
-        "representative",
+            def echo_response(*args, original_call=original_call, **kwargs):
+                response = original_call(*args, **kwargs)
+                return (
+                    ('{"sentences": ["one", "two", "three"]}', {})
+                    if module.TARGET_SEED_SENTENCES_PROMPT in args[0]
+                    else response
+                )
+
+            target.process_input = echo_response
+            monkeypatch.setattr(
+                attack, "get_targeted_objective", lambda *a: "objective"
+            )
+            monkeypatch.setattr(
+                attack, "get_keywords", lambda *a, **kw: ["one", "two", "three"]
+            )
+            monkeypatch.setattr(
+                attack, "evaluate_seed_alignment", lambda *a: (False, "")
+            )
+            monkeypatch.setattr(attack, "choose_seed_sentence", lambda *a: (1, ""))
+            monkeypatch.setattr(
+                attack,
+                "get_next_question",
+                lambda *a, target=target: f"turn-{len(target.calls) + 1}",
+            )
+            monkeypatch.setattr(
+                attack,
+                "evaluate_success",
+                lambda llm, obj, response: (response == "success", "High", ""),
+            )
+            monkeypatch.setattr(
+                attack,
+                "evaluate_refusal",
+                lambda *a: (scenario == "refusal", "refusal reason"),
+            )
+        judge_calls = []
+
+        def judge(e, response, judge_calls=judge_calls):
+            judge_calls.append(response)
+            return response == "success"
+
+        monkeypatch.setattr(tester, "call_judge", judge)
+        bar = Bar(invocations * 5)
+        rows = tester.process_entry(
+            dict(entry, text=entry["content"]),
+            target,
+            attempts=invocations,
+            attack_name=module_name,
+            attack_module=attack,
+            attack_iterations=5,
+            attack_options="model=mock",
+            attack_only=True,
+            attempts_bar=bar,
+            global_lock=threading.Lock(),
+        )
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["id"] == "42-attack"
+        assert "attack_attempt" not in row
+        assert "attempt_history" not in row
+        if "conversation" in row:
+            graph = json.loads(row["conversation"])
+            assert len(graph) > 1
+            if scenario == "refusal":
+                assert any(len(node["children"]) > 1 for node in graph.values())
+                assert any(
+                    node["data"].get("content") == "refused" for node in graph.values()
+                )
+        elif not (module_name == "goat" and scenario in ("target_error", "seed_error")):
+            pytest.fail("Attack discarded its conversation graph")
+        if module_name == "goat" and scenario == "target_error":
+            assert len(target.calls) == 2  # An error must still stop outer invocations.
+        calls = [
+            (prompt, kwargs.get("backtrack", False)) for prompt, kwargs in target.calls
+        ]
+        results.append(
+            (
+                {
+                    key: row.get(key)
+                    for key in (
+                        "input",
+                        "response",
+                        "conversation",
+                        "objective",
+                        "success",
+                        "error",
+                        "attempts",
+                    )
+                },
+                calls,
+                judge_calls,
+                bar.n,
+                bar.total,
+            )
+        )
+    assert results[0] == results[1]
+
+
+SINGLE_ATTACKS = [
+    ("anti_spotlighting", "AntiSpotlightingAttack"),
+    ("best_of_n", "BestOfNAttack"),
+    ("random_suffix_search", "RandomSuffixSearch"),
+    ("prompt_decomposition", "PromptDecompositionAttack"),
+    ("llm_jailbreaker", "LLMJailbreaker"),
+    ("llm_multi_language_jailbreaker", "LLMMultiLanguageJailbreaker"),
+    ("llm_poetry_jailbreaker", "LLMPoetryJailbreaker"),
+    ("rag_poisoner", "RAGPoisoner"),
+    ("sample_attack", "SampleAttack"),
+]
+
+
+@pytest.mark.parametrize("module_name,class_name", SINGLE_ATTACKS)
+@pytest.mark.parametrize("success_at,error_at", [(None, None), (3, None), (None, 2)])
+def test_single_turn_history_preserves_execution(
+    monkeypatch, entry, module_name, class_name, success_at, error_at
+):
+    import importlib
+    import random
+
+    import numpy as np
+
+    prefix = (
+        "spikee.data.workspace.attacks"
+        if module_name == "sample_attack"
+        else "spikee.attacks"
+    )
+    module = importlib.import_module(f"{prefix}.{module_name}")
+    monkeypatch.setattr(module, "get_llm", lambda *a, **kw: object(), raising=False)
+    if module_name == "random_suffix_search":
+        monkeypatch.setattr(
+            module.tiktoken,
+            "get_encoding",
+            lambda name: SimpleNamespace(
+                n_vocab=100, decode=lambda tokens: str(tokens)
+            ),
+        )
+    results = []
+    for trace in (False, True):
+        random.seed(12)
+        monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(trace))
+        np.random.seed(12)
+        attack = getattr(module, class_name)()
+        target = Target(success_at=success_at, error_at=error_at)
+        for method in (
+            "_generate_jailbreak_attack",
+            "_generate_multilingual_jailbreak_attack",
+            "_generate_rag_attack",
+        ):
+            if hasattr(attack, method):
+                monkeypatch.setattr(
+                    attack,
+                    method,
+                    lambda *a, target=target: f"candidate-{len(target.calls) + 1}",
+                )
+        judge_calls = []
+
+        def judge(e, response, judge_calls=judge_calls):
+            judge_calls.append(response)
+            return response == "success"
+
+        data = dict(entry, text=entry["content"])
+        returned = attack.attack(
+            data,
+            target,
+            judge,
+            5,
+            attack_option="model=mock",
+        )
+        results.append((returned, target.calls, judge_calls))
+    summary, detailed = results[0][0], results[1][0]
+    assert isinstance(summary, tuple) and isinstance(detailed, tuple)
+    assert len(summary) == len(detailed) == 4
+    assert "attempt_history" not in summary[2]
+    history = detailed[2]["attempt_history"]
+    assert summary[:2] == detailed[:2]
+    assert summary[2]["input"] == detailed[2]["input"]
+    assert summary[3] == detailed[3]
+    assert results[0][1:] == results[1][1:]
+    assert len(history) == summary[0]
+    assert history[-1]["input"] == detailed[2]["input"]
+    assert history[-1]["response"] == detailed[3]
+    if error_at:
+        assert history[error_at - 1]["error"] == "target failed"
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize(
+    "attack_name", ["best_of_n", "mock_attack", "mock_attack_legacy"]
+)
+def test_cli_nested_history_and_legacy_modules(
+    run_spikee, workspace_dir, monkeypatch, enabled, attack_name
+):
+    from .utils import spikee_generate_cli, spikee_test_cli
+
+    monkeypatch.setenv("SPIKEE_ATTACK_HISTORY", str(enabled))
+    dataset = spikee_generate_cli(run_spikee, workspace_dir)
+    entries = read_jsonl_file(dataset)[:2]
+    write_jsonl_file(dataset, entries)
+    paths, _ = spikee_test_cli(
+        run_spikee,
+        workspace_dir,
+        target="always_refuse",
+        datasets=[dataset],
+        additional_args=[
+            "--attack",
+            attack_name,
+            "--attack-only",
+            "--attack-iterations",
+            "3",
+            "--attempts",
+            "2",
+            "--threads",
+            "2",
+            "--no-auto-resume",
+        ],
+    )
+    rows = read_jsonl_file(paths[0])
+    assert len(rows) == len(entries) == 2
+    assert all(r["attempts"] == 6 for r in rows)
+    if enabled and attack_name == "best_of_n":
+        assert all(len(r["attempt_history"]) == 6 for r in rows)
+        assert [h["invocation"] for h in rows[0]["attempt_history"]] == [
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+        ]
+    else:
+        assert all("attempt_history" not in r for r in rows)
+    resumed = run_spikee(
+        [
+            "test",
+            "--target",
+            "always_refuse",
+            "--dataset",
+            str(dataset),
+            "--attack",
+            attack_name,
+            "--attack-only",
+            "--resume-file",
+            str(paths[0]),
+            "--no-auto-resume",
+        ],
+        cwd=workspace_dir,
+    )
+    assert "All entries have already been processed" in resumed.stdout
+
+
+def test_nested_history_extract_and_rejudge(run_spikee, workspace_dir, entry):
+    history = [
+        {"input": "first", "response": "refused", "success": False},
+        {"input": "last", "response": "reply", "success": True},
     ]
-    assert bar.n == bar.total == 7
-    assert ResultProcessor(rows, "mixed").total_attempts == 7
+    row = dict(
+        entry,
+        id="42-attack",
+        input="last",
+        response="reply",
+        attack_name="mock",
+        attempts=2,
+        success=True,
+        judge_name="test_judge",
+        attempt_history=history,
+    )
+    path = workspace_dir / "results" / "results_nested.jsonl"
+    path.parent.mkdir(exist_ok=True)
+    write_jsonl_file(path, [row])
+    run_spikee(
+        ["results", "extract", "--result-file", str(path), "--query", "success = true"],
+        cwd=workspace_dir,
+    )
+    extracted = read_jsonl_file(
+        next((workspace_dir / "results").glob("extract*.jsonl"))
+    )
+    assert len(extracted) == 1 and extracted[0]["attempt_history"] == history
+    assert extracted[0]["attempts"] == 2
+    run_spikee(
+        [
+            "results",
+            "rejudge",
+            "--result-file",
+            str(path),
+            "--judge-options",
+            "test_judge:mode=failure",
+        ],
+        cwd=workspace_dir,
+    )
+    rejudged = read_jsonl_file(next((workspace_dir / "results").glob("rejudge*.jsonl")))
+    assert rejudged[0]["attempt_history"] == history and rejudged[0]["id"] == row["id"]

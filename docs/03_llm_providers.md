@@ -46,7 +46,7 @@ Use `spikee list providers` to get a list of providers and known supported model
 | Local (Ollama) | `ollama` | *None* | `OLLAMA_URL` | |
 | Local (LLaMA CPP Server) | `llamacpp` | *None* | `LLAMACPP_URL` | |
 | Custom | `custom` | *None* | `CUSTOM_API_URL`<br/>`CUSTOM_API_KEY` | *Custom OpenAI-Based API* |
-| Offline | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#1-scan-using-offline-judge) |
+| Offline | `offline` | `offline` | *None* | [See Judges section](./09_judges.md#re-judging) |
 
 
 ## Configuring Models in Spikee Components

@@ -1,6 +1,46 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.9.2] - 2026-09-11
+
+### Features
+
+- Implement Spikee Filter Language (SFL) for result extraction
+- simplify attack logging with nested attempt_history
+- add opt-in dynamic attack history
+- webui fetch and convert script
+- webui edit seeds and datasets
+- enhance session management for webui executions and persist state
+- implement manual job handling and UI for dataset testing
+
+### Fixes
+
+- warn only when structured response repairs are exhausted
+- remove judge evidence requirements and quote validation
+- remove attacker token caps and accept literal JSON control characters
+- append resumed tests to the original results file
+- update spikee_extract_cli tests to use SFL
+- remove unnecessary blank line in _conversation_message_count function
+- tolerate verified evidence excerpts and negative-grade summaries
+- give judge retries rejected assessments and validation errors
+- repair malformed LLM attack responses with bounded retries
+- refactor _attack_result to use dictionary literal for row creation
+- harden judge verdicts and add model evaluations
+- shorten output filenames with readable labels and hashes
+- preserve original text as attack result objective
+- put result IDs and success before input and response
+- remove redundant skip PyPI publication step from release workflow
+- add SKIP_PYPI environment variable to control PyPI publication in release workflow
+- refine conditions for lint and functional test jobs in workflow
+- pin ruff version to 0.16.6 in release and test workflows
+- declare tokenizer dependency for random suffix attack
+- debug plugin option key and error handling in OpusTranslator (#122)
+- add future annotations import to crescendo.py to fix test bug
+
+### Changes
+
+- update conversation attempt history in the webui
+
 ## [0.9.1] - 2026-07-13
 
 ### Features

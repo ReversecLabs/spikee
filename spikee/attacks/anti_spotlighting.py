@@ -25,7 +25,10 @@ Arguments:
         If provided, the attack will update it during its iterations.
 
 Returns:
-    A tuple: (iterations_attempted, success_flag, last_payload, last_response)
+    A tuple: (iterations_attempted, success_flag, input_details, last_response)
+
+The input_details dictionary retains the representative input and attempt_history.
+Set SPIKEE_ATTACK_HISTORY=false to omit history without changing attack execution.
 """
 
 import random
@@ -33,9 +36,9 @@ from collections.abc import Callable
 
 from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
+from spikee.utilities.attack import attack_history_enabled
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import (
-    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -63,7 +66,6 @@ class AntiSpotlightingAttack(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Executes the anti-spotlighting attack by sequentially trying different
@@ -78,9 +80,9 @@ class AntiSpotlightingAttack(Attack):
             bar_lock: Optional lock for thread safety with the progress bar
 
         Returns:
-            (iterations_attempted, success_flag, last_payload, last_response)
+            (iterations_attempted, success_flag, input_details, last_response)
         """
-        history = []
+        history = [] if attack_history_enabled() else None
         original_text = entry.get("content", entry.get("text", ""))
         if entry.get("content_type", "text") != "text":
             raise ValueError(
@@ -111,12 +113,14 @@ class AntiSpotlightingAttack(Attack):
             last_payload = candidate_text
 
             error = None
+            attempt_response = ""
             try:
                 response = process_target_content(
                     target_module.process_input(candidate_text, system_message)
                 )
 
                 last_response = response
+                attempt_response = response
                 success = call_judge(entry, response)
             except Exception as e:  # noqa: BLE001
                 error = str(e)
@@ -124,9 +128,14 @@ class AntiSpotlightingAttack(Attack):
                 last_response = str(e)
                 print(f"[Anti-Spotlighting] Entry ID {entry.get('id', 'unknown')}: {e}")
 
-            if return_all_attempts:
+            if history is not None:
                 history.append(
-                    AttackAttempt(candidate_text, last_response, success, error=error)
+                    {
+                        "input": candidate_text,
+                        "response": attempt_response,
+                        "success": success if error is None else None,
+                        "error": error,
+                    }
                 )
 
             # Update progress bar if provided
@@ -142,15 +151,22 @@ class AntiSpotlightingAttack(Attack):
                         remaining = max_iterations - i
                         attempts_bar.total = attempts_bar.total - remaining
                         attempts_bar.refresh()
-                if return_all_attempts:
-                    return history
-                return i, True, candidate_text, response
 
-        if return_all_attempts:
-            return history or [
-                AttackAttempt(last_payload, last_response, False, attempts=0)
-            ]
-        return min(len(variants), max_iterations), False, last_payload, last_response
+                return (
+                    i,
+                    True,
+                    self.standardised_input_return(
+                        input=candidate_text, attempt_history=history
+                    ),
+                    response,
+                )
+
+        return (
+            min(len(variants), max_iterations),
+            False,
+            self.standardised_input_return(input=last_payload, attempt_history=history),
+            last_response,
+        )
 
     def _generate_variants(self, text: str) -> list[str]:
         """

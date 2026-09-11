@@ -6,10 +6,10 @@ from spikee.utilities.files import read_jsonl_file
 from spikee.templates.llm_judge import LLMJudge
 from .utils import spikee_generate_cli, spikee_test_cli
 
-# Skip the entire test file if RUN_INFERENCE_TESTS is set, to avoid running inference tests in environments where they are not intended
+# Live calls require explicit opt-in, even when API keys are available.
 pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_INFERENCE_TESTS") is not None,
-    reason="Skipping inference tests because RUN_INFERENCE_TESTS environment variable is set.",
+    os.environ.get("RUN_INFERENCE_TESTS") != "1",
+    reason="Run manually with RUN_INFERENCE_TESTS=1",
 )
 
 

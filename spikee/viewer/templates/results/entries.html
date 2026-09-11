@@ -78,7 +78,7 @@
                 <div class="flex-grow-1 position-relative" style="min-width:260px">
                     <input type="text" class="form-control form-control-sm font-monospace"
                            name="custom_search" id="searchInput"
-                           placeholder="e.g. plugin:base64 | jailbreak_type:dan | !error"
+                              placeholder='e.g. success = true AND response LIKE "%canary%"'
                            value="{{ custom_search or '' }}"
                            autocomplete="off">
                 </div>
@@ -95,16 +95,22 @@
                 </span>
             </form>
 
+            {% if filter_error %}
+            <div class="alert alert-danger py-2 px-3 mb-2 small" role="alert">
+                {{ filter_error }}
+            </div>
+            {% endif %}
+
             {# ── Quick-add chips ── #}
             <div class="d-flex flex-wrap align-items-center gap-1">
                 <span class="small text-muted me-1" style="white-space:nowrap">Quick add:</span>
                 {% for label, token in [
-                    ("Success",      "success:True"),
-                    ("Failure",      "success:False"),
-                    ("Guardrail",    "guardrail:True"),
-                    ("No Guardrail", "!guardrail"),
-                    ("Error",        "error:True"),
-                    ("No Error",     "!error"),
+                    ("Success",      "success = true"),
+                    ("Failure",      "success = false"),
+                    ("Guardrail",    "guardrail"),
+                    ("No Guardrail", "NOT guardrail"),
+                    ("Error",        "error"),
+                    ("No Error",     "NOT error"),
                 ] %}
                 <button type="button" class="btn btn-xs search-chip"
                         onclick="appendSearch('{{ token }}')"
@@ -112,20 +118,20 @@
                 {% endfor %}
                 <span class="vr mx-1"></span>
                 {% for label, token in [
-                    ("plugin:",      "plugin:"),
-                    ("attack:",      "attack_name:"),
-                    ("jailbreak:",   "jailbreak_type:"),
-                    ("instruction:", "instruction_type:"),
-                    ("lang:",        "lang:"),
-                    ("id:",          "id:"),
+                    ("plugin",       "plugin = "),
+                    ("attack",       "attack_name = "),
+                    ("jailbreak",    "jailbreak_type = "),
+                    ("instruction",  "instruction_type = "),
+                    ("lang",         "lang = "),
+                    ("id",           "id = "),
                 ] %}
                 <button type="button" class="btn btn-xs search-chip search-chip-field"
-                        onclick="appendSearch('{{ token }}')"
+                        onclick="appendSearch('{{ token }}', false)"
                         title="Filter by {{ label }}">{{ label }}</button>
                 {% endfor %}
                 <span class="vr mx-1"></span>
                 <span class="small text-muted font-monospace">
-                    <code>a|b</code> OR &nbsp;<code>a b</code> AND &nbsp;<code>!term</code> NOT
+                    <code>AND</code> &nbsp;<code>OR</code> &nbsp;<code>NOT</code> &nbsp;<code>()</code>
                 </span>
             </div>
         </div>
@@ -144,7 +150,7 @@
                value="{{ request.full_path if request.query_string else request.path }}">
 
         {# ── Bulk action toolbar ── #}
-        <div class="d-flex align-items-center gap-2 mb-2 px-1" id="bulkToolbar">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 px-1" id="bulkToolbar">
             <span class="small text-muted me-1">Select:</span>
             <button type="button" class="btn btn-xs btn-outline-secondary"
                     onclick="setAllChecked(true)">All</button>
@@ -163,6 +169,28 @@
                     onclick="return confirmBulk('toggle')">
                 Toggle success
             </button>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <span class="small text-muted">Conversations:</span>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.conversation-card').forEach(item => item.open = true)">
+                    Expand all
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.conversation-card').forEach(item => item.open = false)">
+                    Collapse all
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted">Attempt history:</span>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.attempt-history, details.attempt-history-item').forEach(item => item.open = true)">
+                    Expand all
+                </button>
+                <button type="button" class="btn btn-xs btn-outline-secondary"
+                        onclick="this.form.querySelectorAll('details.attempt-history, details.attempt-history-item').forEach(item => item.open = false)">
+                    Collapse all
+                </button>
+            </div>
         </div>
 
         {# ── Entry cards ── #}
@@ -192,17 +220,16 @@
 
 {% block scripts %}
 <script>
-function appendSearch(token) {
+function appendSearch(token, submit = true) {
     const input = document.getElementById('searchInput');
     const current = input.value.trim();
     if (current === '') {
         input.value = token;
     } else {
-        const endsWithColon = token.endsWith(':');
-        input.value = current + (endsWithColon ? ' ' : '|') + token;
+        input.value = current + ' AND ' + token;
     }
     input.focus();
-    if (!token.endsWith(':')) {
+    if (submit) {
         document.getElementById('filterForm').submit();
     }
 }

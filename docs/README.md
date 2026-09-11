@@ -36,3 +36,7 @@
 - **[Generating Custom Datasets with an LLM](./13_llm_dataset_generation.md)** - Methods for using LLMs to generate use-case specific datasets. Covers creating `standalone_user_inputs.jsonl` and custom `instructions.jsonl` files.
   
 - **[Functional Testing Guide](./14_functional_testing.md)** - Run the end-to-end CLI regression suite locally using pytest.
+
+- **[Judge Evaluation](./15_judge_evaluation.md)** - Run offline judge regressions and opt-in multi-model evaluations using labelled dataset-derived responses.
+
+- **[Judge Evaluation Results](./16_judge_evaluation_results.md)** - Recorded baseline/final comparisons, validation and remaining limitations.

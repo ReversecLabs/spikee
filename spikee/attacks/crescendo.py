@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import re
 import threading
 import traceback
 import uuid
@@ -13,7 +11,6 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.utilities.hinting import (
-    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -21,6 +18,7 @@ from spikee.utilities.hinting import (
 )
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
+from spikee.utilities.llm_response import parse_json_object, query_structured_response
 from spikee.utilities.modules import parse_options
 
 # Source: https://github.com/Azure/PyRIT/blob/bbed39cf249fca9ce20770550912b7254ae672fe/pyrit/datasets/orchestrators/crescendo/crescendo_variant_1.yaml
@@ -105,10 +103,6 @@ rationale_behind_jailbreak: Detail the reasoning behind the development of the p
 """
 
 
-class LLM_JSON_Error(Exception):
-    """Custom exception for LLM JSON extraction errors."""
-
-
 class Crescendo(Attack):
     def __init__(self):
         """Define multi-turn capabilities for Crescendo attack."""
@@ -130,83 +124,6 @@ class Crescendo(Attack):
         return max(1, int(opts.get("max-turns", "5")))
 
     # Helpers
-
-    def _extract_json_or_fail(self, text: str) -> dict[str, Any]:
-        """
-        Robust JSON extractor.
-
-        Steps:
-        1) If the LLM returned a fenced code block, use its contents.
-        2) If the text contains a langchain-style `content='...json...'` or `content="...json..."`,
-        extract the quoted section, then extract the first balanced {...} from that.
-        3) Try direct json.loads on the whole text.
-        4) As a last resort, scan the whole text for the first balanced {...} and parse it.
-        """
-        if not text:
-            raise LLM_JSON_Error("LLM returned empty response")
-
-        t = text.strip()
-
-        # 1) fenced code block
-        m = re.search(r"```(?:json)?\s*(.*?)```", t, flags=re.IGNORECASE | re.DOTALL)
-        if m:
-            t = m.group(1).strip()
-
-        # 2) langchain-style: content='...{...}...'
-        # capture the quoted payload after content=
-        m2 = re.search(
-            r"content\s*=\s*(['\"])(.*?)\1", t, flags=re.DOTALL | re.IGNORECASE
-        )
-        if m2:
-            quoted = m2.group(2)
-            # find first balanced {...} inside quoted
-            start = -1
-            depth = 0
-            for i, ch in enumerate(quoted):
-                if ch == "{":
-                    if depth == 0:
-                        start = i
-                    depth += 1
-                elif ch == "}":
-                    if depth > 0:
-                        depth -= 1
-                        if depth == 0 and start != -1:
-                            candidate = quoted[start : i + 1]
-                            try:
-                                return json.loads(candidate)
-                            except json.JSONDecodeError:
-                                # if parsing fails, break and fall back to next strategies
-                                start = -1
-                                break
-            # if we couldn't parse from quoted, fall through to other attempts using full text
-
-        # 3) try direct JSON parse
-        try:
-            return json.loads(t)
-        except json.JSONDecodeError:
-            pass
-
-        # 4) scan for first balanced {...} anywhere in the full text
-        start = -1
-        depth = 0
-        for i, ch in enumerate(t):
-            if ch == "{":
-                if depth == 0:
-                    start = i
-                depth += 1
-            elif ch == "}":
-                if depth > 0:
-                    depth -= 1
-                    if depth == 0 and start != -1:
-                        candidate = t[start : i + 1]
-                        try:
-                            return json.loads(candidate)
-                        except json.JSONDecodeError:
-                            # keep scanning for the next top-level JSON object
-                            start = -1
-                            continue
-
-        raise LLM_JSON_Error("LLM did not return valid JSON object:", text)
 
     def _make_session_id(self) -> str:
         return str(uuid.uuid4())
@@ -242,13 +159,14 @@ class Crescendo(Attack):
             .replace("{{remaining_turns}}", str(remaining_turns))
         )
 
-        # Call generator LLM
-        res = llm.invoke([prompt]).content.strip()
-        obj = self._extract_json_or_fail(res)
-        q = obj.get("generated_question")
-        if not q:
-            raise LLM_JSON_Error("LLM failed to produce 'generated_question'")
-        return q.strip()
+        obj = query_structured_response(
+            llm,
+            [prompt],
+            lambda text: parse_json_object(text, string_keys=("generated_question",)),
+            context="crescendo.generate",
+            max_attempts=3,
+        )
+        return obj["generated_question"].strip()
 
     def _is_refusal(self, llm, text: str) -> bool:
         prompt = HumanMessage(
@@ -272,7 +190,6 @@ class Crescendo(Attack):
         session_id: str,
         conversation: StandardisedConversation,
         last_message_id: int,
-        history: list[AttackAttempt] | None = None,
     ) -> tuple[int, StandardisedConversation, int, str]:
         """
         Run a single conversation attempt.
@@ -299,54 +216,29 @@ class Crescendo(Attack):
             remaining_turns = max_turns - non_backtrack_turns
             prompt_message_id = last_message_id
 
-            json_error_attempts = 3
-            while json_error_attempts > 0:
-                try:
-                    prompt = self._generate_question(
-                        llm,
-                        objective,
-                        conversation,
-                        last_message_id,
-                        max_turns,
-                        remaining_turns,
-                    )
-                    json_error_attempts = 0  # success
-                except LLM_JSON_Error as e:
-                    print(
-                        f"[Warning] LLM did not return valid JSON object (attempts remaining {json_error_attempts}): {e}"
-                    )
-                    json_error_attempts -= 1
-                    if json_error_attempts <= 0:
-                        raise RuntimeError from e
+            prompt = self._generate_question(
+                llm,
+                objective,
+                conversation,
+                last_message_id,
+                max_turns,
+                remaining_turns,
+            )
             last_message_id = conversation.add_message(
                 last_message_id,
                 {"role": "user", "content": prompt, "spikee_session_id": session_id},
                 attempt=True,
             )
 
-            current = None
-            if history is not None:
-                current = AttackAttempt(
-                    self.standardised_input_return(prompt, conversation, objective),
-                    "",
-                    None,
-                )
-                history.append(current)
-
             # call target; each call consumes budget immediately
-            try:
-                response_text = process_target_content(
-                    target_module.process_input(
-                        prompt,
-                        system_message,
-                        spikee_session_id=session_id,
-                        backtrack=is_refuse,
-                    )
+            response_text = process_target_content(
+                target_module.process_input(
+                    prompt,
+                    system_message,
+                    spikee_session_id=session_id,
+                    backtrack=is_refuse,
                 )
-            except Exception as e:
-                if current is not None:
-                    current.error = str(e)
-                raise
+            )
 
             last_message_id = conversation.add_message(
                 last_message_id,
@@ -356,12 +248,6 @@ class Crescendo(Attack):
                     "spikee_session_id": session_id,
                 },
             )
-
-            if current is not None:
-                current.response = response_text
-                current.input = self.standardised_input_return(
-                    prompt, conversation, objective
-                )
 
             # Count this call and update attempts_bar (backtracks are counted too)
             if attempts_bar:
@@ -374,8 +260,6 @@ class Crescendo(Attack):
 
             # Check success
             success = call_judge(entry, response_text)
-            if current is not None:
-                current.success = success
             if success:
                 # record final successful prompt only
                 return True, conversation, last_message_id, response_text
@@ -414,7 +298,6 @@ class Crescendo(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Attack entry point.
@@ -448,11 +331,10 @@ class Crescendo(Attack):
         llm = get_llm(model, max_tokens=None)
 
         # Variables
-        conversation = StandardisedConversation({"objective": objective})
+        conversation = StandardisedConversation({})
         last_message_id = conversation.get_root_id()  # last message id
         last_response = ""  # last LLM response
 
-        history = []
         # Loop until global budget exhausted
         while max_iterations - conversation.get_attempt_total() > 0:
             # Start new conversation attempt
@@ -472,23 +354,12 @@ class Crescendo(Attack):
                         session_id,
                         conversation,
                         last_message_id,
-                        history if return_all_attempts else None,
                     )
                 )
 
             except Exception as e:  # noqa: BLE001
                 # surface generator / classifier / target errors in-line
                 traceback.print_exc()
-                if return_all_attempts:
-                    if history and history[-1].success is None:
-                        history[-1].error = str(e)
-                    else:
-                        history.append(
-                            AttackAttempt(
-                                objective, "", False, attempts=0, error=str(e)
-                            )
-                        )
-                    return history
                 return (
                     conversation.get_attempt_total(),
                     False,
@@ -515,8 +386,6 @@ class Crescendo(Attack):
                         if getattr(attempts_bar, "total", None) is not None:
                             attempts_bar.total = max(0, attempts_bar.total - remaining)
                             attempts_bar.refresh()
-                if return_all_attempts:
-                    return history
                 return (
                     conversation.get_attempt_total(),
                     True,
@@ -531,10 +400,6 @@ class Crescendo(Attack):
             if max_iterations - conversation.get_attempt_total() <= 0:
                 break
 
-        if return_all_attempts:
-            return history or [
-                AttackAttempt(objective, last_response, False, attempts=0)
-            ]
         return (
             conversation.get_attempt_total(),
             False,

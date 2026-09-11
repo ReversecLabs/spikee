@@ -4,7 +4,7 @@ Spikee ships with an end-to-end functional suite that exercises the CLI exactly 
 
 ## 1. Prerequisites
 
-- Python 3.9 or later (check `python --version`).
+- Python 3.11 or later (check `python --version`).
 - A local checkout of this repository.
 - `pytest` available in your environment (install it once with `pip install pytest` if you do not already have it).
 
@@ -33,22 +33,24 @@ Spikee ships with an end-to-end functional suite that exercises the CLI exactly 
 
    - Spawn a temporary virtual environment for each session.
    - Install the current `spikee` wheel into that venv.
-   - Bootstrap a scratch workspace (`spikee init`) and overlay the fixtures under `tests/functional/fixtures`.
+   - Bootstrap a scratch workspace (`spikee init`) and overlay the fixtures under `tests/functional/workspace`.
    - Execute the relevant `spikee` CLI commands (currently `spikee generate` and `spikee test`) and assert the outputs.
 
    Optionally, run the functional suite from your workspace `pytest ../tests/functional` to use enviromental variables from your workspace .env file:
-   - `SPIKEE_TESTS_USE_ISOLATED_VENV=1` - Uses current environment instead of creating a new one for each test session. This is useful if you have already installed spikee in your current environment and want to speed up the tests by skipping the installation step.
+   - `SPIKEE_TESTS_USE_ISOLATED_VENV=false` - Uses the current environment instead of creating a new one for each test session. Use `true` (the default) for an isolated environment.
    - Uses LLM provider inference keys.
 
 4. **Run a single test** (useful while debugging):
 
    ```bash
-   pytest tests/functional/test_generate_cli.py::test_generate_with_multiple_plugins_combines_results
+   pytest tests/functional/test_judge_evaluation.py
    ```
 
    Add `-k <substring>` or `-vv` for tighter filtering or more verbose logs.
 
 ## 3. Notes & Troubleshooting
+
+- **Judge evaluations**: See [Evaluating judge correctness](./15_judge_evaluation.md) for dataset-derived offline regressions and the separately gated OpenRouter evaluation matrix.
 
 - **Temporary workspaces**: Every test uses Pytest’s `tmp_path` fixture. Nothing under your repo or existing workspaces is modified.
 - **Dependencies**: The fixture executes `pip install .` inside its temporary venv, so the full dependency tree is downloaded automatically. Make sure you have network access (or a package mirror) the first time you run the suite.

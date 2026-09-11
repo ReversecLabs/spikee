@@ -1234,101 +1234,15 @@ Accuracy: {accuracy:.4f} - Overall accuracy across all prompts
 
 
 # -- EXTRACT --
-def generate_query(category, custom_search=None):
-    """Generates a search query based on the specified category or custom search criteria."""
+def generate_query(query: str):
+    """Parse an SFL result-extraction query."""
+    from .sfl import parse_sfl
 
-    # Category validation
-    if category not in [
-        "success",
-        "failure",
-        "error",
-        "guardrail",
-        "no-guardrail",
-        "custom",
-    ]:
-        raise ValueError("Invalid category specified for extraction.")
-
-    custom_query = []
-    if category == "custom":
-        if custom_search is None:
-            raise ValueError(
-                "Custom search query must be provided for 'custom' category."
-            )
-
-        for query in custom_search:
-            query = query.split(":", 1)
-            query.reverse()
-            custom_query.append(query)
-
-    return custom_query
+    return parse_sfl(query)
 
 
-def extract_entries(entry, category="success", custom_query=None):
-    """Extracts entries based on the specified category or custom search criteria."""
-    match category:
-        case "success":
-            if entry.get("success", False):
-                return True
+def extract_entries(entry, query):
+    """Return whether an entry matches a parsed SFL query."""
+    from .sfl import matches_sfl
 
-        case "failure":
-            if entry.get("success", False) is False:
-                return True
-
-        case "error":
-            if entry.get("error") not in [None, "No response received"]:
-                return True
-
-        case "guardrail":
-            if entry.get("guardrail", False):
-                return True
-
-        case "no-guardrail":
-            if not entry.get("guardrail", False):
-                return True
-
-        case "custom":
-            query_match = True
-            for query in custom_query:
-                if len(query) > 1:
-                    query, field = query[0], query[1]
-
-                    if not extract_search(entry, query, field):
-                        query_match = False
-
-                elif not extract_search(entry, query[0]):
-                    query_match = False
-
-            return query_match
-
-    return False
-
-
-def extract_search(entry, query: str, field: str | None = None):
-    """Searches for a query in the given text, supporting inversion with '!' prefix."""
-
-    try:
-        q_invert = query.startswith("!")
-        if q_invert:
-            query = query[1:]
-
-        if field is not None:
-            f_invert = field.startswith("!")
-            if f_invert:
-                field = field[1:]
-
-            text = entry.get(field, None)
-            if text is None:
-                return f_invert
-
-            text = str(text)
-
-        else:
-            f_invert = False
-            text = str(entry)
-
-        result = query in text
-        return not result if q_invert else result
-
-    except (AttributeError, TypeError) as e:
-        print(f"Error during search extraction (Entry {entry}): {e}")
-        return False
+    return matches_sfl(entry, query)

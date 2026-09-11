@@ -2,6 +2,11 @@
 
 The `spikee generate` command offers several flags to control precisely how test cases are constructed. Understanding these options is key to creating datasets that accurately simulate specific attack vectors and test potential defenses.
 
+Generated dataset filenames keep short, safe seed names and tags unchanged. Long
+names or names containing special characters use a readable prefix plus a
+12-character hash, while retaining the output format and timestamp. This keeps
+filenames under 180 characters without changing dataset contents.
+
 Jump to Links:
 - [Dataset Construction](#dataset-construction)
 - [Multi-Turn Dataset Types](#multi-turn-datasets)
@@ -221,4 +226,3 @@ spikee generate --seed-folder datasets/seeds-cybersec-2026-01 \
                 --jailbreak-filter dan \
                 --instruction-filter data-exfil-curl
 ```
-

@@ -116,7 +116,7 @@ def spikee_test_cli(
             results.append(Path(workspace_dir / file_path))
 
     assert len(results) > 0, (
-        f"Expected at least one new results file to be generated, but found {len(results)}. New results: {results}"
+        f"Expected at least one results file to be reported, but found {len(results)}. Results: {results}"
     )
     return list(results), result
 
@@ -152,11 +152,10 @@ def spikee_analyze_cli(
 def spikee_extract_cli(
     run_spikee,
     workspace_dir,
-    result_files: List[Path] = [],
-    category: str = "success",
-    custom_search: List[str] = [],
+    result_files: List[Path],
+    query: str,
 ):
-    """Helper function to run `spikee results extract`.
+    """Helper function to run `spikee results extract` with an SFL query.
 
     Returns (list[Path] of new extract files, CompletedProcess result).
     """
@@ -176,10 +175,7 @@ def spikee_extract_cli(
         elif result_file.is_dir():
             additional_args.extend(["--result-folder", str(result_file)])
 
-    command = ["results", "extract", "--category", category, *additional_args]
-
-    for search in custom_search:
-        command.extend(["--custom-search", search])
+    command = ["results", "extract", *additional_args, "--query", query]
 
     result = run_spikee(command, cwd=workspace_dir)
 

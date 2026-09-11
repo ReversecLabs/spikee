@@ -11,7 +11,7 @@ Both Dynamic Attacks and Plugins can generate variations of a payload, but they 
 *   **Dynamic Attacks (Real-Time Transformation):**
     *   **When they run:** During `spikee test`, but *only if* the initial, standard prompt fails.
     *   **What they do:** Generate and test variations one by one in real-time. The attack stops as soon as a variation succeeds.
-    *   **Result:** By default, only the first successful variation (or the final failed attempt) is logged. With `--attack-return-all-attempts`, supporting attacks retain every attempted variation. This is useful for efficiently finding *any* successful bypass, potentially with adaptive logic that learns from previous failed attempts.
+    *   **Result:** One result records the successful variation or final failed attempt and the total attempt count. Supporting single-turn attacks also include intermediate candidates in `attempt_history`. Conversation attacks such as Crescendo, GOAT, and Echo Chamber retain their existing conversation graph in that one result.
 
 *   **Plugins (Pre-Test Transformation):**
     *   **When they run:** During `spikee generate`.
@@ -122,65 +122,81 @@ This is the core of every dynamic attack script. It contains the logic for gener
 
 ### Return Value
 
-By default, the `attack` function returns the existing tuple containing four elements:
-1.  `int`: The total number of iterations that were attempted.
-2.  `bool`: The final success flag (`True` if any iteration succeeded).
-3.  `Content`: The payload of the **last** attempted iteration.
-4.  `Content`: The response from the **last** attempted iteration.
+The `attack` function returns a tuple containing four elements:
 
-## Retaining All Attempts
+1. `int`: The total number of iterations attempted.
+2. `bool`: The overall success flag (`True` if the attack succeeded).
+3. `Content | dict`: The successful or final failed input, optionally wrapped with `standardised_input_return` to include an objective, conversation, or attempt history.
+4. `Content`: The response associated with that representative input.
 
-Use `spikee test --attack <name> --attack-return-all-attempts` to retain each attempted input and response. Omitting the flag preserves the single representative result. This changes recording, not the search budget, target calls, judge calls, or early stopping.
+An optional history is data inside the third tuple element. It does not replace the tuple or require an extra attack argument. Existing class-based and function-based attack modules remain compatible, including the legacy singular `attack_option` name.
 
-Existing class-based and function-based attacks that do not accept the new argument still load and run. Spikee inspects the signature, forwards `return_all_attempts` only when explicitly declared, and supports both `attack_option` and `attack_options`. If tracing is requested from an unsupported module, the CLI warns and retains its representative result; it cannot reconstruct discarded history.
+## Attempt History
 
-### Explicitly collect and return attempts
+Single-turn candidate searches can preserve intermediate inputs and responses in an optional `attempt_history` list. Built-in supporting attacks include `best_of_n`, `llm_jailbreaker`, and `llm_multi_language_jailbreaker`. Each module collects the records explicitly where it generates, calls, and judges a candidate. Spikee does not intercept those calls.
 
-Each supporting attack declares `return_all_attempts=False`, owns a local history list, appends records inside its loop, and chooses what to return at every exit. Spikee does not intercept target or judge calls to construct the history.
+Use `attack_history_enabled()` from `spikee.utilities.attack` to respect `SPIKEE_ATTACK_HISTORY`. Recording is enabled by default; `false`, `0`, `no`, or `off` disables it (case-insensitive). Set the variable in the environment or workspace `.env`. There is no CLI retention parameter, viewer checkbox, or retention argument on the attack method. An attack may also omit history entirely.
+
+### Explicit collection with the existing return tuple
 
 ```python
-from spikee.utilities.hinting import AttackAttempt
+from spikee.templates.attack import Attack
+from spikee.utilities.attack import attack_history_enabled
+
 
 def attack(entry, target_module, call_judge, max_iterations,
-           attempts_bar=None, bar_lock=None, attack_options=None,
-           return_all_attempts=False):
-    history = []
+           attempts_bar=None, bar_lock=None, attack_options=None):
+    history = [] if attack_history_enabled() else None
+    count, success = 0, False
     last_input, last_response = "", ""
     for count in range(1, max_iterations + 1):
         last_input = f"{entry['content']} — variant {count}"
+        last_response = ""
         error = None
         try:
             last_response, _ = target_module.process_input(last_input)
             success = call_judge(entry, last_response)
         except Exception as exc:
-            last_response, success, error = str(exc), False, str(exc)
-        if return_all_attempts:
-            history.append(AttackAttempt(last_input, last_response, success, error=error))
+            success, error = False, str(exc)
+        if history is not None:
+            record = {
+                "input": last_input,
+                "response": last_response,
+                "success": None if error is not None else success,
+            }
+            if error is not None:
+                record["error"] = error
+            history.append(record)
         if attempts_bar is not None:
             with bar_lock:
                 attempts_bar.update(1)
         if success:
-            if return_all_attempts:
-                return history
-            return count, True, last_input, last_response
-    if return_all_attempts:
-        return history or [AttackAttempt(last_input, last_response, False, attempts=0)]
-    return max_iterations, False, last_input, last_response
+            break
+    return (
+        count,
+        success,
+        Attack.standardised_input_return(last_input, attempt_history=history),
+        last_response,
+    )
 ```
 
-For multi-turn calls, use `spikee_session_id` and `backtrack` as usual. The attack explicitly stores the actual turn input and the conversation snapshot at that point. Use the existing `standardised_input_return` to serialize conversation graphs, or deep-copy mutable lists. Keep abandoned attempts when backtracking. A turn not passed to the judge has `success=None` (unjudged); do not add judge calls just to populate the history.
+Each history item is a plain dictionary with `input`, `response`, and `success` (`True`, `False`, or `None` when unjudged), plus an optional `error`. Inputs and responses support the normal `Content` serialization, including multimodal content. Snapshot mutable data before appending it. Do not add judge calls merely to fill in a verdict, or copy the final verdict onto earlier candidates.
 
-`AttackAttempt` fields are `input`, `response`, `success` (`True`, `False`, or `None`), `attempts` (non-negative integer, default 1), and optional `error`, `response_time`, `guardrail`, and `guardrail_categories`. Input can be `Content` or the existing standardized dictionary with `input`, `conversation`, and `objective`. Copy mutable conversation state when appending records. Return a nonempty list; if no iteration was attempted, return a zero-attempt diagnostic record. Return collected records on handled failures rather than discarding them. Do not include both per-attempt records and an aggregate summary in the list.
+Keep the existing search, counting, early stopping, and handled-error behavior when adding history to an attack. Return collected history at every handled exit. If an iteration fails before a target response, record the error without inventing a response. History has no additive `attempts` field: the tuple's first element remains the authoritative count. A failed generation step can consume the attack's iteration budget, and transport retries are not necessarily individual candidate records. The list length is therefore not a substitute for that count.
 
-**Counts are additive:** a row representing one attack iteration has `attempts=1`, not the cumulative loop index. For 20 iterations, the default tuple reports 20; the expanded list has 20 records each reporting 1. An iteration that fails during prompt generation can still consume the attack's iteration budget; record that error explicitly and use the same counting convention in both return formats. These counts are not a transport-request audit. The runner assigns the separate `attack_attempt` ordinal and keeps it unique across repeated invocations under `--attempts`. Results, including multimodal content, use the normal result serialization.
+### One result per attacked entry
 
-### Result identity and persistence
+The runner writes one `<dataset-id>-attack` result with its normal attack `long_id`. It preserves the representative input/response, overall success, and total `attempts`; the additional `attempt_history` field is evidence inside that result. A history item is not a separate result or a dataset entry.
 
-Representative IDs remain `<dataset-id>-attack`. Expanded IDs are `<dataset-id>-attack-1`, `<dataset-id>-attack-2`, etc. Their `long_id` values append `-attempt-<n>` to the normal attack long ID. Expanded records include `attack_parent_id`, `attack_parent_long_id`, `attack_attempt`, `attack_invocation`, and `attack_result_format="attempt"`. An unsupported legacy module under the flag produces `attack_result_format="representative"` instead.
+When `--attempts` repeats an attack, the runner combines supplied histories in order and adds a 1-based `invocation` to each nested record. Counts sum the returned iteration counts; the representative input/response comes from the successful or final invocation. Invocations that return no history do not receive synthetic history records.
 
-All-attempts runs set `entry_complete=False` on all rows belonging to an entry except its last row, which is `True`. Resume drops incomplete groups and reruns those dataset entries; it does not resume inside an attack. A completed representative result is not retroactively expanded when resuming with the flag: use `--no-auto-resume` for a fresh traced run. Histories are returned in memory when the attack finishes, so process termination before return can still lose that invocation's history.
+The attack retains history in memory until it returns; this is not incremental disk logging or a checkpoint. Resume preserves completed results and cannot recover discarded candidates from their counts. Start a fresh run with `--no-auto-resume` if previously completed entries need history.
 
-See [Results Analysis](11_results.md) for grouping, extraction, and counting rules. Old and new result formats may coexist in a file.
+### Conversation attacks
+
+Crescendo, GOAT, and Echo Chamber already return a recorded graph in `conversation`; `multi_turn` returns its recorded message sequence. Preserve those contracts. They do not use the history environment setting or duplicate conversation turns into candidate history. A single conversation result can contain many exchanges and backtracking branches. Some existing error paths omit details; repeated outer invocations retain only the successful or final invocation's conversation.
+
+See [Results Analysis](11_results.md#attack-history-and-conversation-results) for statistics, viewer, extraction, and legacy expanded-file handling.
 
 ## Implementation Guidelines
 

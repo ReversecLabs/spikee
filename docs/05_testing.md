@@ -26,6 +26,12 @@ spikee test
 
 These args can be used multiple times to specify multiple datasets, which `spikee test` will assess sequentially against the target. However, at least one of `--dataset` or `--dataset-folder` is **required** to run a test.
 
+Result filenames use compact labels: target options that need cleaning or shortening
+become up to 24 readable characters plus a 12-character hash of the full options.
+Long dataset names and tags are also shortened, keeping generated filenames under
+180 characters. The original options are still passed to the target unchanged.
+Automatic resume recognizes both compact names and existing result filenames.
+
 ```bash
 spikee test 
     --dataset ./dataset/cybersec-2026-01.jsonl \
@@ -103,8 +109,10 @@ spikee test
 ```
 
 ### Resume
+Resuming appends new results to the selected file, including with `--auto-resume` or the interactive picker. Completed entries are skipped; repeated resumes do not create additional results files. An unfinished entry is retried from the start, with any older incomplete history rows replaced. Use `--no-auto-resume` to start a fresh file.
+
 By default, Spikee will analyse the workspace results folder to identify an previously executed test files with a matching name pattern. It will then display an interactive prompt to start a new test or to continue a previous test. The following flags can be used to control this behavior:
-- `--resume-file` - specify a path to a results JSONL file to resume from. Only works with a single dataset.
+- `--resume-file` - append to an existing results JSONL file. Only works with a single dataset. A missing or malformed file raises an error.
 - `--auto-resume` - silently pick the latest matching results file if present
 - `--no-auto-resume` - create new results file, do not attempt to resume
 
@@ -131,17 +139,24 @@ spikee test
     --no-auto-resume
 
 ```
-## Retain every dynamic attack attempt
+## Attack history and conversation logs
 
-By default, dynamic attacks keep one representative result per dataset entry: the successful attempt, or the final failed attempt. To retain intermediate attempts from supporting attacks:
+Dynamic attacks write one result per dataset entry, with ID `<id>-attack`, the successful or final failed input/response, and the overall `attempts` count. Supporting single-turn attacks, including `best_of_n`, `llm_jailbreaker`, and `llm_multi_language_jailbreaker`, also include an `attempt_history` list containing the intermediate inputs, responses, and their recorded verdicts. History is enabled by default; no CLI option or viewer checkbox is required.
+
+To omit this optional history, set `SPIKEE_ATTACK_HISTORY=false` in the environment or workspace `.env`:
 
 ```bash
-spikee test --dataset datasets/my-dataset.jsonl --target my_target \
-    --attack best_of_n --attack-iterations 20 --attack-return-all-attempts
+SPIKEE_ATTACK_HISTORY=false spikee test \
+    --dataset datasets/my-dataset.jsonl --target my_target \
+    --attack best_of_n --attack-iterations 20
 ```
 
-The flag also works with `--attack-only` and repeated invocations using `--attempts`. In the web UI, select **Retain all attack attempts**. Neither choice changes attack stopping conditions or adds target/judge calls. Full histories take more memory and result-file space, especially with conversation snapshots. Older custom attacks without history support remain callable; Spikee warns and saves their representative result.
+`false`, `0`, `no`, and `off` disable recording (case-insensitive). The setting changes memory and result-file usage, without changing target calls, judge calls, stopping conditions, the representative result, or attempt counts. Custom and legacy modules may omit history; Spikee continues to accept their existing return tuple and does not reconstruct discarded candidates.
 
-Twenty attack attempts contribute 20 to total attempts in either mode. Standard attempts are counted separately. Expanded result IDs are unique and remain associated with their source dataset entry. See [Dynamic Attacks](08_dynamic_attacks.md#retaining-all-attempts) and [Results Analysis](11_results.md).
+**Crescendo, GOAT, Echo Chamber, and `multi_turn` keep their existing `conversation` logs.** They do not use `SPIKEE_ATTACK_HISTORY` or duplicate their turns in `attempt_history`. The graph-based attacks retain recorded turns and backtracking branches in one row; inspect the conversation in the viewer before concluding that earlier exchanges were lost. Existing error paths can omit some details.
 
-Resume keeps completed entries in their existing format. To collect history for entries previously completed in representative mode, start a fresh run with `--no-auto-resume`. An incomplete traced group is rerun as a whole; transport retries are not separate retained candidates.
+With repeated invocations using `--attempts`, provided candidate histories are combined in the one attack result. Each nested item receives a 1-based `invocation` number. The top-level input, response, and conversation remain from the successful or final invocation. Only its conversation graph survives; candidate history does not change conversation logging.
+
+Twenty dynamic iterations still contribute 20 to total attempts; a separate standard attempt adds its own count. Nested history items and conversation nodes are evidence, not additional dataset entries or counts. See [Dynamic Attacks](08_dynamic_attacks.md#attempt-history) and [Results Analysis](11_results.md#attack-history-and-conversation-results).
+
+Resume preserves completed results as saved. Start a fresh run with `--no-auto-resume` to collect history for previously completed entries that lack it. History is held in memory until the attack returns; it is not a checkpoint for resuming within an attack.

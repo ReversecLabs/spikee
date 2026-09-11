@@ -8,16 +8,17 @@ Usage:
   spikee test --attack llm_jailbreaker --attack-iterations 10 --attack-options "model=openai/gpt-4o"
 
 Returns:
-  (iterations_used:int, success:bool, attack_prompt:str, last_response:str)
+  (iterations_used:int, success:bool, input_details:dict, last_response:str)
+  input_details contains the representative input and optional attempt_history.
 """
 
 from collections.abc import Callable
 
 from spikee.templates.attack import Attack
 from spikee.tester import AdvancedTargetWrapper
+from spikee.utilities.attack import attack_history_enabled
 from spikee.utilities.enums import ModuleTag
 from spikee.utilities.hinting import (
-    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
@@ -25,7 +26,8 @@ from spikee.utilities.hinting import (
 )
 from spikee.utilities.llm import get_llm
 from spikee.utilities.llm_message import HumanMessage
-from spikee.utilities.modules import extract_json_or_fail, parse_options
+from spikee.utilities.llm_response import parse_json_object, query_structured_response
+from spikee.utilities.modules import parse_options
 
 # LLM Jailbreaker prompt template
 SPIKEE_LLM_JAILBREAKER_PROMPT = """
@@ -139,14 +141,13 @@ class LLMJailbreaker(Attack):
             )
         )
 
-        # Call the model via .invoke and get content
-        response = llm.invoke([prompt]).content.strip()
-
-        obj = extract_json_or_fail(response)
-        attack_prompt = obj.get("attack_prompt", "")
-        if not attack_prompt:
-            raise RuntimeError("LLM failed to produce an attack prompt")
-        return attack_prompt.strip()
+        obj = query_structured_response(
+            llm,
+            [prompt],
+            lambda text: parse_json_object(text, string_keys=("attack_prompt",)),
+            context="llm_jailbreaker.generate",
+        )
+        return obj["attack_prompt"].strip()
 
     def attack(
         self,
@@ -157,13 +158,14 @@ class LLMJailbreaker(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Executes a jailbreak attack sequence.
         For each iteration, it creates a new attack prompt using different jailbreak techniques,
         then checks if the attack was successful.
         """
+        history = [] if attack_history_enabled() else None
+
         # Parse attack option for model selection
         opts = parse_options(attack_option)
         model_name = opts.get("model", self.DEFAULT_MODEL)
@@ -174,19 +176,17 @@ class LLMJailbreaker(Attack):
             raise ValueError("LLMJailbreaker Attack only supports text content type.")
 
         if not objective:
-            if return_all_attempts:
-                return [
-                    AttackAttempt(
-                        "", "No objective provided in entry", False, attempts=0
-                    )
-                ]
-            return 0, False, "", "No objective provided in entry"
+            return (
+                0,
+                False,
+                self.standardised_input_return(input="", attempt_history=history),
+                "No objective provided in entry",
+            )
 
         # Initialize the LLM
-        llm = get_llm(model_name, max_tokens=400)
+        llm = get_llm(model_name, max_tokens=None)
 
         # Track previous attack attempts to avoid repetition
-        history = []
         previous_attempts = []
         last_response = ""
         attack_prompt = ""
@@ -195,6 +195,7 @@ class LLMJailbreaker(Attack):
         # Note: range is 1-indexed to match nice user-facing counting
         for i in range(1, max_iterations + 1):
             candidate = ""
+            attempt_response = ""
             try:
                 # Generate a new attack prompt
                 attack_prompt = self._generate_jailbreak_attack(
@@ -209,6 +210,7 @@ class LLMJailbreaker(Attack):
                         entry.get("system_message", None),
                     )
                 )
+                attempt_response = last_response
 
                 # Add this attempt to our history
                 previous_attempts.append(
@@ -217,8 +219,14 @@ class LLMJailbreaker(Attack):
 
                 # Determine if the attack was successful
                 success = call_judge(entry, last_response)
-                if return_all_attempts:
-                    history.append(AttackAttempt(attack_prompt, last_response, success))
+                if history is not None:
+                    history.append(
+                        {
+                            "input": attack_prompt,
+                            "response": attempt_response,
+                            "success": success,
+                        }
+                    )
                 if success:
                     if attempts_bar:
                         # Update progress bar to show we finished early
@@ -229,15 +237,26 @@ class LLMJailbreaker(Attack):
                                     0, attempts_bar.total - remaining
                                 )
                                 attempts_bar.refresh()
-                    if return_all_attempts:
-                        return history
-                    return i, True, attack_prompt, last_response
+
+                    return (
+                        i,
+                        True,
+                        self.standardised_input_return(
+                            input=attack_prompt, attempt_history=history
+                        ),
+                        last_response,
+                    )
 
             except Exception as e:  # noqa: BLE001
                 last_response = f"Error during attack attempt {i}: {e!s}"
-                if return_all_attempts:
+                if history is not None:
                     history.append(
-                        AttackAttempt(candidate, last_response, False, error=str(e))
+                        {
+                            "input": candidate,
+                            "response": attempt_response,
+                            "success": None,
+                            "error": str(e),
+                        }
                     )
                 # If generation fails, we might as well stop or continue.
                 # Here we continue logging the error.
@@ -249,8 +268,11 @@ class LLMJailbreaker(Attack):
                     attempts_bar.update(1)
 
         # If we've exhausted all attempts
-        if return_all_attempts:
-            return history or [
-                AttackAttempt(attack_prompt, last_response, False, attempts=0)
-            ]
-        return max_iterations, False, attack_prompt, last_response
+        return (
+            max_iterations,
+            False,
+            self.standardised_input_return(
+                input=attack_prompt, attempt_history=history
+            ),
+            last_response,
+        )

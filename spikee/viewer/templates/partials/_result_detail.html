@@ -58,6 +58,7 @@
         {# ---- Input + Response ---- #}
         {% include "partials/_input.html" %}
         {% include "partials/_response.html" %}
+        {% include "partials/_attempt_history.html" %}
 
         {# ---- Judge config ---- #}
         {% if entry.judge_name and entry.judge_name not in ('', 'None', none) %}

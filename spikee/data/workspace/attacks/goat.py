@@ -16,13 +16,17 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.tester import AdvancedTargetWrapper
 from spikee.utilities.enums import ModuleTag, Turn
 from spikee.utilities.hinting import (
-    AttackAttempt,
     AttackResponseHint,
     ModuleDescriptionHint,
     ModuleOptionsHint,
 )
 from spikee.utilities.llm import get_llm
-from spikee.utilities.modules import extract_json_or_fail, parse_options
+from spikee.utilities.llm_response import (
+    LLMResponseError,
+    parse_json_object,
+    query_structured_response,
+)
+from spikee.utilities.modules import parse_options
 
 # Enhanced system prompt for more effective attacks
 GOAT_SYSTEM_PROMPT = """
@@ -274,30 +278,22 @@ class GOAT(Attack):
             {"role": "user", "content": json.dumps(payload)},
         ]
 
-        # Generate the next question
-        attempts = 0
-        last_error = ""
-        last_response = ""
-        while attempts < LLM_AGENT_RETRY:
-            attempts += 1
-            response = llm.invoke(messages).content
-            if isinstance(response, str):
-                response = response.strip()
-
-            try:
-                result = extract_json_or_fail(response)
-            except Exception as e:  # noqa: BLE001
-                last_error = str(e)
-                last_response = response
-                continue
-
-            if all(
-                key in result
-                for key in ["observation", "thought", "strategy", "next_question"]
-            ) and (
-                APPLICATION_GUARDRAILS is None or "guardrail_bypass_strategy" in result
-            ):
-                return result
+        keys = ["observation", "thought", "strategy", "next_question"]
+        if APPLICATION_GUARDRAILS is not None:
+            keys.append("guardrail_bypass_strategy")
+        try:
+            return query_structured_response(
+                llm,
+                messages,
+                lambda text: parse_json_object(
+                    text, required_keys=keys, string_keys=("next_question",)
+                ),
+                context="goat.generate",
+                max_attempts=LLM_AGENT_RETRY,
+            )
+        except LLMResponseError as exc:
+            last_error = str(exc)
+            last_response = exc.response
 
         refuse, explanation = self.evaluate_refusal(llm, str(messages), last_response)
         if refuse:
@@ -317,11 +313,14 @@ class GOAT(Attack):
             },
         ]
 
-        res = llm.invoke(messages).content
-        if isinstance(res, str):
-            res = res.strip()
-
-        result = extract_json_or_fail(res)
+        result = query_structured_response(
+            llm,
+            messages,
+            lambda text: parse_json_object(
+                text, required_keys=("answered", "explanation")
+            ),
+            context="goat.refusal",
+        )
         answered = result.get("answered", False)
         explanation = result.get("explanation", "")
 
@@ -336,7 +335,6 @@ class GOAT(Attack):
         attempts_bar=None,
         bar_lock=None,
         attack_option: str = "",
-        return_all_attempts: bool = False,
     ) -> AttackResponseHint:
         """
         Run the GOAT attack: multi-turn adversarial conversation using toolbox techniques.
@@ -355,19 +353,16 @@ class GOAT(Attack):
         spikee_session_id = str(uuid.uuid4())
 
         # Conversation Configuration
-        conversation = StandardisedConversation({"objective": objective})
+        conversation = StandardisedConversation({})
         last_message_id = conversation.get_root_id()
         last_response = ""
         backtrack = False
 
-        history = []
-        current = None
         # Main attack loop
         try:
             for turn in range(max_iterations):
                 prompt_message_id = last_message_id
 
-                current = None
                 # Generate next attacker question and reasoning
                 question = self._generate_question(
                     llm,
@@ -395,15 +390,6 @@ class GOAT(Attack):
                     last_message_id, message, attempt=True
                 )
 
-                if return_all_attempts:
-                    current = AttackAttempt(
-                        self.standardised_input_return(
-                            question["next_question"], conversation, objective
-                        ),
-                        "",
-                        None,
-                    )
-                    history.append(current)
                 # Query the target model and add response
                 response = target_module.process_input(
                     question["next_question"],
@@ -418,12 +404,6 @@ class GOAT(Attack):
                 last_message_id = conversation.add_message(
                     last_message_id, {"role": "assistant", "content": last_response}
                 )
-
-                if current is not None:
-                    current.response = last_response
-                    current.input = self.standardised_input_return(
-                        question["next_question"], conversation, objective
-                    )
 
                 # Refusal
                 refusal, refusal_explanation = self.evaluate_refusal(
@@ -450,15 +430,7 @@ class GOAT(Attack):
                     self.__refusals = self.__refusals[-5:]
 
                 # Success
-                success = call_judge(entry, last_response)
-                if current is not None:
-                    current.success = success
-                    current.input = self.standardised_input_return(
-                        question["next_question"], conversation, objective
-                    )
-                if success:
-                    if return_all_attempts:
-                        return history
+                if call_judge(entry, last_response):
                     return (
                         conversation.get_attempt_total(),
                         True,
@@ -483,20 +455,8 @@ class GOAT(Attack):
             traceback.print_exc()
 
             print(f"[GOAT] Attack failed with error: {e}")
-            if return_all_attempts:
-                if current is not None:
-                    current.error = str(e)
-                else:
-                    history.append(
-                        AttackAttempt(objective, "", False, attempts=0, error=str(e))
-                    )
-                return history
             raise
 
-        if return_all_attempts:
-            return history or [
-                AttackAttempt(objective, last_response, False, attempts=0)
-            ]
         # Refusal or Max_Turns
         return (
             conversation.get_attempt_total(),

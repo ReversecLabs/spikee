@@ -1,0 +1,55 @@
+{# Optional candidate history belongs to this result, not separate result entries. #}
+{% if entry.attempt_history %}
+<details{% if not truncated | default(false) %} id="attempt-history"{% endif %} class="attempt-history border-start border-secondary ps-3 mt-2">
+    <summary class="small fw-semibold">
+        Attempt history <span class="text-muted fw-normal">&middot; {{ entry.attempt_history | length }} candidate{{ 's' if entry.attempt_history | length != 1 else '' }}</span>
+    </summary>
+    <div class="small text-muted mt-2">Inputs and responses recorded during this attack.</div>
+    {% if entry.attempt_history | length > 1 %}
+    <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="this.closest('.attempt-history').querySelectorAll('details.attempt-history-item').forEach(item => item.open = true)">
+            Expand all
+        </button>
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="this.closest('.attempt-history').querySelectorAll('details.attempt-history-item').forEach(item => item.open = false)">
+            Collapse all
+        </button>
+    </div>
+    {% endif %}
+    {% for attempt in entry.attempt_history %}
+    <details class="attempt-history-item border-top pt-2 mt-2">
+        <summary class="small fw-semibold">
+            Candidate {{ loop.index }}
+            {% if attempt.error %}
+                <span class="badge bg-danger ms-2">ERROR</span>
+            {% elif attempt.success is sameas true %}
+                <span class="badge bg-success ms-2">SUCCESS</span>
+            {% elif attempt.success is sameas false %}
+                <span class="badge bg-secondary ms-2">FAILED</span>
+            {% else %}
+                <span class="badge bg-secondary ms-2">UNJUDGED</span>
+            {% endif %}
+        </summary>
+        <div class="mt-2">
+            {% for label, value in [('Input', attempt.input), ('Response', attempt.response)] %}
+            <div class="border-start border-secondary ps-3 mb-2">
+                <div class="meta-label mb-1">{{ label }}</div>
+                {% if value is mapping or (value is sequence and value is not string) %}
+                <div class="code-block">{{ value | tojson(indent=2) | e }}</div>
+                {% else %}
+                <div class="code-block">{{ process_text(value) | e }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% if attempt.error %}
+            <div class="alert alert-danger py-2 mt-2 mb-2">
+                <div class="fw-semibold small mb-1">Error</div>
+                <div class="code-block">{{ process_text(attempt.error) | e }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </details>
+    {% endfor %}
+</details>
+{% endif %}

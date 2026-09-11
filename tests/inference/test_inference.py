@@ -4,7 +4,7 @@ import pytest
 
 # Require RUN_INFERENCE_TESTS environment variable to run these tests
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("RUN_INFERENCE_TESTS"),
+    os.environ.get("RUN_INFERENCE_TESTS") != "1",
     reason="Run manually with RUN_INFERENCE_TESTS=1",
 )
 

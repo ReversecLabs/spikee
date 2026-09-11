@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -123,16 +124,26 @@ def extract_directory_from_file_path(file_path: str):
     return os.path.dirname(file_path)
 
 
+def compact_filename_part(value: str, max_length: int = 64) -> str:
+    """Keep short safe names; append a hash whenever cleaning or shortening loses text."""
+    readable = re.sub(r"[^A-Za-z0-9_.-]+", "-", value)
+    readable = re.sub(r"-+", "-", readable).strip("-._")
+    if readable == value and len(readable) <= max_length:
+        return value
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+    readable = readable[: max_length - 13].rstrip("-._")
+    return f"{readable}-{digest}" if readable else digest
+
+
 def build_resource_name(*args) -> str:
-    parts = [arg for arg in args if arg is not None]
-    return "_".join(parts)
+    parts = [compact_filename_part(arg) for arg in args if arg is not None]
+    # Leave room for the timestamp, extension, and derived output suffixes.
+    return compact_filename_part("_".join(parts), max_length=160)
 
 
 def build_file_name(prefix, *args) -> str:
     ts = int(time.time())
-    parts = [prefix] + [arg for arg in args if arg is not None] + [str(ts)]
-
-    return "_".join(parts) + ".jsonl"
+    return f"{build_resource_name(prefix, *args)}_{ts}.jsonl"
 
 
 def does_resource_name_match(path: Path, resource_name: str) -> bool:

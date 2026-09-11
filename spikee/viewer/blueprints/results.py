@@ -290,6 +290,16 @@ def _process_standardised_conversation(
     return f'<ol class="ps-3 mt-2">{render_node(0)}</ol>'
 
 
+def _conversation_message_count(conversation_data: str) -> int:
+    """Return the number of non-root messages in a standardised conversation."""
+    try:
+        conversation = StandardisedConversation()
+        conversation.add_conversation(conversation_data)
+        return conversation.get_message_total()
+    except (json.JSONDecodeError, Exception):  # noqa: BLE001
+        return 0
+
+
 # ── Stats extraction from ResultProcessor ────────────────────────────────────
 
 
@@ -383,6 +393,7 @@ def _inject_helpers():
     return {
         "process_text": _process_text,
         "process_standardised_conversation": _process_standardised_conversation,
+        "conversation_message_count": _conversation_message_count,
         "text_to_colour": _text_to_colour,
         "source_label": _source_label,
     }
@@ -473,26 +484,20 @@ def entries() -> str:
     all_entries, _output, _rp = _load_result_data(files)
 
     # Apply search filter
+    filter_error = None
     try:
         if custom_search:
-            # Split on | to get OR clauses; each clause is itself a list of
-            # AND terms (space-separated within a clause).
-            # e.g. "success:True|guardrail:True" → two OR clauses, each with 1 term
-            # e.g. "plugin:base64 lang:en"        → one clause with 2 AND terms
-            or_clauses = [c.strip() for c in custom_search.split("|") if c.strip()]
-            clause_queries = []
-            for clause in or_clauses:
-                terms = [t.strip() for t in clause.split() if t.strip()]
-                clause_queries.append(generate_query("custom", terms))
-
-            def _matches(e):
-                return any(extract_entries(e, "custom", q) for q in clause_queries)
-
-            matching = {eid: e for eid, e in all_entries.items() if _matches(e)}
+            query = generate_query(custom_search)
+            matching = {
+                entry_id: entry
+                for entry_id, entry in all_entries.items()
+                if extract_entries(entry, query)
+            }
         else:
             matching = all_entries
     except ValueError as exc:
-        abort(400, description=str(exc))
+        filter_error = str(exc)
+        matching = {}
 
     # Paginate
     total = len(matching)
@@ -508,6 +513,7 @@ def entries() -> str:
         selected_file=selected,
         entries=page_entries,
         custom_search=custom_search,
+        filter_error=filter_error,
         page=page,
         per_page=per_page,
         total=total,

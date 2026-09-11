@@ -5,7 +5,6 @@ import io
 import typing
 import warnings
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any, Optional
 
 from spikee.utilities.enums import ModuleTag
@@ -259,23 +258,7 @@ ModuleOptionsHint = tuple[list[str], bool]
 TargetResponseHint = Content | bool | tuple[Content | bool, Any]
 
 
-@dataclass
-class AttackAttempt:
-    """One retained result. Attempts is an additive count, never an ordinal."""
-
-    input: Any
-    response: Any
-    success: bool | None
-    attempts: int = 1
-    error: str | None = None
-    response_time: float | None = None
-    guardrail: bool = False
-    guardrail_categories: dict | None = None
-
-
-AttackResponseHint = (
-    tuple[int, bool, Content | dict[str, Any], Content] | list[AttackAttempt]
-)
+AttackResponseHint = tuple[int, bool, Content | dict[str, Any], Content]
 
 
 def process_target_content(response: TargetResponseHint) -> str:

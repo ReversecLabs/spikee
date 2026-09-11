@@ -1,9 +1,9 @@
-from pathlib import Path
 import re
-import time
+from pathlib import Path
 
 from spikee.utilities.files import read_jsonl_file, write_jsonl_file
-from ..utils import spikee_test_cli, spikee_generate_cli
+
+from ..utils import spikee_generate_cli, spikee_test_cli
 
 
 class TestDatasetArguments:
@@ -112,7 +112,7 @@ class TestDatasetArguments:
 
 
 class TestResume:
-    """Test cases for --result-file, --auto-resume, and --no-auto-resume"""
+    """Test cases for --resume-file, --auto-resume, and --no-auto-resume."""
 
     def create_partial_results(
         self,
@@ -120,6 +120,7 @@ class TestResume:
         num_entries: int,
         target_name: str,
         workspace_dir: Path,
+        timestamp: int = 1,
     ) -> Path:
         """Helper function to create a partial results file for a given dataset."""
         entries = read_jsonl_file(dataset_path)
@@ -139,9 +140,7 @@ class TestResume:
         results_dir = workspace_dir / "results"
         results_dir.mkdir(exist_ok=True)
 
-        resume_file = (
-            results_dir / f"results_{target_name}_{ds_name}_{int(time.time())}.jsonl"
-        )
+        resume_file = results_dir / f"results_{target_name}_{ds_name}_{timestamp}.jsonl"
         write_jsonl_file(resume_file, completed_entries)
 
         return resume_file
@@ -161,6 +160,7 @@ class TestResume:
             target_name="always_success",
             workspace_dir=workspace_dir,
         )
+        original = resume_file.read_bytes()
 
         # 3. Run test with --auto-resume
         results_files, result = spikee_test_cli(
@@ -179,6 +179,9 @@ class TestResume:
         assert len(results_files) == 1, (
             f"Expected 1 results file after resuming, got {len(results_files)}"
         )
+        assert results_files == [resume_file]
+        assert resume_file.read_bytes().startswith(original)
+        assert list((workspace_dir / "results").glob("*.jsonl")) == [resume_file]
         assert f"[Auto-Resume] Using latest: {resume_file.name}" in stdout
         assert len(results) == len(entries), (
             f"Expected all {len(entries)} entries to be processed after resuming, got {len(results)}"
@@ -215,7 +218,7 @@ class TestResume:
         )
 
     def test_single_dataset_resume_file(self, run_spikee, workspace_dir):
-        """Test that --result-file can be used to specify a resume file for a single dataset."""
+        """Explicit resume appends to the selected file."""
         # 1. Generate a dataset
         dataset_path = spikee_generate_cli(
             run_spikee, workspace_dir, additional_args=["--tag", "resume_file_test"]
@@ -230,8 +233,9 @@ class TestResume:
             workspace_dir=workspace_dir,
         )
 
-        # 3. Run test with --result-file pointing to the resume file
-        results_files, result = spikee_test_cli(
+        original = resume_file.read_bytes()
+        # 3. Run test with --resume-file pointing to the resume file
+        results_files, _ = spikee_test_cli(
             run_spikee,
             workspace_dir,
             target="always_success",
@@ -242,6 +246,9 @@ class TestResume:
         # 4. Assertions
         results = read_jsonl_file(results_files[0])
 
+        assert results_files == [resume_file]
+        assert resume_file.read_bytes().startswith(original)
+        assert list((workspace_dir / "results").glob("*.jsonl")) == [resume_file]
         assert len(results_files) == 1, (
             f"Expected 1 results file after resuming, got {len(results_files)}"
         )
@@ -272,6 +279,7 @@ class TestResume:
             workspace_dir=workspace_dir,
         )
 
+        original = resume_file.read_bytes()
         # 3. Run test with --no-auto-resume
         results_files, result = spikee_test_cli(
             run_spikee,
@@ -285,6 +293,9 @@ class TestResume:
         stdout = result.stdout
         results = read_jsonl_file(results_files[0])
 
+        assert results_files[0] != resume_file
+        assert resume_file.read_bytes() == original
+        assert len(list((workspace_dir / "results").glob("*.jsonl"))) == 2
         assert len(results_files) == 1, (
             f"Expected 1 results file after running with no auto-resume, got {len(results_files)}"
         )
@@ -345,6 +356,8 @@ class TestResume:
         assert len(results_files) == 2, (
             f"Expected 2 results files after resuming multiple datasets, got {len(results_files)}"
         )
+        assert resume_file_a in results_files
+        assert len(list((workspace_dir / "results").glob("*.jsonl"))) == 2
         assert f"[Auto-Resume] Using latest: {resume_file_a.name}" in stdout
         assert len(results_a) == len(entries_a), (
             f"Expected all {len(entries_a)} entries to be processed for Dataset A after resuming, got {len(results_a)}"
@@ -371,18 +384,19 @@ class TestResume:
         )
         entries = read_jsonl_file(dataset_path)
 
-        self.create_partial_results(
+        older_resume_file = self.create_partial_results(
             dataset_path,
             num_entries=2,
-            target_name="always_refuse",
+            target_name="always_success",
             workspace_dir=workspace_dir,
         )
-        time.sleep(1)  # Ensure the second resume file has a later timestamp
+        original = older_resume_file.read_bytes()
         new_resume_file = self.create_partial_results(
             dataset_path,
             num_entries=4,
             target_name="always_success",
             workspace_dir=workspace_dir,
+            timestamp=2,
         )
 
         results_files, result = spikee_test_cli(
@@ -396,6 +410,9 @@ class TestResume:
         stdout = result.stdout
         results = read_jsonl_file(results_files[0])
 
+        assert results_files == [new_resume_file]
+        assert older_resume_file.read_bytes() == original
+        assert len(list((workspace_dir / "results").glob("*.jsonl"))) == 2
         assert len(results_files) == 1, (
             f"Expected 1 results file after resuming, got {len(results_files)}"
         )
