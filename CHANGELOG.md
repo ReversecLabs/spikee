@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.9.3] - 2026-11-03
+
+### Fixes
+
+- update any-llm compatibility and live inference coverage
+
 ## [0.9.2] - 2026-09-11
 
 ### Features
