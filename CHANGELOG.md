@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.9.4] - 2026-11-03
+
+### Fixes
+
+- accept target metadata and boolean responses in debug CLI
+- recover release synchronization after rebased merges
+
 ## [0.9.3] - 2026-11-03
 
 ### Fixes
