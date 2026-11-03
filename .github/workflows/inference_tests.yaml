@@ -47,5 +47,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           # Google GenAI
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pytest tests/inference/test_inference.py
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY || secrets.GEMINI_API_KEY }}
+          SPIKEE_TEST_AZURE_OPENAI_MODEL: ${{ vars.SPIKEE_TEST_AZURE_OPENAI_MODEL }}
+        run: pytest tests/inference/test_inference.py tests/inference/test_workspace_inference.py

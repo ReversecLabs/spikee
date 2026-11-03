@@ -13,11 +13,12 @@ class AnyLLMGroqProvider(Provider):
 
     @property
     def default_model(self) -> str:
-        return "llama-3.1-8b-instant"
+        return "qwen/qwen3.8-27b"
 
     @property
     def models(self) -> dict[str, str]:
         return {
+            "qwen/qwen3.8-27b": "qwen/qwen3.8-27b",
             "distil-whisper-large-v3-en": "distil-whisper-large-v3-en",
             "gemma2-9b-it": "gemma2-9b-it",
             "llama-3.1-8b-instant": "llama-3.1-8b-instant",

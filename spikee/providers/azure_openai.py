@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any
 
@@ -36,7 +37,7 @@ class AnyLLMAzureOpenAIProvider(Provider):
 
         api_ver = os.getenv(
             "AZURE_OPENAI_API_VERSION",
-            os.getenv("OPENAI_API_VERSION", "2024-02-15-preview"),
+            os.getenv("OPENAI_API_VERSION", "v1"),
         )
 
         timeout = kwargs.get("timeout", None)
@@ -44,12 +45,7 @@ class AnyLLMAzureOpenAIProvider(Provider):
         if timeout is not None:
             llm_kwargs["timeout"] = timeout
 
-        try:
-            self.llm = AnyLLM.create("azureopenai", **llm_kwargs)
-        except ImportError:
-            raise ImportError(
-                "[Import Error] Provider Module 'azure_openai' is missing required packages for Azure OpenAI. Please run `pip install spikee[azure]` to install them."
-            )
+        self.llm_kwargs = llm_kwargs
 
         options_kwargs: dict[str, Any] = {}
         if self.max_tokens is not None:
@@ -68,13 +64,21 @@ class AnyLLMAzureOpenAIProvider(Provider):
 
         formatted_messages = format_messages(messages)
 
-        response = self.async_call(
-            self.llm.acompletion,
-            model=self.model,
-            messages=formatted_messages,
-            **self.options,
-        )
+        async def complete():
+            llm = self.create_client()
+            try:
+                return await llm.acompletion(
+                    model=self.model, messages=formatted_messages, **self.options
+                )
+            finally:
+                await llm.client.close()
+
+        response = asyncio.run(complete())
 
         return AIMessage(
             content=response.choices[0].message.content, original_response=response
         )
+
+    def create_client(self):
+        """Keep the Azure client on the event loop that owns its connections."""
+        return AnyLLM.create("azureopenai", **self.llm_kwargs)

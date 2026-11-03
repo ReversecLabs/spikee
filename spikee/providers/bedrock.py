@@ -105,7 +105,8 @@ class AnyLLMBedrockProvider(Provider):
         if self.max_tokens is not None:
             options_kwargs["max_tokens"] = self.max_tokens
 
-        if self.temperature is not None:
+        # Claude Haiku 5.5 rejects the deprecated temperature parameter.
+        if self.temperature is not None and "claude-haiku-5-5" not in self.model:
             options_kwargs["temperature"] = self.temperature
 
         self.options = options_kwargs
