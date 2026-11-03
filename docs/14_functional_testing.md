@@ -63,3 +63,35 @@ Spikee ships with an end-to-end functional suite that exercises the CLI exactly 
 - Wire the functional suite into CI so releases fail fast if a regression slips in.
 
 That’s it—run `pytest tests/functional` anytime you need confidence that the end-to-end CLI behaviour remains intact. Happy hacking!
+
+## Live provider tests
+
+Live tests incur provider API charges and require explicit opt-in:
+
+```bash
+RUN_INFERENCE_TESTS=1 SPIKEE_TESTS_USE_ISOLATED_VENV=false \
+  python -m pytest tests/inference/test_inference.py tests/inference/test_workspace_inference.py -v
+```
+
+Credentials load from `workspace/.env`; use `SPIKEE_TEST_ENV_FILE` for another
+path. Existing environment variables take precedence. Provider errors, billing
+failures and malformed replies are failures, not successful connectivity checks.
+An attack model's explicit refusal is accepted only when its reply provides
+that evidence; a JSON parsing error alone is insufficient.
+
+The smoke-test model IDs are centralized in `tests/inference/models.py`.
+Override an ID with `SPIKEE_TEST_<PROVIDER>_MODEL`, for example
+`SPIKEE_TEST_OPENROUTER_MODEL=qwen/qwen3.8-flash`. Use the model ID without the
+Spikee provider prefix. Azure live cases are enabled only when
+`SPIKEE_TEST_AZURE_OPENAI_MODEL` names a deployment on the configured resource;
+Azure's public model catalog does not establish deployment availability.
+The Azure adapter uses the v1 API; remove dated `AZURE_OPENAI_API_VERSION` /
+`OPENAI_API_VERSION` settings or set them to `v1`.
+
+Groq cases are spaced 65 seconds apart to accommodate small token-per-minute
+quotas. Set `SPIKEE_TEST_GROQ_INTERVAL` to match the account's quota. This does not
+reduce the number of attack iterations or turn rate-limit failures into passes.
+The multilingual Groq case also sets `max-tokens=480` per reply to stay within
+the small output-token quota; the attack leaves this limit unset by default.
+The separately gated judge-quality evaluation matrix is documented in
+[Evaluating judge correctness](15_judge_evaluation.md).

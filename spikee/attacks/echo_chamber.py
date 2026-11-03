@@ -309,13 +309,21 @@ class EchoChamber(Attack):
 
     # region Echo Chamber Prompts
     def _query_attacker_llm(
-        self, llm, messages: list[object], keys: list[str], refusal_query: bool = False
+        self,
+        llm,
+        messages: list[object],
+        keys: list[str],
+        refusal_query: bool = False,
+        *,
+        string_keys: tuple[str, ...] = (),
     ) -> dict:
         try:
             return query_structured_response(
                 llm,
                 messages,
-                lambda text: parse_json_object(text, required_keys=keys),
+                lambda text: parse_json_object(
+                    text, required_keys=keys, string_keys=string_keys
+                ),
                 context="echo_chamber.refusal"
                 if refusal_query
                 else "echo_chamber.generate",
@@ -348,9 +356,9 @@ class EchoChamber(Attack):
             HumanMessage(content=json.dumps({"question": objective.strip()})),
         ]
 
-        targeted_objective = self._query_attacker_llm(llm, messages, ["objective"]).get(
-            "objective", ""
-        )
+        targeted_objective = self._query_attacker_llm(
+            llm, messages, ["objective"], string_keys=("objective",)
+        )["objective"]
 
         return targeted_objective.strip()
 

@@ -5,6 +5,7 @@ languages that may bypass safety filters in the target system.
 Usage:
   spikee test --attack llm_multi_language_jailbreaker --attack-iterations 5
   spikee test --attack llm_multi_language_jailbreaker --attack-iterations 10 --attack-options "model=openai/gpt-4o"
+The optional max-tokens setting caps each model reply; the default is none.
 Returns:
   (iterations_used:int, success:bool, input_details:dict, last_response:str)
   input_details contains the representative input and optional attempt_history.
@@ -96,7 +97,7 @@ class LLMMultiLanguageJailbreaker(Attack):
 
     def get_available_option_values(self) -> ModuleOptionsHint:
         """Return supported attack options; Tuple[options (default is first), llm_required]"""
-        return [], True
+        return ["max-tokens=none"], True
 
     def _generate_multilingual_jailbreak_attack(
         self, llm, objective: str, previous_attempts: list[dict]
@@ -153,6 +154,10 @@ class LLMMultiLanguageJailbreaker(Attack):
         # Parse attack option for model selection
         opts = parse_options(attack_option)
         model_name = opts.get("model", self.DEFAULT_MODEL)
+        token_option = opts.get("max-tokens", "none")
+        max_tokens = None if token_option == "none" else int(token_option)
+        if max_tokens is not None and max_tokens < 1:
+            raise ValueError("max-tokens must be a positive integer or 'none'")
 
         # Get the objective from the entry
         objective = entry.get("content", entry.get("text", ""))
@@ -170,7 +175,7 @@ class LLMMultiLanguageJailbreaker(Attack):
             )
 
         # Initialize the LLM
-        llm = get_llm(model_name, max_tokens=None)
+        llm = get_llm(model_name, max_tokens=max_tokens)
 
         # Track previous attack attempts to avoid repetition
         previous_attempts = []

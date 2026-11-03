@@ -22,7 +22,7 @@ class TestInference(Plugin):
     ) -> Union[str, List[str]]:
         options = parse_options(plugin_option)
 
-        model = options.get("model", "openai/gpt-4o")
+        model = options.get("model", "openai/gpt-5.4-mini")
 
         llm = get_llm(model, max_tokens=100)
 

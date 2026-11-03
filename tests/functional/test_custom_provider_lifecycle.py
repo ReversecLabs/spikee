@@ -9,7 +9,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from spikee.providers.azure_openai import AnyLLMAzureOpenAIProvider
 from spikee.providers.custom import AnyLLMCustomProvider
+from spikee.providers.openai import AnyLLMOpenAIProvider
 from spikee.providers.openrouter import AnyLLMOpenRouterProvider
 from spikee.templates.provider import ProviderError
 from spikee.utilities.llm_message import HumanMessage
@@ -63,6 +65,12 @@ def endpoint(monkeypatch):
     monkeypatch.setenv("CUSTOM_API_URL", url)
     monkeypatch.setenv("CUSTOM_API_KEY", "fixture")
     monkeypatch.setenv("OPENROUTER_API_KEY", "fixture")
+    monkeypatch.setenv("OPENAI_API_KEY", "fixture")
+    monkeypatch.setenv("OPENAI_BASE_URL", url)
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fixture")
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", url)
+    monkeypatch.delenv("AZURE_OPENAI_API_VERSION", raising=False)
+    monkeypatch.delenv("OPENAI_API_VERSION", raising=False)
     monkeypatch.setattr(
         AnyLLMOpenRouterProvider, "base_url", property(lambda self: url)
     )
@@ -73,7 +81,13 @@ def endpoint(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "provider_class", [AnyLLMCustomProvider, AnyLLMOpenRouterProvider]
+    "provider_class",
+    [
+        AnyLLMCustomProvider,
+        AnyLLMOpenRouterProvider,
+        AnyLLMAzureOpenAIProvider,
+        AnyLLMOpenAIProvider,
+    ],
 )
 def test_repeated_calls_close_clients_on_their_own_loop(
     endpoint, provider_class, monkeypatch
