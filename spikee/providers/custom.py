@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any
 
@@ -57,12 +58,7 @@ class AnyLLMCustomProvider(Provider):
         if timeout is not None:
             llm_kwargs["timeout"] = timeout
 
-        try:
-            self.llm = AnyLLM.create("openai", **llm_kwargs)
-        except ImportError:
-            raise ImportError(
-                f"[Import Error] Provider Module '{self.name}' is missing required packages for OpenAI compatible APIs. Please run `pip install spikee[openai]` to install them."
-            )
+        self.llm_kwargs = llm_kwargs
 
         options_kwargs: dict[str, Any] = {}
         if self.max_tokens is not None:
@@ -83,12 +79,18 @@ class AnyLLMCustomProvider(Provider):
 
         formatted_messages = format_messages(messages)
 
-        response = self.async_call(
-            self.llm.acompletion,
-            model=self.model,
-            messages=formatted_messages,
-            **self.options,
-        )
+        async def complete():
+            # A provider can be reused by sequential calls or worker threads.
+            # Keep its HTTP client and cleanup on this invocation's event loop.
+            llm = self.create_client()
+            try:
+                return await llm.acompletion(
+                    model=self.model, messages=formatted_messages, **self.options
+                )
+            finally:
+                await llm.client.close()
+
+        response = asyncio.run(complete())
 
         response = AIMessage(
             content=response.choices[0].message.content, original_response=response
@@ -97,6 +99,15 @@ class AnyLLMCustomProvider(Provider):
         self.response_validation(messages, response)
 
         return response
+
+    def create_client(self):
+        """Create an invocation-local OpenAI-compatible client."""
+        try:
+            return AnyLLM.create("openai", **self.llm_kwargs)
+        except ImportError as error:
+            raise ImportError(
+                f"Provider '{self.name}' requires the OpenAI-compatible API dependencies."
+            ) from error
 
     def response_validation(self, messages: MessageHint, response: AIMessage) -> None:
         """Abstract validation method for subclasses to implement specific response validation logic. Otherwise validations common OpenAI compatible API errors."""
