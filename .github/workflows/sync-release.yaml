@@ -1,0 +1,50 @@
+name: Synchronize Published Release
+
+on:
+  workflow_call:
+    inputs:
+      release_ref:
+        description: Published release commit
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Published release tag, for example v0.9.3
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: synchronize-published-release
+  cancel-in-progress: false
+
+jobs:
+  sync-develop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate published release and synchronize develop
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+        shell: bash
+        run: |
+          RELEASE_SHA="$(git rev-parse --verify "${RELEASE_REF}^{commit}")"
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+          VERSION="$(git show "$RELEASE_SHA:pyproject.toml" | python -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())["project"]["version"])')"
+          test "$(git rev-parse --verify "refs/tags/v${VERSION}^{commit}")" = "$RELEASE_SHA"
+          cp scripts/sync_release.py "$RUNNER_TEMP/sync_release.py"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin develop
+          git checkout -B develop origin/develop
+          python "$RUNNER_TEMP/sync_release.py" "$RELEASE_SHA"
+          git push origin develop

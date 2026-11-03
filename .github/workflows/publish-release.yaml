@@ -20,13 +20,13 @@ jobs:
       - name: Checkout release
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.11"
 
       - name: Install tools
         run: pip install toml
@@ -71,48 +71,8 @@ jobs:
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
 
-      - name: Bump develop to next development version
-        shell: bash
-        run: |
-          VERSION="${{ steps.version.outputs.value }}"
-          NEXT_DEV="$(python -c "import re, sys; match = re.fullmatch(r'(\\d+)\\.(\\d+)\\.(\\d+)', sys.argv[1]); print(f'{match.group(1)}.{match.group(2)}.{int(match.group(3)) + 1}-dev') if match else sys.exit('Invalid release version')" "${VERSION}")"
-
-          git fetch origin develop
-          git checkout develop
-          git pull origin develop
-          git merge --ff-only origin/main || git merge -m "chore: merge release ${VERSION} into develop" origin/main
-
-          NEXT_DEV="${NEXT_DEV}" python - <<'PY'
-          import os
-          import pathlib
-          import re
-          import toml
-
-          next_dev = os.environ["NEXT_DEV"]
-          root = pathlib.Path(".")
-          pyproject = root / "pyproject.toml"
-          data = toml.load(pyproject.open())
-          data["project"]["version"] = next_dev
-          pyproject.write_text(toml.dumps(data))
-
-          init_file = root / "spikee" / "__init__.py"
-          init_file.write_text(f'__version__ = "{next_dev}"\n')
-
-          readme = root / "README.md"
-          if readme.exists():
-              text = readme.read_text()
-              updated, count = re.subn(
-                  r"(_Version:\s*)(\d+\.\d+\.\d+(?:-dev)?)(\s*_)",
-                  rf"\g<1>{next_dev}\3",
-                  text,
-                  count=1,
-              )
-              if count:
-                  readme.write_text(updated)
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml spikee/__init__.py README.md
-          git commit -m "chore: bump version to ${NEXT_DEV}"
-          git push origin develop
+  sync-develop:
+    needs: publish
+    uses: ./.github/workflows/sync-release.yaml
+    with:
+      release_ref: ${{ github.event.pull_request.merge_commit_sha }}
