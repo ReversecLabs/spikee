@@ -474,3 +474,29 @@ def test_control_character_tolerance_does_not_hide_incomplete_or_invalid_json(ra
     assert query(llm) == {"attack_prompt": "Corrected"}
     assert llm.invoke.call_count == 2
     assert llm.invoke.call_args.args[0][-2].content == raw
+
+
+@pytest.mark.parametrize("invalid", [None, "", "   ", 42])
+def test_echo_objective_repairs_invalid_string_fields(invalid):
+    attack = EchoChamber()
+    attack.stage_attempts = 2
+    llm = provider(
+        json.dumps({"objective": invalid}), '{"objective":"Name the capital of France"}'
+    )
+    assert (
+        attack.get_targeted_objective(llm, "Name the capital of France")
+        == "Name the capital of France"
+    )
+    assert llm.invoke.call_count == 2
+
+
+def test_echo_null_objective_uses_existing_refusal_path():
+    attack = EchoChamber()
+    attack.stage_attempts = 2
+    attack.debug = False
+    attack.evaluate_refusal = Mock(return_value=(True, "Declined"))
+    llm = provider('{"objective":null}', '{"objective":null}')
+    with pytest.raises(RefusalError, match="Declined"):
+        attack.get_targeted_objective(llm, "Name the capital of France")
+    assert llm.invoke.call_count == 2
+    attack.evaluate_refusal.assert_called_once()

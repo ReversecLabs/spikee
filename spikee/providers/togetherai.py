@@ -7,8 +7,13 @@ class AnyLLMTogetherAIProvider(AnyLLMCustomProvider):
     """AnyLLM provider for TogetherAI models (via Custom provider with OpenAI compatibility)"""
 
     @property
+    def default_model(self) -> str:
+        return "MiniMaxAI/MiniMax-M3.1-Flash"
+
+    @property
     def models(self) -> dict[str, str]:
         return {
+            "MiniMaxAI/MiniMax-M3.1-Flash": "MiniMaxAI/MiniMax-M3.1-Flash",
             "gemma2-8b": "google/gemma-2-9b-it",
             "gemma2-27b": "google/gemma-2-27b-it",
             "llama4-maverick-fp8": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",

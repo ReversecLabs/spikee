@@ -1,9 +1,13 @@
 import os
+
 import pytest
 
-from spikee.utilities.modules import load_module_from_path
-from spikee.utilities.files import read_jsonl_file
 from spikee.templates.llm_judge import LLMJudge
+from spikee.templates.provider import ProviderError
+from spikee.utilities.files import read_jsonl_file
+from spikee.utilities.modules import load_module_from_path
+from tests.inference.models import BEDROCK, GOOGLE, OPENAI, PROVIDER_CASES
+
 from .utils import spikee_generate_cli, spikee_test_cli
 
 # Live calls require explicit opt-in, even when API keys are available.
@@ -22,7 +26,7 @@ def test_inference_plugin(run_spikee, workspace_dir):
 
     Uses --languages en to limit to 2 base combos, reducing API calls.
     With 1 piped plugin and 2 en combos: 2 base + 2 plugin = 4 entries.
-    Uses gpt-4o-mini via plugin-options for cheapest available model.
+    Uses the configured OpenAI smoke-test model.
     """
     output_file = spikee_generate_cli(
         run_spikee,
@@ -31,7 +35,7 @@ def test_inference_plugin(run_spikee, workspace_dir):
             "--plugins",
             "test_inference",
             "--plugin-options",
-            "test_inference:model=openai/gpt-4o",
+            f"test_inference:model={OPENAI}",
             "--plugin-only",
             "--languages",
             "en",
@@ -63,23 +67,24 @@ def test_inference_plugin(run_spikee, workspace_dir):
 @pytest.mark.parametrize(
     "model, required_env, valid",
     [
-        ("openai/gpt-4o", ["OPENAI_API_KEY"], True),
+        (OPENAI, ["OPENAI_API_KEY"], True),
         ("openai/nonexistent-model", [], False),
         (
-            "bedrock/",
+            BEDROCK,
             ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"],
             True,
         ),
-        ("google/", ["GOOGLE_API_KEY"], True),
+        (GOOGLE, ["GOOGLE_API_KEY"], True),
     ],
 )
-def test_llm_judge_inference(model, required_env, valid):
+def test_llm_judge_inference(model, required_env, valid, workspace_dir, monkeypatch):
     missing_env = [env for env in required_env if not os.environ.get(env)]
     if missing_env:
         pytest.skip(
             f"Skipping test because required environment variables are missing: {', '.join(missing_env)}"
         )
 
+    monkeypatch.chdir(workspace_dir)
     judge = load_module_from_path("llm_judge_output_criteria", "judges")
 
     assert isinstance(judge, LLMJudge), (
@@ -94,7 +99,9 @@ def test_llm_judge_inference(model, required_env, valid):
 
     for response, expected in test_cases.items():
         if not valid:
-            with pytest.raises(Exception):
+            with pytest.raises(
+                ProviderError, match=r"(?i)does not exist|not found|unknown|404"
+            ):
                 result = judge.judge("", response, criteria, judge_options=model)
         else:
             result = judge.judge("", response, criteria, judge_options=model)
@@ -105,40 +112,12 @@ def test_llm_judge_inference(model, required_env, valid):
 
 @pytest.mark.parametrize(
     "model, required_env, valid",
-    [
-        ("openai/gpt-4o", ["OPENAI_API_KEY"], True),
-        ("openai/gpt-4o-mini", ["OPENAI_API_KEY"], True),
+    PROVIDER_CASES
+    + [
         ("openai/nonexistent-model", [], False),
-        ("azure_openai/gpt-4o", ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_KEY"], True),
-        (
-            "bedrock/",
-            ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"],
-            True,
-        ),
-        (
-            "bedrock/claude45-haiku",
-            ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"],
-            True,
-        ),
-        (
-            "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
-            ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"],
-            True,
-        ),
-        (
-            "bedrock/deepseek-v3",
-            ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"],
-            True,
-        ),
-        ("deepseek/deepseek-chat", ["DEEPSEEK_API_KEY"], True),
-        ("google/", ["GOOGLE_API_KEY"], True),
-        ("google/gemini-2.5-flash", ["GOOGLE_API_KEY"], True),
-        ("google/gemini-7.0-pro", ["GOOGLE_API_KEY"], False),
-        ("groq/", ["GROQ_API_KEY"], True),
+        ("google/nonexistent-model", ["GOOGLE_API_KEY"], False),
         ("llamacpp/", ["LLAMACPP_URL"], True),
         ("ollama/", ["OLLAMA_URL"], True),
-        ("openrouter/", ["OPENROUTER_API_KEY"], True),
-        ("togetherai/", ["TOGETHER_API_KEY"], True),
     ],
 )
 def test_spikee_inference_providers(
@@ -190,7 +169,8 @@ def test_spikee_inference_providers(
             f"Expected {len(entries)} results, got {len(results)}"
         )
         assert all(
-            "response" in r
+            not r.get("error")
+            and "response" in r
             and isinstance(r["response"], str)
             and len(r["response"]) > 0
             for r in results
