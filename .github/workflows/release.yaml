@@ -63,7 +63,7 @@ jobs:
           ruff format --check ./spikee/
           ruff check ./spikee/
           pip install .[all]
-          pytest tests/functional
+          pytest tests/functional tests/release
 
       - name: Install tools
         run: pip install toml
