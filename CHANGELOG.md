@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 
 - accept target metadata and boolean responses in debug CLI
 - recover release synchronization after rebased merges
-- update any-llm compatibility and live inference coverage
 
 ## [0.9.3] - 2026-11-03
 
