@@ -48,9 +48,20 @@ def debug_module_target(args):
 
     response = target.process_input(args.input, **target_args)
 
-    print(
-        f"[{target.__class__.__name__}] Response: {get_content(response) if response else 'No response'}"
-    )
+    if isinstance(response, tuple):
+        if len(response) != 2:
+            raise ValueError(
+                "Invalid tuple return from target's process_input. "
+                f"Expected (Content/bool, meta), got {len(response)} elements."
+            )
+        response, _ = response
+
+    if isinstance(response, bool):
+        content = str(response)
+    else:
+        content = get_content(response) if response else "No response"
+
+    print(f"[{target.__class__.__name__}] Response: {content}")
 
 
 def debug_module_judge(args):
