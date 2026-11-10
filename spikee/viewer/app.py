@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from flask import Flask, render_template
+from werkzeug.serving import WSGIRequestHandler
 
 from spikee.viewer.blueprints import _cache as _module_cache
 from spikee.viewer.blueprints.generate import generate_bp
@@ -26,6 +27,11 @@ from spikee.viewer.job_queue import init_job_queue
 
 # Directories that must exist in CWD for it to be considered a valid workspace
 _WORKSPACE_MARKERS = ("datasets", "results", "targets", "attacks", "plugins")
+
+
+class _QuietRequestHandler(WSGIRequestHandler):
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        pass
 
 
 def _validate_workspace(cwd: Path) -> None:
@@ -134,12 +140,19 @@ class Viewer:
 
     def run(self) -> None:
         """Start the Flask development server with the configured host/port/debug settings."""
-        self.app.run(
-            debug=self._args.debug,
-            host=self._args.host,
-            port=self._args.port,
-            # Use_reloader=False prevents the subprocess reader threads from
-            # being duplicated when Flask's reloader forks the process.
-            use_reloader=self._args.debug,
-            threaded=True,
-        )
+        logger = logging.getLogger("werkzeug")
+        previous_level = logger.level
+        logger.setLevel(logging.INFO)
+        try:
+            self.app.run(
+                debug=self._args.debug,
+                host=self._args.host,
+                port=self._args.port,
+                # Use_reloader=False prevents the subprocess reader threads from
+                # being duplicated when Flask's reloader forks the process.
+                use_reloader=self._args.debug,
+                threaded=True,
+                request_handler=_QuietRequestHandler,
+            )
+        finally:
+            logger.setLevel(previous_level)
