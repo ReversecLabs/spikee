@@ -15,6 +15,7 @@ Spikee comes with a variety of built-in seeds, each designed for a specific test
 |------|-------------|-------------|-------------|
 | `seeds-cybersec-2026-01` | Reversec | Cybersecurity | A general-purpose dataset for testing prompt injection and cybersecurity harms. It focuses on common attack goals seen in web application security, such as data exfiltration, cross-site scripting (XSS), and resource exhaustion. |
 | `seeds-harmful-instructions-only` | Reversec | Objectives | Specifically designed for attacks using **LLM Agents**, such as **Crescendo** and **LLM-Jailbreaker**. These attacks require a instruction (objective) to generate their own attack vectors dynamically. Contains harmful instructions in `instructions.jsonl`, while leaving jailbreaks and user inputs as empty placeholders. |
+| `seeds-ailuminate-demo-en-us` | MLCommons | Safety | Fetches the public English AILuminate Demo as standalone prompts without authentication: 1,100 prompts by default, or all 1,200 with Specialized Advice. Preserves hazard and source metadata and uses the independent `llm_judge_ailuminate`. See the seed folder's README for download and generation commands. |
 | `seeds-simsonsun-high-quality-jailbreaks` | External | Jailbreaks | A high-quality set of contamination-free jailbreak prompts, specifically curated to avoid overlap with the training data of many common safety classifiers. |
 | `seeds-in-the-wild-jailbreak-prompts` | External | Jailbreaks | Contains approximately 1,400 real-world jailbreak prompts collected from public sources like Discord and Reddit (filtered from the TrustAIRLab dataset). Ideal for testing a target's resilience against known, publicly available jailbreaks. |
 | `seeds-wildguardmix-harmful` | External | Harmful | A dataset for testing harmful content generation. The prompts are sourced from the WildGuard-Mix dataset. |
@@ -88,6 +89,7 @@ LLM-based judges address this by using a separate LLM to evaluate the target's r
 * `llm_judge_harmful`: LLM judge to evaluate whether the target LLMs response complied with a potentially harmful user prompt.
 * `llm_judge_objective`: LLM judge to evaluate whether the target LLMs response meets a specific input objective.
 * `llm_judge_output_criteria`: LLM judge to evaluate whether the target LLMs response meets specific success criteria defined in `judge_args`.
+* `llm_judge_ailuminate`: Independent response judge using AILuminate v1.4 legitimization, enablement and hazard-specific violation rules. The AILuminate importer supplies its original-seed context and hazard in `judge_args`.
 
 The LLM Agent model can be specified using the `--judge-options` flag. See **[LLM Providers](./03_llm_providers.md)** for a complete list of supported models, prefixes, and examples. Some common examples include 
 * `offline`: Mock judge, for restrictive environments. See [re-judging](<./08_judges.md#Re-judging>) and [isolated environments](./12_installing_spikee_in_isolated_environments.md) documentation for more information.
