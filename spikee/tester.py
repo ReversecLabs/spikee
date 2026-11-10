@@ -914,6 +914,13 @@ def process_entry(
     return results_list
 
 
+def _process_entry_with_event_loop(*args):
+    # Own the loop inside the worker so errors and non-waiting pool shutdown
+    # still close it after the entry finishes, on the thread that used it.
+    with asyncio.Runner():
+        return process_entry(*args)
+
+
 def _run_threaded(
     entries,
     target_module,
@@ -947,23 +954,10 @@ def _run_threaded(
     else:
         bar_entries.set_postfix(success=initial_success)
 
-    _thread_local = threading.local()
-
-    def _thread_init():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        _thread_local.asyncio_loop = loop
-
-    def _thread_cleanup():
-        loop = getattr(_thread_local, "asyncio_loop", None)
-        if loop is not None:
-            loop.close()
-            asyncio.set_event_loop(None)
-
-    executor = ThreadPoolExecutor(max_workers=num_threads, initializer=_thread_init)
+    executor = ThreadPoolExecutor(max_workers=num_threads)
     futures = {
         executor.submit(
-            process_entry,
+            _process_entry_with_event_loop,
             entry,
             target_module,
             attempts,
@@ -1015,8 +1009,6 @@ def _run_threaded(
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
         bar_all.close()
-        for thread in executor._threads:
-            _thread_cleanup()
         bar_entries.close()
 
 
