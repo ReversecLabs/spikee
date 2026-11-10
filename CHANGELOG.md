@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.9.5] - 2026-11-10
+
+### Fixes
+
+- close tester event loops in their worker threads
+- update web UI request logging in Flask app to show url
+
 ## [0.9.4] - 2026-11-03
 
 ### Fixes
