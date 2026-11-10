@@ -169,6 +169,7 @@ spikee results extract --results-file results.jsonl --category "success"
 Launches the Spikee web UI. Run from a workspace directory (one initialised with `spikee init`).
 
 The web UI covers the full Spikee workflow: generate datasets, run tests, monitor live job output, and explore results interactively.
+The server prints its address when it starts; by default, open `http://127.0.0.1:8080/`.
 
 ### Arguments
 | Argument        | Description                                                                        |
@@ -187,4 +188,3 @@ spikee webui --host 0.0.0.0 -p 8081
 # Persist job history across restarts
 spikee webui --database jobs.db
 ```
-
