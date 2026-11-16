@@ -84,6 +84,39 @@ def list_jsonl_files(folder_path, startswith=None):
     ]
 
 
+# ==== Windows long path support ====
+_WIN_EXTENDED_PREFIX = "\\\\?\\"
+_WIN_DEVICE_PREFIX = "\\\\.\\"
+_WIN_UNC_PREFIX = "\\\\"
+
+
+def windows_extended_path_str(abs_path: str) -> str:
+    """
+    Converts an absolute Windows path string to its extended-length form, which
+    is not limited by the legacy 260 character MAX_PATH.
+
+    C:\\a\\b.jsonl      => \\\\?\\C:\\a\\b.jsonl
+    \\\\server\\share\\b  => \\\\?\\UNC\\server\\share\\b
+    Paths that are already in extended or device (\\\\.\\) form are returned unchanged.
+    """
+    if abs_path.startswith((_WIN_EXTENDED_PREFIX, _WIN_DEVICE_PREFIX)):
+        return abs_path
+    if abs_path.startswith(_WIN_UNC_PREFIX):
+        return _WIN_EXTENDED_PREFIX + "UNC\\" + abs_path[len(_WIN_UNC_PREFIX):]
+    return _WIN_EXTENDED_PREFIX + abs_path
+
+
+def to_extended_path(path) -> Path:
+    """
+    Returns `path` as an absolute extended-length path on Windows so file checks
+    and reads still work past MAX_PATH. On other platforms the path is returned
+    unchanged.
+    """
+    if os.name != "nt":
+        return Path(path)
+    return Path(windows_extended_path_str(os.path.abspath(str(path))))
+
+
 # ==== Name Operations ====
 def extract_resource_name(file_name: str):
     """
