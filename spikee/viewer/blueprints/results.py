@@ -28,6 +28,7 @@ from spikee.templates.standardised_conversation import StandardisedConversation
 from spikee.utilities.files import (
     extract_resource_name,
     read_jsonl_file,
+    to_extended_path,
     write_jsonl_file,
 )
 from spikee.utilities.results import ResultProcessor, extract_entries, generate_query
@@ -56,7 +57,8 @@ def scan_result_files() -> None:
     global loaded_files
     new_files: dict[str, Path] = {}
 
-    results_dir = Path(os.getcwd()) / "results"
+    # Extended-length path so files past Windows MAX_PATH are still found and readable
+    results_dir = to_extended_path(Path(os.getcwd()) / "results")
     if not results_dir.is_dir():
         loaded_files = new_files
         return
